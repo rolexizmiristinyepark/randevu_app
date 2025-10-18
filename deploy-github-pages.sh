@@ -19,6 +19,6 @@ git remote add origin https://github.com/rolexizmiristinyepark/randevu_app.git
 git push -f origin gh-pages
 
 echo "✅ Deployment complete!"
-echo "📌 Your site will be available at: https://rolexizmiristinyepark.github.io/appointment/"
+echo "📌 Your site will be available at: https://rolexizmiristinyepark.github.io/randevu_app/"
 
 cd ..

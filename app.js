@@ -4,7 +4,7 @@ import * as CalendarIntegration from './calendar-integration.js';
 // APPS SCRIPT URL
 const CONFIG = {
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
-    BASE_URL: 'https://rolexizmiristinyepark.github.io/appointment/',
+    BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
 
     // Debug mode - Production'da false olmalı
     DEBUG: false,
