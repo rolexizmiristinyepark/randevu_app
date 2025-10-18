@@ -49,13 +49,16 @@ const ApiService = {
                     allParams.apiKey = apiKey;
                 }
 
-                // Get CONFIG from global scope
-                if (typeof CONFIG === 'undefined') {
+                // Get CONFIG from global scope (window.CONFIG for ES6 modules)
+                const config = typeof window !== 'undefined' && window.CONFIG ? window.CONFIG :
+                               typeof CONFIG !== 'undefined' ? CONFIG : null;
+
+                if (!config || !config.APPS_SCRIPT_URL) {
                     reject(new Error('CONFIG not defined'));
                     return;
                 }
 
-                const url = CONFIG.APPS_SCRIPT_URL + '?' + new URLSearchParams(allParams).toString();
+                const url = config.APPS_SCRIPT_URL + '?' + new URLSearchParams(allParams).toString();
 
                 // Fetch API ile güvenli istek
                 const controller = new AbortController();
