@@ -1,3 +1,6 @@
+// Import calendar integration directly (temporary fix for lazy loading issue)
+import * as CalendarIntegration from './calendar-integration.js';
+
 // APPS SCRIPT URL
 const CONFIG = {
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
@@ -59,6 +62,11 @@ let allAppointments = {}; // Tüm ayın randevuları {date: [appointments]}
 let googleCalendarEvents = {}; // Google Calendar'dan gelen etkinlikler {date: [events]}
 let specificStaffId = null; // URL parametresinden gelen staff ID
 let lastAppointmentData = null; // Son oluşturulan randevu bilgileri
+
+// Export to window for calendar-integration.js module access
+if (typeof window !== 'undefined') {
+    window.lastAppointmentData = null;
+}
 
 // SessionStorage tabanlı cache mekanizması - API çağrılarını optimize eder
 // Sayfa yenilemelerinde de çalışır, tarayıcı kapatılınca temizlenir
@@ -817,6 +825,10 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
                 appointmentType: selectedAppointmentType,
                 duration: CONFIG.APPOINTMENT_HOURS.interval
             };
+
+            // Export to window for calendar-integration.js module access
+            window.lastAppointmentData = lastAppointmentData;
+
             showSuccessPage(selectedDate, selectedTime, staff.name, note);
         } else {
             showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
@@ -925,57 +937,39 @@ function showSuccessPage(dateStr, timeStr, staffName, customerNote) {
     }, 100);
 }
 
-// ==================== LAZY LOADING: CALENDAR INTEGRATION ====================
-
-// Calendar modülü cache - Tek seferlik yükleme
-let calendarModule = null;
-
-/**
- * Calendar integration modülünü lazy load et
- * İlk çağrıda modülü yükler, sonraki çağrılarda cache'den kullanır
- */
-async function loadCalendarModule() {
-    if (!calendarModule) {
-        calendarModule = await import('./calendar-integration.js');
-    }
-    return calendarModule;
-}
+// ==================== CALENDAR INTEGRATION (Direct Import - Temporary Fix) ====================
 
 /**
  * Calendar buton tıklamalarını handle et
- * Dinamik olarak calendar modülünü yükler ve ilgili fonksiyonu çağırır
+ * Direkt import kullanarak calendar modülünü çağırır
  */
-async function handleCalendarAction(event) {
+function handleCalendarAction(event) {
     const buttonId = event.target.id;
 
     try {
-        // Modülü lazy load et
-        const calendar = await loadCalendarModule();
-
         // Buton ID'sine göre doğru fonksiyonu çağır
         switch (buttonId) {
             case 'calendarAppleBtn':
-                calendar.addToCalendarApple();
+                CalendarIntegration.addToCalendarApple();
                 break;
             case 'calendarGoogleBtn':
-                calendar.addToCalendarGoogle();
+                CalendarIntegration.addToCalendarGoogle();
                 break;
             case 'calendarOutlookBtn':
-                calendar.addToCalendarOutlook();
+                CalendarIntegration.addToCalendarOutlook();
                 break;
             case 'calendarICSBtn':
-                calendar.downloadICSUniversal();
+                CalendarIntegration.downloadICSUniversal();
                 break;
         }
     } catch (error) {
-        console.error('Calendar modülü yüklenemedi:', error);
+        console.error('Calendar fonksiyonu çalıştırılamadı:', error);
         alert('Takvim ekleme özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
     }
 }
 
 /**
  * Takvime ekleme modal'ını aç
- * Modal açıldığında calendar modülü henüz yüklenmez (lazy loading)
  */
 function addToCalendar() {
     ModalUtils.open('calendarModal');
