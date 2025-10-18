@@ -7,7 +7,7 @@ const ApiService = {
     PROTECTED_ACTIONS: [
         'addStaff', 'toggleStaff', 'removeStaff', 'updateStaff',
         'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
-        'getSettings', 'initializeApiKey'
+        'getSettings'
     ],
 
     /**
