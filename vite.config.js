@@ -3,6 +3,9 @@ import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 
 export default defineConfig(({ mode }) => ({
+  // GitHub Pages base path
+  base: '/randevu_app/',
+
   // Multi-page app configuration
   build: {
     rollupOptions: {
