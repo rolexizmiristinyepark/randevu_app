@@ -352,7 +352,7 @@
                     <strong>Randevu Saatleri:</strong> 11:00-21:00
                 </div>
                 <div class="input-group">
-                    <label>Randevu Süresi</label>
+                    <label for="interval">Randevu Süresi</label>
                     <select id="interval">
                         <option value="30">30 Dakika</option>
                         <option value="60" selected>60 Dakika</option>
@@ -360,7 +360,7 @@
                     </select>
                 </div>
                 <div class="input-group">
-                    <label>Günlük Max Teslim Randevusu</label>
+                    <label for="maxDaily">Günlük Max Teslim Randevusu</label>
                     <input type="number" id="maxDaily" value="4" min="1">
                     <small style="color: #666; font-size: 13px; margin-top: 5px; display: block;">
                         Teslim randevuları için günlük maksimum sayı (Görüşme randevuları limitsiz)
@@ -375,7 +375,7 @@
                     <p><strong>Genel Link:</strong> Tüm çalışanlar için genel randevu sayfası</p>
                 </div>
                 <div class="input-group">
-                    <label>Genel Müşteri Sayfası</label>
+                    <label for="customerLink">Genel Müşteri Sayfası</label>
                     <input type="text" id="customerLink" readonly style="background: #f5f5f5;">
                 </div>
                 <button class="btn" id="openCustomerBtn">🔗 Müşteri Sayfasını Aç</button>
@@ -396,15 +396,15 @@
             <div class="card">
                 <div class="card-title">➕ Yeni Çalışan</div>
                 <div class="input-group">
-                    <label>İsim</label>
+                    <label for="newStaffName">İsim</label>
                     <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
                 </div>
                 <div class="input-group">
-                    <label>Telefon</label>
+                    <label for="newStaffPhone">Telefon</label>
                     <input type="tel" id="newStaffPhone" placeholder="0555 123 4567">
                 </div>
                 <div class="input-group">
-                    <label>E-posta</label>
+                    <label for="newStaffEmail">E-posta</label>
                     <input type="email" id="newStaffEmail" placeholder="ahmet@example.com">
                 </div>
                 <button class="btn" id="addStaffBtn">➕ Ekle</button>
@@ -424,7 +424,7 @@
                     🌅 Sabah (10-18) | 🌆 Akşam (14-22) | 🌞 Full (10-22) | ❌ İzinli
                 </div>
                 <div class="input-group">
-                    <label>Hafta Seç (Pazartesi başlangıç)</label>
+                    <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="week" id="weekDate" style="flex: 1;">
                         <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki →</button>
@@ -447,7 +447,8 @@
                 <div class="alert alert-info">
                     <strong>📌 Bilgi:</strong> Google Calendar'da oluşturulan tüm randevuları buradan görebilirsiniz.
                 </div>
-                <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <div class="input-group">
+                    <label for="filterWeek">Hafta Seç</label>
                     <input type="week" id="filterWeek" style="flex: 1;">
                 </div>
                 <div id="appointmentsList"></div>
@@ -459,15 +460,15 @@
             <div class="modal-content">
                 <div class="modal-header">✏️ Çalışan Düzenle</div>
                 <div class="input-group">
-                    <label>İsim</label>
+                    <label for="editStaffName">İsim</label>
                     <input type="text" id="editStaffName">
                 </div>
                 <div class="input-group">
-                    <label>Telefon</label>
+                    <label for="editStaffPhone">Telefon</label>
                     <input type="tel" id="editStaffPhone">
                 </div>
                 <div class="input-group">
-                    <label>E-posta</label>
+                    <label for="editStaffEmail">E-posta</label>
                     <input type="email" id="editStaffEmail">
                 </div>
                 <div class="modal-footer">
@@ -1455,12 +1456,26 @@
         }
 
         // ==================== INIT ====================
-        document.addEventListener('DOMContentLoaded', async function() {
-            // Authentication kontrolü
-            if (!AdminAuth.isAuthenticated()) {
-                AdminAuth.showLoginModal();
+        // Wait for ES6 modules to load before checking authentication
+        function initAdmin() {
+            // Check if AdminAuth module is loaded
+            if (typeof window.AdminAuth === 'undefined') {
+                // Module not loaded yet, wait a bit and try again
+                setTimeout(initAdmin, 50);
                 return;
             }
+
+            // Authentication kontrolü
+            if (!window.AdminAuth.isAuthenticated()) {
+                window.AdminAuth.showLoginModal();
+                return;
+            }
+
+            // Initialize the rest of the app
+            startApp();
+        }
+
+        async function startApp() {
 
             // Çıkış butonu ekle
             AdminAuth.addLogoutButton();
@@ -1536,7 +1551,10 @@
 
             // Appointment filter
             document.getElementById('filterWeek')?.addEventListener('change', () => Appointments.load());
-        });
+        }
+
+        // Start initialization when DOM is ready
+        document.addEventListener('DOMContentLoaded', initAdmin);
     </script>
 </body>
 </html>

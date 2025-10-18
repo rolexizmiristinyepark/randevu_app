@@ -2,6 +2,8 @@
 // API Key yönetimi ve yetkilendirme sistemi
 // ✅ GÜVENLİK: Inline stil ve event handler'lar kaldırıldı
 
+import { ApiService } from './api-service.js';
+
 const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',
     SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 saat
@@ -213,7 +215,7 @@ const AdminAuth = {
                     <div id="authError" class="admin-auth-error"></div>
 
                     <div class="admin-auth-input-group">
-                        <label class="admin-auth-label">API Key</label>
+                        <label for="apiKeyInput" class="admin-auth-label">API Key</label>
                         <input type="password" id="apiKeyInput" placeholder="RLX_..." class="admin-auth-input" autocomplete="off">
                     </div>
 
