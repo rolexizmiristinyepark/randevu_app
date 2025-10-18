@@ -15,10 +15,10 @@ git commit -m "Deploy to GitHub Pages"
 
 # Force push to gh-pages branch
 git branch -M gh-pages
-git remote add origin https://github.com/KULLANICI_ADINIZ/REPO_ADINIZ.git
+git remote add origin https://github.com/rolexizmiristinyepark/randevu_app.git
 git push -f origin gh-pages
 
 echo "✅ Deployment complete!"
-echo "📌 Your site will be available at: https://KULLANICI_ADINIZ.github.io/REPO_ADINIZ/"
+echo "📌 Your site will be available at: https://rolexizmiristinyepark.github.io/appointment/"
 
 cd ..
