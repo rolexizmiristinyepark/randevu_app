@@ -116,29 +116,36 @@ const sessionStorageCache = {
 const monthCache = sessionStorageCache;
 
 document.addEventListener('DOMContentLoaded', async function() {
-    // Load settings first
-    await loadSettings();
-
-    // URL parametrelerini kontrol et
+    // URL parametrelerini hemen kontrol et (API beklemeden)
     const urlParams = new URLSearchParams(window.location.search);
     specificStaffId = urlParams.get('staff');
 
+    // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
+    if (specificStaffId === '0') {
+        const header = document.getElementById('staffHeader');
+        header.textContent = 'Yönetim Randevuları';
+        header.style.visibility = 'visible';
+        selectedStaff = 0;
+
+        // Yönetim butonunu hemen göster ve grid'i 2x2 yap
+        document.getElementById('typeManagement').style.display = 'block';
+        const typesContainer = document.getElementById('appointmentTypesContainer');
+        typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    } else if (!specificStaffId) {
+        // Normal link için butonları ortala
+        const typesContainer = document.getElementById('appointmentTypesContainer');
+        typesContainer.style.justifyContent = 'center';
+    }
+
+    // Load settings first
+    await loadSettings();
+
+    // Staff verilerini yükle
     if (specificStaffId) {
-        // Belirli bir çalışan için sayfa
         await loadStaffMembers();
 
-        // YENİ: staff=0 kontrolü (Yönetim randevuları için)
-        if (specificStaffId === '0') {
-            const header = document.getElementById('staffHeader');
-            header.textContent = 'Yönetim Randevuları';
-            header.style.visibility = 'visible';
-            selectedStaff = 0;
-
-            // Yönetim butonunu göster ve grid'i 2x2 yap
-            document.getElementById('typeManagement').style.display = 'block';
-            const typesContainer = document.getElementById('appointmentTypesContainer');
-            typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-        } else {
+        // Normal staff link için header'ı güncelle
+        if (specificStaffId !== '0') {
             const staff = staffMembers.find(s => s.id == specificStaffId);
             if (staff) {
                 const header = document.getElementById('staffHeader');
@@ -149,9 +156,6 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
     } else {
         await loadStaffMembers();
-        // Normal link için butonları ortala
-        const typesContainer = document.getElementById('appointmentTypesContainer');
-        typesContainer.style.justifyContent = 'center';
     }
 
     // ==================== EVENT LISTENERS ====================
