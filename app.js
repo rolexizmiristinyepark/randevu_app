@@ -123,9 +123,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
     if (specificStaffId === '0') {
         const header = document.getElementById('staffHeader');
-        header.textContent = 'Yönetim Randevuları';
+        header.textContent = 'Manuel Randevu Oluşturma';
         header.style.visibility = 'visible';
-        selectedStaff = 0;
 
         // Yönetim butonunu hemen göster ve grid'i 2x2 yap
         document.getElementById('typeManagement').style.display = 'block';
@@ -304,14 +303,14 @@ function checkDayAvailability(dateStr) {
     }
 
     // Vardiya kontrolü
-    if (specificStaffId) {
-        // Özel çalışan linki - sadece o çalışanın vardiyasını kontrol et
+    if (specificStaffId && specificStaffId !== '0') {
+        // Normal staff linki - sadece o çalışanın vardiyasını kontrol et
         const staffHasShift = dayShifts[dateStr] && dayShifts[dateStr][specificStaffId];
         if (!staffHasShift) {
             return { available: false, reason: 'İlgili çalışan bu gün müsait değil' };
         }
     } else {
-        // Genel link - herhangi bir çalışan vardiyası var mı kontrol et
+        // Genel link veya staff=0 - herhangi bir çalışan vardiyası var mı kontrol et
         const hasShifts = dayShifts[dateStr] && Object.keys(dayShifts[dateStr]).length > 0;
         if (!hasShifts) {
             return { available: false, reason: 'Çalışan yok' };
@@ -377,7 +376,15 @@ function selectDay(dateStr) {
         document.getElementById('detailsSection').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     }
-    // Çalışan seçimi göster (eğer özel link değilse)
+    // staff=0 ama diğer türler (delivery, service, meeting) için çalışan seçimi göster
+    else if (specificStaffId === '0' && selectedAppointmentType !== 'management') {
+        displayAvailableStaff();
+        document.getElementById('staffSection').style.display = 'block';
+        document.getElementById('timeSection').style.display = 'none';
+        document.getElementById('detailsSection').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'none';
+    }
+    // Çalışan seçimi göster (genel link)
     else if (!specificStaffId) {
         displayAvailableStaff();
         document.getElementById('staffSection').style.display = 'block';
@@ -385,20 +392,11 @@ function selectDay(dateStr) {
         document.getElementById('detailsSection').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     } else {
-        // Özel link ise direkt saat seçimine geç (ama staff=0 değilse)
-        if (specificStaffId !== '0') {
-            selectedStaff = parseInt(specificStaffId);
-            const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId)];
-            if (shiftType) {
-                selectedShiftType = shiftType;
-                displayAvailableTimeSlots();
-                document.getElementById('timeSection').style.display = 'block';
-                document.getElementById('detailsSection').style.display = 'none';
-                document.getElementById('submitBtn').style.display = 'none';
-            }
-        } else {
-            // staff=0 ama management değil, full vardiya ile ilerle
-            selectedShiftType = 'full';
+        // Normal staff link (staff=1, staff=2, vb.) - direkt saat seçimine geç
+        selectedStaff = parseInt(specificStaffId);
+        const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId)];
+        if (shiftType) {
+            selectedShiftType = shiftType;
             displayAvailableTimeSlots();
             document.getElementById('timeSection').style.display = 'block';
             document.getElementById('detailsSection').style.display = 'none';
