@@ -116,6 +116,12 @@ const sessionStorageCache = {
 const monthCache = sessionStorageCache;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // Guard: Bu kod sadece customer sayfası (index.html) için çalışmalı
+    // Admin.html'de appointmentTypesContainer olmadığı için skip et
+    if (!document.getElementById('appointmentTypesContainer')) {
+        return; // Admin sayfasında çalıştırma
+    }
+
     // URL parametrelerini hemen kontrol et (API beklemeden)
     const urlParams = new URLSearchParams(window.location.search);
     specificStaffId = urlParams.get('staff');
