@@ -1582,7 +1582,19 @@
                         if (response.data.length === 0) {
                             container.innerHTML = '<div style="padding: 15px; background: #f0f0f0; border-radius: 8px; text-align: center;">Bu tarihte randevu bulunamadı.</div>';
                         } else {
-                            container.innerHTML = response.data.map(item => `
+                            // Tümünü Gönder butonu ekle
+                            const sendAllBtn = `
+                                <div style="margin-bottom: 20px; text-align: center;">
+                                    <button id="sendAllWhatsAppBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 16px;">
+                                        🚀 Tümünü Gönder (${response.data.length} mesaj)
+                                    </button>
+                                    <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                                        Tüm mesajlar yeni tab'larda açılacak. Her tab'da sadece "Gönder" butonuna basın.
+                                    </p>
+                                </div>
+                            `;
+
+                            const links = response.data.map(item => `
                                 <div style="padding: 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
                                     <div>
                                         <strong>${escapeHtml(item.customerName)}</strong> - ${item.startTime}
@@ -1592,6 +1604,20 @@
                                     </a>
                                 </div>
                             `).join('');
+
+                            container.innerHTML = sendAllBtn + links;
+
+                            // Tümünü Gönder butonuna event listener ekle
+                            document.getElementById('sendAllWhatsAppBtn')?.addEventListener('click', () => {
+                                let delay = 0;
+                                response.data.forEach((item, index) => {
+                                    setTimeout(() => {
+                                        window.open(item.link, '_blank');
+                                    }, delay);
+                                    delay += 500; // Her tab arası 500ms bekle (tarayıcı popup blocker'ı bypass etmek için)
+                                });
+                                UI.showAlert(`✅ ${response.data.length} tab açılıyor... Her tab'da "Gönder" butonuna basın.`, 'success');
+                            });
                         }
                     } else {
                         UI.showAlert('❌ ' + response.error, 'error');
