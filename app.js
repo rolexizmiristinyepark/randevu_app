@@ -116,10 +116,21 @@ const sessionStorageCache = {
 const monthCache = sessionStorageCache;
 
 document.addEventListener('DOMContentLoaded', async function() {
+    // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
+    // Calendar modal buttons - Lazy loaded handlers
+    document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);
+    document.getElementById('calendarGoogleBtn')?.addEventListener('click', handleCalendarAction);
+    document.getElementById('calendarOutlookBtn')?.addEventListener('click', handleCalendarAction);
+    document.getElementById('calendarICSBtn')?.addEventListener('click', handleCalendarAction);
+    document.getElementById('calendarModalCloseBtn')?.addEventListener('click', () => ModalUtils.close('calendarModal'));
+
+    // Guide modal event listener
+    document.getElementById('guideCloseBtn')?.addEventListener('click', () => ModalUtils.close('guideModal'));
+
+    // ==================== CUSTOMER PAGE INIT ====================
     // Guard: Bu kod sadece customer sayfası (index.html) için çalışmalı
-    // Admin.html'de appointmentTypesContainer olmadığı için skip et
     if (!document.getElementById('appointmentTypesContainer')) {
-        return; // Admin sayfasında çalıştırma
+        return; // Admin sayfasında customer init'i atlat
     }
 
     // URL parametrelerini hemen kontrol et (API beklemeden)
@@ -163,8 +174,7 @@ document.addEventListener('DOMContentLoaded', async function() {
         await loadStaffMembers();
     }
 
-    // ==================== EVENT LISTENERS ====================
-    // Appointment type cards
+    // Appointment type cards event listeners
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
     document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));
     document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
@@ -173,17 +183,6 @@ document.addEventListener('DOMContentLoaded', async function() {
     // Calendar navigation buttons
     document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('nextMonthBtn')?.addEventListener('click', () => changeMonth(1));
-
-    // Calendar modal buttons - Lazy loaded handlers
-    // Bu event listener'lar ilk tıklamada calendar-integration.js modülünü yükleyecek
-    document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarGoogleBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarOutlookBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarICSBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarModalCloseBtn')?.addEventListener('click', () => ModalUtils.close('calendarModal'));
-
-    // Guide modal event listener
-    document.getElementById('guideCloseBtn')?.addEventListener('click', () => ModalUtils.close('guideModal'));
 });
 
 // Randevu tipi seçimi
