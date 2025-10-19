@@ -42,12 +42,12 @@ const CONFIG = {
     management: 'Yönetim'          // YENİ
   },
 
-  // Service Names
+  // Service Names (Email "Konu" alanı için)
   SERVICE_NAMES: {
     delivery: 'Saat Teslimi',
     meeting: 'Görüşme',
     service: 'Teknik Servis',      // YENİ
-    management: 'Yönetim Randevusu' // YENİ
+    management: 'Yönetim'           // YENİ
   },
 
   // Email Subjects
@@ -262,6 +262,27 @@ function sanitizePhone(phone) {
   return phone.replace(/[^0-9+\-\s()]/g, '').trim().substring(0, VALIDATION.PHONE_MAX_LENGTH);
 }
 
+/**
+ * İsmi Title Case formatına çevirir (Her Kelimenin İlk Harfi Büyük)
+ * Örnek: "SERDAR BENLİ" → "Serdar Benli", "serdar benli" → "Serdar Benli"
+ * @param {string} name - Formatlanacak isim
+ * @returns {string} Title Case formatında isim
+ */
+function toTitleCase(name) {
+  if (!name || typeof name !== 'string') return '';
+
+  return name
+    .trim()
+    .toLowerCase()
+    .split(' ')
+    .map(word => {
+      if (word.length === 0) return word;
+      // İlk harfi büyük, geri kalanı küçük
+      return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1);
+    })
+    .join(' ');
+}
+
 // Takvim nesnesini döndür - merkezi hata yönetimi ile
 function getCalendar() {
   const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
@@ -288,7 +309,7 @@ function validateAndSanitizeStaff(name, phone, email) {
     return { error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
   }
   return {
-    name: sanitizeString(name, VALIDATION.STRING_MAX_LENGTH),
+    name: toTitleCase(sanitizeString(name, VALIDATION.STRING_MAX_LENGTH)),
     phone: sanitizePhone(phone),
     email: email ? sanitizeString(email, VALIDATION.STRING_MAX_LENGTH) : ''
   };
@@ -610,10 +631,11 @@ function initializeApiKey() {
         </div>
       `
     });
-    return { success: true, message: CONFIG.SUCCESS_MESSAGES.API_KEY_SENT };
+    return { success: true, message: CONFIG.SUCCESS_MESSAGES.API_KEY_SENT, apiKey: existingKey };
   } catch (e) {
     log.error('API key e-postası gönderilemedi:', e);
-    return { success: false, error: CONFIG.ERROR_MESSAGES.EMAIL_SEND_FAILED };
+    // E-posta gönderilmese bile API key'i döndür
+    return { success: true, apiKey: existingKey, warning: 'API key oluşturuldu ancak e-posta gönderilemedi' };
   }
 }
 
@@ -1268,11 +1290,11 @@ function createAppointment(params) {
     }
 
     // Sanitize inputs
-    const sanitizedCustomerName = sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH);
+    const sanitizedCustomerName = toTitleCase(sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
     const sanitizedCustomerPhone = sanitizePhone(customerPhone);
     const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
     const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
-    const sanitizedStaffName = staffName ? sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH) : '';
+    const sanitizedStaffName = staffName ? toTitleCase(sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '';
 
     // getData() - tek seferlik çağrı (DRY prensibi)
     const data = getData();
@@ -1448,11 +1470,36 @@ function getTodayWhatsAppReminders(date) {
       const phoneTag = event.getTag('customerPhone');
       if (!phoneTag) return null; // Telefonu yoksa atla
 
-      const customerName = event.getTitle().split(' - ')[0]; // "Müşteri Adı - Personel (Tür)" formatından adı al
+      const appointmentType = event.getTag('appointmentType') || 'Randevu';
+
+      // Event title formatı: "Müşteri Adı - Personel (Tür)"
+      const title = event.getTitle();
+      const parts = title.split(' - ');
+      const customerName = toTitleCase(parts[0]) || 'Değerli Müşterimiz';
+
+      // İlgili kişi ve randevu türü
+      let staffName = 'Temsilcimiz';
+      let appointmentTypeName = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || 'Randevu';
+
+      if (parts.length > 1) {
+        // "Personel (Tür)" kısmını parse et
+        const secondPart = parts[1];
+        const match = secondPart.match(/^(.+?)\s*\((.+?)\)$/);
+        if (match) {
+          const parsedStaffName = match[1].trim();
+          // HK ve OK kısaltmalarını koruyoruz, diğerlerini Title Case yapıyoruz
+          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
+          appointmentTypeName = match[2].trim(); // "Yönetim" veya "Teslim"
+        } else {
+          const parsedStaffName = secondPart.trim();
+          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
+        }
+      }
+
       const startTime = Utilities.formatDate(event.getStartTime(), CONFIG.TIMEZONE, 'HH:mm');
 
-      // WhatsApp mesajı
-      const message = `Merhaba ${customerName}, bugünkü Rolex randevunuzu saat ${startTime} için hatırlatmak istedik. Görüşmek üzere!`;
+      // Yeni WhatsApp mesajı formatı
+      const message = `Sayın ${customerName},\n\nBugün saat ${startTime}'teki ${staffName} ile ${appointmentTypeName} randevunuzu hatırlatmak isteriz. Randevunuzda bir değişiklik yapmanız gerekirse lütfen bizi önceden bilgilendiriniz.\n\nSaygılarımızla,\n\nRolex İzmir İstinyepark`;
       const encodedMessage = encodeURIComponent(message);
 
       // Türkiye telefon formatı: 05XX XXX XX XX → 905XXXXXXXXX
@@ -1460,7 +1507,7 @@ function getTodayWhatsAppReminders(date) {
       const phone = cleanPhone.startsWith('0') ? '90' + cleanPhone.substring(1) : cleanPhone;
       const link = `https://wa.me/${phone}?text=${encodedMessage}`;
 
-      return { customerName, startTime, link };
+      return { customerName, startTime, staffName, appointmentType: appointmentTypeName, link };
     }).filter(Boolean); // null'ları filtrele
 
     return { success: true, data: reminders };
@@ -1494,7 +1541,7 @@ function createManualAppointment(params) {
     const isManagement = appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT;
 
     // Sanitization
-    const sanitizedCustomerName = sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH);
+    const sanitizedCustomerName = toTitleCase(sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
     const sanitizedCustomerPhone = sanitizePhone(customerPhone);
     const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
     const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
