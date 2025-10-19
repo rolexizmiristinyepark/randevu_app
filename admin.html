@@ -1576,7 +1576,10 @@
                 }
 
                 try {
+                    console.log('ApiService:', typeof ApiService, ApiService);
+                    console.log('Calling getTodayWhatsAppReminders with date:', date);
                     const response = await ApiService.call('getTodayWhatsAppReminders', { date });
+                    console.log('Response:', response);
                     if (response.success) {
                         const container = document.getElementById('whatsappLinksContainer');
                         if (response.data.length === 0) {
@@ -1597,7 +1600,8 @@
                         UI.showAlert('❌ ' + response.error, 'error');
                     }
                 } catch (error) {
-                    UI.showAlert('❌ Hatırlatmalar oluşturulamadı', 'error');
+                    console.error('WhatsApp reminder error:', error);
+                    UI.showAlert('❌ Hatırlatmalar oluşturulamadı: ' + error.message, 'error');
                 }
             });
         }
