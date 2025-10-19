@@ -24,15 +24,19 @@
 
         <!-- Randevu Tipi Seçimi -->
         <div class="section">
-            <div class="appointment-types">
+            <div class="appointment-types" id="appointmentTypesContainer">
                 <div class="type-card" id="typeDelivery" data-type="delivery">
-                    <h3>Teslim Randevusu</h3>
+                    <h3>Teslim</h3>
                 </div>
                 <div class="type-card" id="typeService" data-type="service">
                     <h3>Teknik Servis</h3>
                 </div>
                 <div class="type-card" id="typeMeeting" data-type="meeting">
-                    <h3>Görüşme Randevusu</h3>
+                    <h3>Görüşme</h3>
+                </div>
+                <!-- Yönetim butonu sadece staff=0 için gösterilecek -->
+                <div class="type-card" id="typeManagement" data-type="management" style="display: none;">
+                    <h3>Yönetim</h3>
                 </div>
             </div>
         </div>

@@ -126,22 +126,40 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (specificStaffId) {
         // Belirli bir çalışan için sayfa
         await loadStaffMembers();
-        const staff = staffMembers.find(s => s.id == specificStaffId);
-        if (staff) {
+
+        // YENİ: staff=0 kontrolü (Yönetim randevuları için)
+        if (specificStaffId === '0') {
             const header = document.getElementById('staffHeader');
-            header.textContent = staff.name;
+            header.textContent = 'Yönetim Randevuları';
             header.style.visibility = 'visible';
-            selectedStaff = parseInt(specificStaffId);
+            selectedStaff = 0;
+
+            // Yönetim butonunu göster ve grid'i 2x2 yap
+            document.getElementById('typeManagement').style.display = 'block';
+            const typesContainer = document.getElementById('appointmentTypesContainer');
+            typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        } else {
+            const staff = staffMembers.find(s => s.id == specificStaffId);
+            if (staff) {
+                const header = document.getElementById('staffHeader');
+                header.textContent = staff.name;
+                header.style.visibility = 'visible';
+                selectedStaff = parseInt(specificStaffId);
+            }
         }
     } else {
         await loadStaffMembers();
+        // Normal link için butonları ortala
+        const typesContainer = document.getElementById('appointmentTypesContainer');
+        typesContainer.style.justifyContent = 'center';
     }
 
     // ==================== EVENT LISTENERS ====================
     // Appointment type cards
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
-    document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));  // YENİ
+    document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));
     document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
+    document.getElementById('typeManagement')?.addEventListener('click', () => selectAppointmentType('management'));
 
     // Calendar navigation buttons
     document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
@@ -339,25 +357,89 @@ function selectDay(dateStr) {
     const newDay = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
     if (newDay) newDay.classList.add('selected');
 
+    // YENİ: staff=0 ve management randevusu için özel mantık
+    if (specificStaffId === '0' && selectedAppointmentType === 'management') {
+        // HK ve OK seçeneklerini göster
+        displayManagementOptions();
+        document.getElementById('staffSection').style.display = 'block';
+        document.getElementById('timeSection').style.display = 'none';
+        document.getElementById('detailsSection').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'none';
+    }
     // Çalışan seçimi göster (eğer özel link değilse)
-    if (!specificStaffId) {
+    else if (!specificStaffId) {
         displayAvailableStaff();
         document.getElementById('staffSection').style.display = 'block';
         document.getElementById('timeSection').style.display = 'none';
         document.getElementById('detailsSection').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     } else {
-        // Özel link ise direkt saat seçimine geç
-        selectedStaff = parseInt(specificStaffId);
-        const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId)];
-        if (shiftType) {
-            selectedShiftType = shiftType;
+        // Özel link ise direkt saat seçimine geç (ama staff=0 değilse)
+        if (specificStaffId !== '0') {
+            selectedStaff = parseInt(specificStaffId);
+            const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId)];
+            if (shiftType) {
+                selectedShiftType = shiftType;
+                displayAvailableTimeSlots();
+                document.getElementById('timeSection').style.display = 'block';
+                document.getElementById('detailsSection').style.display = 'none';
+                document.getElementById('submitBtn').style.display = 'none';
+            }
+        } else {
+            // staff=0 ama management değil, full vardiya ile ilerle
+            selectedShiftType = 'full';
             displayAvailableTimeSlots();
             document.getElementById('timeSection').style.display = 'block';
             document.getElementById('detailsSection').style.display = 'none';
             document.getElementById('submitBtn').style.display = 'none';
         }
     }
+}
+
+// YENİ: Yönetim randevuları için HK ve OK seçenekleri
+function displayManagementOptions() {
+    const staffList = document.getElementById('staffList');
+    staffList.innerHTML = '';
+
+    const managementOptions = [
+        { id: 'HK', name: 'HK' },
+        { id: 'OK', name: 'OK' }
+    ];
+
+    managementOptions.forEach(option => {
+        const card = document.createElement('div');
+        card.className = 'staff-card';
+        const nameDiv = createElement('div', { className: 'staff-name' }, option.name);
+        card.appendChild(nameDiv);
+        card.addEventListener('click', (e) => selectManagementOption(option, e));
+        staffList.appendChild(card);
+    });
+}
+
+// YENİ: Yönetim seçeneği (HK veya OK) seçildiğinde
+function selectManagementOption(option, event) {
+    // İlgili kişi olarak bu seçeneği kaydet (staffName yerine kullanılacak)
+    selectedStaff = 0; // staff ID olarak 0
+    window.managementContactPerson = option.name; // HK veya OK
+
+    // Header'da seçilen seçeneği göster
+    const header = document.getElementById('staffHeader');
+    header.textContent = `Yönetim - ${option.name}`;
+    header.style.visibility = 'visible';
+
+    // Seçili kartı işaretle
+    const prev = document.querySelector('.staff-card.selected');
+    if (prev) prev.classList.remove('selected');
+    if (event && event.currentTarget) {
+        event.currentTarget.classList.add('selected');
+    }
+
+    // Full vardiya ile saat seçimine geç
+    selectedShiftType = 'full';
+    displayAvailableTimeSlots();
+    document.getElementById('timeSection').style.display = 'block';
+    document.getElementById('detailsSection').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
 }
 
 // Ayın verilerini yükle (Cache destekli)
@@ -787,13 +869,19 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
     btn.disabled = true;
     btn.innerHTML = '<span class="btn-spinner"></span> Randevu oluşturuluyor...';
 
-    const staff = staffMembers.find(s => s.id == selectedStaff);
-
-    if (!staff) {
-        showAlert('Çalışan bilgisi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Randevuyu Onayla';
-        return;
+    // YENİ: staff=0 için staffName yerine managementContactPerson kullan
+    let staffName;
+    if (selectedStaff === 0) {
+        staffName = window.managementContactPerson || 'Yönetim';
+    } else {
+        const staff = staffMembers.find(s => s.id == selectedStaff);
+        if (!staff) {
+            showAlert('Çalışan bilgisi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Randevuyu Onayla';
+            return;
+        }
+        staffName = staff.name;
     }
 
     try {
@@ -801,7 +889,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
             date: selectedDate,
             time: selectedTime,
             staffId: selectedStaff,
-            staffName: staff.name,
+            staffName: staffName,
             customerName: name,
             customerPhone: phone,
             customerEmail: email,

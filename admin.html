@@ -340,7 +340,6 @@
             <div class="tab" data-tab="staff">👥 Çalışanlar</div>
             <div class="tab" data-tab="shifts">📅 Vardiyalar</div>
             <div class="tab" data-tab="appointments">📋 Randevular</div>
-            <div class="tab" data-tab="manualAppointment">✍️ Manuel Randevu</div>
         </div>
 
         <!-- AYARLAR -->
@@ -468,73 +467,6 @@
                     <input type="week" id="filterWeek" style="flex: 1;">
                 </div>
                 <div id="appointmentsList"></div>
-            </div>
-        </div>
-
-        <!-- MANUEL RANDEVU -->
-        <div id="manualAppointment" class="tab-content">
-            <div class="card">
-                <div class="card-title">✍️ Manuel Randevu Oluştur</div>
-                <div class="alert alert-info">
-                    <strong>📌 Bilgi:</strong> Admin panelinden doğrudan randevu oluşturabilirsiniz. Yönetim tipi randevularda limitler uygulanmaz ve müşteriye e-posta gönderilmez.
-                </div>
-
-                <div class="input-group">
-                    <label for="manualDate">Tarih *</label>
-                    <input type="date" id="manualDate" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualTime">Saat *</label>
-                    <input type="time" id="manualTime" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualStaff">Personel *</label>
-                    <select id="manualStaff" required>
-                        <option value="">Seçiniz...</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualAppType">Randevu Türü *</label>
-                    <select id="manualAppType" required>
-                        <option value="delivery">Teslim</option>
-                        <option value="service">Teknik Servis</option>
-                        <option value="meeting">Görüşme</option>
-                        <option value="management">Yönetim (Limit Yok, E-posta Yok)</option>
-                    </select>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualDuration">Süre (dakika)</label>
-                    <input type="number" id="manualDuration" value="60" min="15" step="15">
-                </div>
-
-                <div class="input-group">
-                    <label for="manualCustomerName">Müşteri Adı *</label>
-                    <input type="text" id="manualCustomerName" placeholder="Ahmet Yılmaz" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualCustomerPhone">Telefon *</label>
-                    <input type="tel" id="manualCustomerPhone" placeholder="0555 123 45 67" required>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualCustomerEmail">E-posta</label>
-                    <input type="email" id="manualCustomerEmail" placeholder="ornek@email.com">
-                    <small style="color: #666; font-size: 13px; margin-top: 5px; display: block;">
-                        E-posta girilirse müşteriye otomatik bilgilendirme gönderilir (Yönetim tipi hariç)
-                    </small>
-                </div>
-
-                <div class="input-group">
-                    <label for="manualCustomerNote">Not</label>
-                    <textarea id="manualCustomerNote" placeholder="Ek bilgiler..." rows="3"></textarea>
-                </div>
-
-                <button class="btn" id="createManualAppBtn">✍️ Randevu Oluştur</button>
             </div>
         </div>
 
@@ -1666,70 +1598,6 @@
                     }
                 } catch (error) {
                     UI.showAlert('❌ Hatırlatmalar oluşturulamadı', 'error');
-                }
-            });
-
-            // Manuel Randevu - Staff listesi doldur
-            UI.switchTab = function(tabName) {
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-                document.querySelector('.tab[data-tab="' + tabName + '"]').classList.add('active');
-                document.getElementById(tabName).classList.add('active');
-
-                if (tabName === 'appointments') Appointments.load();
-                if (tabName === 'manualAppointment') {
-                    // Staff dropdown'ı doldur
-                    const manualStaff = document.getElementById('manualStaff');
-                    manualStaff.innerHTML = '<option value="">Seçiniz...</option>' +
-                        Data.staff.filter(s => s.active).map(s => `<option value="${s.id}">${escapeHtml(s.name)}</option>`).join('');
-                }
-            };
-
-            // Manuel Randevu Oluştur
-            document.getElementById('createManualAppBtn')?.addEventListener('click', async () => {
-                const date = document.getElementById('manualDate').value;
-                const time = document.getElementById('manualTime').value;
-                const staffId = document.getElementById('manualStaff').value;
-                const customerName = document.getElementById('manualCustomerName').value;
-                const customerPhone = document.getElementById('manualCustomerPhone').value;
-                const customerEmail = document.getElementById('manualCustomerEmail').value;
-                const customerNote = document.getElementById('manualCustomerNote').value;
-                const appointmentType = document.getElementById('manualAppType').value;
-                const duration = document.getElementById('manualDuration').value;
-
-                if (!date || !time || !staffId || !customerName || !customerPhone) {
-                    UI.showAlert('⚠️ Lütfen zorunlu alanları doldurun', 'error');
-                    return;
-                }
-
-                const btn = document.getElementById('createManualAppBtn');
-                btn.disabled = true;
-                btn.textContent = '⏳ Oluşturuluyor...';
-
-                try {
-                    const response = await ApiService.call('createManualAppointment', {
-                        date, time, staffId, customerName, customerPhone, customerEmail, customerNote, appointmentType, duration
-                    });
-
-                    if (response.success) {
-                        UI.showAlert('✅ Randevu başarıyla oluşturuldu!', 'success');
-                        // Formu temizle
-                        document.getElementById('manualDate').value = '';
-                        document.getElementById('manualTime').value = '';
-                        document.getElementById('manualStaff').value = '';
-                        document.getElementById('manualCustomerName').value = '';
-                        document.getElementById('manualCustomerPhone').value = '';
-                        document.getElementById('manualCustomerEmail').value = '';
-                        document.getElementById('manualCustomerNote').value = '';
-                    } else {
-                        UI.showAlert('❌ ' + response.error, 'error');
-                    }
-                } catch (error) {
-                    UI.showAlert('❌ Randevu oluşturulamadı', 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = '✍️ Randevu Oluştur';
                 }
             });
         }
