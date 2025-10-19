@@ -203,6 +203,18 @@ const VALIDATION = {
 
 const DateUtils = {
   /**
+   * YYYY-MM-DD formatında tarih döndürür (local timezone)
+   * @param {Date} date - Formatlanacak tarih
+   * @returns {string} YYYY-MM-DD formatında tarih
+   */
+  toLocalDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  /**
    * ICS takvim formatında tarih döndürür (YYYYMMDDTHHmmss)
    * @param {Date} date - Formatlanacak tarih
    * @returns {string} ICS formatında tarih
