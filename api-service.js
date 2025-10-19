@@ -7,7 +7,9 @@ const ApiService = {
     PROTECTED_ACTIONS: [
         'addStaff', 'toggleStaff', 'removeStaff', 'updateStaff',
         'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
-        'getSettings'
+        'getSettings', 'regenerateApiKey',
+        'getTodayWhatsAppReminders',    // YENİ: v3.0
+        'createManualAppointment'       // YENİ: v3.0
     ],
 
     /**
