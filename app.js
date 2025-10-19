@@ -294,6 +294,11 @@ function renderCalendar() {
 
 // Günün müsaitliğini kontrol et
 function checkDayAvailability(dateStr) {
+    // YENİ: Yönetim randevusu için tüm günler müsait
+    if (selectedAppointmentType === 'management') {
+        return { available: true };
+    }
+
     // Vardiya kontrolü
     if (specificStaffId) {
         // Özel çalışan linki - sadece o çalışanın vardiyasını kontrol et
@@ -357,12 +362,14 @@ function selectDay(dateStr) {
     const newDay = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
     if (newDay) newDay.classList.add('selected');
 
-    // YENİ: staff=0 ve management randevusu için özel mantık
+    // YENİ: staff=0 ve management randevusu için direkt saat seçimine geç
     if (specificStaffId === '0' && selectedAppointmentType === 'management') {
-        // HK ve OK seçeneklerini göster
-        displayManagementOptions();
-        document.getElementById('staffSection').style.display = 'block';
-        document.getElementById('timeSection').style.display = 'none';
+        // Yönetim randevusu için full vardiya ile direkt saat seçimi
+        selectedStaff = 0;
+        selectedShiftType = 'full';
+        displayAvailableTimeSlots();
+        document.getElementById('timeSection').style.display = 'block';
+        document.getElementById('staffSection').style.display = 'none';
         document.getElementById('detailsSection').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     }
@@ -434,12 +441,10 @@ function selectManagementOption(option, event) {
         event.currentTarget.classList.add('selected');
     }
 
-    // Full vardiya ile saat seçimine geç
-    selectedShiftType = 'full';
-    displayAvailableTimeSlots();
-    document.getElementById('timeSection').style.display = 'block';
-    document.getElementById('detailsSection').style.display = 'none';
-    document.getElementById('submitBtn').style.display = 'none';
+    // Detayları ve submit butonunu göster
+    document.getElementById('staffSection').style.display = 'none';
+    document.getElementById('detailsSection').style.display = 'block';
+    document.getElementById('submitBtn').style.display = 'block';
 }
 
 // Ayın verilerini yükle (Cache destekli)
@@ -706,6 +711,24 @@ function displayAvailableTimeSlots() {
     const todayStr = DateUtils.toLocalDate(now);
     const isToday = selectedDate === todayStr;
 
+    // YENİ: Yönetim randevusu için tüm saatler müsait, çakışma kontrolü yok
+    if (selectedAppointmentType === 'management') {
+        const { earliest, latest, interval } = CONFIG.APPOINTMENT_HOURS;
+
+        for (let hour = earliest; hour < latest; hour++) {
+            for (let minute = 0; minute < 60; minute += interval) {
+                const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+
+                const btn = document.createElement('div');
+                btn.className = 'slot-btn';
+                btn.textContent = timeStr;
+                btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
+                container.appendChild(btn);
+            }
+        }
+        return; // Erken çık, normal kontrolleri atlat
+    }
+
     // Google Calendar'dan SADECE gelecekteki TESLİM randevularını say
     const calendarEvents = googleCalendarEvents[selectedDate] || [];
 
@@ -835,8 +858,16 @@ function selectTimeSlot(timeStr, element) {
     if (prev) prev.classList.remove('selected');
     element.classList.add('selected');
 
-    document.getElementById('detailsSection').style.display = 'block';
-    document.getElementById('submitBtn').style.display = 'block';
+    // YENİ: Yönetim randevusu için HK/OK seçimini göster
+    if (selectedAppointmentType === 'management') {
+        displayManagementOptions();
+        document.getElementById('staffSection').style.display = 'block';
+        document.getElementById('detailsSection').style.display = 'none';
+        document.getElementById('submitBtn').style.display = 'none';
+    } else {
+        document.getElementById('detailsSection').style.display = 'block';
+        document.getElementById('submitBtn').style.display = 'block';
+    }
 }
 
 document.getElementById('submitBtn')?.addEventListener('click', async function() {
