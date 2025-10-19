@@ -1612,45 +1612,61 @@
                             // Otomatik Gönder butonuna event listener ekle
                             document.getElementById('autoSendWhatsAppBtn')?.addEventListener('click', () => {
                                 const selectedDate = document.getElementById('reminderDate')?.value || new Date().toISOString().split('T')[0];
-                                const projectPath = '/Users/serdarbenli/Desktop/new\\ project/randevu-sistemi-main';
-                                const command = `cd ${projectPath}/whatsapp-automation && python3 whatsapp_selenium.py ${selectedDate}`;
+                                const isToday = selectedDate === new Date().toISOString().split('T')[0];
+                                const fileName = isToday ? 'WhatsApp_Otomatik_Gonder_BUGUN.command' : 'WhatsApp_Otomatik_Gonder_TARIH_SEC.command';
+                                const folderPath = '/Users/serdarbenli/Desktop/new project/randevu-sistemi-main/whatsapp-automation';
 
-                                // Komutu panoya kopyala
-                                navigator.clipboard.writeText(command).then(() => {
-                                    // Instruction göster
-                                    const instructions = `
-                                        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: left;">
-                                            <h3 style="margin-top: 0; color: #667eea;">🚀 Otomatik Gönderim Başlatılıyor</h3>
-                                            <p><strong>Adım 1:</strong> Terminal/iTerm uygulamasını açın</p>
-                                            <p><strong>Adım 2:</strong> <kbd style="background: #fff; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">Cmd + V</kbd> ile komutu yapıştırın (otomatik kopyalandı ✓)</p>
-                                            <p><strong>Adım 3:</strong> <kbd style="background: #fff; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">Enter</kbd> tuşuna basın</p>
-                                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
-                                            <p style="font-family: monospace; background: #2d2d2d; color: #f8f8f8; padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto;">${command}</p>
-                                            <p style="color: #666; font-size: 13px; margin-top: 15px;">
-                                                ℹ️ İlk seferde WhatsApp Web'e QR kod ile giriş yapmanız gerekebilir.<br>
-                                                ℹ️ Chrome otomatik olarak açılacak ve mesajlar gönderilecektir.
-                                            </p>
-                                        </div>
-                                    `;
+                                // Instruction göster
+                                const instructions = `
+                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px;">
+                                        <h2 style="margin: 0 0 10px 0; font-size: 28px;">⚡ TEK TIKLA GÖNDER</h2>
+                                        <p style="margin: 0; font-size: 16px; opacity: 0.95;">${response.data.length} mesaj hazır!</p>
+                                    </div>
 
-                                    // Modal göster
-                                    const modal = document.createElement('div');
-                                    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;';
-                                    modal.innerHTML = `
-                                        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
-                                            ${instructions}
-                                            <button onclick="this.closest('div[style*=fixed]').remove()" class="btn btn-primary" style="margin-top: 20px; width: 100%; padding: 12px; font-size: 16px;">
-                                                Tamam, Anladım
+                                    <div style="background: #f5f5f5; padding: 25px; border-radius: 8px; text-align: left;">
+                                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
+                                            <h3 style="margin: 0 0 15px 0; color: #667eea; font-size: 20px;">📂 ADIM 1: Finder'ı Açın</h3>
+                                            <p style="margin: 0 0 10px 0; font-size: 15px;">Aşağıdaki butona tıklayın:</p>
+                                            <button onclick="window.open('file://${folderPath}')" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: bold;">
+                                                📁 Klasörü Aç
                                             </button>
                                         </div>
-                                    `;
-                                    document.body.appendChild(modal);
 
-                                    UI.showAlert('✅ Komut panoya kopyalandı! Terminal açın ve Cmd+V ile yapıştırın.', 'success');
-                                }).catch(err => {
-                                    UI.showAlert('⚠️ Panoya kopyalama başarısız. Komutu manuel kopyalayın.', 'warning');
-                                    console.error('Clipboard error:', err);
-                                });
+                                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #764ba2;">
+                                            <h3 style="margin: 0 0 15px 0; color: #764ba2; font-size: 20px;">🖱️ ADIM 2: Dosyaya Çift Tıklayın</h3>
+                                            <p style="margin: 0 0 10px 0; font-size: 15px;">Bu dosyayı bulun ve <strong>ÇİFT TIKLAYIN:</strong></p>
+                                            <div style="background: #2d2d2d; color: #4ade80; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; font-weight: bold; text-align: center;">
+                                                ${fileName}
+                                            </div>
+                                        </div>
+
+                                        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981;">
+                                            <h3 style="margin: 0 0 15px 0; color: #10b981; font-size: 20px;">⏳ ADIM 3: Bekleyin</h3>
+                                            <p style="margin: 0; font-size: 15px;">
+                                                ✅ Chrome otomatik açılacak (arka planda)<br>
+                                                ✅ ${isToday ? 'Bugünün' : 'Seçilen tarihin'} mesajları otomatik gönderilecek<br>
+                                                ✅ Bitince bildirim alacaksınız<br><br>
+                                                ${!isToday ? '<strong>⚠️ Not:</strong> Tarih seçmek için dosya açıldığında tarih girin<br>' : ''}
+                                                <strong>🔴 İlk seferde:</strong> WhatsApp QR kod okutmanız gerekebilir (sadece bir kez)
+                                            </p>
+                                        </div>
+                                    </div>
+                                `;
+
+                                // Modal göster
+                                const modal = document.createElement('div');
+                                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);';
+                                modal.innerHTML = `
+                                    <div style="background: white; padding: 30px; border-radius: 16px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+                                        ${instructions}
+                                        <button onclick="this.closest('div[style*=fixed]').remove()" class="btn btn-primary" style="margin-top: 20px; width: 100%; padding: 14px; font-size: 17px; background: #667eea; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer;">
+                                            ✓ Anladım, Başlıyorum
+                                        </button>
+                                    </div>
+                                `;
+                                document.body.appendChild(modal);
+
+                                UI.showAlert('📂 Klasörü açın ve .command dosyasına çift tıklayın!', 'success');
                             });
                         }
                     } else {
