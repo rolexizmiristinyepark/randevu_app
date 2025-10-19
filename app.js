@@ -885,7 +885,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
         return;
     }
 
-    if (!selectedDate || !selectedStaff || !selectedTime) {
+    // YENİ: selectedStaff için 0 da geçerli (yönetim randevusu), sadece null/undefined kontrolü
+    if (!selectedDate || selectedStaff == null || !selectedTime) {
         showAlert('Lutfen tarih, calisan ve saat secin.', 'error');
         return;
     }
