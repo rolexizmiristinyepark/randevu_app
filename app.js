@@ -902,10 +902,12 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
 
     // YENİ: staff=0 için staffName yerine managementContactPerson kullan
     let staffName;
+    let staff = null;
+
     if (selectedStaff === 0) {
         staffName = window.managementContactPerson || 'Yönetim';
     } else {
-        const staff = staffMembers.find(s => s.id == selectedStaff);
+        staff = staffMembers.find(s => s.id == selectedStaff);
         if (!staff) {
             showAlert('Çalışan bilgisi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
             btn.disabled = false;
@@ -937,9 +939,9 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
                 customerPhone: phone,
                 customerEmail: email,
                 customerNote: note,
-                staffName: staff.name,
-                staffPhone: staff.phone,
-                staffEmail: staff.email,
+                staffName: staffName,
+                staffPhone: staff?.phone || '',
+                staffEmail: staff?.email || '',
                 date: selectedDate,
                 time: selectedTime,
                 appointmentType: selectedAppointmentType,
@@ -949,7 +951,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
             // Export to window for calendar-integration.js module access
             window.lastAppointmentData = lastAppointmentData;
 
-            showSuccessPage(selectedDate, selectedTime, staff.name, note);
+            showSuccessPage(selectedDate, selectedTime, staffName, note);
         } else {
             showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
             btn.disabled = false;
