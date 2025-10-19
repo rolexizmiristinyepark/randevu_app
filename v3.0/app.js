@@ -140,6 +140,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // ==================== EVENT LISTENERS ====================
     // Appointment type cards
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
+    document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));  // YENİ
     document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
 
     // Calendar navigation buttons

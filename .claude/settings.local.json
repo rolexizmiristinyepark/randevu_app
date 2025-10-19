@@ -1,11 +1,22 @@
 {
   "permissions": {
     "allow": [
+      "WebFetch(domain:calendar.app.google)",
+      "WebFetch(domain:calendar.google.com)",
+      "WebSearch",
+      "Bash(open test.html)",
+      "Bash(open \"index.html?staff=4\")",
+      "Bash(open index.html)",
+      "Read(//Users/serdarbenli/Downloads/**)",
+      "Bash(open:*)",
       "Read(//Users/serdarbenli/Desktop/**)",
-      "Bash(npm run build)",
-      "Bash(npm install)",
-      "Bash(npm install:*)",
-      "Bash(cd:*)"
+      "Bash(textutil:*)",
+      "Bash(mkdir -p v3.0)",
+      "Bash(cp -r v2.0/* v3.0/)",
+      "Bash(git add v3.0)",
+      "Bash(git add v3.0 .gitignore)",
+      "Bash(git add -A)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nfeat: v3.0 ile tüm yeni özellikler eklendi\n\n✨ Yeni Özellikler:\n- Teknik Servis randevu türü eklendi\n- Yönetim randevu türü eklendi (limitler devre dışı)\n- Dinamik e-posta şablonları (randevu türüne göre)\n- Çoklu alarm sistemi (1 gün önce, 1 saat önce, sabah 10:00)\n- WhatsApp hatırlatma API''si (getTodayWhatsAppReminders)\n- Manuel randevu oluşturma sistemi (createManualAppointment)\n\n📧 E-posta İyileştirmeleri:\n- Teslim: Kimlik belgesi hatırlatması\n- Teknik Servis: Saat + belge hatırlatması\n- Görüşme: Genel bilgilendirme\n\n🔔 ICS Takvim İyileştirmeleri:\n- 3 farklı alarm eklendi\n- Randevu türüne göre özel hatırlatmalar\n\n🔗 Backend API:\n- getTodayWhatsAppReminders endpoint\n- createManualAppointment endpoint\n- MANAGEMENT appointment type\n\n💻 Frontend:\n- Teknik Servis kartı eklendi (index.html)\n- Teknik Servis event listener (app.js)\n\n🗂️ Yapı Değişiklikleri:\n- v2.0 klasörü kaldırıldı (git''ten)\n- v3.0 klasörü ana sürüm olarak eklendi\n- .gitignore güncellendi (node_modules, dist, .DS_Store)\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")"
     ],
     "deny": [],
     "ask": []
