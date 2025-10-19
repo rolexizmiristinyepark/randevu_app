@@ -10,6 +10,7 @@ import time
 import json
 import urllib.request
 import urllib.parse
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -68,9 +69,9 @@ def fetch_reminders(target_date):
         print(f"❌ Backend bağlantı hatası: {e}")
         return []
 
-def init_driver():
+def init_driver(minimized=True):
     """Chrome WebDriver başlat"""
-    print("🌐 Chrome başlatılıyor...")
+    print("🌐 Chrome başlatılıyor (arka planda)...")
 
     chrome_options = Options()
     chrome_options.add_argument(f"user-data-dir={CHROME_PROFILE_DIR}")
@@ -78,9 +79,15 @@ def init_driver():
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
 
+    # Arka planda çalıştır
+    if minimized:
+        chrome_options.add_argument("--window-position=-2400,-2400")  # Ekran dışında aç
+
+    # Notification'ları kapat
+    chrome_options.add_argument("--disable-notifications")
+
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
-    driver.maximize_window()
 
     return driver
 
@@ -89,18 +96,67 @@ def wait_for_whatsapp_login(driver):
     print("\n📱 WhatsApp Web açılıyor...")
     driver.get("https://web.whatsapp.com")
 
-    print("\n⏳ WhatsApp Web'e giriş bekleniyor...")
-    print("👉 QR kodu telefonunuzla okutun (ilk seferde)")
+    print("\n" + "="*60)
+    print("⏳ WhatsApp Web'e giriş bekleniyor...")
+    print("="*60)
+
+    # Session var mı kontrol et
+    try:
+        # 10 saniye bekle, eğer chat list varsa session aktif
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, '//div[@aria-label="Chat list"]'))
+        )
+        print("✅ Session bulundu! Otomatik giriş yapıldı.\n")
+        # macOS notification gönder
+        subprocess.run([
+            'osascript', '-e',
+            'display notification "WhatsApp Web giriş başarılı! Mesajlar gönderiliyor..." with title "WhatsApp Otomasyon"'
+        ])
+        return True
+    except:
+        # Session yok, QR kod gerekli - Window'u ekrana getir
+        driver.set_window_position(0, 0)
+        driver.maximize_window()
+
+        print("\n🔴 İLK SEFERDE QR KOD GEREKLİ!")
+        print("="*60)
+        print("1️⃣  Telefonunuzda WhatsApp'ı açın")
+        print("2️⃣  Ayarlar → Bağlı Cihazlar")
+        print("3️⃣  'Cihaz Bağla' butonuna basın")
+        print("4️⃣  Ekrandaki QR kodu telefonla okutun")
+        print("="*60)
+        print("⏱️  3 dakika içinde QR kod okutun...\n")
+
+        # macOS notification gönder
+        subprocess.run([
+            'osascript', '-e',
+            'display notification "Chrome window açıldı. QR kodu okutun!" with title "WhatsApp QR Kod Gerekli"'
+        ])
 
     try:
         # Chat listesinin yüklenmesini bekle (giriş yapıldı demektir)
-        WebDriverWait(driver, 60).until(
+        WebDriverWait(driver, 180).until(  # 3 dakika
             EC.presence_of_element_located((By.XPATH, '//div[@aria-label="Chat list"]'))
         )
-        print("✅ WhatsApp Web'e giriş yapıldı!\n")
+        print("\n✅ WhatsApp Web'e giriş yapıldı!")
+        print("✅ Session kaydedildi. Bir sonraki seferde QR kod gerekmeyecek!\n")
+
+        # Window'u tekrar gizle
+        driver.set_window_position(-2400, -2400)
+
+        # macOS notification gönder
+        subprocess.run([
+            'osascript', '-e',
+            'display notification "QR kod başarılı! Mesajlar gönderiliyor..." with title "WhatsApp Otomasyon"'
+        ])
         return True
     except:
-        print("❌ WhatsApp Web'e giriş yapılamadı (zaman aşımı)")
+        print("\n❌ HATA: 3 dakika içinde QR kod okutulmadı!")
+        print("💡 Çözüm: Script'i tekrar çalıştırın ve QR kodu hızlıca okutun.\n")
+        subprocess.run([
+            'osascript', '-e',
+            'display notification "QR kod okutulmadı! Tekrar deneyin." with title "WhatsApp Hata"'
+        ])
         return False
 
 def send_message(driver, phone, message, customer_name):
@@ -218,8 +274,14 @@ def main():
         print(f"❌ Başarısız: {failed_count}")
         print(f"📊 Toplam: {len(reminders)}\n")
 
-        print("🎉 Tarayıcı 10 saniye içinde kapanacak...")
-        time.sleep(10)
+        # macOS notification - Özet
+        subprocess.run([
+            'osascript', '-e',
+            f'display notification "✅ {success_count} mesaj gönderildi, ❌ {failed_count} başarısız" with title "WhatsApp Gönderim Tamamlandı" sound name "Glass"'
+        ])
+
+        print("✅ Tarayıcı otomatik kapanacak...")
+        time.sleep(3)
 
     except KeyboardInterrupt:
         print("\n\n❌ Kullanıcı tarafından iptal edildi")
