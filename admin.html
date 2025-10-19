@@ -1582,41 +1582,75 @@
                         if (response.data.length === 0) {
                             container.innerHTML = '<div style="padding: 15px; background: #f0f0f0; border-radius: 8px; text-align: center;">Bu tarihte randevu bulunamadı.</div>';
                         } else {
-                            // Tümünü Gönder butonu ekle
-                            const sendAllBtn = `
-                                <div style="margin-bottom: 20px; text-align: center;">
-                                    <button id="sendAllWhatsAppBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 16px;">
-                                        🚀 Tümünü Gönder (${response.data.length} mesaj)
+                            // Otomatik Gönder butonu
+                            const autoSendBtn = `
+                                <div style="margin-bottom: 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white;">
+                                    <button id="autoSendWhatsAppBtn" class="btn" style="background: white; color: #667eea; padding: 14px 28px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                                        🤖 Otomatik Gönder (${response.data.length} mesaj)
                                     </button>
-                                    <p style="margin-top: 10px; color: #666; font-size: 14px;">
-                                        Tüm mesajlar yeni tab'larda açılacak. Her tab'da sadece "Gönder" butonuna basın.
+                                    <p style="margin-top: 12px; font-size: 14px; opacity: 0.95;">
+                                        Tüm mesajlar otomatik olarak gönderilecek. Hiçbir manuel işlem gerekmez!
                                     </p>
                                 </div>
                             `;
 
-                            const links = response.data.map(item => `
-                                <div style="padding: 15px; background: #f9f9f9; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
-                                    <div>
-                                        <strong>${escapeHtml(item.customerName)}</strong> - ${item.startTime}
+                            // Sadece liste olarak göster (buton yok)
+                            const customerList = response.data.map((item, index) => `
+                                <div style="padding: 12px 15px; background: #f9f9f9; border-left: 4px solid #667eea; border-radius: 6px; margin-bottom: 8px;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <div>
+                                            <strong>${index + 1}. ${escapeHtml(item.customerName)}</strong>
+                                            <span style="color: #666; margin-left: 10px;">${item.startTime}</span>
+                                        </div>
+                                        <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 12px; font-size: 12px;">✓ Hazır</span>
                                     </div>
-                                    <a href="${item.link}" target="_blank" class="btn btn-secondary" style="padding: 8px 16px; font-size: 14px;">
-                                        💬 WhatsApp Gönder
-                                    </a>
                                 </div>
                             `).join('');
 
-                            container.innerHTML = sendAllBtn + links;
+                            container.innerHTML = autoSendBtn + '<div style="margin-top: 20px;">' + customerList + '</div>';
 
-                            // Tümünü Gönder butonuna event listener ekle
-                            document.getElementById('sendAllWhatsAppBtn')?.addEventListener('click', () => {
-                                let delay = 0;
-                                response.data.forEach((item, index) => {
-                                    setTimeout(() => {
-                                        window.open(item.link, '_blank');
-                                    }, delay);
-                                    delay += 500; // Her tab arası 500ms bekle (tarayıcı popup blocker'ı bypass etmek için)
+                            // Otomatik Gönder butonuna event listener ekle
+                            document.getElementById('autoSendWhatsAppBtn')?.addEventListener('click', () => {
+                                const selectedDate = document.getElementById('reminderDate')?.value || new Date().toISOString().split('T')[0];
+                                const projectPath = '/Users/serdarbenli/Desktop/new\\ project/randevu-sistemi-main';
+                                const command = `cd ${projectPath}/whatsapp-automation && python3 whatsapp_selenium.py ${selectedDate}`;
+
+                                // Komutu panoya kopyala
+                                navigator.clipboard.writeText(command).then(() => {
+                                    // Instruction göster
+                                    const instructions = `
+                                        <div style="background: #f5f5f5; padding: 20px; border-radius: 8px; text-align: left;">
+                                            <h3 style="margin-top: 0; color: #667eea;">🚀 Otomatik Gönderim Başlatılıyor</h3>
+                                            <p><strong>Adım 1:</strong> Terminal/iTerm uygulamasını açın</p>
+                                            <p><strong>Adım 2:</strong> <kbd style="background: #fff; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">Cmd + V</kbd> ile komutu yapıştırın (otomatik kopyalandı ✓)</p>
+                                            <p><strong>Adım 3:</strong> <kbd style="background: #fff; padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px;">Enter</kbd> tuşuna basın</p>
+                                            <hr style="margin: 15px 0; border: none; border-top: 1px solid #ddd;">
+                                            <p style="font-family: monospace; background: #2d2d2d; color: #f8f8f8; padding: 12px; border-radius: 6px; font-size: 12px; overflow-x: auto;">${command}</p>
+                                            <p style="color: #666; font-size: 13px; margin-top: 15px;">
+                                                ℹ️ İlk seferde WhatsApp Web'e QR kod ile giriş yapmanız gerekebilir.<br>
+                                                ℹ️ Chrome otomatik olarak açılacak ve mesajlar gönderilecektir.
+                                            </p>
+                                        </div>
+                                    `;
+
+                                    // Modal göster
+                                    const modal = document.createElement('div');
+                                    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;';
+                                    modal.innerHTML = `
+                                        <div style="background: white; padding: 30px; border-radius: 12px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+                                            ${instructions}
+                                            <button onclick="this.closest('div[style*=fixed]').remove()" class="btn btn-primary" style="margin-top: 20px; width: 100%; padding: 12px; font-size: 16px;">
+                                                Tamam, Anladım
+                                            </button>
+                                        </div>
+                                    `;
+                                    document.body.appendChild(modal);
+
+                                    UI.showAlert('✅ Komut panoya kopyalandı! Terminal açın ve Cmd+V ile yapıştırın.', 'success');
+                                }).catch(err => {
+                                    UI.showAlert('⚠️ Panoya kopyalama başarısız. Komutu manuel kopyalayın.', 'warning');
+                                    console.error('Clipboard error:', err);
                                 });
-                                UI.showAlert(`✅ ${response.data.length} tab açılıyor... Her tab'da "Gönder" butonuna basın.`, 'success');
                             });
                         }
                     } else {
