@@ -1,0 +1,351 @@
+Bölüm 1: index.html (Müşteri Arayüzü)
+
+
+
+Sorun 1: XSS Güvenlik Açığı ve Güvensiz innerHTML Kullanımı
+
+	•	Sorun: Uygulama, kullanıcı tarafından girilen verileri (customerNote gibi) veya API'den gelen dinamik metinleri, herhangi bir güvenlik denetiminden geçirmeden doğrudan .innerHTML özelliğine atayarak DOM'a eklemektedir. Bu, saldırganların zararlı JavaScript kodları (<script>alert('XSS')</script> gibi) enjekte ederek kullanıcıların tarayıcısında bu kodları çalıştırmasına olanak tanıyan kritik bir Cross-Site Scripting (XSS) güvenlik açığıdır.     
+	•	Üstün Çözüm: Proje genelinde güvenli DOM manipülasyonunu standart hale getirmek. Varsayılan olarak metin içerikleri için daima .textContent özelliği kullanılmalıdır. HTML yapısı oluşturulması gereken durumlarda ise document.createElement ve appendChild gibi yerleşik tarayıcı API'lerinden faydalanan güvenli yardımcı fonksiyonlar oluşturulmalıdır. Bu yöntem, DOMPurify gibi harici bir kütüphaneye olan ihtiyacı başlangıçta ortadan kaldırır ve en yüksek güvenliği sağlar.    
+	•	Nasıl Yapılır:
+	1	Güvensiz Atamaları Tespit Et: Projedeki tüm .innerHTML = kullanımlarını bulun. Özellikle showSuccessPage ve showAlert fonksiyonlarındaki atamalar kritiktir.  
+	2	textContent ile Değiştir: showAlert fonksiyonundaki container.innerHTML = '<div...>' + message + '</div>'; satırını, bir div elementi oluşturup div.textContent = message ataması yapacak ve sonra bu elementi container.appendChild(div) ile ekleyecek şekilde yeniden yazın.
+	3	Güvenli Element Oluşturma: showSuccessPage fonksiyonunda, müşteri notunu gösteren ${customerNote} satırını kaldırın. Bunun yerine, programatik olarak bir div elementi (const noteDiv = document.createElement('div');) oluşturun, noteDiv.textContent = customerNote; ataması yapın ve bu elementi ilgili yere appendChild ile ekleyin.
+	•	Mevcut Koda Etkisi:
+	◦	 Güvenlik: Kritik Düzeyde İyileştirme. Uygulamanın en önemli güvenlik zafiyetlerinden biri olan XSS açığını tamamen ortadan kaldırır.  
+	◦	Modernizasyon: Yüksek. Güvensiz ve eski string birleştirme yöntemlerinden, modern ve güvenli DOM API'leri kullanımına geçişi sağlar.
+	◦	Performans: Nötr. textContent kullanımı, innerHTML'e göre marjinal olarak daha hızlıdır ancak bu ölçekte fark edilmez.
+	◦	Kod Yapısı: Yüksek. Kodu daha okunabilir ve öngörülebilir hale getirir. Güvenli DOM oluşturma için bir standart oluşturur.  
+	◦	Risk: Düşük. Sadece render mantığını etkileyen, iyi tanımlanmış ve test edilmesi kolay bir değişikliktir.  
+
+
+Sorun 2: Yaygın Kod Tekrarı ve Monolitik Yapı
+
+	•	Sorun: ICS (takvim dosyası) oluşturma ve indirme akışı üç farklı yerde tekrar etmektedir. Tarih ve süre hesaplama mantığı (new Date(...)) birden fazla kez kopyalanmıştır. Ayrıca, 19 KB boyutundaki SVG logo kodu hem index.html içinde hem de getRolexLogoSVG fonksiyonunda olmak üzere iki kez yer almaktadır. Bu durum, kodun bakımını zorlaştırmakta, dosya boyutunu gereksiz yere artırmakta ve hata yapma riskini yükseltmektedir.      
+	•	Üstün Çözüm: Tek Sorumluluk Prensibi'ne (Single Responsibility Principle) uygun olarak, tekrar eden tüm mantıkları merkezi ve yeniden kullanılabilir yardımcı fonksiyonlara (utility functions) taşımak.
+	1	ICS Üretimi: ICS dosyası üretme sorumluluğunu tamamen backend'e devretmek. Frontend sadece backend'den gelen hazır ICS verisini indirmeli veya takvim uygulamasına yönlendirmelidir.     
+	2	 Tarih Hesaplamaları: Başlangıç/bitiş zamanlarını hesaplayan calcStartEnd(dateStr, timeStr, duration) gibi merkezi bir fonksiyon oluşturmak.     
+	3	 SVG Logo: Kullanılmayan getRolexLogoSVG fonksiyonunu silmek ve SVG'yi sadece HTML içinde bir kez tutmak.   
+	•	Nasıl Yapılır:
+	1	ICS Mantığını Temizle: index.html'deki generateICS, downloadICSUniversal, downloadICSFile ve benzeri tüm ICS oluşturma fonksiyonlarını silin. "Takvime Ekle" butonlarının, backend'den bir endpoint çağırmasını (veya e-postadaki dosyayı kullanmasını) sağlayın.
+	2	 Tarih Fonksiyonu Oluştur: new Date() ve endDate = new Date(+duration...) kalıbını kullanan tüm yerleri, bu mantığı tek başına yapan calcStartEnd gibi bir yardımcı fonksiyona yapılan çağrılarla değiştirin.    
+	3	 SVG Kodunu Temizle: <script> bloğu içindeki getRolexLogoSVG fonksiyonunu tamamen silin. HTML'deki mevcut SVG kodu kalacaktır.   
+	•	Mevcut Koda Etkisi:
+	◦	Güvenlik: Nötr.
+	◦	Modernizasyon: Yüksek. DRY (Don't Repeat Yourself) prensibini uygulayarak kod tabanını modern yazılım standartlarına yaklaştırır.
+	◦	Performans: Orta. SVG fonksiyonunun silinmesi ve kod tekrarının azalmasıyla dosya boyutu net olarak ~20-30 KB küçülür, bu da parse süresini iyileştirir.   
+	◦	 Kod Yapısı: Çok Yüksek. Kod tekrarının azalmasıyla yaklaşık 100-150 satır kod temizliği sağlanır. Bakım kolaylaşır, hata riski azalır ve kod daha anlaşılır hale gelir.      
+	◦	Risk: Düşük. Mevcut davranışlar fonksiyonlara taşındığı için işlevsellikte değişiklik olmaz.  
+
+
+Bölüm 2: admin.html (Yönetim Paneli)
+
+
+
+Sorun 1: Verimsiz ve Güvensiz Tablo Render Mekanizması
+
+	•	Sorun: Admin panelindeki vardiya tablosu, büyük HTML metinlerini string birleştirme yöntemiyle oluşturup .innerHTML üzerinden DOM'a tekrar tekrar yazmaktadır. Bu yöntem hem XSS açıklarına kapı aralar hem de tarayıcının her seferinde tüm tabloyu yeniden çizmesine (reflow/repaint) neden olarak performansı düşürür.   
+	•	Üstün Çözüm: Modern ve verimli bir render yaklaşımı benimsemek. String birleştirme yerine, document.createElement kullanarak satır (<tr>), hücre (<td>) ve select gibi DOM elementlerini programatik olarak oluşturup appendChild ile tabloya eklemek. Olay dinleyicileri (event listeners) için event delegation kullanarak her hücreye ayrı ayrı dinleyici eklemek yerine, tüm tabloya tek bir dinleyici eklemek.
+	•	Nasıl Yapılır:
+	1	Render Fonksiyonunu Yeniden Yaz: Mevcut tablo oluşturan fonksiyonu (Shifts.render) tamamen yeniden yazın.
+	2	Döngülerle Element Oluştur: Çalışanlar ve günler için iç içe döngüler kurun. Her döngü adımında document.createElement('tr') ve document.createElement('td') kullanarak yeni satır ve hücreler oluşturun.
+	3	Veriyi textContent ile Ekle: Çalışan adı gibi metinleri td.textContent = staff.name; şeklinde güvenli bir şekilde ekleyin.
+	4	select Elementlerini Oluştur: Her hücre için document.createElement('select') ve document.createElement('option') kullanarak select menülerini oluşturun ve appendChild ile hücreye ekleyin.
+	•	Mevcut Koda Etkisi:
+	◦	Güvenlik: Yüksek. String birleştirmeden kaynaklanabilecek potansiyel XSS risklerini ortadan kaldırır.
+	◦	Modernizasyon: Çok Yüksek. Eski ve verimsiz DOM manipülasyonundan, modern web uygulamalarında kullanılan standart render tekniğine geçişi sağlar.
+	◦	Performans: Yüksek. Tarayıcı üzerindeki reflow yükünü önemli ölçüde azaltır, bu da daha akıcı bir kullanıcı deneyimi sağlar. Özellikle büyük tablolarda fark belirginleşir.  
+	◦	Kod Yapısı: Yüksek. HTML ve JavaScript mantığını birbirinden daha net ayırır. Kod daha okunabilir ve yönetilebilir hale gelir. Kod tekrarı 60+ satır azalır.  
+	◦	Risk: Orta. Render mantığının tamamen elden geçirilmesi gerektiği için dikkatli bir implementasyon ve test süreci gerektirir.  
+
+
+Sorun 2: Başlangıçta Seri Veri Yükleme (Waterfall Etkisi)
+
+	•	Sorun: Admin paneli açıldığında, gerekli verileri (Staff, Shifts, Settings) sunucudan await Data.loadStaff(); await Data.loadShifts(); await API.load(); gibi ardışık isteklerle çekmektedir. Her bir isteğin tamamlanması, bir sonrakinin başlaması için beklenir. Bu "şelale etkisi", ağ gecikmelerini üst üste ekleyerek panelin yüklenme süresini gereksiz yere uzatır.  
+	•	Üstün Çözüm: Birbirinden bağımsız olan bu veri yükleme işlemlerini Promise.all() veya daha sağlam bir hata yönetimi için Promise.allSettled() kullanarak paralelleştirmek. Bu, tüm isteklerin aynı anda başlatılmasını ve toplam bekleme süresinin en yavaş olan tek bir isteğin süresine indirilmesini sağlar.
+	•	Nasıl Yapılır:
+	1	DOMContentLoaded Listener'ını Bul: admin.html'deki sayfa yüklendiğinde çalışan ana fonksiyonu bulun.
+	2	İstekleri Paralelleştir: Ardışık await çağrılarını silin ve yerine aşağıdaki gibi bir Promise.all() bloğu ekleyin: JavaScript  await Promise.all([
+	3	  Data.loadStaff(),
+	4	  Data.loadShifts(),
+	5	  API.load()
+	6	]);
+	7	   
+	8	Render Fonksiyonlarını Çağır: Promise.all() tamamlandıktan sonra, verileri kullanan Staff.render(), Shifts.init() gibi render fonksiyonlarını çağırın.
+	•	Mevcut Koda Etkisi:
+	◦	Güvenlik: Nötr.
+	◦	Modernizasyon: Yüksek. Asenkron işlemleri yönetmek için modern JavaScript'in güçlü özelliklerinden faydalanır.
+	◦	Performans: Yüksek. Panel açılış hızını doğrudan etkiler. Toplam engelleme süresini (TBT) düşürerek kullanıcıların paneli daha hızlı kullanmaya başlamasını sağlar.  
+	◦	Kod Yapısı: Yüksek. Kod -3 satır kısalır ve asenkron operasyonların amacı daha net hale gelir.  
+	◦	Risk: Düşük. İstekler arasında bir bağımlılık olmadığı sürece (ki bu durumda yok) uygulanması güvenlidir.  
+
+
+Bölüm 3: apps-script-backend.js (Sunucu Mantığı)
+
+
+
+Sorun 1: Sunucu Taraflı Yetkilendirme Eksikliği
+
+	•	Sorun:   addStaff, removeStaff, saveShifts gibi veriyi değiştiren ve sadece admin yetkisi gerektiren tüm backend fonksiyonları, herhangi bir kimlik doğrulama veya yetkilendirme kontrolü olmadan herkese açıktır. Bu, API URL'sini bilen herhangi bir kişinin sisteme çalışan eklemesine, silmesine veya tüm vardiyaları değiştirmesine olanak tanıyan kritik bir güvenlik zafiyetidir.    
+	•	Üstün Çözüm: Admin yetkisi gerektiren tüm fonksiyonlar için sunucu tarafında bir yetkilendirme kontrol mekanizması eklemek. En hızlı ve etkili çözüm, Google Apps Script'in PropertiesService'inde saklanan gizli bir API anahtarı (ADMIN_API_KEY) kullanmaktır. Admin panelinden yapılan her kritik istek bu anahtarı içermeli ve backend bu anahtarı doğrulamalıdır.  
+	•	Nasıl Yapılır:
+	1	Gizli Anahtar Oluştur: Google Apps Script Düzenleyicisi'nde Project Settings > Script Properties bölümüne gidin ve ADMIN_API_KEY adıyla güçlü, rastgele bir anahtar ( örn: cok_guclu_ve_tahmin_edilemez_bir_api_anahtari123!) ekleyin.
+	2	 Backend'de Kontrol Ekle (doGet): Ana doGet fonksiyonunun en başına, admin yetkisi gerektiren aksiyonların bir listesini (const adminActions = ['addStaff', 'saveShifts', ...];) tanımlayın.  
+	3	Eğer gelen e.parameter.action bu listede ise, e.parameter.apiKey ile PropertiesService'ten okunan ADMIN_API_KEY'i karşılaştırın.
+	4	Eğer anahtarlar eşleşmezse, işlemi reddeden bir hata mesajı döndürün ({ success: false, error: 'Yetkisiz erişim' }).  
+	5	Frontend'de Anahtarı Gönder (admin.html): admin.html'deki apiCall fonksiyonunu, kritik istekleri yaparken bu gizli anahtarı params objesine ekleyecek şekilde güncelleyin.
+	•	Mevcut Koda Etkisi:
+	◦	 Güvenlik: Kritik Düzeyde İyileştirme. OWASP A1 - Kırık Erişim Kontrolü (Broken Access Control) zafiyetini giderir. Sistemin veri bütünlüğünü ve güvenliğini sağlar, yetkisiz manipülasyonu tamamen engeller.  
+	◦	Modernizasyon: Orta. Modern API'lerin temel bir gereksinimi olan yetkilendirme katmanını ekler.
+	◦	Performans: Nötr.
+	◦	Kod Yapısı: Yüksek. Güvenlik kontrollerini merkezi bir noktada toplayarak kodun daha sağlam ve anlaşılır olmasını sağlar.
+	◦	Risk: Düşük. Sadece admin panelini etkileyen, eklenmesi ve test edilmesi kolay bir güvenlik önlemidir.
+
+
+Sorun 2: Hatalı VTIMEZONE Tanımı ve ICS Uyumluluk Sorunları
+
+	•	Sorun: Backend'de oluşturulan .ics takvim dosyaları, Türkiye'nin 2016'dan beri kalıcı olarak geçtiği UTC+3 zaman dilimini yansıtmayan, eski ve gereksiz bir VTIMEZONE bloğu içermektedir. Bu durum, özellikle Outlook gibi bazı takvim programlarında randevu saatlerinin yanlış (örneğin 1 saat ileri veya geri) görüntülenmesine neden olabilir.  
+	•	Üstün Çözüm: ICS standardının en uyumlu ve modern yorumunu benimsemek. Karmaşık VTIMEZONE bloğunu tamamen kaldırmak ve bunun yerine her tarih/saat tanımının (DTSTART, DTEND) sonuna ;TZID=Europe/Istanbul parametresini eklemek. Bu, takvim uygulamasına zaman dilimi bilgisini net bir şekilde iletir ve doğru gösterimi garanti altına alır.  
+	•	Nasıl Yapılır:
+	1	generateCustomerICS Fonksiyonunu Bul: apps-script-backend.js dosyasındaki .ics içeriğini oluşturan fonksiyonu açın.
+	2	 VTIMEZONE Bloğunu Sil: BEGIN:VTIMEZONE ile END:VTIMEZONE arasındaki tüm satırları silin.  
+	3	Tarih Satırlarını Güncelle: DTSTART ve DTEND satırlarını aşağıdaki gibi güncelleyin: DTSTART;TZID=Europe/Istanbul:${formatICSDate(startDateTime)}
+	4	DTEND;TZID=Europe/Istanbul:${formatICSDate(endDateTime)}
+	5	   
+	•	Mevcut Koda Etkisi:
+	◦	Güvenlik: Nötr.
+	◦	Modernizasyon: Yüksek. ICS standardının güncel ve en iyi pratiklerine uygun hale getirir.
+	◦	Performans: Nötr, ancak oluşturulan dosya boyutu marjinal olarak küçülür.
+	◦	Kod Yapısı: Yüksek. Fonksiyon ~10-20 satır kısalır, gereksiz ve kafa karıştırıcı bir blok ortadan kalkar.  
+	◦	Kullanıcı Deneyimi: Yüksek. Kullanıcıların randevularını takvimlerinde doğru saatte görmelerini sağlayarak olası karışıklıkları ve randevu kaçırmalarını önler.
+	◦	Risk: Düşük. Sadece bir standardizasyon ve hata düzeltme işlemidir.  
+
+
+Tüm Çözümlerin Bütün Koda Etkisi
+
+Bu planın eksiksiz bir şekilde uygulanması, Rolex Randevu Sistemi projesini temelden dönüştürecektir. Proje, aşağıdaki nitelikleri kazanacaktır:
+	•	Güvenlik: Kritik XSS ve yetkisiz erişim zafiyetleri kapatılarak, güvensiz JSONP iletişimi modern ve güvenli bir yapıya kavuşturularak proje, endüstri standartlarında güvenli bir uygulama haline gelecektir.
+	•	Performans: Monolitik yapının kırılarak modern bir build aracı (Vite) ile yönetilmesi, sunucu tarafında kalıcı önbellek mekanizması kurulması ve veri yükleme süreçlerinin paralelleştirilmesi sayesinde hem ilk sayfa yükleme süreleri hem de sonraki kullanıcı etkileşimleri dramatik ölçüde hızlanacaktır.
+	•	Kod Yapısı ve Bakım Kolaylığı: Kod tekrarının ortadan kaldırılması, sorumlulukların ayrılması, modern JavaScript özelliklerinin benimsenmesi ve merkezi yardımcı fonksiyonların oluşturulmasıyla kod tabanı önemli ölçüde sadeleşecektir. Bu, gelecekte yeni özellikler eklemeyi veya mevcut hataları düzeltmeyi çok daha hızlı ve risksiz hale getirecektir.
+	•	Modernizasyon ve Geleceğe Hazırlık: Proje, eski ve terk edilmiş teknolojilerden (document.execCommand, JSONP, var kullanımı) arındırılarak fetch, async/await, CORS ve modüler JavaScript gibi modern web geliştirme standartlarına kavuşacaktır. Bu, projenin teknolojik olarak güncel kalmasını ve gelecekteki değişikliklere kolayca adapte olabilmesini sağlayacaktır.
+————————————
+
+Sprint 1: Kritik Güvenlik ve Temel Mimari Düzeltmeleri
+
+Bu sprint, uygulamanın en acil güvenlik açıklarını kapatmaya ve en temel yapısal sorunları çözmeye odaklanır.
+
+
+PR Taslağı 1.1: [GÜVENLİK] Admin Panelindeki XSS Zafiyetini Gider
+
+	•	Başlık: [SECURITY] Fix: Admin panelindeki UI.showAlert fonksiyonunda XSS zafiyeti
+	•	Açıklama:
+	◦	 Sorun: analiz_1 ve analiz_3'te belirtildiği gibi, admin.html dosyasındaki UI.showAlert fonksiyonu, mesajları doğrudan .innerHTML'e atayarak kritik bir Cross-Site Scripting (XSS) zafiyeti oluşturmaktadır.  
+	◦	Üstün Çözüm: Bu PR, güvensiz .innerHTML atamasını, gelen mesajı sadece metin olarak yorumlayan güvenli .textContent özelliğini kullanan programatik DOM element oluşturma yöntemiyle değiştirir.
+	•	Etkilenen Dosyalar:
+	◦	admin.html
+	•	Kod Değişiklikleri (Diff): Diff  // admin.html -> UI.showAlert
+	•	
+	•	- container.innerHTML = '<div class="alert alert-' + type + '">' + message + '</div>';
+	•	
+	•	+ const alertDiv = document.createElement('div');
+	•	+ alertDiv.className = 'alert alert-' + type;
+	•	+ alertDiv.textContent = message; // GÜVENLİ YÖNTEM
+	•	+ container.innerHTML = ''; // Önceki uyarıları temizle
+	•	+ container.appendChild(alertDiv);
+	•	   
+	•	Doğrulama Adımları:
+	1	Admin panelinde, konsoldan UI.showAlert("<img src=x onerror=alert('XSS')>", "error") komutunu çalıştırın.
+	2	Ekranda <img src=x... metninin birebir yazıldığını ve bir alert() penceresinin açılmadığını doğrulayın.
+	•	Etki:
+	◦	Güvenlik: Kritik İyileştirme. Admin panelindeki XSS vektörünü tamamen ortadan kaldırır.
+	◦	Risk: Düşük.
+
+
+PR Taslağı 1.2: [GÜVENLİK] Müşteri Arayüzündeki XSS Zafiyetini Gider
+
+	•	Başlık: [SECURITY] Fix: Randevu başarı sayfasındaki müşteri notunda XSS zafiyeti
+	•	Açıklama:
+	◦	 Sorun: analiz_1'de belirtildiği gibi, index.html'deki showSuccessPage fonksiyonu, kullanıcı tarafından girilen customerNote alanını doğrudan HTML'e enjekte ederek bir XSS açığı oluşturmaktadır.  
+	◦	Üstün Çözüm: Bu PR, başarı sayfasını oluştururken string birleştirme yerine document.createElement kullanır ve kullanıcıdan gelen notu güvenli .textContent özelliği ile DOM'a ekler.
+	•	Etkilenen Dosyalar:
+	◦	index.html
+	•	Kod Değişiklikleri (Diff): Diff  // index.html -> showSuccessPage
+	•	
+	•	- ${customerNote ? `<div class="detail-item">Not: ${customerNote}</div>` : ''}
+	•	
+	•	// Bu satırın yerine fonksiyonun sonuna eklenecek mantık:
+	•	+ if (customerNote) {
+	•	+     const noteElement = document.createElement('div');
+	•	+     noteElement.className = 'detail-item';
+	•	+     noteElement.textContent = `Not: ${customerNote}`; // GÜVENLİ YÖNTEM
+	•	+     document.querySelector('.appointment-details').appendChild(noteElement);
+	•	+ }
+	•	   
+	•	Doğrulama Adımları:
+	1	Bir randevu oluştururken "Not" alanına <b>Bu bir testtir</b><script>alert(1)</script> girin.
+	2	Randevu başarı sayfasında bu metnin stilize edilmeden (kalın olmadan) ve bir alert() penceresi tetiklenmeden düz metin olarak göründüğünü doğrulayın.
+	•	Etki:
+	◦	Güvenlik: Kritik İyileştirme. Müşteri arayüzündeki en bariz XSS açığını kapatır.
+	◦	Risk: Düşük.
+
+
+PR Taslağı 1.3: [MİMARİ] JSONP'yi Güvenli CORS/Fetch ile Değiştir
+
+	•	Başlık: [REFACTOR] Chore: Güvensiz JSONP iletişimini modern CORS/Fetch mimarisiyle değiştir
+	•	Açıklama:
+	◦	 Sorun: Tüm analizlerde belirtildiği gibi, projenin tamamı eski, güvensiz ve kısıtlı hata yönetimine sahip JSONP yöntemini kullanmaktadır. Bu durum, CSRF saldırılarına kapı aralamaktadır.    
+	◦	Üstün Çözüm: Tüm API iletişim altyapısını modern standartlara yükseltmek. Backend, ContentService ile standart JSON ve CORS başlıkları dönecek; frontend ise async/await sözdizimi ile fetch API'sini kullanacak.
+	•	Etkilenen Dosyalar:
+	◦	apps-script-backend.js
+	◦	index.html
+	◦	admin.html
+	•	Kod Değişiklikleri (Diff):
+	◦	apps-script-backend.js: Diff  // doGet fonksiyonunun sonu
+	◦	- return ContentService
+	◦	-   .createTextOutput(callback + '(' + JSON.stringify(response) + ')')
+	◦	-   .setMimeType(ContentService.MimeType.JAVASCRIPT);
+	◦	
+	◦	+ return ContentService
+	◦	+   .createTextOutput(JSON.stringify(response))
+	◦	+   .setMimeType(ContentService.MimeType.JSON)
+	◦	+   .setHeader('Access-Control-Allow-Origin', '*'); // Production'da domain'e kısıtlanmalı
+	◦	   
+	◦	index.html ve admin.html (apiCall fonksiyonu): Diff  - function apiCall(action, params = {}) {
+	◦	-   return new Promise((resolve, reject) => {
+	◦	-     const callback = 'cb_' + Date.now() + ...;
+	◦	-     // ...<script> etiketi oluşturma mantığı...
+	◦	-   });
+	◦	- }
+	◦	
+	◦	+ async function apiCall(action, params = {}) {
+	◦	+   const url = new URL(CONFIG.APPS_SCRIPT_URL);
+	◦	+   url.searchParams.append('action', action);
+	◦	+   Object.keys(params).forEach(key => url.searchParams.append(key, params[key]));
+	◦	+   try {
+	◦	+     const response = await fetch(url, { redirect: 'follow' });
+	◦	+     if (!response.ok) throw new Error(`HTTP Hatası! Durum: ${response.status}`);
+	◦	+     const data = await response.json();
+	◦	+     if (data.success === false) throw new Error(data.error);
+	◦	+     return data;
+	◦	+   } catch (error) {
+	◦	+     console.error('API Çağrısı Başarısız:', { action, error });
+	◦	+     throw error;
+	◦	+   }
+	◦	+ }
+	◦	   
+	•	Doğrulama Adımları:
+	1	Backend'i yeni versiyonla deploy edin.
+	2	Hem müşteri arayüzünde randevu oluşturma hem de admin panelinde çalışan/vardiya yönetimi gibi tüm işlevlerin eksiksiz çalıştığını kontrol edin.
+	3	Tarayıcının "Network" sekmesinde, isteklerin artık fetch olarak yapıldığını ve dönen yanıtın Content-Type başlığının application/json olduğunu doğrulayın.
+	•	Etki:
+	◦	Güvenlik: Kritik İyileştirme. CSRF zafiyetini ortadan kaldırır.
+	◦	Modernizasyon: Çok Yüksek. Projeyi 2010'ların teknolojisinden modern web standartlarına taşır.
+	◦	Bakım Kolaylığı: Yüksek. Hata yönetimi ve kod okunabilirliği önemli ölçüde artar.
+	◦	Risk: Orta. Tüm API iletişimini etkilediği için dikkatli test gerektirir.
+
+
+Sprint 2: Mimari, Performans ve Kod Kalitesi
+
+Bu sprint, projenin uzun vadeli sağlığı, hızı ve yönetilebilirliği üzerine odaklanır.
+
+
+PR Taslağı 2.1: [PERFORMANS] Sunucu Tarafı Kalıcı Önbellek Ekle
+
+	•	Başlık: [PERF] Feat: PropertiesService ile kalıcı backend önbelleği uygula
+	•	Açıklama:
+	◦	 Sorun: analiz_3'te tespit edildiği gibi, mevcut calendarCache, Apps Script'in çalışma mantığı nedeniyle işlevsizdir. Bu durum, her istekte Google Calendar API'sine gereksiz çağrılar yapılmasına ve uygulamanın yavaşlamasına neden olur.  
+	◦	Üstün Çözüm: PropertiesService'i kullanarak istekler arasında veri saklayabilen, zaman aşımı (maxAge) özelliğine sahip kalıcı bir PersistentCache sınıfı oluşturmak. Bu, özellikle takvim verileri gibi maliyetli API çağrılarını büyük ölçüde azaltacaktır.
+	•	Etkilenen Dosyalar:
+	◦	apps-script-backend.js
+	•	Kod Değişiklikleri (Diff):
+	◦	Yeni PersistentCache Sınıfı Ekleme: JavaScript  // apps-script-backend.js dosyasının başına eklenecek
+	◦	class PersistentCache {
+	◦	    constructor(prefix = 'cache_') { /* ... Analiz_3'teki kod ... */ }
+	◦	    get(key, maxAgeSeconds = 300) { /* ... */ }
+	◦	    set(key, data) { /* ... */ }
+	◦	}
+	◦	const cache = new PersistentCache('rolex_');
+	◦	   
+	◦	Fonksiyonlarda Kullanımı: Diff  // getGoogleCalendarEvents fonksiyonu
+	◦	function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
+	◦	+   const cacheKey = `events_${startDateStr}_${endDateStr}_${staffId}`;
+	◦	+   const cachedData = cache.get(cacheKey, 300); // 5 dakika önbellek
+	◦	+   if (cachedData) {
+	◦	+       return { success: true, data: cachedData };
+	◦	+   }
+	◦	    // ... mevcut API çağrı mantığı ...
+	◦	    const result = { success: true, data: eventsByDate };
+	◦	+   cache.set(cacheKey, eventsByDate); // Sonucu önbelleğe yaz
+	◦	    return result;
+	◦	}
+	◦	   
+	•	Doğrulama Adımları:
+	1	Müşteri arayüzünde bir ayın takvimini açın. İlk yüklemenin süresini gözlemleyin.
+	2	Başka bir aya gidin ve sonra ilk aya geri dönün. İkinci yüklemenin neredeyse anlık olduğunu doğrulayın.
+	3	Apps Script "Executions" loglarından, ikinci yüklemede CalendarApp.getEvents çağrısının yapılmadığını kontrol edin.
+	•	Etki:
+	◦	Performans: Çok Yüksek. Kullanıcı deneyimini doğrudan iyileştirir ve API kotalarını korur.
+	◦	Kod Yapısı: Yüksek. Karmaşık sistemlerde standart olan bir önbellekleme katmanı ekler.
+	◦	Risk: Düşük.
+
+
+PR Taslağı 2.2: [KOD KALİTESİ] ICS Üretimini Standartlaştır ve Hataları Gider
+
+	•	Başlık: [FIX] Chore: ICS üretimini backend'de merkezileştir ve VTIMEZONE tanımını düzelt
+	•	Açıklama:
+	◦	 Sorun: analiz_1'de belirtildiği gibi, .ics oluşturma mantığı hem frontend hem de backend'de tekrar ediyor. Ayrıca, backend'deki VTIMEZONE tanımı, Türkiye'nin kalıcı UTC+3 durumuna uymadığı için saat kaymalarına neden oluyor.    
+	◦	Üstün Çözüm: ICS üretimini sadece backend'de yapmak. VTIMEZONE bloğunu tamamen kaldırıp yerine uluslararası standart olan TZID=Europe/Istanbul parametresini DTSTART/DTEND satırlarına eklemek.
+	•	Etkilenen Dosyalar:
+	◦	apps-script-backend.js
+	◦	index.html
+	•	Kod Değişiklikleri (Diff):
+	◦	index.html: generateICS ve ilgili tüm fonksiyonlar tamamen silinecek.
+	◦	apps-script-backend.js (generateCustomerICS): Diff  - 'BEGIN:VTIMEZONE',
+	◦	- 'TZID:Europe/Istanbul',
+	◦	- // ...uzun ve hatalı VTIMEZONE bloğu...
+	◦	- 'END:VTIMEZONE',
+	◦	// ...
+	◦	- `DTSTART:${formatICSDate(startDateTime)}`,
+	◦	- `DTEND:${formatICSDate(endDateTime)}`,
+	◦	
+	◦	+ `DTSTART;TZID=Europe/Istanbul:${formatICSDate(startDateTime)}`,
+	◦	+ `DTEND;TZID=Europe/Istanbul:${formatICSDate(endDateTime)}`,
+	◦	   
+	•	Doğrulama Adımları:
+	1	Bir randevu oluşturun ve gelen e-postadaki .ics eklentisini indirin.
+	2	Dosyayı Google Calendar, Outlook ve Apple Calendar gibi farklı programlarda açın.
+	3	Randevu saatinin her platformda doğru olduğunu ve herhangi bir saat kayması olmadığını doğrulayın.
+	•	Etki:
+	◦	Kullanıcı Deneyimi: Yüksek. Randevu karışıklıklarını ve hatalarını önler.
+	◦	Bakım Kolaylığı: Yüksek. ~40+ satır gereksiz frontend kodunu temizler ve mantığı tek bir yere toplar.  
+	◦	Risk: Düşük.
+
+
+PR Taslağı 2.3: [PERFORMANS] Admin Panelinde Paralel Veri Yükleme
+
+	•	Başlık: [PERF] Refactor: Admin paneli başlangıç verilerini paralel olarak yükle
+	•	Açıklama:
+	◦	 Sorun: analiz_1'de belirtildiği gibi, admin paneli açılırken gerekli verileri (Staff, Settings vb.) ardışık olarak bekleyerek yüklüyor, bu da yükleme süresini uzatıyor.  
+	◦	Üstün Çözüm: Birbirinden bağımsız bu istekleri Promise.all() içine alarak aynı anda başlatmak ve toplam yükleme süresini en yavaş olan tek bir isteğin süresine indirmek.
+	•	Etkilenen Dosyalar:
+	◦	admin.html
+	•	Kod Değişiklikleri (Diff): Diff  // admin.html -> DOMContentLoaded listener
+	•	- await Data.loadStaff();
+	•	- await API.load();
+	•	- Staff.render();
+	•	- Shifts.init();
+	•	
+	•	+ await Promise.all([
+	•	+     Data.loadStaff(),
+	•	+     API.load()
+	•	+ ]);
+	•	+ Staff.render();
+	•	+ Shifts.init();
+	•	   
+	•	Doğrulama Adımları:
+	1	Admin panelini açın.
+	2	Tarayıcının "Network" sekmesinde, getStaff ve getSettings isteklerinin neredeyse aynı anda başladığını ve birbirini beklemediğini gözlemleyin.
+	3	Panelin eskisinden daha hızlı yüklendiğini doğrulayın.
+	•	Etki:
+	◦	Performans: Yüksek. Özellikle yavaş ağlarda panelin açılış hızını doğrudan iyileştirir.
+	◦	Modernizasyon: Yüksek. Asenkron işlemleri verimli yönetme becerisini gösterir.
+	◦	Risk: Düşük.

@@ -1,0 +1,640 @@
+{\rtf1\ansi\ansicpg1254\cocoartf2822
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\froman\fcharset0 Times-Bold;\f1\froman\fcharset0 Times-Roman;\f2\fmodern\fcharset0 Courier;
+\f3\fnil\fcharset0 HelveticaNeue;\f4\froman\fcharset0 Times-Italic;}
+{\colortbl;\red255\green255\blue255;\red0\green0\blue0;\red0\green0\blue0;\red184\green93\blue213;
+\red155\green162\blue177;\red81\green157\blue235;\red197\green136\blue83;\red136\green185\blue102;\red74\green80\blue93;
+\red214\green85\blue98;}
+{\*\expandedcolortbl;;\cssrgb\c0\c0\c0;\cssrgb\c0\c0\c0\c84706;\cssrgb\c77647\c47059\c86667;
+\cssrgb\c67059\c69804\c74902;\cssrgb\c38039\c68627\c93725;\cssrgb\c81961\c60392\c40000;\cssrgb\c59608\c76471\c47451;\cssrgb\c36078\c38824\c43922;
+\cssrgb\c87843\c42353\c45882;}
+{\*\listtable{\list\listtemplateid1\listhybrid{\listlevel\levelnfc0\levelnfcn0\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{decimal\}}{\leveltext\leveltemplateid1\'01\'00;}{\levelnumbers\'01;}\fi-360\li720\lin720 }{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{circle\}}{\leveltext\leveltemplateid2\'01\uc0\u9702 ;}{\levelnumbers;}\fi-360\li1440\lin1440 }{\listname ;}\listid1}
+{\list\listtemplateid2\listhybrid{\listlevel\levelnfc23\levelnfcn23\leveljc0\leveljcn0\levelfollow0\levelstartat1\levelspace360\levelindent0{\*\levelmarker \{disc\}}{\leveltext\leveltemplateid101\'01\uc0\u8226 ;}{\levelnumbers;}\fi-360\li720\lin720 }{\listname ;}\listid2}}
+{\*\listoverridetable{\listoverride\listid1\listoverridecount0\ls1}{\listoverride\listid2\listoverridecount0\ls2}}
+\paperw11900\paperh16840\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\deftab720
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Kod Analizi Raporu\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f1\b0\fs24 \cf0 Randevu sistemi kodlar\uc0\u305 n\u305 z\u305  detayl\u305 ca inceledim. \u304 \u351 te bulgular\u305 m:\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 1. Gereksiz Kodlar\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 \uc0\u10060  Sorun: Kullan\u305 lmayan JSONP Fallback Fonksiyonu\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24  (sat\uc0\u305 r 1657-1696)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCallJSONP\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (action, params \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\}) \{\
+    \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 console\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 warn\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'JSONP kullan\uc0\u305 m\u305  g\'fcvenlik riski olu\u351 turur...'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 );\
+    
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // ... t\'fcm JSONP kodu
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Bu fonksiyonu tamamen kald\uc0\u305 r\u305 n, zaten Fetch API kullan\u305 l\u305 yor. 
+\f0\b \uc0\u55357 \u56522  Etki:
+\f1\b0  Bundle size'da ~2KB azalma, g\'fcvenlik riskinin ortadan kalkmas\uc0\u305  
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Gereksiz Console.log Sat\u305 rlar\u305 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24  (bir\'e7ok yerde)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 console\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 log\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'Calisanlar yuklendi:'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , staffMembers);\
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 console\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 log\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'Takvime Ekle butonu bulundu...'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 );\
+\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 console\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 log\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'downloadICSForApple fonksiyonu \'e7a\uc0\u287 r\u305 ld\u305 ...'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 );\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Production i\'e7in t\'fcm console.log'lar\uc0\u305  kald\u305 r\u305 n 
+\f0\b \uc0\u55357 \u56522  Etki:
+\f1\b0  Daha temiz konsol, hafif performans iyile\uc0\u351 mesi 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  D\'fc\uc0\u351 \'fck\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Dead Code - getRolexLogoSVG Fonksiyonu\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24  (sat\uc0\u305 r 451-1042)\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getRolexLogoSVG\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 () \{\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 return\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 `<svg class="rolex-logo"...`\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ;  
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // 600+ sat\uc0\u305 r SVG
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Bu fonksiyon hi\'e7 kullan\uc0\u305 lm\u305 yor, kald\u305 r\u305 lmal\u305  
+\f0\b \uc0\u55357 \u56522  Etki:
+\f1\b0  Bundle size'da ~15KB azalma 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 2. Duplicate (Tekrarlanan) Kodlar\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 \uc0\u10060  Sorun: apiCall Fonksiyonu Tekrar\u305 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 admin.html
+\f1\fs24  ve 
+\f2\fs26 admin-auth.js
+\f1\fs24 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // admin.html'de
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCall\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (action, params \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\}) \{ \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ...\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \}\
+\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // admin-auth.js'de
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCallWithKey\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (action, params \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\}, apiKey) \{ \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ...\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \}\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Ve orijinal apiCall override ediliyor
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Tek bir API mod\'fcl\'fc olu\uc0\u351 turun:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // api-service.js
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 export\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  ApiService \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 call:\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 async\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (action, params \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\}, requiresAuth \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 false\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ) \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+        \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  apiKey \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  requiresAuth \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ?\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  AdminAuth.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 isAuthenticated\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 () \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 null\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ;\
+        
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Tek bir implementasyon
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+    \}\
+\};\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Kod tekrar\uc0\u305  azal\u305 r, bak\u305 m kolayla\u351 \u305 r 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Rolex SVG Logo Tekrar\u305 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 admin.html
+\f1\fs24 , 
+\f2\fs26 index.html
+\f1\fs24 , 
+\f2\fs26 safe-showSuccessPage.js
+\f1\fs24 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 html\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <!-- Her dosyada ayn\uc0\u305  500+ sat\u305 rl\u305 k SVG -->
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+<svg class="rolex-logo" xmlns="http://www.w3.org/2000/svg"...\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  SVG'yi harici dosya yap\uc0\u305 n:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // rolex-logo.svg dosyas\uc0\u305  olu\u351 turun
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // HTML'de: <img src="assets/rolex-logo.svg" class="rolex-logo" />
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  HTML dosyalar\uc0\u305  %30 k\'fc\'e7\'fcl\'fcr (~45KB toplam azalma) 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Email Template Fonksiyonlar\u305  Tekrar\u305 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 apps-script-backend.js
+\f1\fs24 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getCustomerEmailTemplate\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (data) \{ \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ...\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \}\
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getStaffEmailTemplate\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (data) \{ \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ...\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \}\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // \'c7ok benzer HTML yap\uc0\u305 s\u305 
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Generic template fonksiyonu:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 generateEmailTemplate\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (type, data) \{\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  baseTemplate \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getBaseTemplate\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ();\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  content \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  type \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ===\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'customer'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ?\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \
+        \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getCustomerContent\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (data) \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getStaffContent\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (data);\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 return\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  baseTemplate.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 replace\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 '\{\{content\}\}'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , content);\
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Kod %25 azal\uc0\u305 r, bak\u305 m kolayla\u351 \u305 r 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Orta\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 3. Performans \uc0\u304 yile\u351 tirmeleri\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 \uc0\u10060  Sorun: Ayl\u305 k Veri Y\'fcklemede Gereksiz API \'c7a\u287 r\u305 lar\u305 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24  - 
+\f2\fs26 loadMonthData()
+\f1\fs24  fonksiyonu\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Her ay de\uc0\u287 i\u351 iminde 3 paralel API \'e7a\u287 r\u305 s\u305 
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  [shiftsResult, appointmentsResult, calendarResult] \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 await\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 Promise\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 all\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ([\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCall\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'getMonthShifts'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \{ \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 month\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  monthStr \}),\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCall\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'getMonthAppointments'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \{ \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 month\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  monthStr \}),\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 apiCall\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'getGoogleCalendarEvents'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 , \{\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ...\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \})\
+]);\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Cache mekanizmas\uc0\u305  ekleyin:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  monthCache \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 new\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 Map\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ();\
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 async\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 loadMonthData\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 () \{\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  cacheKey \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  monthStr;\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 if\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (monthCache.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 has\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (cacheKey)) \{\
+        \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  cached \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  monthCache.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 get\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (cacheKey);\
+        \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 if\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (\cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 Date\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 now\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 () \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 -\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  cached.time \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 300000\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ) \{ 
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // 5 dakika
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+            \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 return\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  cached.data;\
+        \}\
+    \}\
+    
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // API \'e7a\uc0\u287 r\u305 lar\u305 ...
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+    monthCache.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 set\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (cacheKey, \{ \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 data\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  results, \cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 time\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 :\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 Date\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 now\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 () \});\
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  API \'e7a\uc0\u287 r\u305 lar\u305  %70 azal\u305 r, daha h\u305 zl\u305  ay ge\'e7i\u351 leri 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: DOM Manip\'fclasyon Verimsizli\u287 i\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24  - 
+\f2\fs26 renderCalendar()
+\f1\fs24  fonksiyonu\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Her g\'fcn i\'e7in ayr\uc0\u305  DOM manip\'fclasyonu
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 for\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 let\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  day \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 1\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ; day \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <=\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  daysInMonth; day\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ++\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ) \{\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  dayEl \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 document\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 createElement\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'div'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 );\
+    
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // ... bir\'e7ok setAttribute ve classList i\uc0\u351 lemi
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+    grid.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 appendChild\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (dayEl);\
+\}\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  DocumentFragment kullan\uc0\u305 n:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  fragment \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 document\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 createDocumentFragment\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ();\
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 for\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  (\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 let\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  day \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 1\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ; day \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <=\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  daysInMonth; day\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ++\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ) \{\
+    
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // ... element olu\uc0\u351 tur
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+    fragment.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 appendChild\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (dayEl);\
+\}\
+grid.\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 appendChild\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (fragment); 
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Tek seferde ekle
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Render s\'fcresi %40 azal\uc0\u305 r 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Orta\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Memory Leak Potansiyeli\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 admin-auth.js
+\f1\fs24  - JSONP callback'leri\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 window\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 [callback] \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 function\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (data) \{\
+    
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Timeout temizlenmiyor baz\uc0\u305  durumlarda
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\};\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Proper cleanup:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 cleanup\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  () \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \{\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 clearTimeout\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (timeoutId);\
+    \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 delete\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 window\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 [callback];\
+    \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 document\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 .\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 getElementById\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 'jsonpScript_'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 +\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  callback)\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ?.remove\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ();\
+\};\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Her durumda cleanup \'e7a\uc0\u287 \u305 r
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Memory leak \'f6nlenir 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 4. Y\'fckleme H\uc0\u305 z\u305  Optimizasyonlar\u305 \
+\pard\pardeftab720\sa280\partightenfactor0
+
+\fs28 \cf0 \uc0\u10060  Sorun: Inline CSS ve JavaScript\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  T\'fcm HTML dosyalar\uc0\u305 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 html\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 style\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 >
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 /* 1000+ sat\uc0\u305 r CSS */
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 </\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 style\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 >\
+<\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 script\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 >
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 /* 2000+ sat\uc0\u305 r JavaScript */
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 </\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 script\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 >\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Harici dosyalara ta\uc0\u351 \u305 y\u305 n:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 html\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 link \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 rel\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 stylesheet\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 "\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 href\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 styles/main.css\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ">\
+<\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 script \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 src\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 js/app.bundle.js\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 "\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 defer\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ></\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 script\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 >\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Caching ile %60 daha h\uc0\u305 zl\u305  y\'fckleme (2. ziyarette) 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Bundle Edilmemi\u351  Mod\'fcller\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Webpack/Vite ile bundle:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Dosya yap\uc0\u305 s\u305  \'f6nerisi:
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+src\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 /\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \uc0\u9500 \u9472 \u9472  modules\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 /\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \uc0\u9474    \u9500 \u9472 \u9472  api.js\
+  \uc0\u9474    \u9500 \u9472 \u9472  auth.js\
+  \uc0\u9474    \u9492 \u9472 \u9472  calendar.js\
+  \uc0\u9500 \u9472 \u9472  styles\cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 /\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+  \uc0\u9474    \u9492 \u9472 \u9472  main.scss\
+  \uc0\u9492 \u9472 \u9472  app.js\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  %50 daha k\'fc\'e7\'fck dosya boyutu, tree-shaking ile 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Y\'fcksek\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Font Y\'fckleme Stratejisi\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 Dosya:
+\f1\b0  
+\f2\fs26 index.html
+\f1\fs24 \
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 html\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 link \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 href\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ">\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Font subsetting ve preload:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 html\
+\pard\pardeftab720\partightenfactor0
+\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 link \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 rel\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 preconnect\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 "\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 href\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 https://fonts.gstatic.com\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ">\
+<\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 link \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 rel\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 preload\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 "\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 as\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 style\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 "\cf10 \strokec10 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf7 \strokec7 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 href\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ="\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 fonts.css\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 ">\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 <!-- Sadece kullan\uc0\u305 lan karakterler ve a\u287 \u305 rl\u305 klar -->
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  Font y\'fckleme %40 h\uc0\u305 zlan\u305 r 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Orta\
+\pard\pardeftab720\sa280\partightenfactor0
+
+\f0\b\fs28 \cf0 \uc0\u10060  Sorun: Lazy Loading Eksikli\u287 i\
+\pard\pardeftab720\sa240\partightenfactor0
+
+\fs24 \cf0 \uc0\u9989  \'c7\'f6z\'fcm:
+\f1\b0  Admin panel'i lazy load yap\uc0\u305 n:\
+\pard\pardeftab720\qc\partightenfactor0
+
+\f3\fs22 \cf3 \strokec3 \
+\
+\pard\pardeftab720\partightenfactor0
+
+\f1\fs24 \cf0 \strokec2 javascript\
+\pard\pardeftab720\partightenfactor0
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Ana sayfada
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 const\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 loadAdminPanel\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  () \cf6 \strokec6 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 =>\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0  \cf4 \strokec4 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 import\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 (\cf8 \strokec8 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 './admin.js'\cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 );\
+
+\f4\i \cf9 \strokec9 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 // Sadece gerekti\uc0\u287 inde y\'fckle
+\f1\i0 \cf5 \strokec5 \shad\shadx0\shady-20\shadr0\shado0 \shadc0 \
+\pard\pardeftab720\sa240\partightenfactor0
+
+\f0\b \cf0 \strokec2 \shad0 \uc0\u55357 \u56522  Etki:
+\f1\b0  \uc0\u304 lk y\'fckleme %35 h\u305 zlan\u305 r 
+\f0\b \uc0\u55356 \u57263  \'d6ncelik:
+\f1\b0  Orta\
+\pard\pardeftab720\sa298\partightenfactor0
+
+\f0\b\fs36 \cf0 \'d6nerilen Refactoring Plan\uc0\u305 \
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\fs24 \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	1	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Fase 1 (Kritik):
+\f1\b0 \
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\partightenfactor0
+\ls1\ilvl1\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 SVG'leri harici dosyalara ta\uc0\u351 \u305 \
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 API \'e7a\uc0\u287 r\u305 lar\u305 n\u305  birle\u351 tir ve cache ekle\
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Gereksiz kodlar\uc0\u305  temizle\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\f0\b \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	2	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Fase 2 (\'d6nemli):
+\f1\b0 \
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\partightenfactor0
+\ls1\ilvl1\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 CSS ve JS'i harici dosyalara ay\uc0\u305 r\
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Module bundler entegrasyonu\
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Duplicate fonksiyonlar\uc0\u305  birle\u351 tir\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls1\ilvl0
+\f0\b \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	3	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Fase 3 (\uc0\u304 yile\u351 tirme):
+\f1\b0 \
+\pard\tx940\tx1440\pardeftab720\li1440\fi-1440\partightenfactor0
+\ls1\ilvl1\cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Lazy loading implement et\
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Font optimizasyonu\
+\ls1\ilvl1\kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u9702 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Performance monitoring ekle\
+\pard\pardeftab720\sa240\partightenfactor0
+\cf0 Bu de\uc0\u287 i\u351 ikliklerle:\
+\pard\tx220\tx720\pardeftab720\li720\fi-720\partightenfactor0
+\ls2\ilvl0
+\f0\b \cf0 \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Bundle size: ~%45 azalma
+\f1\b0  (yakla\uc0\u351 \u305 k 150KB'dan 85KB'a)\
+\ls2\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 \uc0\u304 lk y\'fckleme h\u305 z\u305 : %50 iyile\u351 me
+\f1\b0 \
+\ls2\ilvl0
+\f0\b \kerning1\expnd0\expndtw0 \outl0\strokewidth0 {\listtext	\uc0\u8226 	}\expnd0\expndtw0\kerning0
+\outl0\strokewidth0 \strokec2 Kod bak\uc0\u305 m\u305 : %70 daha kolay
+\f1\b0 \
+}
