@@ -2,38 +2,188 @@
 // Bu dosyayı Google Apps Script'e yapıştırın ve deploy edin
 // Deploy → New Deployment → Web App → Execute as: Me, Who has access: Anyone
 
+// Debug mode - Production'da false olmalı
+const DEBUG = false;
+
+// Debug logger - Production'da log'ları devre dışı bırakır
+const log = {
+  error: (...args) => DEBUG && console.error(...args),
+  warn: (...args) => DEBUG && console.warn(...args),
+  info: (...args) => DEBUG && console.info(...args),
+  log: (...args) => DEBUG && console.log(...args)
+};
+
 const CONFIG = {
   // Calendar & Storage
   CALENDAR_ID: 'primary', // veya 'sizin@gmail.com'
   TIMEZONE: 'Europe/Istanbul',
   PROPERTIES_KEY: 'RANDEVU_DATA',
+  API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
 
   // Company Info
   COMPANY_NAME: 'Rolex İzmir İstinyepark',
+  COMPANY_LOCATION: 'Rolex İzmir İstinyepark',
+  COMPANY_EMAIL: 'istinyeparkrolex35@gmail.com',
   ADMIN_EMAIL: 'istinyeparkrolex35@gmail.com',
 
   // Appointment Types
   APPOINTMENT_TYPES: {
     DELIVERY: 'delivery',
-    MEETING: 'meeting'
+    MEETING: 'meeting',
+    SERVICE: 'service',        // YENİ: Teknik Servis
+    MANAGEMENT: 'management'   // YENİ: Yönetim Randevusu
   },
 
   // Appointment Type Labels
   APPOINTMENT_TYPE_LABELS: {
     delivery: 'Teslim',
-    meeting: 'Görüşme'
+    meeting: 'Görüşme',
+    service: 'Teknik Servis',     // YENİ
+    management: 'Yönetim'          // YENİ
   },
 
   // Service Names
   SERVICE_NAMES: {
     delivery: 'Saat Teslimi',
-    meeting: 'Görüşme'
+    meeting: 'Görüşme',
+    service: 'Teknik Servis',      // YENİ
+    management: 'Yönetim Randevusu' // YENİ
   },
 
   // Email Subjects
   EMAIL_SUBJECTS: {
     CUSTOMER_CONFIRMATION: 'Randevunuz Onaylandı - Rolex İzmir İstinyepark',
-    STAFF_NOTIFICATION: 'Yeni Randevu'
+    STAFF_NOTIFICATION: 'Yeni Randevu',
+    API_KEY_RENEWED: 'API Key Yenilendi - Rolex Randevu Sistemi',
+    API_KEY_INITIAL: 'API Key - Rolex Randevu Sistemi'
+  },
+
+  // Error Messages
+  ERROR_MESSAGES: {
+    CALENDAR_NOT_FOUND: 'Takvim yapılandırması bulunamadı.',
+    NAME_REQUIRED: 'İsim zorunludur',
+    INVALID_EMAIL: 'Geçersiz e-posta adresi',
+    INVALID_DATE_FORMAT: 'Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)',
+    INVALID_TIME_FORMAT: 'Geçersiz saat formatı (HH:MM bekleniyor)',
+    CUSTOMER_NAME_REQUIRED: 'Müşteri adı zorunludur',
+    CUSTOMER_PHONE_REQUIRED: 'Müşteri telefonu zorunludur',
+    STAFF_NOT_FOUND: 'Çalışan bulunamadı',
+    APPOINTMENT_NOT_FOUND: 'Randevu bulunamadı',
+    STAFF_REQUIRED: 'Çalışan seçilmelidir',
+    INVALID_APPOINTMENT_TYPE: 'Geçersiz randevu tipi',
+    INVALID_SHIFT_TYPE: 'Geçersiz vardiya tipi',
+    INVALID_API_KEY: 'Geçersiz API key',
+    AUTH_ERROR: 'Yetkilendirme hatası. Geçerli bir API key gereklidir.',
+    UNKNOWN_ACTION: 'Bilinmeyen aksiyon',
+    SERVER_ERROR: 'Sunucuda bir hata oluştu. Lütfen tekrar deneyin.',
+    EMAIL_SEND_FAILED: 'E-posta gönderilemedi',
+    MAX_DELIVERY_REACHED: 'Bu gün için maksimum {max} teslim randevusu oluşturulabilir',
+    DAILY_DELIVERY_LIMIT: 'Günlük teslim randevu limiti ({max}) doldu',
+    PAST_TIME: 'Geçmiş saat',
+    TABLES_FULL: 'Servis masaları dolu (max 2)',
+    DELIVERY_CONFLICT: 'Bu saatte başka teslim randevusu var',
+    STAFF_CONFLICT: 'Çalışanın bu saatte randevusu var'
+  },
+
+  // Success Messages
+  SUCCESS_MESSAGES: {
+    APPOINTMENT_CREATED: 'Randevu başarıyla oluşturuldu',
+    APPOINTMENT_DELETED: 'Randevu silindi',
+    DATA_RESET: 'Veriler sıfırlandı ve yeni staff listesi yüklendi',
+    API_KEY_SENT: 'API key e-posta ile gönderildi'
+  },
+
+  // Date and Time Localization
+  LOCALIZATION: {
+    MONTHS: ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+             'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'],
+    DAYS: ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi']
+  },
+
+  // Shift Hours (used in availability calculation)
+  SHIFT_HOURS: {
+    morning: { start: '10:00', end: '14:30' },
+    evening: { start: '14:30', end: '19:00' },
+    full: { start: '10:00', end: '19:00' }
+  },
+
+  // Email Template Texts
+  EMAIL_TEMPLATES: {
+    CUSTOMER: {
+      GREETING: 'Sayın',
+      CONFIRMATION: 'Randevunuz başarı ile onaylanmıştır.',
+      LOOKING_FORWARD: 'Sizi mağazamızda ağırlamayı sabırsızlıkla bekliyoruz. Randevunuza zamanında gelmenizi rica ederiz.',
+      SECTION_TITLE: 'RANDEVU BİLGİLERİ',
+      LABELS: {
+        DATE: 'Tarih',
+        TIME: 'Saat',
+        SUBJECT: 'Konu',
+        CONTACT_PERSON: 'İlgili',
+        STORE: 'Mağaza',
+        NOTES: 'Ek Bilgi'
+      },
+      CHANGE_INFO: 'Randevunuzda herhangi bir değişiklik yapmanız gerektiği takdirde, lütfen en geç 24 saat öncesinden ilgili danışman ile irtibata geçiniz.',
+      CONTACT_INFO: 'En kısa sürede sizinle buluşmayı sabırsızlıkla bekliyoruz. Herhangi bir sorunuz olması durumunda bizimle iletişime geçmekten çekinmeyin.',
+      CLOSING: 'Saygılarımızla'
+    },
+    // YENİ: Randevu türüne göre dinamik içerik blokları
+    DELIVERY: {
+      INFO: 'Teslimat esnasında kimlik belgenizi yanınızda bulundurmanızı hatırlatmak isteriz. Ayrıca, saatinizin bakım ve kullanım koşulları hakkında kapsamlı bilgilendirme yapılacağından, teslimat için yaklaşık 30 dakikalık bir süre ayırmanızı öneririz.'
+    },
+    SERVICE: {
+      INFO: 'Teknik servis randevunuz için saatinizi ve ilgili belgeleri (garanti kartı vb.) yanınızda getirmenizi rica ederiz. Uzman ekibimiz saatinizin durumu hakkında size detaylı bilgi verecektir.'
+    },
+    MEETING: {
+      INFO: 'Görüşme randevumuzda size en iyi şekilde yardımcı olabilmemiz için özel bir zaman ayırdık.'
+    },
+    STAFF: {
+      GREETING: 'Sayın',
+      NOTIFICATION: 'Aşağıda detayları belirtilen randevu tarafınıza atanmıştır.',
+      SECTION_TITLE: 'RANDEVU BİLGİLERİ',
+      LABELS: {
+        CUSTOMER: 'Müşteri',
+        CONTACT: 'İletişim',
+        EMAIL: 'E-posta',
+        DATE: 'Tarih',
+        TIME: 'Saat',
+        SUBJECT: 'Konu',
+        CONTACT_PERSON: 'İlgili',
+        NOTES: 'Ek Bilgi'
+      },
+      PREPARATION: 'Randevuya ilişkin gerekli hazırlıkların tamamlanması rica olunur.',
+      CLOSING: 'Saygılarımızla'
+    },
+    COMMON: {
+      NOT_SPECIFIED: 'Belirtilmedi'
+    }
+  },
+
+  // ICS Calendar Texts
+  ICS_TEMPLATES: {
+    CUSTOMER_TYPES: {
+      delivery: 'Saat Takdimi',
+      service: 'Teknik Servis',      // YENİ
+      meeting: 'Genel Görüşme',
+      management: 'Yönetim'           // YENİ
+    },
+    SECTION_TITLE: 'RANDEVU BİLGİLERİ',
+    LABELS: {
+      CONTACT_PERSON: 'İlgili',
+      CONTACT: 'İletişim',
+      EMAIL: 'E-posta',
+      DATE: 'Tarih',
+      TIME: 'Saat',
+      SUBJECT: 'Konu',
+      NOTES: 'Ek Bilgi'
+    },
+    REMINDERS: {
+      ON_TIME: 'Randevunuza zamanında gelmenizi rica ederiz.',
+      BRING_ID: 'Lütfen kimlik belgenizi yanınızda bulundurun.',
+      BRING_WATCH: 'Lütfen saatinizi ve ilgili belgeleri yanınızda getirin.'  // YENİ
+    },
+    CONFIRMED: 'Randevunuz onaylandı',
+    PRODID: '-//Rolex İzmir İstinyepark//Randevu Sistemi//TR',
+    ORGANIZER_NAME: 'Rolex İzmir İstinyepark'
   }
 };
 
@@ -46,6 +196,37 @@ const VALIDATION = {
   INTERVAL_MAX: 240,
   MAX_DAILY_MIN: 1,
   MAX_DAILY_MAX: 20
+};
+
+// ==================== DATE UTILITIES ====================
+// Tarih formatlama fonksiyonları - tek yerden yönetim
+
+const DateUtils = {
+  /**
+   * ICS takvim formatında tarih döndürür (YYYYMMDDTHHmmss)
+   * @param {Date} date - Formatlanacak tarih
+   * @returns {string} ICS formatında tarih
+   */
+  toICSDate(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  },
+
+  /**
+   * Türkçe okunabilir formatta tarih döndürür
+   * Örnek: "12 Ekim 2025, Salı"
+   * @param {string} dateStr - YYYY-MM-DD formatında tarih string
+   * @returns {string} Türkçe formatında tarih
+   */
+  toTurkishDate(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getDate()} ${CONFIG.LOCALIZATION.MONTHS[d.getMonth()]} ${d.getFullYear()}, ${CONFIG.LOCALIZATION.DAYS[d.getDay()]}`;
+  }
 };
 
 // ==================== UTILITY FUNCTIONS ====================
@@ -73,8 +254,8 @@ function sanitizePhone(phone) {
 function getCalendar() {
   const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
   if (!calendar) {
-    console.error('Takvim bulunamadı. CALENDAR_ID kontrol edin:', CONFIG.CALENDAR_ID);
-    throw new Error('Takvim yapılandırması bulunamadı.');
+    log.error('Takvim bulunamadı. CALENDAR_ID kontrol edin:', CONFIG.CALENDAR_ID);
+    throw new Error(CONFIG.ERROR_MESSAGES.CALENDAR_NOT_FOUND);
   }
   return calendar;
 }
@@ -89,10 +270,10 @@ function getDateRange(dateStr) {
 // Personel doğrulama ve temizleme - DRY prensibi
 function validateAndSanitizeStaff(name, phone, email) {
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return { error: 'İsim zorunludur' };
+    return { error: CONFIG.ERROR_MESSAGES.NAME_REQUIRED };
   }
   if (email && !isValidEmail(email)) {
-    return { error: 'Geçersiz e-posta adresi' };
+    return { error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
   }
   return {
     name: sanitizeString(name, VALIDATION.STRING_MAX_LENGTH),
@@ -120,118 +301,143 @@ function mapEventToAppointment(event) {
 }
 
 // Email template'leri - kod organizasyonu için ayrı fonksiyonlar
-function getCustomerEmailTemplate(data) {
-  const { customerName, formattedDate, time, serviceName, staffName, customerNote, staffPhone, staffEmail } = data;
+
+// Generic email template builder - DRY prensibi
+function generateEmailTemplate(type, data) {
+  const config = CONFIG.EMAIL_TEMPLATES[type.toUpperCase()];
+  if (!config) throw new Error(`Geçersiz email template tipi: ${type}`);
+
+  const { GREETING, SECTION_TITLE, LABELS, CLOSING } = config;
+
+  // Ana mesaj (type'a göre farklı)
+  const mainText = type === 'customer'
+    ? `${config.CONFIRMATION}<br>${config.LOOKING_FORWARD}`
+    : config.NOTIFICATION;
+
+  // Tablo satırları - config'deki label'lara göre dinamik
+  const tableRows = Object.entries(LABELS).map(([key, label]) => {
+    const value = data[key] || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED;
+    return `
+      <tr>
+        <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">${label}</td>
+        <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${value}</td>
+      </tr>
+    `;
+  }).join('');
+
+  // Customer için ekstra paragraflar - DİNAMİK YAPI
+  let additionalContent = '';
+  if (type === 'customer') {
+    // Randevu türüne göre dinamik içerik seç
+    let typeSpecificInfo = '';
+    const { appointmentType } = data;
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY && CONFIG.EMAIL_TEMPLATES.DELIVERY) {
+      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.DELIVERY.INFO}</p>`;
+    } else if (appointmentType === CONFIG.APPOINTMENT_TYPES.SERVICE && CONFIG.EMAIL_TEMPLATES.SERVICE) {
+      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.SERVICE.INFO}</p>`;
+    } else if (CONFIG.EMAIL_TEMPLATES.MEETING) {
+      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.MEETING.INFO}</p>`;
+    }
+
+    additionalContent = `
+      ${typeSpecificInfo}
+      <p style="line-height: 1.8;">${config.CHANGE_INFO}</p>
+      <p style="line-height: 1.8;">${config.CONTACT_INFO}</p>
+      <p style="margin-top: 30px; line-height: 1.8;">
+        <strong>Tel:</strong> ${data.staffPhone}<br>
+        <strong>E-posta:</strong> ${data.staffEmail}
+      </p>
+    `;
+  } else {
+    additionalContent = `<p>${config.PREPARATION}</p>`;
+  }
 
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <p>Sayın ${customerName},</p>
-      <p>Randevunuz başarı ile onaylanmıştır.</p>
-      <p>Sizi mağazamızda ağırlamayı sabırsızlıkla bekliyoruz. Randevunuza zamanında gelmenizi rica ederiz.</p>
+      <p>${GREETING} ${data.name},</p>
+      <p>${mainText}</p>
 
       <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
-        <h3 style="margin-top: 0; color: #1A1A2E; font-weight: normal; letter-spacing: 1px;">RANDEVU BİLGİLERİ</h3>
+        <h3 style="margin-top: 0; color: #1A1A2E; font-weight: normal; letter-spacing: 1px;">${SECTION_TITLE}</h3>
         <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Tarih</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${formattedDate}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Saat</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${time}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Konu</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${serviceName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">İlgili</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${staffName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Mağaza</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${CONFIG.COMPANY_NAME}</td>
-          </tr>
-          ${customerNote ? `<tr><td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Ek Bilgi</td><td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${customerNote}</td></tr>` : ''}
+          ${tableRows}
         </table>
       </div>
 
-      <p style="line-height: 1.8;">Teslimat esnasında kimlik belgenizi yanınızda bulundurmanızı hatırlatmak isteriz. Ayrıca, saatinizin bakım ve kullanım koşulları hakkında kapsamlı bilgilendirme yapılacağından, teslimat için yaklaşık 30 dakikalık bir süre ayırmanızı öneririz.</p>
-
-      <p style="line-height: 1.8;">Randevunuzda herhangi bir değişiklik yapmanız gerektiği takdirde, lütfen en geç 24 saat öncesinden ilgili danışman ile irtibata geçiniz.</p>
-
-      <p style="line-height: 1.8;">En kısa sürede sizinle buluşmayı sabırsızlıkla bekliyoruz. Herhangi bir sorunuz olması durumunda bizimle iletişime geçmekten çekinmeyin.</p>
-
-      <p style="margin-top: 30px; line-height: 1.8;">
-        <strong>Tel:</strong> ${staffPhone}<br>
-        <strong>E-posta:</strong> ${staffEmail}
-      </p>
+      ${additionalContent}
 
       <p style="margin-top: 30px;">
-        Saygılarımızla,<br>
+        ${CLOSING},<br>
         <strong>${CONFIG.COMPANY_NAME}</strong>
       </p>
     </div>
   `;
 }
 
+function getCustomerEmailTemplate(data) {
+  // Generic template builder kullan - DİNAMİK İÇERİK İÇİN appointmentType eklendi
+  return generateEmailTemplate('customer', {
+    name: data.customerName,
+    DATE: data.formattedDate,
+    TIME: data.time,
+    SUBJECT: data.serviceName,
+    CONTACT_PERSON: data.staffName,
+    STORE: CONFIG.COMPANY_NAME,
+    NOTES: data.customerNote || '',
+    staffPhone: data.staffPhone,
+    staffEmail: data.staffEmail,
+    appointmentType: data.appointmentType  // YENİ: Dinamik içerik için
+  });
+}
+
 function generateCustomerICS(data) {
   const { staffName, staffPhone, staffEmail, date, time, duration, appointmentType, customerNote, formattedDate } = data;
-
-  // ICS tarih formatı
-  const formatICSDate = (d) => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const hours = String(d.getHours()).padStart(2, '0');
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const seconds = String(d.getSeconds()).padStart(2, '0');
-    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
-  };
 
   // Başlangıç ve bitiş zamanları
   const startDateTime = new Date(date + 'T' + time + ':00');
   const endDateTime = new Date(startDateTime.getTime() + (duration * 60 * 1000));
 
-  // Müşteri takvimi için özel isimler
-  const customerAppointmentTypeNames = {
-    'delivery': 'Saat Takdimi',
-    'consultation': 'Genel Görüşme'
-  };
-
   // Müşteri takvimi için randevu türü adı
-  const appointmentTypeName = customerAppointmentTypeNames[appointmentType] ||
+  const appointmentTypeName = CONFIG.ICS_TEMPLATES.CUSTOMER_TYPES[appointmentType] ||
     CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
   // Event başlığı: İzmir İstinyepark Rolex - İlgili (Görüşme Türü)
   const summary = `İzmir İstinyepark Rolex - ${staffName} (${appointmentTypeName})`;
 
-  // Description - Yeni sıralama: İlgili, İletişim, E-posta, Tarih, Saat, Konu, Ek Bilgi
-  let description = 'RANDEVU BİLGİLERİ\\n\\n';
-  description += `İlgili: ${staffName}\\n`;
-  description += `İletişim: ${staffPhone || 'Belirtilmedi'}\\n`;
-  description += `E-posta: ${staffEmail || 'Belirtilmedi'}\\n`;
-  description += `Tarih: ${formattedDate}\\n`;
-  description += `Saat: ${time}\\n`;
-  description += `Konu: ${appointmentTypeName}\\n`;
+  // Description - DİNAMİK YAPI: Randevu türüne göre farklı hatırlatmalar
+  let description = `${CONFIG.ICS_TEMPLATES.SECTION_TITLE}\\n\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.CONTACT_PERSON}: ${staffName}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.CONTACT}: ${staffPhone || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.EMAIL}: ${staffEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.DATE}: ${formattedDate}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.TIME}: ${time}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.SUBJECT}: ${appointmentTypeName}\\n`;
   if (customerNote) {
-    description += `Ek Bilgi: ${customerNote}\\n`;
+    description += `${CONFIG.ICS_TEMPLATES.LABELS.NOTES}: ${customerNote}\\n`;
   }
-  description += `\\nRandevunuza zamanında gelmenizi rica ederiz.\\nLütfen kimlik belgenizi yanınızda bulundurun.`;
+  description += `\\n${CONFIG.ICS_TEMPLATES.REMINDERS.ON_TIME}`;
+  // Randevu türüne göre özel hatırlatmalar
+  if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+    description += `\\n${CONFIG.ICS_TEMPLATES.REMINDERS.BRING_ID}`;
+  } else if (appointmentType === CONFIG.APPOINTMENT_TYPES.SERVICE) {
+    description += `\\n${CONFIG.ICS_TEMPLATES.REMINDERS.BRING_WATCH}`;
+  }
 
-  // Alarm - Randevu günü sabah 10:00 Türkiye saati
-  // Türkiye UTC+3 olduğu için 10:00 local = 07:00 UTC
+  // ÇOKLU ALARM SİSTEMİ - 3 Farklı Alarm
+  // Alarm 1: 1 gün önce
+  // Alarm 2: Randevu günü sabah 10:00 Türkiye saati (UTC+3 → 07:00 UTC)
+  // Alarm 3: 1 saat önce
   const appointmentDate = new Date(date);
   const alarmYear = appointmentDate.getFullYear();
   const alarmMonth = String(appointmentDate.getMonth() + 1).padStart(2, '0');
   const alarmDay = String(appointmentDate.getDate()).padStart(2, '0');
-  const alarmTrigger = `VALUE=DATE-TIME:${alarmYear}${alarmMonth}${alarmDay}T070000Z`;
+  const alarm10AM_UTC = `VALUE=DATE-TIME:${alarmYear}${alarmMonth}${alarmDay}T070000Z`;
 
-  // ICS içeriği - VTIMEZONE tanımı ile
+  // ICS içeriği - VTIMEZONE tanımı ile + 3 ALARM
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Rolex İzmir İstinyepark//Randevu Sistemi//TR',
+    `PRODID:${CONFIG.ICS_TEMPLATES.PRODID}`,
     'CALSCALE:GREGORIAN',
     'METHOD:PUBLISH',
     'BEGIN:VTIMEZONE',
@@ -246,18 +452,31 @@ function generateCustomerICS(data) {
     'END:VTIMEZONE',
     'BEGIN:VEVENT',
     `UID:rolex-${Date.now()}@istinyepark.com`,
-    `DTSTAMP:${formatICSDate(new Date())}Z`,
-    `DTSTART;TZID=Europe/Istanbul:${formatICSDate(startDateTime)}`,
-    `DTEND;TZID=Europe/Istanbul:${formatICSDate(endDateTime)}`,
+    `DTSTAMP:${DateUtils.toICSDate(new Date())}Z`,
+    `DTSTART;TZID=Europe/Istanbul:${DateUtils.toICSDate(startDateTime)}`,
+    `DTEND;TZID=Europe/Istanbul:${DateUtils.toICSDate(endDateTime)}`,
     `SUMMARY:${summary}`,
     `DESCRIPTION:${description}`,
-    'LOCATION:Rolex İzmir İstinyepark',
-    'STATUS:CONFIRMED',
-    'ORGANIZER;CN=Rolex İzmir İstinyepark:mailto:istinyeparkrolex35@gmail.com',
+    `LOCATION:${CONFIG.COMPANY_LOCATION}`,
+    `STATUS:${CONFIG.ICS_TEMPLATES.CONFIRMED}`,
+    `ORGANIZER;CN=${CONFIG.ICS_TEMPLATES.ORGANIZER_NAME}:mailto:${CONFIG.COMPANY_EMAIL}`,
+    // ALARM 1: 1 saat önce
     'BEGIN:VALARM',
-    `TRIGGER;${alarmTrigger}`,
+    'TRIGGER:-PT1H',
     'ACTION:DISPLAY',
-    'DESCRIPTION:Randevunuza zamanında gelmenizi rica ederiz. Lütfen kimlik belgenizi yanınızda bulundurun.',
+    `DESCRIPTION:Randevunuz 1 saat sonra: ${summary}`,
+    'END:VALARM',
+    // ALARM 2: 1 gün önce
+    'BEGIN:VALARM',
+    'TRIGGER:-P1D',
+    'ACTION:DISPLAY',
+    `DESCRIPTION:Randevunuz yarın: ${summary}`,
+    'END:VALARM',
+    // ALARM 3: Randevu günü sabah 10:00
+    'BEGIN:VALARM',
+    `TRIGGER;${alarm10AM_UTC}`,
+    'ACTION:DISPLAY',
+    `DESCRIPTION:Bugün randevunuz var: ${summary}`,
     'END:VALARM',
     'END:VEVENT',
     'END:VCALENDAR'
@@ -267,81 +486,155 @@ function generateCustomerICS(data) {
 }
 
 function getStaffEmailTemplate(data) {
-  const { staffName, customerName, customerPhone, customerEmail, formattedDate, time, serviceName, customerNote } = data;
-
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <p>Sayın ${staffName},</p>
-      <p>Aşağıda detayları belirtilen randevu tarafınıza atanmıştır.</p>
-
-      <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
-        <h3 style="margin-top: 0; color: #1A1A2E; font-weight: normal; letter-spacing: 1px;">RANDEVU BİLGİLERİ</h3>
-        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Müşteri</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${customerName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">İletişim</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${customerPhone}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">E-posta</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${customerEmail || 'Belirtilmedi'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Tarih</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${formattedDate}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Saat</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${time}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Konu</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${serviceName}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">İlgili</td>
-            <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${staffName}</td>
-          </tr>
-          ${customerNote ? `<tr><td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">Ek Bilgi</td><td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${customerNote}</td></tr>` : ''}
-        </table>
-      </div>
-
-      <p>Randevuya ilişkin gerekli hazırlıkların tamamlanması rica olunur.</p>
-
-      <p style="margin-top: 30px;">
-        Saygılarımızla,<br>
-        <strong>${CONFIG.COMPANY_NAME}</strong>
-      </p>
-    </div>
-  `;
+  // Generic template builder kullan
+  return generateEmailTemplate('staff', {
+    name: data.staffName,
+    CUSTOMER: data.customerName,
+    CONTACT: data.customerPhone,
+    EMAIL: data.customerEmail,
+    DATE: data.formattedDate,
+    TIME: data.time,
+    SUBJECT: data.serviceName,
+    CONTACT_PERSON: data.staffName,
+    NOTES: data.customerNote || ''
+  });
 }
 
-// ==================== CACHE (Request-scoped) ====================
-// Apps Script'te her HTTP isteği yeni execution context oluşturur
-// Bu cache'ler sadece AYNI istek içindeki çoklu çağrılar için
+// ==================== API KEY MANAGEMENT ====================
+// Admin fonksiyonları için API key yönetimi
 
-// Data cache
-let dataCache = null;
-
-function clearDataCache() {
-  dataCache = null;
+// API Key oluştur/yenile
+function generateApiKey() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let key = 'RLX_'; // Prefix for Rolex
+  for (let i = 0; i < 32; i++) {
+    key += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return key;
 }
 
-// Calendar cache - tarih/aralığa göre cache
-let calendarCache = {};
+// API Key'i kaydet
+function saveApiKey(key) {
+  const props = PropertiesService.getScriptProperties();
+  props.setProperty(CONFIG.API_KEY_PROPERTY, key);
+  return key;
+}
 
-function clearCalendarCache() {
-  calendarCache = {};
+// API Key'i getir
+function getApiKey() {
+  const props = PropertiesService.getScriptProperties();
+  let key = props.getProperty(CONFIG.API_KEY_PROPERTY);
+
+  // Eğer key yoksa yeni oluştur
+  if (!key) {
+    key = generateApiKey();
+    saveApiKey(key);
+  }
+
+  return key;
+}
+
+// API Key doğrula
+function validateApiKey(providedKey) {
+  if (!providedKey) return false;
+
+  const storedKey = getApiKey();
+  return providedKey === storedKey;
+}
+
+// API Key'i yenile (eski key ile doğrulama gerekir)
+function regenerateApiKey(oldKey) {
+  if (!validateApiKey(oldKey)) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_API_KEY };
+  }
+
+  const newKey = generateApiKey();
+  saveApiKey(newKey);
+
+  // Admin'e e-posta gönder
+  try {
+    MailApp.sendEmail({
+      to: CONFIG.ADMIN_EMAIL,
+      subject: CONFIG.EMAIL_SUBJECTS.API_KEY_RENEWED,
+      name: CONFIG.COMPANY_NAME,
+      htmlBody: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h3>API Key Yenilendi</h3>
+          <p>Randevu sistemi admin paneli API key'iniz yenilenmiştir.</p>
+          <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace;">
+            ${newKey}
+          </div>
+          <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
+          <p>Tarih: ${new Date().toLocaleString('tr-TR')}</p>
+        </div>
+      `
+    });
+  } catch (e) {
+    log.error('API key yenileme e-postası gönderilemedi:', e);
+  }
+
+  return { success: true, apiKey: newKey };
+}
+
+// İlk kurulum - API key oluştur ve admin'e gönder
+function initializeApiKey() {
+  const existingKey = getApiKey();
+
+  // Admin'e e-posta gönder
+  try {
+    MailApp.sendEmail({
+      to: CONFIG.ADMIN_EMAIL,
+      subject: CONFIG.EMAIL_SUBJECTS.API_KEY_INITIAL,
+      name: CONFIG.COMPANY_NAME,
+      htmlBody: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h3>Randevu Sistemi API Key</h3>
+          <p>Admin paneline erişim için API key'iniz:</p>
+          <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace; word-break: break-all;">
+            ${existingKey}
+          </div>
+          <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
+          <p>Admin paneline giriş yaparken bu key'i kullanın.</p>
+        </div>
+      `
+    });
+    return { success: true, message: CONFIG.SUCCESS_MESSAGES.API_KEY_SENT };
+  } catch (e) {
+    log.error('API key e-postası gönderilemedi:', e);
+    return { success: false, error: CONFIG.ERROR_MESSAGES.EMAIL_SEND_FAILED };
+  }
+}
+
+// ==================== CACHE (Script-wide with CacheService) ====================
+// Google Apps Script CacheService kullanarak gerçek cache implementasyonu
+// 15 dakika süre ile cache tutulur - API performansını dramatik şekilde artırır
+
+const CACHE_DURATION = 900; // 15 dakika (saniye cinsinden)
+const DATA_CACHE_KEY = 'app_data';
+
+// CacheService helper - DRY prensibi
+function getCache() {
+  return CacheService.getScriptCache();
 }
 
 // ==================== MAIN HANDLER ====================
+// Admin işlemleri için API key gereken action'lar
+const ADMIN_ACTIONS = [
+  'addStaff', 'toggleStaff', 'removeStaff', 'updateStaff',
+  'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
+  'regenerateApiKey',
+  'createManualAppointment',      // YENİ
+  'getTodayWhatsAppReminders'     // YENİ
+];
+
 // Action handler map - daha okunabilir ve yönetilebilir
 const ACTION_HANDLERS = {
   // Test
   'test': () => ({ status: 'ok', message: 'Apps Script çalışıyor!' }),
+
+  // API Key management
+  'initializeApiKey': () => initializeApiKey(),
+  'regenerateApiKey': (e) => regenerateApiKey(e.parameter.oldKey),
 
   // Staff management
   'getStaff': () => getStaff(),
@@ -370,6 +663,19 @@ const ACTION_HANDLERS = {
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
   'createAppointment': (e) => createAppointment(e.parameter),
 
+  // Availability calculation (server-side blocking logic)
+  'checkTimeSlotAvailability': (e) => checkTimeSlotAvailability(
+    e.parameter.date,
+    e.parameter.staffId,
+    e.parameter.shiftType,
+    e.parameter.appointmentType,
+    e.parameter.interval
+  ),
+
+  // YENİ: WhatsApp ve Manuel Randevu
+  'getTodayWhatsAppReminders': (e) => getTodayWhatsAppReminders(e.parameter.date),
+  'createManualAppointment': (e) => createManualAppointment(e.parameter),
+
   // Data management
   'resetData': () => resetData()
 };
@@ -377,57 +683,92 @@ const ACTION_HANDLERS = {
 function doGet(e) {
   try {
     const action = e.parameter.action;
-    const callback = e.parameter.callback || 'callback';
+    const apiKey = e.parameter.apiKey; // API key parametresi
+    // ✅ GÜVENLİK GÜNCELLEMESİ: JSONP desteği kaldırıldı - sadece JSON döndürülür
 
     let response = {};
 
     try {
-      // Handler'ı bul
-      const handler = ACTION_HANDLERS[action];
-
-      if (!handler) {
-        response = { success: false, error: 'Bilinmeyen aksiyon: ' + action };
+      // Admin action kontrolü - API key gerekli mi?
+      if (ADMIN_ACTIONS.includes(action)) {
+        if (!validateApiKey(apiKey)) {
+          response = {
+            success: false,
+            error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
+            requiresAuth: true
+          };
+        } else {
+          // API key geçerli, handler'ı çalıştır
+          const handler = ACTION_HANDLERS[action];
+          if (!handler) {
+            response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
+          } else {
+            response = handler(e);
+          }
+        }
       } else {
-        response = handler(e);
+        // Normal action (API key gerekmez)
+        const handler = ACTION_HANDLERS[action];
+
+        if (!handler) {
+          response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
+        } else {
+          response = handler(e);
+        }
       }
     } catch (error) {
       // Detaylı hata bilgisini sadece sunucu tarafında logla (güvenlik)
-      console.error('API Hatası:', {
+      log.error('API Hatası:', {
         message: error.message,
         stack: error.stack,
         action: action,
         parameters: e.parameter
       });
       // Kullanıcıya sadece genel hata mesajı gönder
-      response = { success: false, error: 'Sunucuda bir hata oluştu. Lütfen tekrar deneyin.' };
+      response = { success: false, error: CONFIG.ERROR_MESSAGES.SERVER_ERROR };
     }
 
-    // JSONP response
-    return ContentService
-      .createTextOutput(callback + '(' + JSON.stringify(response) + ')')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+    // ✅ Her zaman JSON döndür (JSONP desteği kaldırıldı - güvenlik iyileştirmesi)
+    const output = ContentService
+      .createTextOutput(JSON.stringify(response))
+      .setMimeType(ContentService.MimeType.JSON);
+
+    // CORS: Google Apps Script otomatik olarak Access-Control-Allow-Origin: * ekler
+    return output;
 
   } catch (mainError) {
-    // En dıştaki catch - callback bile hatalıysa
-    console.error('Ana hata:', mainError);
+    // En dıştaki catch - JSON döndür
+    log.error('Ana hata:', mainError);
+
+    const errorResponse = { success: false, error: mainError.toString() };
+
     return ContentService
-      .createTextOutput('callback({"success":false,"error":"' + mainError.toString().replace(/"/g, '\\"') + '"})')
-      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+      .createTextOutput(JSON.stringify(errorResponse))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }
 
 // ==================== DATA STORAGE ====================
 function getData() {
-  // Cache kontrolü - aynı istek içinde tekrar okumayı önle
-  if (dataCache) {
-    return dataCache;
+  const cache = getCache();
+
+  // 1. Cache'den veriyi kontrol et
+  const cachedData = cache.get(DATA_CACHE_KEY);
+  if (cachedData) {
+    try {
+      return JSON.parse(cachedData);
+    } catch (e) {
+      log.warn('Cache parse hatası:', e);
+      // Cache bozuksa devam et, PropertiesService'den oku
+    }
   }
 
+  // 2. Cache'de yok, PropertiesService'den oku
   const props = PropertiesService.getScriptProperties();
   const data = props.getProperty(CONFIG.PROPERTIES_KEY);
 
   if (!data) {
-    // Varsayılan veri
+    // 3. Varsayılan veri
     const defaultData = {
       staff: [
         { id: 1, name: 'Serdar Benli', active: true },
@@ -447,16 +788,36 @@ function getData() {
     return defaultData;
   }
 
-  dataCache = JSON.parse(data);
-  return dataCache;
+  // 4. Parse et ve cache'e kaydet
+  const parsedData = JSON.parse(data);
+  try {
+    cache.put(DATA_CACHE_KEY, data, CACHE_DURATION);
+  } catch (e) {
+    log.warn('Cache yazma hatası (veri çok büyük olabilir):', e);
+    // Cache yazılamazsa da devam et, sadece performans etkilenir
+  }
+
+  return parsedData;
 }
 
 function saveData(data) {
-  // Cache'i güncelle
-  dataCache = data;
-
   const props = PropertiesService.getScriptProperties();
-  props.setProperty(CONFIG.PROPERTIES_KEY, JSON.stringify(data));
+  const jsonData = JSON.stringify(data);
+
+  // 1. PropertiesService'e kaydet
+  props.setProperty(CONFIG.PROPERTIES_KEY, jsonData);
+
+  // 2. Cache'i temizle (veri değiştiği için)
+  const cache = getCache();
+  cache.remove(DATA_CACHE_KEY);
+
+  // 3. Yeni veriyi cache'e yaz (sonraki okumalar için)
+  try {
+    cache.put(DATA_CACHE_KEY, jsonData, CACHE_DURATION);
+  } catch (e) {
+    log.warn('Cache yazma hatası:', e);
+    // Cache yazılamazsa da devam et
+  }
 }
 
 // Tüm veriyi sıfırla ve yeni default data yükle
@@ -464,14 +825,17 @@ function resetData() {
   try {
     const props = PropertiesService.getScriptProperties();
     props.deleteProperty(CONFIG.PROPERTIES_KEY);
-    dataCache = null;
+
+    // Cache'i temizle
+    const cache = getCache();
+    cache.remove(DATA_CACHE_KEY);
 
     // Yeni default data yüklenir
     getData();
 
-    return { success: true, message: 'Veriler sıfırlandı ve yeni staff listesi yüklendi' };
+    return { success: true, message: CONFIG.SUCCESS_MESSAGES.DATA_RESET };
   } catch (error) {
-    console.error('Reset data error:', error);
+    log.error('Reset data error:', error);
     return { success: false, error: error.toString() };
   }
 }
@@ -521,7 +885,7 @@ function toggleStaff(staffId) {
       saveData(data);
       return { success: true, data: data.staff };
     }
-    return { success: false, error: 'Çalışan bulunamadı' };
+    return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -565,7 +929,7 @@ function updateStaff(staffId, name, phone, email) {
       saveData(data);
       return { success: true, data: data.staff };
     }
-    return { success: false, error: 'Çalışan bulunamadı' };
+    return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -658,12 +1022,6 @@ function getMonthShifts(month) {
 function getAppointments(date, options = {}) {
   const { countOnly = false, appointmentType = null } = options;
 
-  // Cache kontrolü - countOnly ve appointmentType'a göre farklı cache key
-  const cacheKey = `appointments_${date}_${countOnly}_${appointmentType || 'all'}`;
-  if (calendarCache[cacheKey]) {
-    return calendarCache[cacheKey];
-  }
-
   try {
     const calendar = getCalendar();
     const { startDate, endDate } = getDateRange(date);
@@ -679,22 +1037,15 @@ function getAppointments(date, options = {}) {
 
     // Sadece count istendiyse, map'leme yapmadan döndür (performans optimizasyonu)
     if (countOnly) {
-      const result = { success: true, count: events.length };
-      calendarCache[cacheKey] = result;
-      return result;
+      return { success: true, count: events.length };
     }
 
     // Tüm veri istendiyse map'le
     const appointments = events.map(event => mapEventToAppointment(event));
+    return { success: true, items: appointments };
 
-    const result = { success: true, items: appointments };
-
-    // Cache'e kaydet
-    calendarCache[cacheKey] = result;
-
-    return result;
   } catch (error) {
-    console.error('getAppointments hatası:', error);
+    log.error('getAppointments hatası:', error);
     return countOnly
       ? { success: true, count: 0 }
       : { success: true, items: [] };
@@ -703,12 +1054,6 @@ function getAppointments(date, options = {}) {
 
 // Haftalık randevuları getir
 function getWeekAppointments(startDateStr, endDateStr) {
-  // Cache kontrolü
-  const cacheKey = 'week_' + startDateStr + '_' + endDateStr;
-  if (calendarCache[cacheKey]) {
-    return calendarCache[cacheKey];
-  }
-
   try {
     const calendar = getCalendar();
     const startDate = new Date(startDateStr + 'T00:00:00');
@@ -716,15 +1061,10 @@ function getWeekAppointments(startDateStr, endDateStr) {
     const events = calendar.getEvents(startDate, endDate);
 
     const appointments = events.map(event => mapEventToAppointment(event));
+    return { success: true, items: appointments };
 
-    const result = { success: true, items: appointments };
-
-    // Cache'e kaydet
-    calendarCache[cacheKey] = result;
-
-    return result;
   } catch (error) {
-    console.error('getWeekAppointments hatası:', error);
+    log.error('getWeekAppointments hatası:', error);
     return { success: true, items: [] };
   }
 }
@@ -735,26 +1075,20 @@ function deleteAppointment(eventId) {
     const calendar = getCalendar();
     const event = calendar.getEventById(eventId);
     if (!event) {
-      return { success: false, error: 'Randevu bulunamadı' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
     }
 
     event.deleteEvent();
-    console.info('Randevu silindi:', eventId);
-    return { success: true, message: 'Randevu silindi' };
+    log.info('Randevu silindi:', eventId);
+    return { success: true, message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_DELETED };
   } catch (error) {
-    console.error('deleteAppointment hatası:', error);
+    log.error('deleteAppointment hatası:', error);
     return { success: false, error: error.toString() };
   }
 }
 
 // Bir ay için tüm randevuları getir
 function getMonthAppointments(month) {
-  // Cache kontrolü
-  const cacheKey = 'month_' + month;
-  if (calendarCache[cacheKey]) {
-    return calendarCache[cacheKey];
-  }
-
   try {
     const calendar = getCalendar();
 
@@ -781,26 +1115,16 @@ function getMonthAppointments(month) {
       appointmentsByDate[eventDate].push(mapEventToAppointment(event));
     });
 
-    const result = { success: true, data: appointmentsByDate };
+    return { success: true, data: appointmentsByDate };
 
-    // Cache'e kaydet
-    calendarCache[cacheKey] = result;
-
-    return result;
   } catch (error) {
-    console.error('getMonthAppointments hatası:', error);
-    return { success: true, data: {} }; // Hata olsa bile boş sonuç dön
+    log.error('getMonthAppointments hatası:', error);
+    return { success: true, data: {} };
   }
 }
 
 // Google Calendar'dan mevcut etkinlikleri getir
 function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
-  // Cache kontrolü - staffId de cache key'ine dahil (filtreleme yapıyor)
-  const cacheKey = 'events_' + startDateStr + '_' + endDateStr + '_' + staffId;
-  if (calendarCache[cacheKey]) {
-    return calendarCache[cacheKey];
-  }
-
   try {
     const calendar = getCalendar();
     const startDate = new Date(startDateStr + 'T00:00:00');
@@ -863,15 +1187,11 @@ function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
       });
     });
 
-    const result = { success: true, data: eventsByDate };
+    return { success: true, data: eventsByDate };
 
-    // Cache'e kaydet
-    calendarCache[cacheKey] = result;
-
-    return result;
   } catch (error) {
-    console.error('getGoogleCalendarEvents hatası:', error);
-    return { success: true, data: {} }; // Hata olsa bile boş sonuç dön
+    log.error('getGoogleCalendarEvents hatası:', error);
+    return { success: true, data: {} };
   }
 }
 
@@ -895,33 +1215,33 @@ function createAppointment(params) {
     // ===== VALIDATION =====
     // Date validation (YYYY-MM-DD format)
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return { success: false, error: 'Geçersiz tarih formatı (YYYY-MM-DD bekleniyor)' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
     }
 
     // Time validation (HH:MM format)
     if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-      return { success: false, error: 'Geçersiz saat formatı (HH:MM bekleniyor)' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_TIME_FORMAT };
     }
 
     // Customer name validation
     if (!customerName || typeof customerName !== 'string' || customerName.trim().length === 0) {
-      return { success: false, error: 'Müşteri adı zorunludur' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_NAME_REQUIRED };
     }
 
     // Customer phone validation
     if (!customerPhone || typeof customerPhone !== 'string' || customerPhone.trim().length === 0) {
-      return { success: false, error: 'Müşteri telefonu zorunludur' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_PHONE_REQUIRED };
     }
 
     // Email validation (optional but if provided must be valid)
     if (customerEmail && !isValidEmail(customerEmail)) {
-      return { success: false, error: 'Geçersiz e-posta adresi' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
     }
 
     // Appointment type validation
     const validTypes = Object.values(CONFIG.APPOINTMENT_TYPES);
     if (!appointmentType || !validTypes.includes(appointmentType)) {
-      return { success: false, error: `Geçersiz randevu tipi (${validTypes.join(' veya ')} olmalı)` };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_APPOINTMENT_TYPE };
     }
 
     // Duration validation
@@ -932,7 +1252,7 @@ function createAppointment(params) {
 
     // Staff ID validation
     if (!staffId) {
-      return { success: false, error: 'Çalışan seçilmelidir' };
+      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
     }
 
     // Sanitize inputs
@@ -958,7 +1278,7 @@ function createAppointment(params) {
       if (countResult.success && countResult.count >= maxDelivery) {
         return {
           success: false,
-          error: `Bu gün için maksimum ${maxDelivery} teslim randevusu oluşturulabilir`
+          error: CONFIG.ERROR_MESSAGES.MAX_DELIVERY_REACHED.replace('{max}', maxDelivery)
         };
       }
     }
@@ -979,7 +1299,7 @@ Randevu Detayları:
 ─────────────────
 Müşteri: ${sanitizedCustomerName}
 Telefon: ${sanitizedCustomerPhone}
-E-posta: ${sanitizedCustomerEmail || 'Belirtilmedi'}
+E-posta: ${sanitizedCustomerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
 İlgili: ${sanitizedStaffName}
 Konu: ${appointmentTypeLabel}
 
@@ -1001,16 +1321,8 @@ Bu randevu otomatik olarak oluşturulmuştur.
     event.setTag('shiftType', shiftType);
     event.setTag('appointmentType', appointmentType);
 
-    // Tarih formatla (7 Ekim 2025, Salı)
-    const formatDate = (dateStr) => {
-      const d = new Date(dateStr);
-      const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-      const months = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-      return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}, ${days[d.getDay()]}`;
-    };
-
-    const formattedDate = formatDate(date);
+    // Tarih formatla (7 Ekim 2025, Salı) - DateUtils kullan
+    const formattedDate = DateUtils.toTurkishDate(date);
     const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
     // Staff bilgisini çek (data zaten yukarıda çekildi)
@@ -1050,12 +1362,13 @@ Bu randevu otomatik olarak oluşturulmuştur.
             staffName: sanitizedStaffName,
             customerNote: sanitizedCustomerNote,
             staffPhone,
-            staffEmail
+            staffEmail,
+            appointmentType    // YENİ: Dinamik içerik için
           }),
           attachments: [icsBlob]
         });
       } catch (emailError) {
-        console.error('Müşteri e-postası gönderilemedi:', emailError);
+        log.error('Müşteri e-postası gönderilemedi:', emailError);
       }
     }
 
@@ -1091,16 +1404,342 @@ Bu randevu otomatik olarak oluşturulmuştur.
       });
 
     } catch (staffEmailError) {
-      console.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
+      log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
     }
 
     return {
       success: true,
       eventId: event.getId(),
-      message: 'Randevu başarıyla oluşturuldu'
+      message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_CREATED
     };
 
   } catch (error) {
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== WHATSAPP HATIRLATMA ====================
+// YENİ: WhatsApp hatırlatma linklerini oluştur
+/**
+ * Belirli bir tarihteki randevular için WhatsApp hatırlatma linkleri oluşturur
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @returns {Object} { success: true, data: [{ customerName, startTime, link }] }
+ */
+function getTodayWhatsAppReminders(date) {
+  try {
+    const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
+    const calendar = getCalendar();
+    const { startDate, endDate } = getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
+    const events = calendar.getEvents(startDate, endDate);
+
+    const reminders = events.map(event => {
+      const phoneTag = event.getTag('customerPhone');
+      if (!phoneTag) return null; // Telefonu yoksa atla
+
+      const customerName = event.getTitle().split(' - ')[0]; // "Müşteri Adı - Personel (Tür)" formatından adı al
+      const startTime = Utilities.formatDate(event.getStartTime(), CONFIG.TIMEZONE, 'HH:mm');
+
+      // WhatsApp mesajı
+      const message = `Merhaba ${customerName}, bugünkü Rolex randevunuzu saat ${startTime} için hatırlatmak istedik. Görüşmek üzere!`;
+      const encodedMessage = encodeURIComponent(message);
+
+      // Türkiye telefon formatı: 05XX XXX XX XX → 905XXXXXXXXX
+      const cleanPhone = phoneTag.replace(/\D/g, ''); // Sadece rakamlar
+      const phone = cleanPhone.startsWith('0') ? '90' + cleanPhone.substring(1) : cleanPhone;
+      const link = `https://wa.me/${phone}?text=${encodedMessage}`;
+
+      return { customerName, startTime, link };
+    }).filter(Boolean); // null'ları filtrele
+
+    return { success: true, data: reminders };
+  } catch (error) {
+    log.error('getTodayWhatsAppReminders error:', error);
+    return { success: false, error: 'Hatırlatmalar oluşturulurken bir hata oluştu.' };
+  }
+}
+
+// ==================== MANUEL RANDEVU OLUŞTURMA ====================
+// YENİ: Admin panelinden manuel randevu oluşturma
+/**
+ * Manuel randevu oluşturur (admin paneli için)
+ * MANAGEMENT tipi randevular için limitler uygulanmaz ve e-posta gönderilmez
+ * @param {Object} params - { date, time, staffId, customerName, customerPhone, customerEmail, customerNote, appointmentType, duration }
+ * @returns {Object} { success, eventId?, error? }
+ */
+function createManualAppointment(params) {
+  try {
+    const { date, time, staffId, customerName, customerPhone, customerEmail, customerNote, appointmentType, duration } = params;
+
+    // Temel validasyon
+    if (!date || !time || !customerName || !staffId) {
+      return { success: false, error: 'Tarih, saat, müşteri adı ve personel zorunludur.' };
+    }
+
+    const data = getData();
+    const staff = data.staff.find(s => s.id == staffId);
+    if (!staff) return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+
+    const isManagement = appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT;
+
+    // Sanitization
+    const sanitizedCustomerName = sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH);
+    const sanitizedCustomerPhone = sanitizePhone(customerPhone);
+    const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
+    const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
+
+    // Başlangıç ve bitiş zamanları
+    const durationNum = parseInt(duration) || 60;
+    const startDateTime = new Date(`${date}T${time}:00`);
+    const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
+
+    // Event başlığı
+    const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
+    const title = `${sanitizedCustomerName} - ${staff.name} (${appointmentTypeLabel})`;
+
+    // Event açıklaması
+    const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
+
+    // Event oluştur
+    const calendar = getCalendar();
+    const event = calendar.createEvent(title, startDateTime, endDateTime, { description });
+
+    // Tag'leri ekle
+    event.setTag('staffId', String(staffId));
+    event.setTag('appointmentType', appointmentType);
+    event.setTag('customerPhone', sanitizedCustomerPhone);
+    event.setTag('customerEmail', sanitizedCustomerEmail);
+
+    // YÖNETİM randevusu değilse ve e-posta varsa, müşteriye e-posta gönder
+    if (!isManagement && sanitizedCustomerEmail && isValidEmail(sanitizedCustomerEmail)) {
+      try {
+        const formattedDate = DateUtils.toTurkishDate(date);
+        const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
+
+        // ICS oluştur
+        const icsContent = generateCustomerICS({
+          staffName: staff.name,
+          staffPhone: staff.phone || '',
+          staffEmail: staff.email || '',
+          date,
+          time,
+          duration: durationNum,
+          appointmentType,
+          customerNote: sanitizedCustomerNote,
+          formattedDate
+        });
+
+        const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+
+        // E-posta gönder
+        MailApp.sendEmail({
+          to: sanitizedCustomerEmail,
+          subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
+          name: CONFIG.COMPANY_NAME,
+          replyTo: staff.email || CONFIG.ADMIN_EMAIL,
+          htmlBody: getCustomerEmailTemplate({
+            customerName: sanitizedCustomerName,
+            formattedDate,
+            time,
+            serviceName,
+            staffName: staff.name,
+            customerNote: sanitizedCustomerNote,
+            staffPhone: staff.phone || '',
+            staffEmail: staff.email || '',
+            appointmentType
+          }),
+          attachments: [icsBlob]
+        });
+      } catch (emailError) {
+        log.error('Manuel randevu e-posta gönderilemedi:', emailError);
+      }
+    }
+
+    return { success: true, eventId: event.getId(), message: 'Manuel randevu oluşturuldu.' };
+  } catch (error) {
+    log.error('createManualAppointment error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== AVAILABILITY CALCULATION ====================
+// ✅ Tek kaynak: Tüm blokaj kuralları server'da hesaplanır
+// Maksimum 2 masa / teslim blokajı mantığı
+
+/**
+ * Belirli bir gün için tüm zaman slotlarının müsaitlik durumunu hesapla
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {string} staffId - Çalışan ID'si
+ * @param {string} shiftType - Vardiya tipi ('morning', 'evening', 'full')
+ * @param {string} appointmentType - Randevu tipi ('delivery', 'meeting')
+ * @param {number} interval - Randevu süresi (dakika)
+ * @returns {Object} { success: true, slots: [{time: 'HH:MM', available: boolean, reason: string}] }
+ */
+function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, interval) {
+  try {
+    // Parametreleri valide et
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+    }
+
+    const intervalNum = parseInt(interval);
+    if (isNaN(intervalNum) || intervalNum < VALIDATION.INTERVAL_MIN) {
+      return { success: false, error: 'Geçersiz interval değeri' };
+    }
+
+    // Vardiya saatlerini CONFIG'den al
+    const shift = CONFIG.SHIFT_HOURS[shiftType];
+    if (!shift) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_SHIFT_TYPE };
+    }
+
+    // Zaman slotlarını oluştur
+    const slots = [];
+    const [startHour, startMinute] = shift.start.split(':').map(Number);
+    const [endHour, endMinute] = shift.end.split(':').map(Number);
+    const startMinutes = startHour * 60 + startMinute;
+    const endMinutes = endHour * 60 + endMinute;
+
+    for (let minutes = startMinutes; minutes < endMinutes; minutes += intervalNum) {
+      const hours = Math.floor(minutes / 60);
+      const mins = minutes % 60;
+      const timeStr = String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+      slots.push(timeStr);
+    }
+
+    // Google Calendar'dan randevuları getir
+    const calendar = getCalendar();
+    const { startDate, endDate } = getDateRange(date);
+    const events = calendar.getEvents(startDate, endDate);
+
+    // Data ayarlarını al (günlük max teslim sayısı için)
+    const data = getData();
+    const maxDelivery = data.settings?.maxDaily || 4;
+
+    // Teslim randevusu sayısını hesapla (günlük limit kontrolü için)
+    let dailyDeliveryCount = 0;
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+      dailyDeliveryCount = events.filter(event => {
+        const eventType = event.getTag('appointmentType');
+        if (eventType !== CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+          return false;
+        }
+
+        // Bugünse ve saat geçmişse sayma
+        const now = new Date();
+        const todayStr = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+
+        if (date === todayStr) {
+          const eventTime = Utilities.formatDate(
+            event.getStartTime(),
+            CONFIG.TIMEZONE,
+            'HH:mm'
+          );
+          const currentTime = Utilities.formatDate(now, CONFIG.TIMEZONE, 'HH:mm');
+          if (eventTime < currentTime) {
+            return false;
+          }
+        }
+
+        return true;
+      }).length;
+
+      // Eğer günlük limit dolmuşsa, tüm slotları bloke et
+      if (dailyDeliveryCount >= maxDelivery) {
+        return {
+          success: true,
+          slots: slots.map(time => ({
+            time: time,
+            available: false,
+            reason: CONFIG.ERROR_MESSAGES.DAILY_DELIVERY_LIMIT.replace('{max}', maxDelivery)
+          })),
+          dailyDeliveryCount: dailyDeliveryCount
+        };
+      }
+    }
+
+    // Şu anki zaman (geçmiş slot kontrolü için)
+    const now = new Date();
+    const todayStr = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+    const currentTime = date === todayStr ? Utilities.formatDate(now, CONFIG.TIMEZONE, 'HH:mm') : null;
+
+    // Her slot için müsaitlik kontrolü
+    const availabilityResults = slots.map(timeStr => {
+      // 1. Geçmiş zaman kontrolü (bugünse)
+      if (currentTime && timeStr <= currentTime) {
+        return {
+          time: timeStr,
+          available: false,
+          reason: CONFIG.ERROR_MESSAGES.PAST_TIME
+        };
+      }
+
+      // 2. Bu saatteki tüm randevuları bul
+      const sameTimeEvents = events.filter(event => {
+        const eventTime = Utilities.formatDate(
+          event.getStartTime(),
+          CONFIG.TIMEZONE,
+          'HH:mm'
+        );
+        return eventTime === timeStr;
+      });
+
+      // 3. Maksimum 2 servis masası kontrolü
+      if (sameTimeEvents.length >= 2) {
+        return {
+          time: timeStr,
+          available: false,
+          reason: CONFIG.ERROR_MESSAGES.TABLES_FULL
+        };
+      }
+
+      // 4. Teslim randevusu özel kuralları
+      if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+        // Aynı saatte başka teslim randevusu var mı?
+        const hasDeliveryAtSameTime = sameTimeEvents.some(event => {
+          const eventType = event.getTag('appointmentType');
+          return eventType === CONFIG.APPOINTMENT_TYPES.DELIVERY;
+        });
+
+        if (hasDeliveryAtSameTime) {
+          return {
+            time: timeStr,
+            available: false,
+            reason: CONFIG.ERROR_MESSAGES.DELIVERY_CONFLICT
+          };
+        }
+      }
+
+      // 5. Aynı çalışanda randevu var mı?
+      const staffConflict = sameTimeEvents.some(event => {
+        const eventStaffId = event.getTag('staffId');
+        return eventStaffId && eventStaffId === String(staffId);
+      });
+
+      if (staffConflict) {
+        return {
+          time: timeStr,
+          available: false,
+          reason: CONFIG.ERROR_MESSAGES.STAFF_CONFLICT
+        };
+      }
+
+      // Tüm kontroller geçildi, slot müsait
+      return {
+        time: timeStr,
+        available: true,
+        reason: ''
+      };
+    });
+
+    return {
+      success: true,
+      slots: availabilityResults,
+      dailyDeliveryCount: dailyDeliveryCount,
+      maxDelivery: maxDelivery
+    };
+
+  } catch (error) {
+    log.error('checkTimeSlotAvailability hatası:', error);
     return { success: false, error: error.toString() };
   }
 }
