@@ -20,6 +20,12 @@ const CONFIG = {
   PROPERTIES_KEY: 'RANDEVU_DATA',
   API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
 
+  // WhatsApp Business Cloud API
+  WHATSAPP_API_VERSION: 'v18.0',
+  WHATSAPP_PHONE_NUMBER_ID: '', // Meta Business'tan alınacak
+  WHATSAPP_ACCESS_TOKEN: '', // Meta Business'tan alınacak (permanent token)
+  WHATSAPP_BUSINESS_ACCOUNT_ID: '', // Meta Business'tan alınacak
+
   // Company Info
   COMPANY_NAME: 'Rolex İzmir İstinyepark',
   COMPANY_LOCATION: 'Rolex İzmir İstinyepark',
@@ -658,7 +664,10 @@ const ADMIN_ACTIONS = [
   'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
   'regenerateApiKey',
   'createManualAppointment',      // YENİ
-  'getTodayWhatsAppReminders'     // YENİ
+  'getTodayWhatsAppReminders',    // YENİ
+  'sendWhatsAppReminders',        // YENİ: WhatsApp Business API
+  'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
+  'getWhatsAppSettings'           // YENİ: WhatsApp Business API
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -709,6 +718,11 @@ const ACTION_HANDLERS = {
   // YENİ: WhatsApp ve Manuel Randevu
   'getTodayWhatsAppReminders': (e) => getTodayWhatsAppReminders(e.parameter.date),
   'createManualAppointment': (e) => createManualAppointment(e.parameter),
+
+  // WhatsApp Business Cloud API
+  'sendWhatsAppReminders': (e) => sendWhatsAppReminders(e.parameter.date, e.parameter.apiKey),
+  'updateWhatsAppSettings': (e) => updateWhatsAppSettings(JSON.parse(e.parameter.settings), e.parameter.apiKey),
+  'getWhatsAppSettings': (e) => getWhatsAppSettings(e.parameter.apiKey),
 
   // Data management
   'resetData': () => resetData()
@@ -1802,4 +1816,247 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
     return { success: false, error: error.toString() };
   }
 }
+
+// ==================== WHATSAPP BUSINESS CLOUD API ====================
+
+/**
+ * WhatsApp Business Cloud API ile mesaj gönder
+ * @param {string} phoneNumber - Alıcı telefon numarası (90XXXXXXXXXX formatında)
+ * @param {string} message - Gönderilecek mesaj
+ * @returns {Object} - {success: boolean, messageId?: string, error?: string}
+ */
+function sendWhatsAppMessage(phoneNumber, message) {
+  try {
+    // Config kontrolü
+    if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
+      throw new Error('WhatsApp API ayarları yapılmamış! WHATSAPP_PHONE_NUMBER_ID ve WHATSAPP_ACCESS_TOKEN gerekli.');
+    }
+
+    // Telefon numarasını temizle (sadece rakamlar)
+    const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+
+    // Meta WhatsApp Cloud API endpoint
+    const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+    // Request payload
+    const payload = {
+      messaging_product: 'whatsapp',
+      to: cleanPhone,
+      type: 'text',
+      text: {
+        body: message
+      }
+    };
+
+    // API çağrısı
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        'Authorization': `Bearer ${CONFIG.WHATSAPP_ACCESS_TOKEN}`
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const responseCode = response.getResponseCode();
+    const responseData = JSON.parse(response.getContentText());
+
+    if (responseCode === 200) {
+      log.info('WhatsApp mesajı gönderildi:', responseData);
+      return {
+        success: true,
+        messageId: responseData.messages[0].id,
+        phone: cleanPhone
+      };
+    } else {
+      log.error('WhatsApp API hatası:', responseData);
+      return {
+        success: false,
+        error: responseData.error?.message || 'Bilinmeyen hata',
+        errorCode: responseData.error?.code
+      };
+    }
+
+  } catch (error) {
+    log.error('sendWhatsAppMessage hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Bugünkü randevular için WhatsApp hatırlatmaları gönder
+ * @param {string} date - Tarih (YYYY-MM-DD formatında)
+ * @param {string} apiKey - Admin API key
+ * @returns {Object} - {success: boolean, sent: number, failed: number, details: []}
+ */
+function sendWhatsAppReminders(date, apiKey) {
+  try {
+    // API key kontrolü
+    if (!validateApiKey(apiKey)) {
+      throw new Error('Geçersiz API key');
+    }
+
+    // WhatsApp config yükle
+    loadWhatsAppConfig();
+
+    // Bugünkü randevuları al
+    const reminders = getTodayWhatsAppReminders(date);
+
+    if (!reminders.success || reminders.data.length === 0) {
+      return {
+        success: true,
+        sent: 0,
+        failed: 0,
+        message: 'Bu tarihte randevu bulunamadı'
+      };
+    }
+
+    const results = [];
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Her randevu için mesaj gönder
+    for (const reminder of reminders.data) {
+      // Link'ten telefon ve mesajı çıkar
+      const linkParts = reminder.link.split('?');
+      const phone = linkParts[0].split('/').pop();
+      const encodedMessage = linkParts[1]?.replace('text=', '') || '';
+      const message = decodeURIComponent(encodedMessage);
+
+      // WhatsApp mesajı gönder
+      const result = sendWhatsAppMessage(phone, message);
+
+      if (result.success) {
+        sentCount++;
+        results.push({
+          customer: reminder.customerName,
+          phone: phone,
+          status: 'success',
+          messageId: result.messageId
+        });
+      } else {
+        failedCount++;
+        results.push({
+          customer: reminder.customerName,
+          phone: phone,
+          status: 'failed',
+          error: result.error
+        });
+      }
+
+      // Rate limiting - Meta: 80 mesaj/saniye, ama güvenli olmak için bekleyelim
+      Utilities.sleep(100); // 100ms bekle
+    }
+
+    return {
+      success: true,
+      sent: sentCount,
+      failed: failedCount,
+      total: reminders.data.length,
+      details: results
+    };
+
+  } catch (error) {
+    log.error('sendWhatsAppReminders hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * WhatsApp API ayarlarını güncelle (sadece admin)
+ * @param {Object} settings - {phoneNumberId, accessToken, businessAccountId}
+ * @param {string} apiKey - Admin API key
+ * @returns {Object} - {success: boolean}
+ */
+function updateWhatsAppSettings(settings, apiKey) {
+  try {
+    // API key kontrolü
+    if (!validateApiKey(apiKey)) {
+      throw new Error('Geçersiz API key');
+    }
+
+    // Settings'i Script Properties'e kaydet
+    const scriptProperties = PropertiesService.getScriptProperties();
+
+    if (settings.phoneNumberId) {
+      scriptProperties.setProperty('WHATSAPP_PHONE_NUMBER_ID', settings.phoneNumberId);
+    }
+    if (settings.accessToken) {
+      scriptProperties.setProperty('WHATSAPP_ACCESS_TOKEN', settings.accessToken);
+    }
+    if (settings.businessAccountId) {
+      scriptProperties.setProperty('WHATSAPP_BUSINESS_ACCOUNT_ID', settings.businessAccountId);
+    }
+
+    return {
+      success: true,
+      message: 'WhatsApp ayarları güncellendi'
+    };
+
+  } catch (error) {
+    log.error('updateWhatsAppSettings hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * WhatsApp API ayarlarını getir (sadece durum, token gösterme)
+ * @param {string} apiKey - Admin API key
+ * @returns {Object} - {success: boolean, configured: boolean}
+ */
+function getWhatsAppSettings(apiKey) {
+  try {
+    // API key kontrolü
+    if (!validateApiKey(apiKey)) {
+      throw new Error('Geçersiz API key');
+    }
+
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const phoneNumberId = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+    const accessToken = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN');
+    const businessAccountId = scriptProperties.getProperty('WHATSAPP_BUSINESS_ACCOUNT_ID');
+
+    return {
+      success: true,
+      configured: !!(phoneNumberId && accessToken),
+      hasPhoneNumberId: !!phoneNumberId,
+      hasAccessToken: !!accessToken,
+      hasBusinessAccountId: !!businessAccountId
+    };
+
+  } catch (error) {
+    log.error('getWhatsAppSettings hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+// ==================== WHATSAPP HELPER ====================
+
+/**
+ * Script Properties'den WhatsApp config'i yükle (internal kullanım)
+ */
+function loadWhatsAppConfig() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+
+  CONFIG.WHATSAPP_PHONE_NUMBER_ID = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID') || '';
+  CONFIG.WHATSAPP_ACCESS_TOKEN = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN') || '';
+  CONFIG.WHATSAPP_BUSINESS_ACCOUNT_ID = scriptProperties.getProperty('WHATSAPP_BUSINESS_ACCOUNT_ID') || '';
+}
+
+// Script başlatıldığında config'i yükle
+loadWhatsAppConfig();
 

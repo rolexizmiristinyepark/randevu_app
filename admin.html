@@ -442,18 +442,38 @@
 
         <!-- RANDEVULAR -->
         <div id="appointments" class="tab-content">
+            <!-- WhatsApp Business API Ayarları -->
+            <div class="card">
+                <div class="card-title">⚙️ WhatsApp Business API Ayarları</div>
+                <div class="alert alert-info">
+                    <strong>📌 Bilgi:</strong> Meta WhatsApp Business Cloud API kullanarak direkt mesaj gönderebilirsiniz. Ücretsiz (1000 mesaj/ay).
+                </div>
+                <div id="whatsappApiStatus" style="margin-bottom: 15px;"></div>
+                <div class="input-group">
+                    <label for="whatsappPhoneNumberId">Phone Number ID</label>
+                    <input type="text" id="whatsappPhoneNumberId" placeholder="123456789012345">
+                </div>
+                <div class="input-group">
+                    <label for="whatsappAccessToken">Access Token (Permanent)</label>
+                    <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx">
+                </div>
+                <button class="btn" id="saveWhatsAppSettingsBtn">💾 Ayarları Kaydet</button>
+            </div>
+
             <!-- WhatsApp Hatırlatma -->
             <div class="card">
-                <div class="card-title">💬 WhatsApp Hatırlatmaları</div>
+                <div class="card-title">📤 WhatsApp Mesaj Gönder</div>
                 <div class="alert alert-info">
-                    <strong>📌 Bilgi:</strong> Belirli bir tarihteki randevular için WhatsApp hatırlatma linkleri oluşturabilirsiniz.
+                    <strong>📌 Bilgi:</strong> Tek tıklamayla tüm mesajlar otomatik olarak gönderilir. Hiçbir manuel işlem gerekmez!
                 </div>
                 <div class="input-group">
                     <label for="reminderDate">Tarih Seç</label>
                     <input type="date" id="reminderDate" style="flex: 1;">
                 </div>
-                <button class="btn" id="generateWhatsAppBtn">💬 Linkler Oluştur</button>
-                <div id="whatsappLinksContainer" style="margin-top: 20px;"></div>
+                <button class="btn" id="sendWhatsAppBtn" style="background: #25d366; font-size: 16px; padding: 12px 24px;">
+                    📤 GÖNDER
+                </button>
+                <div id="whatsappStatusContainer" style="margin-top: 20px;"></div>
             </div>
 
             <!-- Randevu Listesi -->
@@ -1568,114 +1588,154 @@
             document.getElementById('filterWeek')?.addEventListener('change', () => Appointments.load());
 
             // WhatsApp Reminder
-            document.getElementById('generateWhatsAppBtn')?.addEventListener('click', async () => {
+            // ==================== WHATSAPP BUSINESS API ====================
+
+            // WhatsApp API durumunu yükle
+            async function loadWhatsAppSettings() {
+                try {
+                    const response = await ApiService.call('getWhatsAppSettings', {});
+                    if (response.success) {
+                        const statusEl = document.getElementById('whatsappApiStatus');
+                        if (response.configured) {
+                            statusEl.innerHTML = `
+                                <div style="padding: 12px; background: #e8f5e9; border-left: 4px solid #4caf50; border-radius: 4px;">
+                                    <strong>✅ WhatsApp API Yapılandırıldı</strong>
+                                    <div style="font-size: 13px; margin-top: 5px; color: #2e7d32;">
+                                        Phone Number ID: ✓ | Access Token: ✓
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            statusEl.innerHTML = `
+                                <div style="padding: 12px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
+                                    <strong>⚠️ WhatsApp API Yapılandırılmamış</strong>
+                                    <div style="font-size: 13px; margin-top: 5px; color: #e65100;">
+                                        Lütfen aşağıdaki bilgileri girin.
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (error) {
+                    console.error('WhatsApp ayarları yüklenemedi:', error);
+                }
+            }
+
+            // WhatsApp ayarlarını kaydet
+            document.getElementById('saveWhatsAppSettingsBtn')?.addEventListener('click', async () => {
+                const phoneNumberId = document.getElementById('whatsappPhoneNumberId').value.trim();
+                const accessToken = document.getElementById('whatsappAccessToken').value.trim();
+
+                if (!phoneNumberId || !accessToken) {
+                    UI.showAlert('⚠️ Lütfen tüm alanları doldurun!', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await ApiService.call('updateWhatsAppSettings', {
+                        settings: JSON.stringify({
+                            phoneNumberId: phoneNumberId,
+                            accessToken: accessToken
+                        })
+                    });
+
+                    if (response.success) {
+                        UI.showAlert('✅ WhatsApp ayarları kaydedildi!', 'success');
+                        document.getElementById('whatsappPhoneNumberId').value = '';
+                        document.getElementById('whatsappAccessToken').value = '';
+                        loadWhatsAppSettings();
+                    } else {
+                        UI.showAlert('❌ Hata: ' + response.error, 'error');
+                    }
+                } catch (error) {
+                    UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+                }
+            });
+
+            // WhatsApp mesaj gönder
+            document.getElementById('sendWhatsAppBtn')?.addEventListener('click', async () => {
                 const date = document.getElementById('reminderDate').value;
                 if (!date) {
                     UI.showAlert('⚠️ Lütfen tarih seçin', 'error');
                     return;
                 }
 
+                const btn = document.getElementById('sendWhatsAppBtn');
+                const container = document.getElementById('whatsappStatusContainer');
+                const originalText = btn.textContent;
+
                 try {
-                    const response = await ApiService.call('getTodayWhatsAppReminders', { date });
+                    btn.disabled = true;
+                    btn.textContent = '⏳ Gönderiliyor...';
+                    btn.style.background = '#999';
+
+                    container.innerHTML = `
+                        <div style="padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center;">
+                            <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
+                            <div style="font-size: 16px; font-weight: bold; color: #333;">Mesajlar Gönderiliyor...</div>
+                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Lütfen bekleyin, bu birkaç saniye sürebilir.</div>
+                        </div>
+                    `;
+
+                    const response = await ApiService.call('sendWhatsAppReminders', { date });
+
                     if (response.success) {
-                        const container = document.getElementById('whatsappLinksContainer');
-                        if (response.data.length === 0) {
-                            container.innerHTML = '<div style="padding: 15px; background: #f0f0f0; border-radius: 8px; text-align: center;">Bu tarihte randevu bulunamadı.</div>';
-                        } else {
-                            // Otomatik Gönder butonu
-                            const autoSendBtn = `
-                                <div style="margin-bottom: 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 12px; color: white;">
-                                    <button id="autoSendWhatsAppBtn" class="btn" style="background: white; color: #667eea; padding: 14px 28px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
-                                        🤖 Otomatik Gönder (${response.data.length} mesaj)
-                                    </button>
-                                    <p style="margin-top: 12px; font-size: 14px; opacity: 0.95;">
-                                        Tüm mesajlar otomatik olarak gönderilecek. Hiçbir manuel işlem gerekmez!
-                                    </p>
+                        const {sent, failed, total, details} = response;
+
+                        container.innerHTML = `
+                            <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center; margin-bottom: 20px;">
+                                <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                                <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Gönderim Tamamlandı!</div>
+                                <div style="font-size: 18px;">
+                                    ✅ ${sent} başarılı ${failed > 0 ? `• ❌ ${failed} başarısız` : ''} / Toplam: ${total}
                                 </div>
-                            `;
+                            </div>
 
-                            // Sadece liste olarak göster (buton yok)
-                            const customerList = response.data.map((item, index) => `
-                                <div style="padding: 12px 15px; background: #f9f9f9; border-left: 4px solid #667eea; border-radius: 6px; margin-bottom: 8px;">
-                                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                                        <div>
-                                            <strong>${index + 1}. ${escapeHtml(item.customerName)}</strong>
-                                            <span style="color: #666; margin-left: 10px;">${item.startTime}</span>
-                                        </div>
-                                        <span style="background: #e8f5e9; color: #2e7d32; padding: 4px 12px; border-radius: 12px; font-size: 12px;">✓ Hazır</span>
-                                    </div>
-                                </div>
-                            `).join('');
-
-                            container.innerHTML = autoSendBtn + '<div style="margin-top: 20px;">' + customerList + '</div>';
-
-                            // Otomatik Gönder butonuna event listener ekle
-                            document.getElementById('autoSendWhatsAppBtn')?.addEventListener('click', () => {
-                                const selectedDate = document.getElementById('reminderDate')?.value || new Date().toISOString().split('T')[0];
-                                const isToday = selectedDate === new Date().toISOString().split('T')[0];
-                                const fileName = isToday ? 'WhatsApp_Otomatik_Gonder_BUGUN.command' : 'WhatsApp_Otomatik_Gonder_TARIH_SEC.command';
-                                const folderPath = '/Users/serdarbenli/Desktop/new project/randevu-sistemi-main/whatsapp-automation';
-
-                                // Instruction göster
-                                const instructions = `
-                                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 12px; text-align: center; color: white; margin-bottom: 20px;">
-                                        <h2 style="margin: 0 0 10px 0; font-size: 28px;">⚡ TEK TIKLA GÖNDER</h2>
-                                        <p style="margin: 0; font-size: 16px; opacity: 0.95;">${response.data.length} mesaj hazır!</p>
-                                    </div>
-
-                                    <div style="background: #f5f5f5; padding: 25px; border-radius: 8px; text-align: left;">
-                                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #667eea;">
-                                            <h3 style="margin: 0 0 15px 0; color: #667eea; font-size: 20px;">📂 ADIM 1: Finder'ı Açın</h3>
-                                            <p style="margin: 0 0 10px 0; font-size: 15px;">Aşağıdaki butona tıklayın:</p>
-                                            <button onclick="window.open('file://${folderPath}')" style="background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-weight: bold;">
-                                                📁 Klasörü Aç
-                                            </button>
-                                        </div>
-
-                                        <div style="background: white; padding: 20px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #764ba2;">
-                                            <h3 style="margin: 0 0 15px 0; color: #764ba2; font-size: 20px;">🖱️ ADIM 2: Dosyaya Çift Tıklayın</h3>
-                                            <p style="margin: 0 0 10px 0; font-size: 15px;">Bu dosyayı bulun ve <strong>ÇİFT TIKLAYIN:</strong></p>
-                                            <div style="background: #2d2d2d; color: #4ade80; padding: 12px; border-radius: 6px; font-family: monospace; font-size: 14px; font-weight: bold; text-align: center;">
-                                                ${fileName}
+                            ${details && details.length > 0 ? `
+                                <div style="background: #f9f9f9; border-radius: 8px; padding: 15px;">
+                                    <h4 style="margin: 0 0 15px 0;">📋 Detaylar:</h4>
+                                    ${details.map(d => `
+                                        <div style="padding: 10px; margin-bottom: 8px; background: ${d.status === 'success' ? '#e8f5e9' : '#ffebee'}; border-left: 4px solid ${d.status === 'success' ? '#4caf50' : '#f44336'}; border-radius: 4px;">
+                                            <div style="font-weight: bold;">${d.status === 'success' ? '✅' : '❌'} ${escapeHtml(d.customer)}</div>
+                                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                                                ${d.phone}${d.messageId ? ` • ID: ${d.messageId.substring(0, 20)}...` : ''}
+                                                ${d.error ? ` • Hata: ${d.error}` : ''}
                                             </div>
                                         </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        `;
 
-                                        <div style="background: white; padding: 20px; border-radius: 8px; border-left: 4px solid #10b981;">
-                                            <h3 style="margin: 0 0 15px 0; color: #10b981; font-size: 20px;">⏳ ADIM 3: Bekleyin</h3>
-                                            <p style="margin: 0; font-size: 15px;">
-                                                ✅ Chrome otomatik açılacak (arka planda)<br>
-                                                ✅ ${isToday ? 'Bugünün' : 'Seçilen tarihin'} mesajları otomatik gönderilecek<br>
-                                                ✅ Bitince bildirim alacaksınız<br><br>
-                                                ${!isToday ? '<strong>⚠️ Not:</strong> Tarih seçmek için dosya açıldığında tarih girin<br>' : ''}
-                                                <strong>🔴 İlk seferde:</strong> WhatsApp QR kod okutmanız gerekebilir (sadece bir kez)
-                                            </p>
-                                        </div>
-                                    </div>
-                                `;
-
-                                // Modal göster
-                                const modal = document.createElement('div');
-                                modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 10000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(5px);';
-                                modal.innerHTML = `
-                                    <div style="background: white; padding: 30px; border-radius: 16px; max-width: 650px; width: 90%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
-                                        ${instructions}
-                                        <button onclick="this.closest('div[style*=fixed]').remove()" class="btn btn-primary" style="margin-top: 20px; width: 100%; padding: 14px; font-size: 17px; background: #667eea; border: none; border-radius: 8px; color: white; font-weight: bold; cursor: pointer;">
-                                            ✓ Anladım, Başlıyorum
-                                        </button>
-                                    </div>
-                                `;
-                                document.body.appendChild(modal);
-
-                                UI.showAlert('📂 Klasörü açın ve .command dosyasına çift tıklayın!', 'success');
-                            });
-                        }
+                        UI.showAlert(`✅ ${sent} mesaj başarıyla gönderildi!`, 'success');
                     } else {
-                        UI.showAlert('❌ ' + response.error, 'error');
+                        container.innerHTML = `
+                            <div style="padding: 20px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 8px;">
+                                <div style="font-size: 20px; font-weight: bold; color: #c62828; margin-bottom: 10px;">❌ Hata Oluştu</div>
+                                <div style="color: #666;">${response.error || 'Bilinmeyen hata'}</div>
+                            </div>
+                        `;
+                        UI.showAlert('❌ Hata: ' + response.error, 'error');
                     }
                 } catch (error) {
-                    UI.showAlert('❌ Hatırlatmalar oluşturulamadı', 'error');
+                    container.innerHTML = `
+                        <div style="padding: 20px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 8px;">
+                            <div style="font-size: 20px; font-weight: bold; color: #c62828; margin-bottom: 10px;">❌ Bağlantı Hatası</div>
+                            <div style="color: #666;">${error.message}</div>
+                        </div>
+                    `;
+                    UI.showAlert('❌ Bağlantı hatası: ' + error.message, 'error');
+                } finally {
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                    btn.style.background = '#25d366';
                 }
             });
+
+            // WhatsApp ayarlarını sayfa yüklendiğinde kontrol et
+            if (document.getElementById('whatsappApiStatus')) {
+                loadWhatsAppSettings();
+            }
         }
 
         // Start initialization when DOM is ready
