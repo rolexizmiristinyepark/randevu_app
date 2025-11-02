@@ -1820,12 +1820,13 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
 // ==================== WHATSAPP BUSINESS CLOUD API ====================
 
 /**
- * WhatsApp Business Cloud API ile mesaj gönder
+ * WhatsApp Business Cloud API ile TEMPLATE mesaj gönder
  * @param {string} phoneNumber - Alıcı telefon numarası (90XXXXXXXXXX formatında)
- * @param {string} message - Gönderilecek mesaj
+ * @param {string} customerName - Müşteri adı ({{1}} parametresi)
+ * @param {string} appointmentDateTime - Randevu tarih ve saat ({{2}} parametresi, örn: "21 Ekim 2025, 14:30")
  * @returns {Object} - {success: boolean, messageId?: string, error?: string}
  */
-function sendWhatsAppMessage(phoneNumber, message) {
+function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime) {
   try {
     // Config kontrolü
     if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
@@ -1838,13 +1839,31 @@ function sendWhatsAppMessage(phoneNumber, message) {
     // Meta WhatsApp Cloud API endpoint
     const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
-    // Request payload
+    // Template payload (Meta onaylı template kullanıyoruz)
     const payload = {
       messaging_product: 'whatsapp',
       to: cleanPhone,
-      type: 'text',
-      text: {
-        body: message
+      type: 'template',
+      template: {
+        name: 'randevu_hatirlatma_v1',  // Template name
+        language: {
+          code: 'tr'  // Turkish
+        },
+        components: [
+          {
+            type: 'body',
+            parameters: [
+              {
+                type: 'text',
+                text: customerName  // {{1}} - Müşteri adı
+              },
+              {
+                type: 'text',
+                text: appointmentDateTime  // {{2}} - Tarih ve saat
+              }
+            ]
+          }
+        ]
       }
     };
 
@@ -1864,7 +1883,7 @@ function sendWhatsAppMessage(phoneNumber, message) {
     const responseData = JSON.parse(response.getContentText());
 
     if (responseCode === 200) {
-      log.info('WhatsApp mesajı gönderildi:', responseData);
+      log.info('WhatsApp template mesajı gönderildi:', responseData);
       return {
         success: true,
         messageId: responseData.messages[0].id,
@@ -1875,7 +1894,8 @@ function sendWhatsAppMessage(phoneNumber, message) {
       return {
         success: false,
         error: responseData.error?.message || 'Bilinmeyen hata',
-        errorCode: responseData.error?.code
+        errorCode: responseData.error?.code,
+        errorDetails: responseData.error
       };
     }
 
@@ -1886,6 +1906,25 @@ function sendWhatsAppMessage(phoneNumber, message) {
       error: error.toString()
     };
   }
+}
+
+/**
+ * Tarih ve saati Türkçe formata çevir (21 Ekim 2025, 14:30)
+ * @param {string} dateStr - YYYY-MM-DD formatında tarih
+ * @param {string} timeStr - HH:MM formatında saat
+ * @returns {string} - Türkçe formatlanmış tarih ve saat
+ */
+function formatAppointmentDateTime(dateStr, timeStr) {
+  const months = {
+    '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+    '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+    '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+  };
+
+  const [year, month, day] = dateStr.split('-');
+  const monthName = months[month] || month;
+
+  return `${parseInt(day)} ${monthName} ${year}, ${timeStr}`;
 }
 
 /**
@@ -1922,19 +1961,23 @@ function sendWhatsAppReminders(date, apiKey) {
 
     // Her randevu için mesaj gönder
     for (const reminder of reminders.data) {
-      // Link'ten telefon ve mesajı çıkar
+      // Link'ten telefon çıkar
       const linkParts = reminder.link.split('?');
       const phone = linkParts[0].split('/').pop();
-      const encodedMessage = linkParts[1]?.replace('text=', '') || '';
-      const message = decodeURIComponent(encodedMessage);
 
-      // WhatsApp mesajı gönder
-      const result = sendWhatsAppMessage(phone, message);
+      // Müşteri adı
+      const customerName = reminder.customerName;
+
+      // Tarih ve saati formatla (21 Ekim 2025, 14:30)
+      const appointmentDateTime = formatAppointmentDateTime(reminder.date, reminder.time);
+
+      // WhatsApp template mesajı gönder
+      const result = sendWhatsAppMessage(phone, customerName, appointmentDateTime);
 
       if (result.success) {
         sentCount++;
         results.push({
-          customer: reminder.customerName,
+          customer: customerName,
           phone: phone,
           status: 'success',
           messageId: result.messageId
@@ -1942,7 +1985,7 @@ function sendWhatsAppReminders(date, apiKey) {
       } else {
         failedCount++;
         results.push({
-          customer: reminder.customerName,
+          customer: customerName,
           phone: phone,
           status: 'failed',
           error: result.error
