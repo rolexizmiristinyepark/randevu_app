@@ -81,34 +81,41 @@ const AdminAuth = {
             .admin-auth-input {
                 width: 100%;
                 padding: 12px;
-                border: 2px solid #e0e0e0;
-                border-radius: 8px;
-                font-size: 15px;
-                font-family: monospace;
+                border: 1px solid #E8E8E8;
+                border-radius: 2px;
+                font-size: 14px;
+                font-family: 'Montserrat', monospace, sans-serif;
                 box-sizing: border-box;
+                transition: all 0.3s;
             }
 
             .admin-auth-input:focus {
                 outline: none;
-                border-color: #667eea;
+                border-color: #C9A55A;
+                box-shadow: 0 0 0 2px rgba(201, 165, 90, 0.1);
             }
 
             .admin-auth-btn {
                 width: 100%;
                 padding: 14px;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-size: 16px;
-                font-weight: 600;
+                background: #1A1A2E;
+                color: #FAFAFA;
+                border: 1px solid #1A1A2E;
+                border-radius: 2px;
+                font-size: 12px;
+                font-weight: 500;
+                letter-spacing: 1.5px;
+                text-transform: uppercase;
                 cursor: pointer;
                 transition: all 0.3s;
+                font-family: 'Montserrat', sans-serif;
             }
 
             .admin-auth-btn:hover:not(:disabled) {
-                transform: translateY(-2px);
-                box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+                background: #C9A55A;
+                border-color: #C9A55A;
+                transform: translateY(-1px);
+                box-shadow: 0 4px 12px rgba(201, 165, 90, 0.2);
             }
 
             .admin-auth-btn:disabled {
@@ -119,29 +126,35 @@ const AdminAuth = {
             .admin-auth-divider {
                 margin-top: 25px;
                 padding-top: 25px;
-                border-top: 1px solid #e0e0e0;
+                border-top: 1px solid #E8E8E8;
                 text-align: center;
             }
 
             .admin-auth-help-text {
-                color: #999;
-                font-size: 13px;
+                color: #757575;
+                font-size: 11px;
+                letter-spacing: 0.5px;
                 margin-bottom: 15px;
             }
 
             .admin-auth-btn-secondary {
                 padding: 10px 20px;
-                background: #6c757d;
-                color: white;
-                border: none;
-                border-radius: 6px;
-                font-size: 14px;
+                background: white;
+                color: #1A1A2E;
+                border: 1px solid #E8E8E8;
+                border-radius: 2px;
+                font-size: 11px;
+                font-weight: 500;
+                letter-spacing: 1px;
+                text-transform: uppercase;
                 cursor: pointer;
                 transition: all 0.3s;
+                font-family: 'Montserrat', sans-serif;
             }
 
             .admin-auth-btn-secondary:hover:not(:disabled) {
-                opacity: 0.9;
+                background: #FAFAFA;
+                border-color: #C9A55A;
             }
 
             .admin-auth-btn-secondary:disabled {
@@ -151,20 +164,27 @@ const AdminAuth = {
 
             .admin-logout-btn {
                 position: absolute;
-                right: 20px;
-                top: 20px;
-                padding: 8px 16px;
-                background: rgba(255, 255, 255, 0.2);
-                color: white;
-                border: 1px solid rgba(255, 255, 255, 0.3);
-                border-radius: 6px;
-                font-size: 14px;
+                right: 25px;
+                top: 50%;
+                transform: translateY(-50%);
+                padding: 8px 18px;
+                background: transparent;
+                color: #757575;
+                border: 1px solid #E8E8E8;
+                border-radius: 2px;
+                font-size: 10px;
+                font-weight: 500;
+                letter-spacing: 1px;
+                text-transform: uppercase;
                 cursor: pointer;
                 transition: all 0.3s;
+                font-family: 'Montserrat', sans-serif;
             }
 
             .admin-logout-btn:hover {
-                background: rgba(255, 255, 255, 0.3);
+                background: #1A1A2E;
+                color: #FAFAFA;
+                border-color: #1A1A2E;
             }
         `;
         document.head.appendChild(styles);
