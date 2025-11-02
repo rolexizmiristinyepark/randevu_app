@@ -231,12 +231,15 @@
         }
 
         .staff-status {
-            padding: 4px 12px;
+            padding: 3px 10px;
             border-radius: 2px;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 400;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
             text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
         }
 
         .status-active {
@@ -252,6 +255,7 @@
         .staff-actions {
             display: flex;
             gap: 10px;
+            align-items: center;
         }
 
         /* Modal */
@@ -339,9 +343,67 @@
 
         .shift-table select {
             width: 100%;
-            padding: 5px;
-            border: 2px solid #e0e0e0;
-            border-radius: 5px;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Montserrat', sans-serif;
+            appearance: none;
+            text-align: center;
+        }
+
+        /* Vardiya renkleri - Modern lüks açık tonlar */
+        .shift-table select[data-shift=""] {
+            background: #FFE5E5;
+            color: #C62828;
+        }
+
+        .shift-table select[data-shift="morning"] {
+            background: #FFF9E5;
+            color: #F57C00;
+        }
+
+        .shift-table select[data-shift="evening"] {
+            background: #E5F5F0;
+            color: #00897B;
+        }
+
+        .shift-table select[data-shift="full"] {
+            background: #FFE9D9;
+            color: #E65100;
+        }
+
+        /* Responsive - Küçük ekranlarda kısaltmalar */
+        .shift-full-text {
+            display: inline;
+        }
+
+        .shift-short-text {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            .shift-full-text {
+                display: none;
+            }
+
+            .shift-short-text {
+                display: inline;
+            }
+
+            .shift-table th,
+            .shift-table td {
+                padding: 8px 4px;
+            }
+
+            .shift-table select {
+                padding: 6px 4px;
+                font-size: 12px;
+            }
         }
 
         @media (max-width: 768px) {
@@ -369,7 +431,7 @@
 
         <div class="tabs">
             <div class="tab active" data-tab="settings">Ayarlar</div>
-            <div class="tab" data-tab="staff">Çalışanlar</div>
+            <div class="tab" data-tab="staff">İlgili Personel</div>
             <div class="tab" data-tab="shifts">Vardiyalar</div>
             <div class="tab" data-tab="appointments">Randevular</div>
         </div>
@@ -406,15 +468,15 @@
             </div>
 
             <div class="card">
-                <div class="card-title">Çalışan Özel Linkleri</div>
+                <div class="card-title">İlgili Personel Özel Linkleri</div>
                 <div id="staffLinks" style="margin-top: 15px;"></div>
             </div>
         </div>
 
-        <!-- ÇALIŞANLAR -->
+        <!-- İLGİLİ PERSONEL -->
         <div id="staff" class="tab-content">
             <div class="card">
-                <div class="card-title">Yeni Çalışan</div>
+                <div class="card-title">Yeni Personel</div>
                 <div class="input-group">
                     <label for="newStaffName">İsim</label>
                     <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
@@ -431,7 +493,7 @@
             </div>
 
             <div class="card">
-                <div class="card-title">Çalışanlar (<span id="staffCount">0</span>)</div>
+                <div class="card-title">İlgili Personel (<span id="staffCount">0</span>)</div>
                 <div class="staff-list" id="staffList"></div>
             </div>
         </div>
@@ -485,10 +547,10 @@
             </div>
         </div>
 
-        <!-- Çalışan Düzenleme Modal -->
+        <!-- Personel Düzenleme Modal -->
         <div id="editStaffModal" class="modal">
             <div class="modal-content">
-                <div class="modal-header">Çalışan Düzenle</div>
+                <div class="modal-header">Personel Düzenle</div>
                 <div class="input-group">
                     <label for="editStaffName">İsim</label>
                     <input type="text" id="editStaffName">
@@ -541,7 +603,7 @@
                         this.staff = response.data;
                     }
                 } catch (error) {
-                    console.error('Çalışanlar yüklenemedi:', error);
+                    console.error('İlgili personel yüklenemedi:', error);
                 }
             },
 
@@ -685,7 +747,7 @@
                 if (Data.staff.length === 0) {
                     const emptyMsg = createElement('p', {
                         style: { textAlign: 'center', color: '#999', padding: '20px' }
-                    }, 'Henüz çalışan yok');
+                    }, 'Henüz personel yok');
                     list.appendChild(emptyMsg);
                     return;
                 }
@@ -724,7 +786,7 @@
                     const editBtn = createElement('button', {
                         className: 'btn btn-small btn-secondary',
                         'data-action': 'edit',      // Eylem türü
-                        'data-staff-id': s.id       // İlgili çalışan ID
+                        'data-staff-id': s.id       // İlgili personel ID
                     }, 'Düzenle');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
@@ -732,7 +794,7 @@
                     const toggleBtn = createElement('button', {
                         className: `btn btn-small btn-secondary`,
                         'data-action': 'toggle',    // Eylem türü
-                        'data-staff-id': s.id       // İlgili çalışan ID
+                        'data-staff-id': s.id       // İlgili personel ID
                     }, s.active ? 'Pasif' : 'Aktif');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
@@ -740,7 +802,7 @@
                     const removeBtn = createElement('button', {
                         className: 'btn btn-small btn-secondary',
                         'data-action': 'remove',    // Eylem türü
-                        'data-staff-id': s.id       // İlgili çalışan ID
+                        'data-staff-id': s.id       // İlgili personel ID
                     }, 'Sil');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
@@ -756,7 +818,7 @@
 
                 list.appendChild(fragment);
 
-                // Çalışan linklerini güncelle
+                // Personel linklerini güncelle
                 this.renderLinks();
             },
 
@@ -772,7 +834,7 @@
                 if (activeStaff.length === 0) {
                     const emptyMsg = createElement('p', {
                         style: { textAlign: 'center', color: '#999', padding: '20px' }
-                    }, 'Henüz çalışan yok');
+                    }, 'Henüz personel yok');
                     container.appendChild(emptyMsg);
                     return;
                 }
@@ -917,7 +979,7 @@
                         Data.staff = response.data;
                         this.render();
                         this.closeEditModal();
-                        UI.showAlert('✅ Çalışan güncellendi!', 'success');
+                        UI.showAlert('✅ Personel güncellendi!', 'success');
                     } else {
                         UI.showAlert('❌ Hata: ' + response.error, 'error');
                     }
@@ -1052,8 +1114,8 @@
                 const thead = createElement('thead');
                 const headerRow = createElement('tr');
 
-                // First header cell - "Çalışan"
-                const staffHeader = createElement('th', {}, 'Çalışan');
+                // First header cell - "İlgili"
+                const staffHeader = createElement('th', {}, 'İlgili');
                 headerRow.appendChild(staffHeader);
 
                 // Day headers
@@ -1097,19 +1159,28 @@
                         const select = createElement('select', {
                             className: 'shift-select',
                             'data-staff': staff.id,
-                            'data-date': dateKey
+                            'data-date': dateKey,
+                            'data-shift': current  // Renk için
                         });
 
-                        // Options
-                        const opt1 = createElement('option', { value: '' }, 'H. İzin');
-                        const opt2 = createElement('option', { value: 'morning' }, 'Sabah');
-                        const opt3 = createElement('option', { value: 'evening' }, 'Akşam');
-                        const opt4 = createElement('option', { value: 'full' }, 'Full');
+                        // Options - Responsive text ile
+                        const opt1 = createElement('option', { value: '' });
+                        opt1.innerHTML = '<span class="shift-full-text">İzin</span><span class="shift-short-text">İzin</span>';
+
+                        const opt2 = createElement('option', { value: 'morning' });
+                        opt2.innerHTML = '<span class="shift-full-text">Sabah</span><span class="shift-short-text">S</span>';
+
+                        const opt3 = createElement('option', { value: 'evening' });
+                        opt3.innerHTML = '<span class="shift-full-text">Akşam</span><span class="shift-short-text">A</span>';
+
+                        const opt4 = createElement('option', { value: 'full' });
+                        opt4.innerHTML = '<span class="shift-full-text">Full</span><span class="shift-short-text">F</span>';
 
                         // Set selected option
                         if (current === 'morning') opt2.selected = true;
                         if (current === 'evening') opt3.selected = true;
                         if (current === 'full') opt4.selected = true;
+                        if (current === '') opt1.selected = true;
 
                         select.appendChild(opt1);
                         select.appendChild(opt2);
@@ -1184,16 +1255,32 @@
                         style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
                     });
 
-                    // Week title
+                    // Week title - Tıklanabilir
                     const titleDiv = createElement('div', {
-                        style: { fontWeight: '400', fontSize: '13px', color: '#1A1A2E', letterSpacing: '0.5px' }
+                        style: {
+                            fontWeight: '400',
+                            fontSize: '13px',
+                            color: '#1A1A2E',
+                            letterSpacing: '0.5px',
+                            cursor: 'pointer',
+                            flex: '1'
+                        }
                     }, `${weekStartDate.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`);
+                    titleDiv.addEventListener('click', () => {
+                        Shifts.loadWeek(weekStart);
+                        // Yukarı scroll yap
+                        document.getElementById('shiftTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
 
                     // Edit button
                     const editBtn = createElement('button', {
                         className: 'btn btn-small btn-secondary'
                     }, 'Düzenle');
-                    editBtn.addEventListener('click', () => Shifts.loadWeek(weekStart));
+                    editBtn.addEventListener('click', () => {
+                        Shifts.loadWeek(weekStart);
+                        // Yukarı scroll yap
+                        document.getElementById('shiftTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    });
 
                     headerDiv.appendChild(titleDiv);
                     headerDiv.appendChild(editBtn);
@@ -1584,6 +1671,13 @@
             document.getElementById('weekDate')?.addEventListener('change', () => Shifts.load());
             document.getElementById('nextWeekBtn')?.addEventListener('click', () => Shifts.nextWeek());
             document.getElementById('saveShiftsBtn')?.addEventListener('click', () => Shifts.save());
+
+            // Shift select change event - data-shift attribute'ünü güncelle (renk için)
+            document.getElementById('shiftTable')?.addEventListener('change', (e) => {
+                if (e.target.classList.contains('shift-select')) {
+                    e.target.setAttribute('data-shift', e.target.value);
+                }
+            });
 
             // Appointment filter
             document.getElementById('filterWeek')?.addEventListener('change', () => Appointments.load());
