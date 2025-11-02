@@ -26,6 +26,9 @@ const CONFIG = {
   WHATSAPP_ACCESS_TOKEN: '', // Meta Business'tan alınacak (permanent token)
   WHATSAPP_BUSINESS_ACCOUNT_ID: '', // Meta Business'tan alınacak
 
+  // Slack Webhook (Script Properties'den yüklenecek)
+  SLACK_WEBHOOK_URL: '',
+
   // Company Info
   COMPANY_NAME: 'Rolex İzmir İstinyepark',
   COMPANY_LOCATION: 'Rolex İzmir İstinyepark',
@@ -2347,19 +2350,197 @@ function getWhatsAppSettings(apiKey) {
   }
 }
 
-// ==================== WHATSAPP HELPER ====================
+// ==================== EXTERNAL CONFIG HELPER ====================
 
 /**
- * Script Properties'den WhatsApp config'i yükle (internal kullanım)
+ * Script Properties'den external config'leri yükle (internal kullanım)
+ * WhatsApp ve Slack gibi dış servis ayarları
  */
-function loadWhatsAppConfig() {
+function loadExternalConfigs() {
   const scriptProperties = PropertiesService.getScriptProperties();
 
+  // WhatsApp Config
   CONFIG.WHATSAPP_PHONE_NUMBER_ID = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID') || '';
   CONFIG.WHATSAPP_ACCESS_TOKEN = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN') || '';
   CONFIG.WHATSAPP_BUSINESS_ACCOUNT_ID = scriptProperties.getProperty('WHATSAPP_BUSINESS_ACCOUNT_ID') || '';
+
+  // Slack Config
+  CONFIG.SLACK_WEBHOOK_URL = scriptProperties.getProperty('SLACK_WEBHOOK_URL') || '';
 }
 
-// Script başlatıldığında config'i yükle
-loadWhatsAppConfig();
+// Backward compatibility
+function loadWhatsAppConfig() {
+  loadExternalConfigs();
+}
+
+// Script başlatıldığında config'leri yükle
+loadExternalConfigs();
+
+// ==================== SLACK ENTEGRASYONU ====================
+
+/**
+ * GÜNLÜK OTOMATİK SLACK BİLDİRİMLERİ
+ * Her gün sabah 10:00'da çalışır (Time-driven trigger ile)
+ * Bugünün randevularını Slack'e gönderir
+ *
+ * NOT: Bu fonksiyon trigger tarafından otomatik çağrılır, API key gerekmez
+ *
+ * Kurulum:
+ * 1. Apps Script editörde: Triggers (⏰) → Add Trigger
+ * 2. Function: sendDailySlackReminders
+ * 3. Event source: Time-driven
+ * 4. Type: Day timer
+ * 5. Time: 10am to 11am
+ * 6. Save
+ */
+function sendDailySlackReminders() {
+  try {
+    // Bugünün tarihini hesapla
+    const today = new Date();
+    const todayDateStr = Utilities.formatDate(today, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+    const todayFormatted = Utilities.formatDate(today, CONFIG.TIMEZONE, 'd MMMM yyyy, EEEE');
+
+    log.info(`Slack bildirimi gönderiliyor: ${todayDateStr}`);
+
+    // Bugünün randevularını al
+    const reminders = getTodayWhatsAppReminders(todayDateStr);
+
+    if (!reminders.success) {
+      log.error('Randevular alınamadı:', reminders.error);
+      return { success: false, error: reminders.error };
+    }
+
+    const appointments = reminders.data || [];
+
+    // Slack mesajını formatla
+    const slackMessage = formatSlackMessage(appointments, todayFormatted);
+
+    // Slack'e gönder
+    const response = UrlFetchApp.fetch(CONFIG.SLACK_WEBHOOK_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(slackMessage),
+      muteHttpExceptions: true
+    });
+
+    const responseCode = response.getResponseCode();
+
+    if (responseCode === 200) {
+      log.info(`Slack bildirimi başarıyla gönderildi. Randevu sayısı: ${appointments.length}`);
+      return {
+        success: true,
+        appointmentCount: appointments.length,
+        date: todayDateStr
+      };
+    } else {
+      log.error('Slack webhook hatası:', response.getContentText());
+      return {
+        success: false,
+        error: `Slack webhook hatası: ${responseCode}`
+      };
+    }
+
+  } catch (error) {
+    log.error('sendDailySlackReminders hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Slack mesajını formatla (Slack Block Kit kullanarak)
+ */
+function formatSlackMessage(appointments, dateFormatted) {
+  const appointmentTypeEmojis = {
+    'delivery': '📦',
+    'service': '🔧',
+    'meeting': '💼',
+    'management': '👔'
+  };
+
+  const appointmentTypeNames = {
+    'delivery': 'Teslim',
+    'service': 'Teknik Servis',
+    'meeting': 'Görüşme',
+    'management': 'Yönetim'
+  };
+
+  // Header
+  const blocks = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: '📅 BUGÜNÜN RANDEVULARI',
+        emoji: true
+      }
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `*${dateFormatted}*\n_${CONFIG.COMPANY_NAME}_`
+      }
+    },
+    {
+      type: 'divider'
+    }
+  ];
+
+  // Randevular yoksa
+  if (appointments.length === 0) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: '✨ Bugün randevu yok!'
+      }
+    });
+  } else {
+    // Her randevu için
+    appointments.forEach((apt, index) => {
+      const emoji = appointmentTypeEmojis[apt.appointmentType] || '📋';
+      const typeName = appointmentTypeNames[apt.appointmentType] || apt.appointmentType;
+
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*🕐 ${apt.time}* - ${emoji} ${typeName}\n` +
+                `👤 *${apt.customerName}*\n` +
+                `📱 ${apt.customerPhone}\n` +
+                `👨‍💼 İlgili: ${apt.staffName}` +
+                (apt.customerNote ? `\n📝 _${apt.customerNote}_` : '')
+        }
+      });
+
+      // Son randevudan sonra divider ekleme
+      if (index < appointments.length - 1) {
+        blocks.push({
+          type: 'divider'
+        });
+      }
+    });
+
+    // Footer
+    blocks.push(
+      {
+        type: 'divider'
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `📊 *Toplam: ${appointments.length} randevu*`
+          }
+        ]
+      }
+    );
+  }
+
+  return { blocks };
+}
 
