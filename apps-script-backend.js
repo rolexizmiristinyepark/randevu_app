@@ -2086,6 +2086,174 @@ function sendWhatsAppReminders(date, apiKey) {
 }
 
 /**
+ * GÜNLÜK OTOMATİK WHATSAPP HATIRLAT İCİLERİ
+ * Her gün sabah 10:00'da çalışır (Time-driven trigger ile)
+ * Ertesi günün randevuları için WhatsApp mesajı gönderir
+ *
+ * NOT: Bu fonksiyon trigger tarafından otomatik çağrılır, API key gerekmez
+ *
+ * Kurulum:
+ * 1. Apps Script editörde: Triggers (⏰) → Add Trigger
+ * 2. Function: sendDailyWhatsAppReminders
+ * 3. Event source: Time-driven
+ * 4. Type: Day timer
+ * 5. Time: 10am to 11am
+ * 6. Save
+ */
+function sendDailyWhatsAppReminders() {
+  try {
+    // WhatsApp config yükle
+    loadWhatsAppConfig();
+
+    // Config kontrolü
+    if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
+      log.error('WhatsApp API ayarları yapılmamış! Otomatik mesajlar gönderilemez.');
+      return {
+        success: false,
+        error: 'WhatsApp API ayarları yapılmamış'
+      };
+    }
+
+    // Yarının tarihini hesapla (ertesi gün)
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowDateStr = Utilities.formatDate(tomorrow, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+
+    log.info(`Otomatik WhatsApp hatırlatıcıları gönderiliyor: ${tomorrowDateStr}`);
+
+    // Yarının randevularını al
+    const reminders = getTodayWhatsAppReminders(tomorrowDateStr);
+
+    if (!reminders.success || reminders.data.length === 0) {
+      log.info(`${tomorrowDateStr} tarihinde randevu bulunamadı.`);
+      return {
+        success: true,
+        sent: 0,
+        failed: 0,
+        message: 'Yarın için randevu yok'
+      };
+    }
+
+    const results = [];
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Her randevu için mesaj gönder
+    for (const reminder of reminders.data) {
+      // Link'ten telefon çıkar
+      const linkParts = reminder.link.split('?');
+      const phone = linkParts[0].split('/').pop();
+
+      // Müşteri adı
+      const customerName = reminder.customerName;
+
+      // Tarih ve saati formatla (21 Ekim 2025, 14:30)
+      const appointmentDateTime = formatAppointmentDateTime(reminder.date, reminder.time);
+
+      // İlgili personel
+      const staffName = reminder.staffName;
+
+      // Görüşme türü (küçük harf)
+      const appointmentType = reminder.appointmentType.toLowerCase();
+
+      // Personel telefonu
+      const staffPhone = reminder.staffPhone || '';
+
+      // WhatsApp template mesajı gönder (4 parametreli + button)
+      const result = sendWhatsAppMessage(
+        phone,
+        customerName,
+        appointmentDateTime,
+        staffName,
+        appointmentType,
+        staffPhone
+      );
+
+      if (result.success) {
+        sentCount++;
+        results.push({
+          customer: customerName,
+          phone: phone,
+          status: 'success',
+          messageId: result.messageId
+        });
+        log.info(`✅ Mesaj gönderildi: ${customerName} (${phone})`);
+      } else {
+        failedCount++;
+        results.push({
+          customer: customerName,
+          phone: phone,
+          status: 'failed',
+          error: result.error
+        });
+        log.error(`❌ Mesaj gönderilemedi: ${customerName} (${phone}) - ${result.error}`);
+      }
+
+      // Rate limiting - Meta: 80 mesaj/saniye, ama güvenli olmak için bekleyelim
+      Utilities.sleep(100); // 100ms bekle
+    }
+
+    const summary = {
+      success: true,
+      sent: sentCount,
+      failed: failedCount,
+      total: reminders.data.length,
+      date: tomorrowDateStr,
+      details: results
+    };
+
+    log.info(`Otomatik gönderim tamamlandı: ${sentCount} başarılı, ${failedCount} başarısız`);
+
+    // İsteğe bağlı: Sonuçları e-posta ile bildir (admin'e)
+    if (failedCount > 0) {
+      sendAdminNotification(summary);
+    }
+
+    return summary;
+
+  } catch (error) {
+    log.error('sendDailyWhatsAppReminders hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Admin'e otomatik gönderim sonuçlarını e-posta ile bildir
+ * (Opsiyonel - sadece hata varsa gönderir)
+ */
+function sendAdminNotification(summary) {
+  try {
+    const subject = `WhatsApp Hatırlatıcıları - ${summary.failed} Başarısız`;
+
+    let body = `Otomatik WhatsApp hatırlatıcıları gönderildi:\n\n`;
+    body += `Tarih: ${summary.date}\n`;
+    body += `Toplam: ${summary.total}\n`;
+    body += `✅ Başarılı: ${summary.sent}\n`;
+    body += `❌ Başarısız: ${summary.failed}\n\n`;
+
+    if (summary.failed > 0) {
+      body += `Başarısız Mesajlar:\n`;
+      summary.details.filter(d => d.status === 'failed').forEach(detail => {
+        body += `- ${detail.customer} (${detail.phone}): ${detail.error}\n`;
+      });
+    }
+
+    MailApp.sendEmail({
+      to: CONFIG.ADMIN_EMAIL,
+      subject: subject,
+      body: body
+    });
+
+    log.info('Admin bildirim e-postası gönderildi');
+  } catch (error) {
+    log.error('Admin bildirim hatası:', error);
+  }
+}
+
+/**
  * WhatsApp API ayarlarını güncelle (sadece admin)
  * @param {Object} settings - {phoneNumberId, accessToken, businessAccountId}
  * @param {string} apiKey - Admin API key
