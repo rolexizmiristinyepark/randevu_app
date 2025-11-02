@@ -15,6 +15,14 @@
  * - lastAppointmentData (app.js)
  */
 
+// DateUtils import et
+import { DateUtils } from './date-utils.js';
+
+// Global scope'tan değişkenleri al
+const CONFIG = window.CONFIG;
+const ModalUtils = window.ModalUtils;
+const lastAppointmentData = () => window.lastAppointmentData;
+
 // ==================== TAKVİME EKLEME FONKSİYONLARI ====================
 
 /**
@@ -31,15 +39,16 @@ export function openCalendarModal() {
  * Diğer tarayıcılarda Blob download yapar
  */
 export function addToCalendarApple() {
-    if (!lastAppointmentData) {
+    const appointment = lastAppointmentData();
+    if (!appointment) {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
         ModalUtils.close('calendarModal');
         return;
     }
 
     const platform = detectPlatform();
-    const date = new Date(lastAppointmentData.date + 'T' + lastAppointmentData.time);
-    const duration = lastAppointmentData.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const date = new Date(appointment.date + 'T' + appointment.time);
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
     const icsContent = generateICS(date, endDate);
 
@@ -71,13 +80,14 @@ export function addToCalendarApple() {
  * Mobil cihazlarda Google Calendar app'i kuruluysa onu açar
  */
 export function addToCalendarGoogle() {
-    if (!lastAppointmentData) {
+    const appointment = lastAppointmentData();
+    if (!appointment) {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
         return;
     }
 
-    const date = new Date(lastAppointmentData.date + 'T' + lastAppointmentData.time);
-    const duration = lastAppointmentData.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const date = new Date(appointment.date + 'T' + appointment.time);
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
 
     const formatDateForGoogle = (d) => {
@@ -89,31 +99,31 @@ export function addToCalendarGoogle() {
 
     // Detaylı randevu bilgileri oluştur
     let details = 'RANDEVU BİLGİLERİ\n\n';
-    details += `Müşteri: ${lastAppointmentData.customerName}\n`;
-    details += `İletişim: ${lastAppointmentData.customerPhone}\n`;
-    if (lastAppointmentData.customerEmail) {
-        details += `E-posta: ${lastAppointmentData.customerEmail}\n`;
+    details += `Müşteri: ${appointment.customerName}\n`;
+    details += `İletişim: ${appointment.customerPhone}\n`;
+    if (appointment.customerEmail) {
+        details += `E-posta: ${appointment.customerEmail}\n`;
     }
 
     // Tarih formatla
-    const appointmentDate = new Date(lastAppointmentData.date);
+    const appointmentDate = new Date(appointment.date);
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     const formattedDate = appointmentDate.toLocaleDateString('tr-TR', options);
 
     details += `Tarih: ${formattedDate}\n`;
-    details += `Saat: ${lastAppointmentData.time}\n`;
+    details += `Saat: ${appointment.time}\n`;
 
     // Randevu türü
-    const appointmentTypeName = CONFIG.APPOINTMENT_TYPES?.find(t => t.value === lastAppointmentData.appointmentType)?.name || 'Genel';
+    const appointmentTypeName = CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
     details += `Konu: ${appointmentTypeName}\n`;
-    details += `İlgili: ${lastAppointmentData.staffName}\n`;
+    details += `İlgili: ${appointment.staffName}\n`;
 
-    if (lastAppointmentData.customerNote) {
-        details += `Ek Bilgi: ${lastAppointmentData.customerNote}\n`;
+    if (appointment.customerNote) {
+        details += `Ek Bilgi: ${appointment.customerNote}\n`;
     }
 
     // Google Calendar web URL (mobil cihazlarda app'i açar eğer kuruluysa)
-    const eventTitle = `${lastAppointmentData.customerName} - ${lastAppointmentData.staffName}`;
+    const eventTitle = `${appointment.customerName} - ${appointment.staffName}`;
     const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startTime}/${endTime}&details=${encodeURIComponent(details)}&location=${encodeURIComponent('Rolex İzmir İstinyepark')}`;
 
     window.open(calendarUrl, '_blank');
@@ -125,34 +135,35 @@ export function addToCalendarGoogle() {
  * Outlook Calendar web URL'ini oluştur ve yeni sekmede aç
  */
 export function addToCalendarOutlook() {
-    if (!lastAppointmentData) {
+    const appointment = lastAppointmentData();
+    if (!appointment) {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
         return;
     }
 
-    const date = new Date(lastAppointmentData.date + 'T' + lastAppointmentData.time);
-    const duration = lastAppointmentData.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const date = new Date(appointment.date + 'T' + appointment.time);
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
 
     // Detaylı randevu bilgileri oluştur
     let details = 'RANDEVU BİLGİLERİ<br><br>';
-    details += `Müşteri: ${lastAppointmentData.customerName}<br>`;
-    details += `İletişim: ${lastAppointmentData.customerPhone}<br>`;
-    if (lastAppointmentData.customerEmail) {
-        details += `E-posta: ${lastAppointmentData.customerEmail}<br>`;
+    details += `Müşteri: ${appointment.customerName}<br>`;
+    details += `İletişim: ${appointment.customerPhone}<br>`;
+    if (appointment.customerEmail) {
+        details += `E-posta: ${appointment.customerEmail}<br>`;
     }
-    details += `Tarih: ${lastAppointmentData.date}<br>`;
-    details += `Saat: ${lastAppointmentData.time}<br>`;
+    details += `Tarih: ${appointment.date}<br>`;
+    details += `Saat: ${appointment.time}<br>`;
 
-    const appointmentTypeName = CONFIG.APPOINTMENT_TYPES?.find(t => t.value === lastAppointmentData.appointmentType)?.name || 'Genel';
+    const appointmentTypeName = CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
     details += `Konu: ${appointmentTypeName}<br>`;
-    details += `İlgili: ${lastAppointmentData.staffName}<br>`;
+    details += `İlgili: ${appointment.staffName}<br>`;
 
-    if (lastAppointmentData.customerNote) {
-        details += `Ek Bilgi: ${lastAppointmentData.customerNote}<br>`;
+    if (appointment.customerNote) {
+        details += `Ek Bilgi: ${appointment.customerNote}<br>`;
     }
 
-    const eventTitle = `${lastAppointmentData.customerName} - ${lastAppointmentData.staffName}`;
+    const eventTitle = `${appointment.customerName} - ${appointment.staffName}`;
 
     const outlookUrl = new URL('https://outlook.live.com/calendar/0/deeplink/compose');
     outlookUrl.searchParams.append('path', '/calendar/action/compose');
@@ -173,14 +184,15 @@ export function addToCalendarOutlook() {
  * Herhangi bir takvim uygulaması için kullanılabilir (.ics dosyası)
  */
 export function downloadICSUniversal() {
-    if (!lastAppointmentData) {
+    const appointment = lastAppointmentData();
+    if (!appointment) {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
         ModalUtils.close('calendarModal');
         return;
     }
 
-    const date = new Date(lastAppointmentData.date + 'T' + lastAppointmentData.time);
-    const duration = lastAppointmentData.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const date = new Date(appointment.date + 'T' + appointment.time);
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
     const icsContent = generateICS(date, endDate);
 
@@ -205,12 +217,14 @@ export function downloadICSUniversal() {
  * RFC 5545 standardına uygun format
  */
 export function generateICS(startDate, endDate) {
+    const appointment = lastAppointmentData();
+
     // Detaylı randevu bilgileri oluştur
     let description = 'RANDEVU BİLGİLERİ\\n\\n';
     let summary = 'Rolex Randevu';
     let alarmTrigger = '-PT30M'; // Default
 
-    if (lastAppointmentData) {
+    if (appointment) {
         // Müşteri takvimi için özel isimler
         const customerAppointmentTypeNames = {
             'delivery': 'Saat Takdimi',
@@ -218,14 +232,14 @@ export function generateICS(startDate, endDate) {
         };
 
         // Müşteri takvimi için randevu türü adı
-        const appointmentTypeName = customerAppointmentTypeNames[lastAppointmentData.appointmentType] ||
-            CONFIG.APPOINTMENT_TYPES?.find(t => t.value === lastAppointmentData.appointmentType)?.name || 'Genel';
+        const appointmentTypeName = customerAppointmentTypeNames[appointment.appointmentType] ||
+            CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
 
         // Müşteri takvimi için başlık: İzmir İstinyepark Rolex - İlgili (Görüşme Türü)
-        summary = `İzmir İstinyepark Rolex - ${lastAppointmentData.staffName} (${appointmentTypeName})`;
+        summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
 
         // Tarih objesi oluştur
-        const appointmentDate = new Date(lastAppointmentData.date);
+        const appointmentDate = new Date(appointment.date);
 
         // Randevu günü sabah 10:00 Türkiye saati için alarm hesapla
         // Türkiye UTC+3 olduğu için 10:00 local = 07:00 UTC
@@ -235,20 +249,20 @@ export function generateICS(startDate, endDate) {
         alarmTrigger = `VALUE=DATE-TIME:${year}${month}${day}T070000Z`;
 
         // Yeni sıralama: İlgili, İletişim, E-posta, Tarih, Saat, Konu, Ek Bilgi
-        description += `İlgili: ${lastAppointmentData.staffName}\\n`;
-        description += `İletişim: ${lastAppointmentData.staffPhone || 'Belirtilmedi'}\\n`;
-        description += `E-posta: ${lastAppointmentData.staffEmail || 'Belirtilmedi'}\\n`;
+        description += `İlgili: ${appointment.staffName}\\n`;
+        description += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\\n`;
+        description += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\\n`;
 
         // Tarih formatla
         const options = { year: 'numeric', month: 'long', day: 'numeric' };
         const formattedDate = appointmentDate.toLocaleDateString('tr-TR', options);
 
         description += `Tarih: ${formattedDate}\\n`;
-        description += `Saat: ${lastAppointmentData.time}\\n`;
+        description += `Saat: ${appointment.time}\\n`;
         description += `Konu: ${appointmentTypeName}\\n`;
 
-        if (lastAppointmentData.customerNote) {
-            description += `Ek Bilgi: ${lastAppointmentData.customerNote}\\n`;
+        if (appointment.customerNote) {
+            description += `Ek Bilgi: ${appointment.customerNote}\\n`;
         }
 
         description += `\\nRandevunuza zamanında gelmenizi rica ederiz.\\nLütfen kimlik belgenizi yanınızda bulundurun.`;
@@ -356,8 +370,9 @@ function showIOSGuide() {
  * detectPlatform sonucuna göre iOS veya macOS için özel işlem
  */
 function downloadICSForApple(platformType) {
-    const date = new Date(lastAppointmentData.date + 'T' + lastAppointmentData.time);
-    const duration = lastAppointmentData.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const appointment = lastAppointmentData();
+    const date = new Date(appointment.date + 'T' + appointment.time);
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
 
     const icsContent = generateICS(date, endDate);
