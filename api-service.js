@@ -9,7 +9,10 @@ const ApiService = {
         'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
         'getSettings', 'regenerateApiKey',
         'getTodayWhatsAppReminders',    // YENİ: v3.0
-        'createManualAppointment'       // YENİ: v3.0
+        'createManualAppointment',      // YENİ: v3.0
+        'sendWhatsAppReminders',        // YENİ: WhatsApp Business API
+        'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
+        'getWhatsAppSettings'           // YENİ: WhatsApp Business API
     ],
 
     /**
