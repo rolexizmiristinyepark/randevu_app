@@ -32,23 +32,23 @@
         }
 
         .header .rolex-logo {
-            width: 60px;
+            width: 40px;
             height: auto;
-            margin: 0 auto 20px;
+            margin: 0 auto 15px;
             display: block;
         }
 
         .header h1 {
-            font-family: 'Playfair Display', serif;
-            font-size: 28px;
-            font-weight: 300;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px;
+            font-weight: 400;
             letter-spacing: 2px;
             color: #1A1A2E;
             margin-bottom: 5px;
         }
 
         .header p {
-            font-size: 12px;
+            font-size: 11px;
             letter-spacing: 1px;
             color: #757575;
             font-weight: 300;
@@ -396,10 +396,12 @@
                 <div class="card-title">Genel Randevu Linki</div>
                 <div class="input-group">
                     <label for="customerLink">Genel Müşteri Sayfası</label>
-                    <input type="text" id="customerLink" readonly style="background: #f5f5f5;">
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="customerLink" readonly style="background: #FAFAFA; flex: 1;">
+                        <button class="btn btn-small" id="openCustomerBtn">Aç</button>
+                        <button class="btn btn-small btn-secondary" id="copyLinkBtn">Kopyala</button>
+                    </div>
                 </div>
-                <button class="btn" id="openCustomerBtn">Müşteri Sayfasını Aç</button>
-                <button class="btn btn-secondary" style="margin-top: 10px;" id="copyLinkBtn">Linki Kopyala</button>
             </div>
 
             <div class="card">
@@ -1097,10 +1099,10 @@
                         });
 
                         // Options
-                        const opt1 = createElement('option', { value: '' }, '❌');
-                        const opt2 = createElement('option', { value: 'morning' }, '🌅 Sabah');
-                        const opt3 = createElement('option', { value: 'evening' }, '🌆 Akşam');
-                        const opt4 = createElement('option', { value: 'full' }, '🌞 Full');
+                        const opt1 = createElement('option', { value: '' }, 'H. İzin');
+                        const opt2 = createElement('option', { value: 'morning' }, 'Sabah');
+                        const opt3 = createElement('option', { value: 'evening' }, 'Akşam');
+                        const opt4 = createElement('option', { value: 'full' }, 'Full');
 
                         // Set selected option
                         if (current === 'morning') opt2.selected = true;
@@ -1175,26 +1177,25 @@
                         }
                     });
 
+                    // Container for title and button
+                    const headerDiv = createElement('div', {
+                        style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
+                    });
+
                     // Week title
                     const titleDiv = createElement('div', {
                         style: { fontWeight: '400', fontSize: '13px', color: '#1A1A2E', letterSpacing: '0.5px' }
                     }, `${weekStartDate.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`);
 
-                    // Day count
-                    const countDiv = createElement('div', {
-                        style: { fontSize: '12px', color: '#757575', marginTop: '6px' }
-                    }, `${weeks[weekStart].length} gün planlandı`);
-
                     // Edit button
                     const editBtn = createElement('button', {
-                        className: 'btn btn-small btn-secondary',
-                        style: { marginTop: '12px' }
+                        className: 'btn btn-small btn-secondary'
                     }, 'Düzenle');
                     editBtn.addEventListener('click', () => Shifts.loadWeek(weekStart));
 
-                    weekDiv.appendChild(titleDiv);
-                    weekDiv.appendChild(countDiv);
-                    weekDiv.appendChild(editBtn);
+                    headerDiv.appendChild(titleDiv);
+                    headerDiv.appendChild(editBtn);
+                    weekDiv.appendChild(headerDiv);
                     fragment.appendChild(weekDiv);
                 });
 
@@ -1342,11 +1343,12 @@
 
                     byDate[dateKey].forEach(apt => {
                         const start = new Date(apt.start.dateTime || apt.start.date);
+                        const end = new Date(apt.end.dateTime || apt.end.date);
                         const staffId = apt.extendedProperties?.private?.staffId;
                         const staff = Data.staff.find(s => s.id === parseInt(staffId));
                         const phone = apt.extendedProperties?.private?.customerPhone || '-';
-                        const shiftType = apt.extendedProperties?.private?.shiftType || '';
                         const customerName = apt.summary?.replace('Randevu: ', '') || 'İsimsiz';
+                        const customerNote = apt.extendedProperties?.private?.customerNote || '';
 
                         // Appointment card container
                         const aptCard = createElement('div', {
@@ -1369,10 +1371,12 @@
                             style: { flex: '1' }
                         });
 
-                        // Time
+                        // Time range
+                        const startTime = start.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
+                        const endTime = end.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'});
                         const timeDiv = createElement('div', {
                             style: { fontWeight: '400', color: '#1A1A2E', fontSize: '15px', marginBottom: '10px', letterSpacing: '0.5px' }
-                        }, start.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}));
+                        }, `${startTime} - ${endTime}`);
 
                         // Details text
                         const infoDiv = createElement('div', {
@@ -1389,14 +1393,16 @@
                         infoDiv.appendChild(document.createTextNode(phone));
                         infoDiv.appendChild(createElement('br'));
 
-                        const staffLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Çalışan: ');
+                        const staffLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'İlgili: ');
                         infoDiv.appendChild(staffLabel);
                         infoDiv.appendChild(document.createTextNode(staff?.name || '-'));
-                        infoDiv.appendChild(createElement('br'));
 
-                        const shiftLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Vardiya: ');
-                        infoDiv.appendChild(shiftLabel);
-                        infoDiv.appendChild(document.createTextNode(shiftLabels[shiftType] || '-'));
+                        if (customerNote) {
+                            infoDiv.appendChild(createElement('br'));
+                            const noteLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Not: ');
+                            infoDiv.appendChild(noteLabel);
+                            infoDiv.appendChild(document.createTextNode(customerNote));
+                        }
 
                         detailsDiv.appendChild(timeDiv);
                         detailsDiv.appendChild(infoDiv);
