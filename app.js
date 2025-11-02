@@ -153,6 +153,15 @@ document.addEventListener('DOMContentLoaded', async function() {
         typesContainer.style.justifyContent = 'center';
     }
 
+    // Butonları gizle ve loading göster
+    const typesContainer = document.getElementById('appointmentTypesContainer');
+    const loadingDiv = document.createElement('div');
+    loadingDiv.id = 'typesLoading';
+    loadingDiv.style.cssText = 'text-align: center; padding: 40px; color: #757575; font-size: 14px;';
+    loadingDiv.innerHTML = '<div class="spinner" style="margin: 0 auto 15px;"></div>Yükleniyor...';
+    typesContainer.style.display = 'none';
+    typesContainer.parentElement.insertBefore(loadingDiv, typesContainer);
+
     // Load settings first
     await loadSettings();
 
@@ -173,6 +182,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     } else {
         await loadStaffMembers();
     }
+
+    // Loading'i kaldır ve butonları göster
+    loadingDiv?.remove();
+    typesContainer.style.display = 'grid';
 
     // Appointment type cards event listeners
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
