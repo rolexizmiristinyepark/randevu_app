@@ -32,27 +32,26 @@
         }
 
         .header .rolex-logo {
-            width: 50px;
+            width: 60px;
             height: auto;
-            margin: 0 auto 15px;
+            margin: 0 auto 20px;
             display: block;
         }
 
         .header h1 {
             font-family: 'Playfair Display', serif;
-            font-size: 20px;
-            font-weight: 400;
-            letter-spacing: 3px;
+            font-size: 28px;
+            font-weight: 300;
+            letter-spacing: 2px;
             color: #1A1A2E;
-            margin-bottom: 8px;
+            margin-bottom: 5px;
         }
 
         .header p {
-            font-size: 11px;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            font-size: 12px;
+            letter-spacing: 1px;
             color: #757575;
-            font-weight: 400;
+            font-weight: 300;
         }
 
         .container {
@@ -115,7 +114,7 @@
 
         .card-title {
             font-size: 14px;
-            font-weight: 500;
+            font-weight: 400;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             color: #1A1A2E;
@@ -134,7 +133,7 @@
             margin-bottom: 8px;
             color: #757575;
             font-size: 11px;
-            font-weight: 500;
+            font-weight: 400;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -163,7 +162,7 @@
             border: 1px solid #1A1A2E;
             border-radius: 2px;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 400;
             letter-spacing: 1.5px;
             text-transform: uppercase;
             cursor: pointer;
@@ -190,19 +189,9 @@
             color: #1A1A2E;
         }
 
-        .btn-danger {
-            background: #C73E1D;
-            border-color: #C73E1D;
-        }
-
-        .btn-danger:hover {
-            background: #A83419;
-            border-color: #A83419;
-        }
-
         .btn-small {
             padding: 8px 16px;
-            font-size: 13px;
+            font-size: 11px;
         }
 
         .staff-list {
@@ -234,7 +223,7 @@
         }
 
         .staff-name {
-            font-weight: 500;
+            font-weight: 400;
             font-size: 14px;
             color: #1A1A2E;
             letter-spacing: 0.5px;
@@ -244,7 +233,7 @@
             padding: 4px 12px;
             border-radius: 2px;
             font-size: 10px;
-            font-weight: 500;
+            font-weight: 400;
             letter-spacing: 1px;
             text-transform: uppercase;
         }
@@ -292,10 +281,11 @@
         }
 
         .modal-header {
-            font-size: 20px;
-            font-weight: 600;
+            font-size: 18px;
+            font-weight: 400;
             margin-bottom: 20px;
-            color: #333;
+            color: #1A1A2E;
+            letter-spacing: 1px;
         }
 
         .modal-footer {
@@ -307,42 +297,21 @@
 
         .alert {
             padding: 15px;
-            border-radius: 10px;
+            border-radius: 4px;
             margin-bottom: 20px;
             font-size: 14px;
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: #E8F5E8;
+            color: #2E7D32;
+            border: 1px solid #E8F5E8;
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .alert-info {
-            background: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-
-        .info-box {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-        }
-
-        .info-box p {
-            font-size: 14px;
-            color: #0d47a1;
-            line-height: 1.6;
-            margin: 5px 0;
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFEBEE;
         }
 
         .shift-table {
@@ -359,9 +328,12 @@
         }
 
         .shift-table th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #555;
+            background: #FAFAFA;
+            font-weight: 400;
+            color: #757575;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
         }
 
         .shift-table select {
@@ -387,29 +359,24 @@
 <body>
     <div class="header">
         <img src="assets/rolex-logo.svg" class="rolex-logo" alt="Rolex Logo">
-        <h1>Admin Paneli</h1>
-        <p>Rolex İzmir İstinyepark</p>
+        <h1>Rolex İzmir İstinyepark</h1>
+        <p>Admin Paneli</p>
     </div>
 
     <div class="container">
         <div id="alertContainer"></div>
 
         <div class="tabs">
-            <div class="tab active" data-tab="settings">⚙️ Ayarlar</div>
-            <div class="tab" data-tab="staff">👥 Çalışanlar</div>
-            <div class="tab" data-tab="shifts">📅 Vardiyalar</div>
-            <div class="tab" data-tab="appointments">📋 Randevular</div>
+            <div class="tab active" data-tab="settings">Ayarlar</div>
+            <div class="tab" data-tab="staff">Çalışanlar</div>
+            <div class="tab" data-tab="shifts">Vardiyalar</div>
+            <div class="tab" data-tab="appointments">Randevular</div>
         </div>
 
         <!-- AYARLAR -->
         <div id="settings" class="tab-content active">
             <div class="card">
-                <div class="card-title">⏰ Randevu Ayarları</div>
-                <div class="alert alert-info">
-                    <strong>Vardiya Saatleri:</strong><br>
-                    🌅 Sabah: 10:00-18:00 | 🌆 Akşam: 14:00-22:00 | 🌞 Full: 10:00-22:00<br>
-                    <strong>Randevu Saatleri:</strong> 11:00-21:00
-                </div>
+                <div class="card-title">Randevu Ayarları</div>
                 <div class="input-group">
                     <label for="interval">Randevu Süresi</label>
                     <select id="interval">
@@ -421,31 +388,22 @@
                 <div class="input-group">
                     <label for="maxDaily">Günlük Max Teslim Randevusu</label>
                     <input type="number" id="maxDaily" value="4" min="1">
-                    <small style="color: #666; font-size: 13px; margin-top: 5px; display: block;">
-                        Teslim randevuları için günlük maksimum sayı (Görüşme randevuları limitsiz)
-                    </small>
                 </div>
-                <button class="btn" id="saveSettingsBtn">💾 Kaydet</button>
+                <button class="btn" id="saveSettingsBtn">Kaydet</button>
             </div>
 
             <div class="card">
-                <div class="card-title">🔗 Genel Randevu Linki</div>
-                <div class="info-box">
-                    <p><strong>Genel Link:</strong> Tüm çalışanlar için genel randevu sayfası</p>
-                </div>
+                <div class="card-title">Genel Randevu Linki</div>
                 <div class="input-group">
                     <label for="customerLink">Genel Müşteri Sayfası</label>
                     <input type="text" id="customerLink" readonly style="background: #f5f5f5;">
                 </div>
-                <button class="btn" id="openCustomerBtn">🔗 Müşteri Sayfasını Aç</button>
-                <button class="btn btn-secondary" style="margin-top: 10px;" id="copyLinkBtn">📋 Linki Kopyala</button>
+                <button class="btn" id="openCustomerBtn">Müşteri Sayfasını Aç</button>
+                <button class="btn btn-secondary" style="margin-top: 10px;" id="copyLinkBtn">Linki Kopyala</button>
             </div>
 
             <div class="card">
-                <div class="card-title">👥 Çalışan Özel Linkleri</div>
-                <div class="info-box">
-                    <p><strong>Özel Linkler:</strong> Her çalışan için özel randevu linki. Bu linklerde müşteri sadece ilgili çalışanın saatlerine randevu alabilir.</p>
-                </div>
+                <div class="card-title">Çalışan Özel Linkleri</div>
                 <div id="staffLinks" style="margin-top: 15px;"></div>
             </div>
         </div>
@@ -453,7 +411,7 @@
         <!-- ÇALIŞANLAR -->
         <div id="staff" class="tab-content">
             <div class="card">
-                <div class="card-title">➕ Yeni Çalışan</div>
+                <div class="card-title">Yeni Çalışan</div>
                 <div class="input-group">
                     <label for="newStaffName">İsim</label>
                     <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
@@ -466,11 +424,11 @@
                     <label for="newStaffEmail">E-posta</label>
                     <input type="email" id="newStaffEmail" placeholder="ahmet@example.com">
                 </div>
-                <button class="btn" id="addStaffBtn">➕ Ekle</button>
+                <button class="btn" id="addStaffBtn">Ekle</button>
             </div>
 
             <div class="card">
-                <div class="card-title">👥 Çalışanlar (<span id="staffCount">0</span>)</div>
+                <div class="card-title">Çalışanlar (<span id="staffCount">0</span>)</div>
                 <div class="staff-list" id="staffList"></div>
             </div>
         </div>
@@ -478,23 +436,20 @@
         <!-- VARDİYALAR -->
         <div id="shifts" class="tab-content">
             <div class="card">
-                <div class="card-title">📅 Vardiya Planlama</div>
-                <div class="alert alert-info">
-                    🌅 Sabah (10-18) | 🌆 Akşam (14-22) | 🌞 Full (10-22) | ❌ İzinli
-                </div>
+                <div class="card-title">Vardiya Planlama</div>
                 <div class="input-group">
                     <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
                     <div style="display: flex; gap: 10px;">
                         <input type="week" id="weekDate" style="flex: 1;">
-                        <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki →</button>
+                        <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki</button>
                     </div>
                 </div>
                 <div id="shiftTable"></div>
-                <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">💾 Kaydet</button>
+                <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Kaydet</button>
             </div>
 
             <div class="card">
-                <div class="card-title">📋 Kayıtlı Planlar</div>
+                <div class="card-title">Kayıtlı Planlar</div>
                 <div id="savedShifts"></div>
             </div>
         </div>
@@ -503,10 +458,7 @@
         <div id="appointments" class="tab-content">
             <!-- WhatsApp Business API Ayarları -->
             <div class="card">
-                <div class="card-title">⚙️ WhatsApp Business API Ayarları</div>
-                <div class="alert alert-info">
-                    <strong>📌 Bilgi:</strong> Meta WhatsApp Business Cloud API kullanarak direkt mesaj gönderebilirsiniz. Ücretsiz (1000 mesaj/ay).
-                </div>
+                <div class="card-title">WhatsApp Business API Ayarları</div>
                 <div id="whatsappApiStatus" style="margin-bottom: 15px;"></div>
                 <div class="input-group">
                     <label for="whatsappPhoneNumberId">Phone Number ID</label>
@@ -516,31 +468,12 @@
                     <label for="whatsappAccessToken">Access Token (Permanent)</label>
                     <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx">
                 </div>
-                <button class="btn" id="saveWhatsAppSettingsBtn">💾 Ayarları Kaydet</button>
-            </div>
-
-            <!-- WhatsApp Hatırlatma -->
-            <div class="card">
-                <div class="card-title">📤 WhatsApp Mesaj Gönder</div>
-                <div class="alert alert-info">
-                    <strong>📌 Bilgi:</strong> Tek tıklamayla tüm mesajlar otomatik olarak gönderilir. Hiçbir manuel işlem gerekmez!
-                </div>
-                <div class="input-group">
-                    <label for="reminderDate">Tarih Seç</label>
-                    <input type="date" id="reminderDate" style="flex: 1;">
-                </div>
-                <button class="btn" id="sendWhatsAppBtn" style="background: #25d366; font-size: 16px; padding: 12px 24px;">
-                    📤 GÖNDER
-                </button>
-                <div id="whatsappStatusContainer" style="margin-top: 20px;"></div>
+                <button class="btn" id="saveWhatsAppSettingsBtn">Ayarları Kaydet</button>
             </div>
 
             <!-- Randevu Listesi -->
             <div class="card">
-                <div class="card-title">📋 Randevular</div>
-                <div class="alert alert-info">
-                    <strong>📌 Bilgi:</strong> Google Calendar'da oluşturulan tüm randevuları buradan görebilirsiniz.
-                </div>
+                <div class="card-title">Randevular</div>
                 <div class="input-group">
                     <label for="filterWeek">Hafta Seç</label>
                     <input type="week" id="filterWeek" style="flex: 1;">
@@ -552,7 +485,7 @@
         <!-- Çalışan Düzenleme Modal -->
         <div id="editStaffModal" class="modal">
             <div class="modal-content">
-                <div class="modal-header">✏️ Çalışan Düzenle</div>
+                <div class="modal-header">Çalışan Düzenle</div>
                 <div class="input-group">
                     <label for="editStaffName">İsim</label>
                     <input type="text" id="editStaffName">
@@ -786,26 +719,26 @@
                     // ✅ EVENT DELEGATION: data-action attribute'ları eklendi
                     // Edit button
                     const editBtn = createElement('button', {
-                        className: 'btn btn-small',
+                        className: 'btn btn-small btn-secondary',
                         'data-action': 'edit',      // Eylem türü
                         'data-staff-id': s.id       // İlgili çalışan ID
-                    }, '✏️ Düzenle');
+                    }, 'Düzenle');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
                     // Toggle button
                     const toggleBtn = createElement('button', {
-                        className: `btn btn-small ${s.active ? 'btn-danger' : 'btn'}`,
+                        className: `btn btn-small btn-secondary`,
                         'data-action': 'toggle',    // Eylem türü
                         'data-staff-id': s.id       // İlgili çalışan ID
-                    }, s.active ? '⏸️ Pasif' : '▶️ Aktif');
+                    }, s.active ? 'Pasif' : 'Aktif');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
                     // Remove button
                     const removeBtn = createElement('button', {
-                        className: 'btn btn-small btn-danger',
+                        className: 'btn btn-small btn-secondary',
                         'data-action': 'remove',    // Eylem türü
                         'data-staff-id': s.id       // İlgili çalışan ID
-                    }, '🗑️ Sil');
+                    }, 'Sil');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
                     staffActions.appendChild(editBtn);
@@ -849,22 +782,24 @@
                     // Link container
                     const linkContainer = createElement('div', {
                         style: {
-                            background: '#f8f9fa',
-                            padding: '15px',
-                            borderRadius: '10px',
-                            marginBottom: '15px',
-                            borderLeft: '4px solid #667eea'
+                            background: 'white',
+                            padding: '18px',
+                            borderRadius: '2px',
+                            marginBottom: '12px',
+                            border: '1px solid #E8E8E8'
                         }
                     });
 
                     // Staff name
                     const nameDiv = createElement('div', {
                         style: {
-                            fontWeight: '600',
-                            fontSize: '15px',
-                            marginBottom: '8px'
+                            fontWeight: '400',
+                            fontSize: '13px',
+                            marginBottom: '10px',
+                            color: '#1A1A2E',
+                            letterSpacing: '0.5px'
                         }
-                    }, `👤 ${s.name}`);
+                    }, s.name);
 
                     // Controls container
                     const controlsDiv = createElement('div', {
@@ -883,26 +818,27 @@
                         id: `staffLink_${s.id}`,
                         style: {
                             flex: '1',
-                            padding: '8px',
-                            background: '#fff',
-                            border: '2px solid #e0e0e0',
-                            borderRadius: '8px',
-                            fontSize: '13px'
+                            padding: '10px',
+                            background: '#FAFAFA',
+                            border: '1px solid #E8E8E8',
+                            borderRadius: '2px',
+                            fontSize: '12px',
+                            color: '#757575'
                         }
                     });
 
                     // Copy button
                     const copyBtn = createElement('button', {
-                        className: 'btn btn-small',
+                        className: 'btn btn-small btn-secondary',
                         style: { whiteSpace: 'nowrap' }
-                    }, '📋 Kopyala');
+                    }, 'Kopyala');
                     copyBtn.addEventListener('click', () => Staff.copyLink(s.id));
 
                     // Open button
                     const openBtn = createElement('button', {
-                        className: 'btn btn-secondary btn-small',
+                        className: 'btn btn-small',
                         style: { whiteSpace: 'nowrap' }
-                    }, '🔗 Aç');
+                    }, 'Aç');
                     openBtn.addEventListener('click', () => Staff.openLink(s.id));
 
                     controlsDiv.appendChild(linkInput);
@@ -1231,29 +1167,29 @@
                     // Week container
                     const weekDiv = createElement('div', {
                         style: {
-                            background: '#f8f9fa',
-                            padding: '15px',
-                            borderRadius: '10px',
-                            marginBottom: '10px',
-                            borderLeft: '4px solid #667eea'
+                            background: 'white',
+                            padding: '18px',
+                            borderRadius: '2px',
+                            marginBottom: '12px',
+                            border: '1px solid #E8E8E8'
                         }
                     });
 
                     // Week title
                     const titleDiv = createElement('div', {
-                        style: { fontWeight: '600' }
-                    }, `📅 ${weekStartDate.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`);
+                        style: { fontWeight: '400', fontSize: '13px', color: '#1A1A2E', letterSpacing: '0.5px' }
+                    }, `${weekStartDate.toLocaleDateString('tr-TR')} - ${weekEnd.toLocaleDateString('tr-TR')}`);
 
                     // Day count
                     const countDiv = createElement('div', {
-                        style: { fontSize: '13px', color: '#666', marginTop: '5px' }
+                        style: { fontSize: '12px', color: '#757575', marginTop: '6px' }
                     }, `${weeks[weekStart].length} gün planlandı`);
 
                     // Edit button
                     const editBtn = createElement('button', {
-                        className: 'btn btn-small',
-                        style: { marginTop: '10px' }
-                    }, '✏️ Düzenle');
+                        className: 'btn btn-small btn-secondary',
+                        style: { marginTop: '12px' }
+                    }, 'Düzenle');
                     editBtn.addEventListener('click', () => Shifts.loadWeek(weekStart));
 
                     weekDiv.appendChild(titleDiv);
@@ -1400,7 +1336,7 @@
 
                     // Date header
                     const dateHeader = createElement('h3', {
-                        style: { margin: '20px 0 10px 0', color: '#667eea', fontSize: '16px' }
+                        style: { margin: '20px 0 12px 0', color: '#1A1A2E', fontSize: '14px', fontWeight: '400', letterSpacing: '1px', textTransform: 'uppercase' }
                     }, date.toLocaleDateString('tr-TR', {weekday:'long', day:'numeric', month:'long'}));
                     fragment.appendChild(dateHeader);
 
@@ -1415,11 +1351,11 @@
                         // Appointment card container
                         const aptCard = createElement('div', {
                             style: {
-                                background: '#f8f9fa',
-                                padding: '15px',
-                                borderRadius: '10px',
-                                borderLeft: '4px solid #667eea',
-                                marginBottom: '10px'
+                                background: 'white',
+                                padding: '18px',
+                                borderRadius: '2px',
+                                border: '1px solid #E8E8E8',
+                                marginBottom: '12px'
                             }
                         });
 
@@ -1435,61 +1371,59 @@
 
                         // Time
                         const timeDiv = createElement('div', {
-                            style: { fontWeight: '600', color: '#667eea', fontSize: '16px' }
-                        }, '🕐 ' + start.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}));
+                            style: { fontWeight: '400', color: '#1A1A2E', fontSize: '15px', marginBottom: '10px', letterSpacing: '0.5px' }
+                        }, start.toLocaleTimeString('tr-TR', {hour:'2-digit',minute:'2-digit'}));
 
                         // Details text
                         const infoDiv = createElement('div', {
-                            style: { fontSize: '14px', lineHeight: '1.8', marginTop: '8px' }
+                            style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' }
                         });
 
-                        const customerLabel = createElement('strong', {}, '👤 Müşteri:');
+                        const customerLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Müşteri: ');
                         infoDiv.appendChild(customerLabel);
-                        infoDiv.appendChild(document.createTextNode(' ' + customerName));
+                        infoDiv.appendChild(document.createTextNode(customerName));
                         infoDiv.appendChild(createElement('br'));
 
-                        const phoneLabel = createElement('strong', {}, '📞 Telefon:');
+                        const phoneLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Telefon: ');
                         infoDiv.appendChild(phoneLabel);
-                        infoDiv.appendChild(document.createTextNode(' ' + phone));
+                        infoDiv.appendChild(document.createTextNode(phone));
                         infoDiv.appendChild(createElement('br'));
 
-                        const staffLabel = createElement('strong', {}, '👨‍💼 Çalışan:');
+                        const staffLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Çalışan: ');
                         infoDiv.appendChild(staffLabel);
-                        infoDiv.appendChild(document.createTextNode(' ' + (staff?.name || '-')));
+                        infoDiv.appendChild(document.createTextNode(staff?.name || '-'));
                         infoDiv.appendChild(createElement('br'));
 
-                        const shiftLabel = createElement('strong', {}, '⏰ Vardiya:');
+                        const shiftLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Vardiya: ');
                         infoDiv.appendChild(shiftLabel);
-                        infoDiv.appendChild(document.createTextNode(' ' + (shiftLabels[shiftType] || '-')));
+                        infoDiv.appendChild(document.createTextNode(shiftLabels[shiftType] || '-'));
 
                         detailsDiv.appendChild(timeDiv);
                         detailsDiv.appendChild(infoDiv);
 
                         // Right side - action buttons
                         const buttonsDiv = createElement('div', {
-                            style: { display: 'flex', flexDirection: 'column', gap: '5px' }
+                            style: { display: 'flex', flexDirection: 'column', gap: '8px' }
                         });
 
-                        // WhatsApp button
-                        const whatsappBtn = createElement('button', {
-                            className: 'btn btn-small',
-                            style: { background: '#25D366', borderColor: '#25D366', fontSize: '12px', padding: '6px 12px' }
-                        }, '💬 WhatsApp');
-                        whatsappBtn.addEventListener('click', () => {
-                            Appointments.sendWhatsApp(phone, customerName, start.toLocaleString('tr-TR'));
+                        // Edit button
+                        const editBtn = createElement('button', {
+                            className: 'btn btn-small btn-secondary'
+                        }, 'Düzenle');
+                        editBtn.addEventListener('click', () => {
+                            alert('Randevu düzenleme özelliği yakında eklenecek.');
                         });
 
-                        // Delete button
-                        const deleteBtn = createElement('button', {
-                            className: 'btn btn-small',
-                            style: { background: '#dc3545', borderColor: '#dc3545', fontSize: '12px', padding: '6px 12px' }
-                        }, '🗑️ Sil');
-                        deleteBtn.addEventListener('click', () => {
+                        // Cancel button
+                        const cancelBtn = createElement('button', {
+                            className: 'btn btn-small btn-secondary'
+                        }, 'İptal Et');
+                        cancelBtn.addEventListener('click', () => {
                             Appointments.deleteAppointment(apt.id);
                         });
 
-                        buttonsDiv.appendChild(whatsappBtn);
-                        buttonsDiv.appendChild(deleteBtn);
+                        buttonsDiv.appendChild(editBtn);
+                        buttonsDiv.appendChild(cancelBtn);
 
                         flexContainer.appendChild(detailsDiv);
                         flexContainer.appendChild(buttonsDiv);
@@ -1646,7 +1580,6 @@
             // Appointment filter
             document.getElementById('filterWeek')?.addEventListener('change', () => Appointments.load());
 
-            // WhatsApp Reminder
             // ==================== WHATSAPP BUSINESS API ====================
 
             // WhatsApp API durumunu yükle
@@ -1657,19 +1590,17 @@
                         const statusEl = document.getElementById('whatsappApiStatus');
                         if (response.configured) {
                             statusEl.innerHTML = `
-                                <div style="padding: 12px; background: #e8f5e9; border-left: 4px solid #4caf50; border-radius: 4px;">
-                                    <strong>✅ WhatsApp API Yapılandırıldı</strong>
-                                    <div style="font-size: 13px; margin-top: 5px; color: #2e7d32;">
-                                        Phone Number ID: ✓ | Access Token: ✓
+                                <div style="padding: 12px; background: #E8F5E8; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                    <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
+                                        WhatsApp API Yapılandırıldı
                                     </div>
                                 </div>
                             `;
                         } else {
                             statusEl.innerHTML = `
-                                <div style="padding: 12px; background: #fff3e0; border-left: 4px solid #ff9800; border-radius: 4px;">
-                                    <strong>⚠️ WhatsApp API Yapılandırılmamış</strong>
-                                    <div style="font-size: 13px; margin-top: 5px; color: #e65100;">
-                                        Lütfen aşağıdaki bilgileri girin.
+                                <div style="padding: 12px; background: #FFEBEE; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                    <div style="font-size: 13px; color: #C62828; letter-spacing: 0.5px;">
+                                        WhatsApp API Yapılandırılmamış
                                     </div>
                                 </div>
                             `;
@@ -1686,7 +1617,7 @@
                 const accessToken = document.getElementById('whatsappAccessToken').value.trim();
 
                 if (!phoneNumberId || !accessToken) {
-                    UI.showAlert('⚠️ Lütfen tüm alanları doldurun!', 'error');
+                    UI.showAlert('Lütfen tüm alanları doldurun', 'error');
                     return;
                 }
 
@@ -1699,95 +1630,15 @@
                     });
 
                     if (response.success) {
-                        UI.showAlert('✅ WhatsApp ayarları kaydedildi!', 'success');
+                        UI.showAlert('WhatsApp ayarları kaydedildi', 'success');
                         document.getElementById('whatsappPhoneNumberId').value = '';
                         document.getElementById('whatsappAccessToken').value = '';
                         loadWhatsAppSettings();
                     } else {
-                        UI.showAlert('❌ Hata: ' + response.error, 'error');
+                        UI.showAlert('Hata: ' + response.error, 'error');
                     }
                 } catch (error) {
-                    UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
-                }
-            });
-
-            // WhatsApp mesaj gönder
-            document.getElementById('sendWhatsAppBtn')?.addEventListener('click', async () => {
-                const date = document.getElementById('reminderDate').value;
-                if (!date) {
-                    UI.showAlert('⚠️ Lütfen tarih seçin', 'error');
-                    return;
-                }
-
-                const btn = document.getElementById('sendWhatsAppBtn');
-                const container = document.getElementById('whatsappStatusContainer');
-                const originalText = btn.textContent;
-
-                try {
-                    btn.disabled = true;
-                    btn.textContent = '⏳ Gönderiliyor...';
-                    btn.style.background = '#999';
-
-                    container.innerHTML = `
-                        <div style="padding: 20px; background: #f5f5f5; border-radius: 8px; text-align: center;">
-                            <div style="font-size: 24px; margin-bottom: 10px;">⏳</div>
-                            <div style="font-size: 16px; font-weight: bold; color: #333;">Mesajlar Gönderiliyor...</div>
-                            <div style="font-size: 14px; color: #666; margin-top: 5px;">Lütfen bekleyin, bu birkaç saniye sürebilir.</div>
-                        </div>
-                    `;
-
-                    const response = await ApiService.call('sendWhatsAppReminders', { date });
-
-                    if (response.success) {
-                        const {sent, failed, total, details} = response;
-
-                        container.innerHTML = `
-                            <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white; text-align: center; margin-bottom: 20px;">
-                                <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
-                                <div style="font-size: 24px; font-weight: bold; margin-bottom: 10px;">Gönderim Tamamlandı!</div>
-                                <div style="font-size: 18px;">
-                                    ✅ ${sent} başarılı ${failed > 0 ? `• ❌ ${failed} başarısız` : ''} / Toplam: ${total}
-                                </div>
-                            </div>
-
-                            ${details && details.length > 0 ? `
-                                <div style="background: #f9f9f9; border-radius: 8px; padding: 15px;">
-                                    <h4 style="margin: 0 0 15px 0;">📋 Detaylar:</h4>
-                                    ${details.map(d => `
-                                        <div style="padding: 10px; margin-bottom: 8px; background: ${d.status === 'success' ? '#e8f5e9' : '#ffebee'}; border-left: 4px solid ${d.status === 'success' ? '#4caf50' : '#f44336'}; border-radius: 4px;">
-                                            <div style="font-weight: bold;">${d.status === 'success' ? '✅' : '❌'} ${escapeHtml(d.customer)}</div>
-                                            <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                                                ${d.phone}${d.messageId ? ` • ID: ${d.messageId.substring(0, 20)}...` : ''}
-                                                ${d.error ? ` • Hata: ${d.error}` : ''}
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            ` : ''}
-                        `;
-
-                        UI.showAlert(`✅ ${sent} mesaj başarıyla gönderildi!`, 'success');
-                    } else {
-                        container.innerHTML = `
-                            <div style="padding: 20px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 8px;">
-                                <div style="font-size: 20px; font-weight: bold; color: #c62828; margin-bottom: 10px;">❌ Hata Oluştu</div>
-                                <div style="color: #666;">${response.error || 'Bilinmeyen hata'}</div>
-                            </div>
-                        `;
-                        UI.showAlert('❌ Hata: ' + response.error, 'error');
-                    }
-                } catch (error) {
-                    container.innerHTML = `
-                        <div style="padding: 20px; background: #ffebee; border-left: 4px solid #f44336; border-radius: 8px;">
-                            <div style="font-size: 20px; font-weight: bold; color: #c62828; margin-bottom: 10px;">❌ Bağlantı Hatası</div>
-                            <div style="color: #666;">${error.message}</div>
-                        </div>
-                    `;
-                    UI.showAlert('❌ Bağlantı hatası: ' + error.message, 'error');
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                    btn.style.background = '#25d366';
+                    UI.showAlert('Kaydetme hatası: ' + error.message, 'error');
                 }
             });
 
