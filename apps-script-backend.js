@@ -1480,11 +1480,15 @@ function getTodayWhatsAppReminders(date) {
     const { startDate, endDate } = getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
     const events = calendar.getEvents(startDate, endDate);
 
+    // Staff verilerini al
+    const data = getData();
+
     const reminders = events.map(event => {
       const phoneTag = event.getTag('customerPhone');
       if (!phoneTag) return null; // Telefonu yoksa atla
 
       const appointmentType = event.getTag('appointmentType') || 'Randevu';
+      const staffId = event.getTag('staffId');
 
       // Event title formatı: "Müşteri Adı - Personel (Tür)"
       const title = event.getTitle();
@@ -1493,7 +1497,7 @@ function getTodayWhatsAppReminders(date) {
 
       // İlgili kişi ve randevu türü
       let staffName = 'Temsilcimiz';
-      let appointmentTypeName = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || 'Randevu';
+      let appointmentTypeName = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || 'randevu';
 
       if (parts.length > 1) {
         // "Personel (Tür)" kısmını parse et
@@ -1503,10 +1507,21 @@ function getTodayWhatsAppReminders(date) {
           const parsedStaffName = match[1].trim();
           // HK ve OK kısaltmalarını koruyoruz, diğerlerini Title Case yapıyoruz
           staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
-          appointmentTypeName = match[2].trim(); // "Yönetim" veya "Teslim"
+          appointmentTypeName = match[2].trim().toLowerCase(); // "yönetim" veya "teslim" (KÜÇÜK HARF)
         } else {
           const parsedStaffName = secondPart.trim();
           staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
+        }
+      }
+
+      // Staff phone numarasını bul
+      let staffPhone = '';
+      if (staffId) {
+        const staff = data.staff.find(s => s.id == staffId);
+        if (staff && staff.phone) {
+          // Telefon numarasını temizle ve formatla
+          const cleanStaffPhone = staff.phone.replace(/\D/g, '');
+          staffPhone = cleanStaffPhone.startsWith('0') ? '90' + cleanStaffPhone.substring(1) : cleanStaffPhone;
         }
       }
 
@@ -1530,6 +1545,7 @@ function getTodayWhatsAppReminders(date) {
         time: timeStr,           // HH:MM formatı
         startTime: timeStr,      // Eski uyumluluk için
         staffName,
+        staffPhone,              // YENİ: Personel telefonu
         appointmentType: appointmentTypeName,
         link
       };
@@ -1831,13 +1847,16 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
 // ==================== WHATSAPP BUSINESS CLOUD API ====================
 
 /**
- * WhatsApp Business Cloud API ile TEMPLATE mesaj gönder
+ * WhatsApp Business Cloud API ile TEMPLATE mesaj gönder (4 parametreli + button)
  * @param {string} phoneNumber - Alıcı telefon numarası (90XXXXXXXXXX formatında)
  * @param {string} customerName - Müşteri adı ({{1}} parametresi)
  * @param {string} appointmentDateTime - Randevu tarih ve saat ({{2}} parametresi, örn: "21 Ekim 2025, 14:30")
+ * @param {string} staffName - İlgili personel ({{3}} parametresi)
+ * @param {string} appointmentType - Görüşme türü ({{4}} parametresi, küçük harf: "teslim", "görüşme")
+ * @param {string} staffPhone - Personel telefon numarası (button için, 90XXXXXXXXXX formatında)
  * @returns {Object} - {success: boolean, messageId?: string, error?: string}
  */
-function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime) {
+function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, staffName, appointmentType, staffPhone) {
   try {
     // Config kontrolü
     if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
@@ -1850,6 +1869,46 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime) {
     // Meta WhatsApp Cloud API endpoint
     const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
+    // Template components
+    const components = [
+      {
+        type: 'body',
+        parameters: [
+          {
+            type: 'text',
+            text: customerName  // {{1}} - Müşteri adı
+          },
+          {
+            type: 'text',
+            text: appointmentDateTime  // {{2}} - Tarih ve saat
+          },
+          {
+            type: 'text',
+            text: staffName  // {{3}} - İlgili personel
+          },
+          {
+            type: 'text',
+            text: appointmentType  // {{4}} - Görüşme türü (küçük harf)
+          }
+        ]
+      }
+    ];
+
+    // Eğer personel telefonu varsa, button parametresi ekle
+    if (staffPhone && staffPhone.length > 0) {
+      components.push({
+        type: 'button',
+        sub_type: 'url',
+        index: '0',
+        parameters: [
+          {
+            type: 'text',
+            text: staffPhone  // Dynamic phone number for "Call on WhatsApp" button
+          }
+        ]
+      });
+    }
+
     // Template payload (Meta onaylı template kullanıyoruz)
     const payload = {
       messaging_product: 'whatsapp',
@@ -1860,21 +1919,7 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime) {
         language: {
           code: 'tr'  // Turkish
         },
-        components: [
-          {
-            type: 'body',
-            parameters: [
-              {
-                type: 'text',
-                text: customerName  // {{1}} - Müşteri adı
-              },
-              {
-                type: 'text',
-                text: appointmentDateTime  // {{2}} - Tarih ve saat
-              }
-            ]
-          }
-        ]
+        components: components
       }
     };
 
@@ -1982,8 +2027,24 @@ function sendWhatsAppReminders(date, apiKey) {
       // Tarih ve saati formatla (21 Ekim 2025, 14:30)
       const appointmentDateTime = formatAppointmentDateTime(reminder.date, reminder.time);
 
-      // WhatsApp template mesajı gönder
-      const result = sendWhatsAppMessage(phone, customerName, appointmentDateTime);
+      // İlgili personel
+      const staffName = reminder.staffName;
+
+      // Görüşme türü (küçük harf)
+      const appointmentType = reminder.appointmentType.toLowerCase();
+
+      // Personel telefonu
+      const staffPhone = reminder.staffPhone || '';
+
+      // WhatsApp template mesajı gönder (4 parametreli + button)
+      const result = sendWhatsAppMessage(
+        phone,
+        customerName,
+        appointmentDateTime,
+        staffName,
+        appointmentType,
+        staffPhone
+      );
 
       if (result.success) {
         sentCount++;
