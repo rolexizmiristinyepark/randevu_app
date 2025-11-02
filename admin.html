@@ -709,15 +709,15 @@
                     infoDiv.appendChild(nameDiv);
                     infoDiv.appendChild(detailsDiv);
 
-                    const statusSpan = createElement('span', {
-                        className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
-                    }, s.active ? 'Aktif' : 'Pasif');
-
                     staffInfo.appendChild(infoDiv);
-                    staffInfo.appendChild(statusSpan);
 
                     // Staff actions section
                     const staffActions = createElement('div', { className: 'staff-actions' });
+
+                    // Status span - Düzenle butonunun solunda
+                    const statusSpan = createElement('span', {
+                        className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
+                    }, s.active ? 'Aktif' : 'Pasif');
 
                     // ✅ EVENT DELEGATION: data-action attribute'ları eklendi
                     // Edit button
@@ -744,6 +744,7 @@
                     }, 'Sil');
                     // addEventListener kaldırıldı - Event Delegation kullanılacak
 
+                    staffActions.appendChild(statusSpan);
                     staffActions.appendChild(editBtn);
                     staffActions.appendChild(toggleBtn);
                     staffActions.appendChild(removeBtn);
