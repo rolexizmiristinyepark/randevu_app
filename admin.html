@@ -536,6 +536,17 @@
                 <button class="btn" id="saveWhatsAppSettingsBtn">Ayarları Kaydet</button>
             </div>
 
+            <!-- Slack Webhook Ayarları -->
+            <div class="card">
+                <div class="card-title">Slack Webhook Ayarları</div>
+                <div id="slackStatus" style="margin-bottom: 15px;"></div>
+                <div class="input-group">
+                    <label for="slackWebhookUrl">Slack Webhook URL</label>
+                    <input type="text" id="slackWebhookUrl" placeholder="https://hooks.slack.com/services/...">
+                </div>
+                <button class="btn" id="saveSlackSettingsBtn">Ayarları Kaydet</button>
+            </div>
+
             <!-- Randevu Listesi -->
             <div class="card">
                 <div class="card-title">Randevular</div>
@@ -1747,6 +1758,73 @@
             // WhatsApp ayarlarını sayfa yüklendiğinde kontrol et
             if (document.getElementById('whatsappApiStatus')) {
                 loadWhatsAppSettings();
+            }
+
+            // ==================== SLACK WEBHOOK ====================
+
+            // Slack durumunu yükle
+            async function loadSlackSettings() {
+                try {
+                    const response = await ApiService.call('getSlackSettings', {});
+                    if (response.success) {
+                        const statusEl = document.getElementById('slackStatus');
+                        if (response.configured) {
+                            statusEl.innerHTML = `
+                                <div style="padding: 12px; background: #E8F5E8; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                    <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
+                                        Slack Webhook Yapılandırıldı
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            statusEl.innerHTML = `
+                                <div style="padding: 12px; background: #FFEBEE; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                    <div style="font-size: 13px; color: #C62828; letter-spacing: 0.5px;">
+                                        Slack Webhook Yapılandırılmamış
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Slack ayarları yüklenemedi:', error);
+                }
+            }
+
+            // Slack ayarlarını kaydet
+            document.getElementById('saveSlackSettingsBtn')?.addEventListener('click', async () => {
+                const webhookUrl = document.getElementById('slackWebhookUrl').value.trim();
+
+                if (!webhookUrl) {
+                    UI.showAlert('Lütfen Slack Webhook URL girin', 'error');
+                    return;
+                }
+
+                if (!webhookUrl.startsWith('https://hooks.slack.com/')) {
+                    UI.showAlert('Geçerli bir Slack Webhook URL girin', 'error');
+                    return;
+                }
+
+                try {
+                    const response = await ApiService.call('updateSlackSettings', {
+                        webhookUrl: webhookUrl
+                    });
+
+                    if (response.success) {
+                        UI.showAlert('Slack ayarları kaydedildi', 'success');
+                        document.getElementById('slackWebhookUrl').value = '';
+                        loadSlackSettings();
+                    } else {
+                        UI.showAlert('Hata: ' + response.error, 'error');
+                    }
+                } catch (error) {
+                    UI.showAlert('Kaydetme hatası: ' + error.message, 'error');
+                }
+            });
+
+            // Slack ayarlarını sayfa yüklendiğinde kontrol et
+            if (document.getElementById('slackStatus')) {
+                loadSlackSettings();
             }
         }
 
