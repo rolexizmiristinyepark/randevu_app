@@ -684,7 +684,9 @@ const ADMIN_ACTIONS = [
   'getTodayWhatsAppReminders',    // YENİ
   'sendWhatsAppReminders',        // YENİ: WhatsApp Business API
   'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
-  'getWhatsAppSettings'           // YENİ: WhatsApp Business API
+  'getWhatsAppSettings',          // YENİ: WhatsApp Business API
+  'updateSlackSettings',          // YENİ: Slack Webhook
+  'getSlackSettings'              // YENİ: Slack Webhook
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -740,6 +742,10 @@ const ACTION_HANDLERS = {
   'sendWhatsAppReminders': (e) => sendWhatsAppReminders(e.parameter.date, e.parameter.apiKey),
   'updateWhatsAppSettings': (e) => updateWhatsAppSettings(JSON.parse(e.parameter.settings), e.parameter.apiKey),
   'getWhatsAppSettings': (e) => getWhatsAppSettings(e.parameter.apiKey),
+
+  // Slack Webhook
+  'updateSlackSettings': (e) => updateSlackSettings(e.parameter.webhookUrl, e.parameter.apiKey),
+  'getSlackSettings': (e) => getSlackSettings(e.parameter.apiKey),
 
   // Data management
   'resetData': () => resetData()
@@ -2343,6 +2349,74 @@ function getWhatsAppSettings(apiKey) {
 
   } catch (error) {
     log.error('getWhatsAppSettings hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Slack Webhook ayarlarını güncelle (sadece admin)
+ * @param {string} webhookUrl - Slack Webhook URL
+ * @param {string} apiKey - Admin API key
+ * @returns {Object} - {success: boolean}
+ */
+function updateSlackSettings(webhookUrl, apiKey) {
+  try {
+    // API key kontrolü
+    if (!validateApiKey(apiKey)) {
+      throw new Error('Geçersiz API key');
+    }
+
+    // URL validasyonu
+    if (!webhookUrl || !webhookUrl.startsWith('https://hooks.slack.com/')) {
+      throw new Error('Geçerli bir Slack Webhook URL gerekli');
+    }
+
+    // Settings'i Script Properties'e kaydet
+    const scriptProperties = PropertiesService.getScriptProperties();
+    scriptProperties.setProperty('SLACK_WEBHOOK_URL', webhookUrl);
+
+    // Config'i güncelle
+    CONFIG.SLACK_WEBHOOK_URL = webhookUrl;
+
+    return {
+      success: true,
+      message: 'Slack ayarları güncellendi'
+    };
+
+  } catch (error) {
+    log.error('updateSlackSettings hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Slack Webhook ayarlarını getir (sadece durum, URL gösterme)
+ * @param {string} apiKey - Admin API key
+ * @returns {Object} - {success: boolean, configured: boolean}
+ */
+function getSlackSettings(apiKey) {
+  try {
+    // API key kontrolü
+    if (!validateApiKey(apiKey)) {
+      throw new Error('Geçersiz API key');
+    }
+
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const webhookUrl = scriptProperties.getProperty('SLACK_WEBHOOK_URL');
+
+    return {
+      success: true,
+      configured: !!webhookUrl
+    };
+
+  } catch (error) {
+    log.error('getSlackSettings hatası:', error);
     return {
       success: false,
       error: error.toString()
