@@ -140,7 +140,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
     if (specificStaffId === '0') {
         const header = document.getElementById('staffHeader');
-        header.textContent = 'Manuel Randevu Oluşturma';
+        header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
 
         // Yönetim butonunu hemen göster ve grid'i 2x2 yap
@@ -1089,25 +1089,21 @@ function showSuccessPage(dateStr, timeStr, staffName, customerNote) {
 function handleCalendarAction(event) {
     const buttonId = event.target.id;
 
-    try {
-        // Buton ID'sine göre doğru fonksiyonu çağır
-        switch (buttonId) {
-            case 'calendarAppleBtn':
-                CalendarIntegration.addToCalendarApple();
-                break;
-            case 'calendarGoogleBtn':
-                CalendarIntegration.addToCalendarGoogle();
-                break;
-            case 'calendarOutlookBtn':
-                CalendarIntegration.addToCalendarOutlook();
-                break;
-            case 'calendarICSBtn':
-                CalendarIntegration.downloadICSUniversal();
-                break;
-        }
-    } catch (error) {
-        console.error('Calendar fonksiyonu çalıştırılamadı:', error);
-        alert('Takvim ekleme özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+    // Buton ID'sine göre doğru fonksiyonu çağır
+    // Not: Her fonksiyon kendi hata yönetimini yapar
+    switch (buttonId) {
+        case 'calendarAppleBtn':
+            CalendarIntegration.addToCalendarApple();
+            break;
+        case 'calendarGoogleBtn':
+            CalendarIntegration.addToCalendarGoogle();
+            break;
+        case 'calendarOutlookBtn':
+            CalendarIntegration.addToCalendarOutlook();
+            break;
+        case 'calendarICSBtn':
+            CalendarIntegration.downloadICSUniversal();
+            break;
     }
 }
 

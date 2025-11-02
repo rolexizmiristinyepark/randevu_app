@@ -117,8 +117,7 @@ const CONFIG = {
   EMAIL_TEMPLATES: {
     CUSTOMER: {
       GREETING: 'Sayın',
-      CONFIRMATION: 'Randevunuz başarı ile onaylanmıştır.',
-      LOOKING_FORWARD: 'Sizi mağazamızda ağırlamayı sabırsızlıkla bekliyoruz. Randevunuza zamanında gelmenizi rica ederiz.',
+      CONFIRMATION: 'Randevunuz başarı ile onaylanmıştır. Sizi mağazamızda ağırlamayı sabırsızlıkla bekliyoruz. Randevunuza zamanında gelmenizi rica ederiz.',
       SECTION_TITLE: 'RANDEVU BİLGİLERİ',
       LABELS: {
         DATE: 'Tarih',
@@ -128,8 +127,7 @@ const CONFIG = {
         STORE: 'Mağaza',
         NOTES: 'Ek Bilgi'
       },
-      CHANGE_INFO: 'Randevunuzda herhangi bir değişiklik yapmanız gerektiği takdirde, lütfen en geç 24 saat öncesinden ilgili danışman ile irtibata geçiniz.',
-      CONTACT_INFO: 'En kısa sürede sizinle buluşmayı sabırsızlıkla bekliyoruz. Herhangi bir sorunuz olması durumunda bizimle iletişime geçmekten çekinmeyin.',
+      CHANGE_CONTACT_INFO: 'Randevunuzda herhangi bir değişiklik yapmanız gerektiği takdirde veya herhangi bir sorunuz olması durumunda lütfen randevu öncesinde ilgili danışman ile irtibata geçiniz.',
       CLOSING: 'Saygılarımızla'
     },
     // YENİ: Randevu türüne göre dinamik içerik blokları
@@ -348,69 +346,85 @@ function generateEmailTemplate(type, data) {
 
   const { GREETING, SECTION_TITLE, LABELS, CLOSING } = config;
 
-  // Ana mesaj (type'a göre farklı)
-  const mainText = type === 'customer'
-    ? `${config.CONFIRMATION}<br>${config.LOOKING_FORWARD}`
-    : config.NOTIFICATION;
-
   // Tablo satırları - config'deki label'lara göre dinamik
   const tableRows = Object.entries(LABELS).map(([key, label]) => {
     const value = data[key] || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED;
     return `
       <tr>
-        <td style="padding: 8px 12px 8px 0; font-weight: bold; width: 35%; vertical-align: top;">${label}</td>
-        <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word;">${value}</td>
+        <td style="padding: 8px 12px 8px 0; font-weight: 400; width: 35%; vertical-align: top; color: #555;">${label}</td>
+        <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word; color: #333;">${value}</td>
       </tr>
     `;
   }).join('');
 
-  // Customer için ekstra paragraflar - DİNAMİK YAPI
-  let additionalContent = '';
+  // Customer email için yeni yapı
   if (type === 'customer') {
     // Randevu türüne göre dinamik içerik seç
     let typeSpecificInfo = '';
     const { appointmentType } = data;
     if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY && CONFIG.EMAIL_TEMPLATES.DELIVERY) {
-      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.DELIVERY.INFO}</p>`;
+      typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.DELIVERY.INFO;
     } else if (appointmentType === CONFIG.APPOINTMENT_TYPES.SERVICE && CONFIG.EMAIL_TEMPLATES.SERVICE) {
-      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.SERVICE.INFO}</p>`;
+      typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.SERVICE.INFO;
     } else if (CONFIG.EMAIL_TEMPLATES.MEETING) {
-      typeSpecificInfo = `<p style="line-height: 1.8;">${CONFIG.EMAIL_TEMPLATES.MEETING.INFO}</p>`;
+      typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.MEETING.INFO;
     }
 
-    additionalContent = `
-      ${typeSpecificInfo}
-      <p style="line-height: 1.8;">${config.CHANGE_INFO}</p>
-      <p style="line-height: 1.8;">${config.CONTACT_INFO}</p>
-      <p style="margin-top: 30px; line-height: 1.8;">
-        <strong>Tel:</strong> ${data.staffPhone}<br>
-        <strong>E-posta:</strong> ${data.staffEmail}
-      </p>
-    `;
-  } else {
-    additionalContent = `<p>${config.PREPARATION}</p>`;
-  }
+    return `
+      <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
+          <h3 style="margin-top: 0; color: #1A1A2E; font-weight: 400; letter-spacing: 1px; font-size: 16px;">${SECTION_TITLE}</h3>
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            ${tableRows}
+          </table>
+        </div>
 
-  return `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-      <p>${GREETING} ${data.name},</p>
-      <p>${mainText}</p>
+        <p style="line-height: 1.8; font-weight: 400;">${GREETING} ${data.name},</p>
 
-      <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
-        <h3 style="margin-top: 0; color: #1A1A2E; font-weight: normal; letter-spacing: 1px;">${SECTION_TITLE}</h3>
-        <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
-          ${tableRows}
-        </table>
+        <p style="line-height: 1.8; font-weight: 400;">${config.CONFIRMATION}</p>
+
+        <p style="line-height: 1.8; font-weight: 400;">${typeSpecificInfo}</p>
+
+        <p style="line-height: 1.8; font-weight: 400;">${config.CHANGE_CONTACT_INFO}</p>
+
+        <p style="margin-top: 20px; line-height: 1.8; font-weight: 400;">
+          <span style="font-weight: 400;">Tel:</span> ${data.staffPhone}<br>
+          <span style="font-weight: 400;">E-posta:</span> ${data.staffEmail}
+        </p>
+
+        <p style="margin-top: 30px; font-weight: 400;">
+          ${CLOSING},<br>
+          <span style="font-weight: 400;">${CONFIG.COMPANY_NAME}</span>
+        </p>
       </div>
+    `;
+  }
+  // Staff email için eski yapı korundu
+  else {
+    const mainText = config.NOTIFICATION;
+    const additionalContent = `<p style="font-weight: 400;">${config.PREPARATION}</p>`;
 
-      ${additionalContent}
+    return `
+      <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <p style="font-weight: 400;">${GREETING} ${data.name},</p>
+        <p style="font-weight: 400;">${mainText}</p>
 
-      <p style="margin-top: 30px;">
-        ${CLOSING},<br>
-        <strong>${CONFIG.COMPANY_NAME}</strong>
-      </p>
-    </div>
-  `;
+        <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
+          <h3 style="margin-top: 0; color: #1A1A2E; font-weight: 400; letter-spacing: 1px; font-size: 16px;">${SECTION_TITLE}</h3>
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            ${tableRows}
+          </table>
+        </div>
+
+        ${additionalContent}
+
+        <p style="margin-top: 30px; font-weight: 400;">
+          ${CLOSING},<br>
+          <span style="font-weight: 400;">${CONFIG.COMPANY_NAME}</span>
+        </p>
+      </div>
+    `;
+  }
 }
 
 function getCustomerEmailTemplate(data) {
@@ -1564,10 +1578,10 @@ function getTodayWhatsAppReminders(date) {
   }
 }
 
-// ==================== MANUEL RANDEVU OLUŞTURMA ====================
-// YENİ: Admin panelinden manuel randevu oluşturma
+// ==================== RANDEVU SİSTEMİ ====================
+// YENİ: Admin panelinden randevu oluşturma
 /**
- * Manuel randevu oluşturur (admin paneli için)
+ * Randevu oluşturur (admin paneli için)
  * MANAGEMENT tipi randevular için limitler uygulanmaz ve e-posta gönderilmez
  * @param {Object} params - { date, time, staffId, customerName, customerPhone, customerEmail, customerNote, appointmentType, duration }
  * @returns {Object} { success, eventId?, error? }
