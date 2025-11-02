@@ -1510,10 +1510,13 @@ function getTodayWhatsAppReminders(date) {
         }
       }
 
-      const startTime = Utilities.formatDate(event.getStartTime(), CONFIG.TIMEZONE, 'HH:mm');
+      // Tarih ve saat bilgilerini çıkar
+      const eventDateTime = event.getStartTime();
+      const dateStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+      const timeStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'HH:mm');
 
-      // Yeni WhatsApp mesajı formatı
-      const message = `Sayın ${customerName},\n\nBugün saat ${startTime}'teki ${staffName} ile ${appointmentTypeName} randevunuzu hatırlatmak isteriz. Randevunuzda bir değişiklik yapmanız gerekirse lütfen bizi önceden bilgilendiriniz.\n\nSaygılarımızla,\n\nRolex İzmir İstinyepark`;
+      // Yeni WhatsApp mesajı formatı (eski link için)
+      const message = `Sayın ${customerName},\n\nBugün saat ${timeStr}'teki ${staffName} ile ${appointmentTypeName} randevunuzu hatırlatmak isteriz. Randevunuzda bir değişiklik yapmanız gerekirse lütfen bizi önceden bilgilendiriniz.\n\nSaygılarımızla,\n\nRolex İzmir İstinyepark`;
       const encodedMessage = encodeURIComponent(message);
 
       // Türkiye telefon formatı: 05XX XXX XX XX → 905XXXXXXXXX
@@ -1521,7 +1524,15 @@ function getTodayWhatsAppReminders(date) {
       const phone = cleanPhone.startsWith('0') ? '90' + cleanPhone.substring(1) : cleanPhone;
       const link = `https://wa.me/${phone}?text=${encodedMessage}`;
 
-      return { customerName, startTime, staffName, appointmentType: appointmentTypeName, link };
+      return {
+        customerName,
+        date: dateStr,           // YYYY-MM-DD formatı
+        time: timeStr,           // HH:MM formatı
+        startTime: timeStr,      // Eski uyumluluk için
+        staffName,
+        appointmentType: appointmentTypeName,
+        link
+      };
     }).filter(Boolean); // null'ları filtrele
 
     return { success: true, data: reminders };
