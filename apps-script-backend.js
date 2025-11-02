@@ -1191,8 +1191,14 @@ function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
 
       // staffId filtresi varsa uygula
       const eventStaffId = event.getTag('staffId');
-      if (staffId !== 'all' && eventStaffId && eventStaffId !== staffId) {
-        return; // Bu staff'a ait değil, atla
+      const eventAppointmentType = event.getTag('appointmentType');
+
+      // ÖNEMLİ: TESLİM randevuları için staffId filtresini ATLAMA
+      // Çünkü aynı saatte başka personelde teslim olup olmadığını kontrol etmemiz gerekiyor
+      const isDelivery = eventAppointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY;
+
+      if (!isDelivery && staffId !== 'all' && eventStaffId && eventStaffId !== staffId) {
+        return; // Bu staff'a ait değil VE teslim değil, atla
       }
 
       if (!eventsByDate[eventDate]) {
