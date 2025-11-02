@@ -2525,6 +2525,7 @@ function sendDailySlackReminders() {
 
 /**
  * Slack mesajını formatla (Slack Block Kit kullanarak)
+ * Sitedeki tasarıma benzer, modern ve okunabilir format
  */
 function formatSlackMessage(appointments, dateFormatted) {
   const appointmentTypeEmojis = {
@@ -2541,7 +2542,7 @@ function formatSlackMessage(appointments, dateFormatted) {
     'management': 'Yönetim'
   };
 
-  // Header
+  // Header - Daha modern
   const blocks = [
     {
       type: 'header',
@@ -2569,25 +2570,40 @@ function formatSlackMessage(appointments, dateFormatted) {
       type: 'section',
       text: {
         type: 'mrkdwn',
-        text: '✨ Bugün randevu yok!'
+        text: ':sparkles: *Bugün randevu yok!*'
       }
     });
   } else {
-    // Her randevu için
+    // Her randevu için - fields kullanarak daha organize
     appointments.forEach((apt, index) => {
       const emoji = appointmentTypeEmojis[apt.appointmentType] || '📋';
       const typeName = appointmentTypeNames[apt.appointmentType] || apt.appointmentType;
 
+      // Randevu kartı
       blocks.push({
         type: 'section',
         text: {
           type: 'mrkdwn',
-          text: `*🕐 ${apt.time}* - ${emoji} ${typeName}\n` +
-                `👤 *${apt.customerName}*\n` +
-                `📱 ${apt.customerPhone}\n` +
-                `👨‍💼 İlgili: ${apt.staffName}` +
-                (apt.customerNote ? `\n📝 _${apt.customerNote}_` : '')
-        }
+          text: `*${emoji} ${typeName}*\n🕐 *${apt.time}*`
+        },
+        fields: [
+          {
+            type: 'mrkdwn',
+            text: `*Müşteri:*\n${apt.customerName}`
+          },
+          {
+            type: 'mrkdwn',
+            text: `*Telefon:*\n${apt.customerPhone}`
+          },
+          {
+            type: 'mrkdwn',
+            text: `*İlgili Personel:*\n${apt.staffName}`
+          },
+          {
+            type: 'mrkdwn',
+            text: apt.customerNote ? `*Not:*\n_${apt.customerNote}_` : '*Not:*\n-'
+          }
+        ]
       });
 
       // Son randevudan sonra divider ekleme
@@ -2598,23 +2614,116 @@ function formatSlackMessage(appointments, dateFormatted) {
       }
     });
 
-    // Footer
+    // Footer - Daha belirgin
     blocks.push(
       {
         type: 'divider'
       },
       {
-        type: 'context',
-        elements: [
-          {
-            type: 'mrkdwn',
-            text: `📊 *Toplam: ${appointments.length} randevu*`
-          }
-        ]
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `📊 *Toplam: ${appointments.length} randevu*`
+        }
       }
     );
   }
 
   return { blocks };
+}
+
+/**
+ * TEST FONKSİYONU - Slack entegrasyonunu adım adım test et
+ * Apps Script editöründe bu fonksiyonu çalıştırın ve console output'u kontrol edin
+ */
+function testSlackIntegration() {
+  console.log('===== SLACK ENTEGRASYON TESTİ BAŞLADI =====');
+
+  // 1. Script Properties'den Webhook URL'i kontrol et
+  console.log('\n1. Webhook URL kontrolü...');
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const webhookUrl = scriptProperties.getProperty('SLACK_WEBHOOK_URL');
+
+  if (!webhookUrl) {
+    console.error('❌ HATA: SLACK_WEBHOOK_URL Script Properties\'de bulunamadı!');
+    console.log('ÇÖZÜM: Admin panelden Slack Webhook URL\'ini kaydedin.');
+    return;
+  }
+
+  console.log('✅ Webhook URL bulundu:', webhookUrl.substring(0, 50) + '...');
+
+  // 2. Config'i yükle ve kontrol et
+  console.log('\n2. Config yükleme...');
+  loadExternalConfigs();
+
+  if (!CONFIG.SLACK_WEBHOOK_URL) {
+    console.error('❌ HATA: CONFIG.SLACK_WEBHOOK_URL yüklenemedi!');
+    return;
+  }
+
+  console.log('✅ Config yüklendi');
+
+  // 3. Bugünün randevularını kontrol et
+  console.log('\n3. Bugünün randevuları kontrol ediliyor...');
+  const today = new Date();
+  const todayDateStr = Utilities.formatDate(today, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+  console.log('Tarih:', todayDateStr);
+
+  const reminders = getTodayWhatsAppReminders(todayDateStr);
+
+  if (!reminders.success) {
+    console.error('❌ HATA: Randevular alınamadı:', reminders.error);
+    return;
+  }
+
+  const appointments = reminders.data || [];
+  console.log('✅ Randevu sayısı:', appointments.length);
+
+  if (appointments.length > 0) {
+    console.log('İlk randevu:', appointments[0]);
+  } else {
+    console.log('⚠️ UYARI: Bugün için randevu yok!');
+  }
+
+  // 4. Slack mesajını hazırla
+  console.log('\n4. Slack mesajı hazırlanıyor...');
+  const todayFormatted = Utilities.formatDate(today, CONFIG.TIMEZONE, 'd MMMM yyyy, EEEE');
+  const slackMessage = formatSlackMessage(appointments, todayFormatted);
+  console.log('✅ Mesaj hazırlandı');
+  console.log('Block sayısı:', slackMessage.blocks.length);
+
+  // 5. Slack'e gönder
+  console.log('\n5. Slack\'e gönderiliyor...');
+
+  try {
+    const response = UrlFetchApp.fetch(CONFIG.SLACK_WEBHOOK_URL, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(slackMessage),
+      muteHttpExceptions: true
+    });
+
+    const responseCode = response.getResponseCode();
+    const responseText = response.getContentText();
+
+    console.log('HTTP Response Code:', responseCode);
+    console.log('Response Text:', responseText);
+
+    if (responseCode === 200) {
+      console.log('\n✅ BAŞARILI! Slack\'e mesaj gönderildi!');
+      console.log('Slack kanalınızı kontrol edin.');
+    } else {
+      console.error('\n❌ HATA: Slack webhook hatası!');
+      console.error('Response Code:', responseCode);
+      console.error('Response:', responseText);
+    }
+
+  } catch (error) {
+    console.error('\n❌ HATA: İstek gönderilemedi!');
+    console.error('Hata:', error.toString());
+    console.error('Stack:', error.stack);
+  }
+
+  console.log('\n===== TEST TAMAMLANDI =====');
 }
 
