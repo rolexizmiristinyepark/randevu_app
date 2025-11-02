@@ -12,7 +12,9 @@ const ApiService = {
         'createManualAppointment',      // YENİ: v3.0
         'sendWhatsAppReminders',        // YENİ: WhatsApp Business API
         'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
-        'getWhatsAppSettings'           // YENİ: WhatsApp Business API
+        'getWhatsAppSettings',          // YENİ: WhatsApp Business API
+        'updateSlackSettings',          // YENİ: Slack Webhook
+        'getSlackSettings'              // YENİ: Slack Webhook
     ],
 
     /**
