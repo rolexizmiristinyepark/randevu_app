@@ -358,43 +358,27 @@
 
         /* Vardiya renkleri - Modern lüks açık tonlar */
         .shift-table select[data-shift=""] {
-            background: #FFE5E5;
+            background: #FFE5E5; /* Açık kırmızı - İzin */
             color: #C62828;
         }
 
         .shift-table select[data-shift="morning"] {
-            background: #FFF9E5;
-            color: #F57C00;
+            background: #F3E5F5; /* Açık mor - Sabah */
+            color: #7B1FA2;
         }
 
         .shift-table select[data-shift="evening"] {
-            background: #E5F5F0;
+            background: #E5F5F0; /* Açık yeşil - Akşam */
             color: #00897B;
         }
 
         .shift-table select[data-shift="full"] {
-            background: #FFE9D9;
-            color: #E65100;
+            background: #E3F2FD; /* Açık mavi - Full */
+            color: #1976D2;
         }
 
-        /* Responsive - Küçük ekranlarda kısaltmalar */
-        .shift-full-text {
-            display: inline;
-        }
-
-        .shift-short-text {
-            display: none;
-        }
-
+        /* Responsive - Küçük ekranlarda */
         @media (max-width: 1024px) {
-            .shift-full-text {
-                display: none;
-            }
-
-            .shift-short-text {
-                display: inline;
-            }
-
             .shift-table th,
             .shift-table td {
                 padding: 8px 4px;
@@ -1174,18 +1158,18 @@
                             'data-shift': current  // Renk için
                         });
 
-                        // Options - Responsive text ile
+                        // Options - Tam kelime kullan
                         const opt1 = createElement('option', { value: '' });
-                        opt1.innerHTML = '<span class="shift-full-text">İzin</span><span class="shift-short-text">İzin</span>';
+                        opt1.textContent = 'İzin';
 
                         const opt2 = createElement('option', { value: 'morning' });
-                        opt2.innerHTML = '<span class="shift-full-text">Sabah</span><span class="shift-short-text">S</span>';
+                        opt2.textContent = 'Sabah';
 
                         const opt3 = createElement('option', { value: 'evening' });
-                        opt3.innerHTML = '<span class="shift-full-text">Akşam</span><span class="shift-short-text">A</span>';
+                        opt3.textContent = 'Akşam';
 
                         const opt4 = createElement('option', { value: 'full' });
-                        opt4.innerHTML = '<span class="shift-full-text">Full</span><span class="shift-short-text">F</span>';
+                        opt4.textContent = 'Full';
 
                         // Set selected option
                         if (current === 'morning') opt2.selected = true;
@@ -1207,6 +1191,34 @@
 
                 table.appendChild(tbody);
                 container.appendChild(table);
+
+                // Responsive: Ekran küçükse kısaltmaları uygula
+                this.updateShiftLabels();
+            },
+
+            // Ekran genişliğine göre vardiya etiketlerini güncelle
+            updateShiftLabels() {
+                const isSmallScreen = window.innerWidth <= 1024;
+                const selects = document.querySelectorAll('.shift-table select');
+
+                selects.forEach(select => {
+                    Array.from(select.options).forEach(option => {
+                        const value = option.value;
+                        if (isSmallScreen) {
+                            // Küçük ekranda kısaltmalar
+                            if (value === '') option.textContent = 'İzin';
+                            if (value === 'morning') option.textContent = 'S';
+                            if (value === 'evening') option.textContent = 'A';
+                            if (value === 'full') option.textContent = 'F';
+                        } else {
+                            // Normal ekranda tam kelimeler
+                            if (value === '') option.textContent = 'İzin';
+                            if (value === 'morning') option.textContent = 'Sabah';
+                            if (value === 'evening') option.textContent = 'Akşam';
+                            if (value === 'full') option.textContent = 'Full';
+                        }
+                    });
+                });
             },
 
             renderSaved() {
@@ -1830,6 +1842,13 @@
 
         // Start initialization when DOM is ready
         document.addEventListener('DOMContentLoaded', initAdmin);
+
+        // Responsive: Ekran boyutu değiştiğinde vardiya etiketlerini güncelle
+        window.addEventListener('resize', () => {
+            if (typeof ShiftManager !== 'undefined' && ShiftManager.updateShiftLabels) {
+                ShiftManager.updateShiftLabels();
+            }
+        });
     </script>
 </body>
 </html>
