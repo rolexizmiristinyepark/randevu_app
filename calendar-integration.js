@@ -235,6 +235,7 @@ export function generateICS(startDate, endDate) {
     let description = 'RANDEVU BİLGİLERİ\\n\\n';
     let summary = 'Rolex Randevu';
     let alarmTrigger = '-PT30M'; // Default
+    let alarms = null; // Müşteri takvimi için birden fazla alarm
 
     if (appointment) {
         // Müşteri takvimi için özel isimler
@@ -260,7 +261,13 @@ export function generateICS(startDate, endDate) {
         const year = appointmentDate.getFullYear();
         const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
         const day = String(appointmentDate.getDate()).padStart(2, '0');
-        alarmTrigger = `VALUE=DATE-TIME:${year}${month}${day}T070000Z`;
+
+        // 3 ayrı alarm: 1 gün önce, randevu günü 10:00, 1 saat önce
+        const alarms = [
+            { trigger: '-P1D', description: 'Yarın randevunuz var. Lütfen kimlik belgenizi yanınızda bulundurun.' },
+            { trigger: `VALUE=DATE-TIME:${year}${month}${day}T070000Z`, description: 'Bugün randevunuz var. Rolex İzmir İstinyepark.' },
+            { trigger: '-PT1H', description: '1 saat sonra randevunuz var. Lütfen zamanında gelin.' }
+        ];
 
         // Yeni sıralama: İlgili, İletişim, E-posta, Tarih, Saat, Konu, Ek Bilgi
         description += `İlgili: ${appointment.staffName}\\n`;
@@ -310,15 +317,37 @@ export function generateICS(startDate, endDate) {
         `DESCRIPTION:${description}`,
         'LOCATION:Rolex İzmir İstinyepark',
         'STATUS:CONFIRMED',
-        'ORGANIZER;CN=Rolex İzmir İstinyepark:mailto:istinyeparkrolex35@gmail.com',
-        'BEGIN:VALARM',
-        `TRIGGER;${alarmTrigger}`,
-        'ACTION:DISPLAY',
-        'DESCRIPTION:Randevunuza zamanında gelmenizi rica ederiz. Lütfen kimlik belgenizi yanınızda bulundurun.',
-        'END:VALARM',
+        'ORGANIZER;CN=Rolex İzmir İstinyepark:mailto:istinyeparkrolex35@gmail.com'
+    ];
+
+    // Alarm dizisi varsa (müşteri takvimi), her biri için VALARM bloğu ekle
+    if (alarms && alarms.length > 0) {
+        alarms.forEach(alarm => {
+            icsContent.push(
+                'BEGIN:VALARM',
+                `TRIGGER;${alarm.trigger}`,
+                'ACTION:DISPLAY',
+                `DESCRIPTION:${alarm.description}`,
+                'END:VALARM'
+            );
+        });
+    } else {
+        // Alarm dizisi yoksa (eski format), tek alarm ekle
+        icsContent.push(
+            'BEGIN:VALARM',
+            `TRIGGER;${alarmTrigger}`,
+            'ACTION:DISPLAY',
+            'DESCRIPTION:Randevunuza zamanında gelmenizi rica ederiz. Lütfen kimlik belgenizi yanınızda bulundurun.',
+            'END:VALARM'
+        );
+    }
+
+    icsContent.push(
         'END:VEVENT',
         'END:VCALENDAR'
-    ].join('\r\n');
+    );
+
+    return icsContent.join('\r\n');
 }
 
 // ==================== YARDIMCI FONKSİYONLAR ====================
