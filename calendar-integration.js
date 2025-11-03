@@ -150,23 +150,12 @@ export function addToCalendarGoogle() {
     }
     details += '\nRandevunuza zamanında gelmenizi rica ederiz.\nLütfen kimlik belgenizi yanınızda bulundurun.';
 
-    // Google Calendar URL
-    const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startTime}/${endTime}&details=${encodeURIComponent(details)}&location=${encodeURIComponent('Rolex İzmir İstinyepark')}`;
-
-    // Android: Önce app'i dene, yoksa web aç
-    if (platform.android) {
-        // Google Calendar app intent URL
-        const appUrl = `https://www.google.com/calendar/event?action=TEMPLATE&text=${encodeURIComponent(eventTitle)}&dates=${startTime}/${endTime}&details=${encodeURIComponent(details)}&location=${encodeURIComponent('Rolex İzmir İstinyepark')}`;
-
-        window.location.href = appUrl;
-        ModalUtils.close('calendarModal');
-        showToast('Google Calendar açılıyor...', 'success');
-    } else {
-        // Diğer platformlar: Web aç
-        window.open(calendarUrl, '_blank');
-        ModalUtils.close('calendarModal');
-        showToast('Google Calendar açıldı', 'success');
-    }
+    // Google Calendar için ICS dosyası kullan (alarmlar doğru çalışır)
+    // URL parametreleri ile alarm kontrolü sınırlı olduğu için ICS standart çözüm
+    const icsContent = generateICS(date, endDate);
+    downloadICSFile(icsContent, 'rolex-randevu.ics');
+    ModalUtils.close('calendarModal');
+    showToast('Takvim dosyası indirildi. Google Calendar ile açın.', 'success');
 }
 
 /**
@@ -211,18 +200,12 @@ export function addToCalendarOutlook() {
     }
     details += '<br>Randevunuza zamanında gelmenizi rica ederiz.<br>Lütfen kimlik belgenizi yanınızda bulundurun.';
 
-    const outlookUrl = new URL('https://outlook.live.com/calendar/0/deeplink/compose');
-    outlookUrl.searchParams.append('path', '/calendar/action/compose');
-    outlookUrl.searchParams.append('rru', 'addevent');
-    outlookUrl.searchParams.append('startdt', date.toISOString());
-    outlookUrl.searchParams.append('enddt', endDate.toISOString());
-    outlookUrl.searchParams.append('subject', eventTitle);
-    outlookUrl.searchParams.append('location', 'Rolex İzmir İstinyepark');
-    outlookUrl.searchParams.append('body', details);
-
-    window.open(outlookUrl.toString(), '_blank');
+    // Outlook için ICS dosyası kullan (alarmlar doğru çalışır)
+    // Web URL parametreleri ile alarm kontrolü sınırlı olduğu için ICS standart çözüm
+    const icsContent = generateICS(date, endDate);
+    downloadICSFile(icsContent, 'rolex-randevu.ics');
     ModalUtils.close('calendarModal');
-    showToast('Outlook Calendar açıldı', 'success');
+    showToast('Takvim dosyası indirildi. Outlook Calendar ile açın.', 'success');
 }
 
 /**
@@ -355,9 +338,14 @@ export function generateICS(startDate, endDate) {
     // Alarm dizisi varsa (müşteri takvimi), her biri için VALARM bloğu ekle
     if (alarms && alarms.length > 0) {
         alarms.forEach(alarm => {
+            // TRIGGER formatı: VALUE=DATE-TIME için ; kullan, relative için : kullan
+            const triggerLine = alarm.trigger.startsWith('VALUE=')
+                ? `TRIGGER;${alarm.trigger}`
+                : `TRIGGER:${alarm.trigger}`;
+
             icsContent.push(
                 'BEGIN:VALARM',
-                `TRIGGER;${alarm.trigger}`,
+                triggerLine,
                 'ACTION:DISPLAY',
                 `DESCRIPTION:${alarm.description}`,
                 'END:VALARM'
@@ -365,9 +353,13 @@ export function generateICS(startDate, endDate) {
         });
     } else {
         // Alarm dizisi yoksa (eski format), tek alarm ekle
+        const triggerLine = alarmTrigger.startsWith('VALUE=')
+            ? `TRIGGER;${alarmTrigger}`
+            : `TRIGGER:${alarmTrigger}`;
+
         icsContent.push(
             'BEGIN:VALARM',
-            `TRIGGER;${alarmTrigger}`,
+            triggerLine,
             'ACTION:DISPLAY',
             'DESCRIPTION:Randevunuza zamanında gelmenizi rica ederiz. Lütfen kimlik belgenizi yanınızda bulundurun.',
             'END:VALARM'
