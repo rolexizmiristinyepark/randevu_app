@@ -1822,43 +1822,13 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         return eventTime === timeStr;
       });
 
-      // 3. Maksimum 2 servis masası kontrolü
-      if (sameTimeEvents.length >= 2) {
+      // 3. SADECE 1 RANDEVU KONTROLÜ - Randevu türü farketmeksizin
+      // Aynı saat diliminde herhangi bir randevu varsa slot müsait değil
+      if (sameTimeEvents.length >= 1) {
         return {
           time: timeStr,
           available: false,
-          reason: CONFIG.ERROR_MESSAGES.TABLES_FULL
-        };
-      }
-
-      // 4. Teslim randevusu özel kuralları
-      if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
-        // Aynı saatte başka teslim randevusu var mı?
-        const hasDeliveryAtSameTime = sameTimeEvents.some(event => {
-          const eventType = event.getTag('appointmentType');
-          return eventType === CONFIG.APPOINTMENT_TYPES.DELIVERY;
-        });
-
-        if (hasDeliveryAtSameTime) {
-          return {
-            time: timeStr,
-            available: false,
-            reason: CONFIG.ERROR_MESSAGES.DELIVERY_CONFLICT
-          };
-        }
-      }
-
-      // 5. Aynı çalışanda randevu var mı?
-      const staffConflict = sameTimeEvents.some(event => {
-        const eventStaffId = event.getTag('staffId');
-        return eventStaffId && eventStaffId === String(staffId);
-      });
-
-      if (staffConflict) {
-        return {
-          time: timeStr,
-          available: false,
-          reason: CONFIG.ERROR_MESSAGES.STAFF_CONFLICT
+          reason: 'Bu saat diliminde zaten bir randevu var'
         };
       }
 
