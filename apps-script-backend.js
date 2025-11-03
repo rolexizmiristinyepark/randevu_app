@@ -1342,7 +1342,23 @@ function createAppointment(params) {
     // getData() - tek seferlik çağrı (DRY prensibi)
     const data = getData();
 
-    // Randevu tipi kontrolü - Teslim randevusu için max kontrolü
+    // ===== RANDEVU ÇAKIŞMA KONTROLÜ =====
+    // 1. Aynı saat diliminde başka randevu var mı? (Randevu türü fark etmeksizin)
+    const calendar = getCalendar();
+    const startDateTime = new Date(date + 'T' + time + ':00');
+    const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
+
+    // Bu saat aralığında herhangi bir event var mı kontrol et
+    const existingEvents = calendar.getEvents(startDateTime, endDateTime);
+
+    if (existingEvents && existingEvents.length > 0) {
+      return {
+        success: false,
+        error: 'Bu saat diliminde zaten bir randevu var. Lütfen başka bir saat seçin.'
+      };
+    }
+
+    // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
     if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
       const maxDelivery = data.settings?.maxDaily || 4;
 
@@ -1359,12 +1375,6 @@ function createAppointment(params) {
         };
       }
     }
-
-    const calendar = getCalendar();
-
-    // Başlangıç ve bitiş zamanlarını oluştur
-    const startDateTime = new Date(date + 'T' + time + ':00');
-    const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
     // Event başlığı - sanitized değerleri kullan
     const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
