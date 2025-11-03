@@ -452,6 +452,18 @@
             </div>
 
             <div class="card">
+                <div class="card-title">Manuel Randevu Oluşturma</div>
+                <div class="input-group">
+                    <label for="manualLink">Yönetim Randevu Sayfası</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="manualLink" readonly style="background: #FAFAFA; flex: 1;">
+                        <button class="btn btn-small btn-secondary" id="copyManualLinkBtn">Kopyala</button>
+                        <button class="btn btn-small" id="openManualBtn">Aç</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
                 <div class="card-title">İlgili Personel Özel Linkleri</div>
                 <div id="staffLinks" style="margin-top: 15px;"></div>
             </div>
@@ -1601,6 +1613,20 @@
             }
         }
 
+        function copyManualLink() {
+            const link = document.getElementById('manualLink');
+            link.select();
+            document.execCommand('copy');
+            UI.showAlert('✅ Manuel randevu linki kopyalandı!', 'success');
+        }
+
+        function openManualPage() {
+            const link = document.getElementById('manualLink').value;
+            if (link && !link.includes('⚠️')) {
+                window.open(link, '_blank');
+            }
+        }
+
         // ==================== INIT ====================
         // Wait for ES6 modules to load before checking authentication
         function initAdmin() {
@@ -1645,6 +1671,10 @@
             const linkInput = document.getElementById('customerLink');
             linkInput.value = CONFIG.BASE_URL;
 
+            // Manuel randevu link setup (staff=0 parametreli)
+            const manualLinkInput = document.getElementById('manualLink');
+            manualLinkInput.value = CONFIG.BASE_URL + '?staff=0';
+
             // Hafta seçimi - bu hafta
             const today = new Date();
             const year = today.getFullYear();
@@ -1658,6 +1688,8 @@
             document.getElementById('saveSettingsBtn')?.addEventListener('click', () => API.save());
             document.getElementById('openCustomerBtn')?.addEventListener('click', openCustomerPage);
             document.getElementById('copyLinkBtn')?.addEventListener('click', copyLink);
+            document.getElementById('openManualBtn')?.addEventListener('click', openManualPage);
+            document.getElementById('copyManualLinkBtn')?.addEventListener('click', copyManualLink);
 
             // Staff buttons
             document.getElementById('addStaffBtn')?.addEventListener('click', () => Staff.add());
