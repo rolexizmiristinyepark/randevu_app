@@ -23,6 +23,23 @@ const CONFIG = window.CONFIG;
 const ModalUtils = window.ModalUtils;
 const lastAppointmentData = () => window.lastAppointmentData;
 
+// ==================== UTILITY FONKSİYONLARI ====================
+
+/**
+ * İsim ve soyisimleri title case formatına çevirir
+ * Örnek: "SERDAR BENLİ" → "Serdar Benli"
+ * @param {string} str - Formatlanacak metin
+ * @returns {string} Title case formatında metin
+ */
+function toTitleCase(str) {
+    if (!str) return str;
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
+        .join(' ');
+}
+
 // ==================== TAKVİME EKLEME FONKSİYONLARI ====================
 
 /**
@@ -93,6 +110,9 @@ export function addToCalendarGoogle() {
         return;
     }
 
+    // İsim formatlaması
+    appointment.staffName = toTitleCase(appointment.staffName);
+
     const platform = detectPlatform();
     const date = new Date(appointment.date + 'T' + appointment.time);
     const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
@@ -158,6 +178,9 @@ export function addToCalendarOutlook() {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
         return;
     }
+
+    // İsim formatlaması
+    appointment.staffName = toTitleCase(appointment.staffName);
 
     const date = new Date(appointment.date + 'T' + appointment.time);
     const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
@@ -238,6 +261,9 @@ export function generateICS(startDate, endDate) {
     let alarms = null; // Müşteri takvimi için birden fazla alarm
 
     if (appointment) {
+        // İsim formatlaması
+        appointment.staffName = toTitleCase(appointment.staffName);
+
         // Müşteri takvimi için özel isimler
         const customerAppointmentTypeNames = {
             'delivery': 'Saat Takdimi',

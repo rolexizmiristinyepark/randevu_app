@@ -28,6 +28,23 @@ const CONFIG = {
     ]
 };
 
+// ==================== UTILITY FONKSİYONLARI ====================
+
+/**
+ * İsim ve soyisimleri title case formatına çevirir
+ * Örnek: "SERDAR BENLİ" → "Serdar Benli"
+ * @param {string} str - Formatlanacak metin
+ * @returns {string} Title case formatında metin
+ */
+function toTitleCase(str) {
+    if (!str) return str;
+    return str
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
+        .join(' ');
+}
+
 // Debug logger - Production'da log'ları devre dışı bırakır
 const log = {
     error: (...args) => CONFIG.DEBUG && console.error(...args),
@@ -891,7 +908,7 @@ function selectTimeSlot(timeStr, element) {
 }
 
 document.getElementById('submitBtn')?.addEventListener('click', async function() {
-    const name = document.getElementById('customerName').value.trim();
+    const name = toTitleCase(document.getElementById('customerName').value.trim());
     const phone = document.getElementById('customerPhone').value.trim();
     const email = document.getElementById('customerEmail').value.trim();
     const note = document.getElementById('customerNote').value.trim();
