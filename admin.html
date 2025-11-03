@@ -1160,7 +1160,7 @@
 
                         // Options - Tam kelime kullan
                         const opt1 = createElement('option', { value: '' });
-                        opt1.textContent = 'İzin';
+                        opt1.textContent = 'Off';
 
                         const opt2 = createElement('option', { value: 'morning' });
                         opt2.textContent = 'Sabah';
@@ -1206,13 +1206,13 @@
                         const value = option.value;
                         if (isSmallScreen) {
                             // Küçük ekranda kısaltmalar
-                            if (value === '') option.textContent = 'İzin';
+                            if (value === '') option.textContent = 'Off';
                             if (value === 'morning') option.textContent = 'S';
                             if (value === 'evening') option.textContent = 'A';
                             if (value === 'full') option.textContent = 'F';
                         } else {
                             // Normal ekranda tam kelimeler
-                            if (value === '') option.textContent = 'İzin';
+                            if (value === '') option.textContent = 'Off';
                             if (value === 'morning') option.textContent = 'Sabah';
                             if (value === 'evening') option.textContent = 'Akşam';
                             if (value === 'full') option.textContent = 'Full';
