@@ -256,18 +256,24 @@ export function generateICS(startDate, endDate) {
         // Tarih objesi oluştur
         const appointmentDate = new Date(appointment.date);
 
-        // Randevu günü sabah 10:00 Türkiye saati için alarm hesapla
-        // Türkiye UTC+3 olduğu için 10:00 local = 07:00 UTC
-        const year = appointmentDate.getFullYear();
-        const month = String(appointmentDate.getMonth() + 1).padStart(2, '0');
-        const day = String(appointmentDate.getDate()).padStart(2, '0');
-
-        // 3 ayrı alarm: 1 gün önce, randevu günü 10:00, 1 saat önce
-        const alarms = [
+        // 3 ayrı alarm: 1 gün önce, randevu günü sabah 10:00, 1 saat önce
+        alarms = [
             { trigger: '-P1D', description: 'Yarın randevunuz var. Lütfen kimlik belgenizi yanınızda bulundurun.' },
-            { trigger: `VALUE=DATE-TIME:${year}${month}${day}T070000Z`, description: 'Bugün randevunuz var. Rolex İzmir İstinyepark.' },
             { trigger: '-PT1H', description: '1 saat sonra randevunuz var. Lütfen zamanında gelin.' }
         ];
+
+        // Randevu günü sabah 10:00 için dinamik hesaplama
+        // Örnek: Randevu 13:00 ise, 3 saat önce (10:00'da alarm)
+        const appointmentHour = parseInt(appointment.time.split(':')[0]);
+        const hoursUntilMorning = appointmentHour - 10; // 13 - 10 = 3 saat önce
+
+        // Sadece randevu saat 10:00'dan sonraysa sabah alarmı ekle
+        if (hoursUntilMorning > 0) {
+            alarms.splice(1, 0, {
+                trigger: `-PT${hoursUntilMorning}H`,
+                description: 'Bugün randevunuz var. Rolex İzmir İstinyepark.'
+            });
+        }
 
         // Yeni sıralama: İlgili, İletişim, E-posta, Tarih, Saat, Konu, Ek Bilgi
         description += `İlgili: ${appointment.staffName}\\n`;
