@@ -22,7 +22,14 @@
       "Bash(gh repo edit rolexizmiristinyepark/teslim_app --visibility private)",
       "Bash(open \"https://github.com/rolexizmiristinyepark/teslim_app/settings\")",
       "Bash(git add .)",
-      "Bash(git commit --allow-empty -m \"fix: Re-enable GitHub Pages after making repo public\")"
+      "Bash(git commit --allow-empty -m \"fix: Re-enable GitHub Pages after making repo public\")",
+      "Bash(open \"https://github.com/rolexizmiristinyepark/randevu_app/settings/pages\")",
+      "Bash(open \"https://github.com/rolexizmiristinyepark/randevu_app/actions\")",
+      "Bash(curl -s \"https://rolexizmiristinyepark.github.io/randevu_app/\")",
+      "Bash(cat .github/workflows/deploy.yml)",
+      "Bash(git checkout -b gh-pages)",
+      "Bash(git commit -m \"Deploy to GitHub Pages\")",
+      "Bash(git push -f origin gh-pages)"
     ],
     "deny": [],
     "ask": []
