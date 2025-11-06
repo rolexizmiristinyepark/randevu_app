@@ -852,7 +852,7 @@ function getData() {
       shifts: {}, // { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
       settings: {
         interval: 60,
-        maxDaily: 4
+        maxDaily: 3
       }
     };
     saveData(defaultData);
@@ -1343,7 +1343,7 @@ function createAppointment(params) {
     const data = getData();
 
     // ===== RANDEVU ÇAKIŞMA KONTROLÜ =====
-    // 1. Aynı saat diliminde başka randevu var mı? (Randevu türü fark etmeksizin)
+    // 1. Aynı saat diliminde AYNI TÜRDE randevu var mı kontrol et
     const calendar = getCalendar();
     const startDateTime = new Date(date + 'T' + time + ':00');
     const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
@@ -1351,16 +1351,22 @@ function createAppointment(params) {
     // Bu saat aralığında herhangi bir event var mı kontrol et
     const existingEvents = calendar.getEvents(startDateTime, endDateTime);
 
-    if (existingEvents && existingEvents.length > 0) {
+    // SADECE aynı türdeki randevuları kontrol et (Teslim+Teslim BLOKE, Teslim+Görüşme İZİN)
+    const sameTypeEvents = existingEvents.filter(event => {
+      const eventType = event.getTag('appointmentType');
+      return eventType === appointmentType;
+    });
+
+    if (sameTypeEvents.length > 0) {
       return {
         success: false,
-        error: 'Bu saat diliminde zaten bir randevu var. Lütfen başka bir saat seçin.'
+        error: `Bu saatte aynı türde (${CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType]}) başka bir randevu var. Lütfen başka bir saat seçin.`
       };
     }
 
     // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
     if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
-      const maxDelivery = data.settings?.maxDaily || 4;
+      const maxDelivery = data.settings?.maxDaily || 3;
 
       // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
       const countResult = getAppointments(date, {
@@ -1822,13 +1828,19 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         return eventTime === timeStr;
       });
 
-      // 3. SADECE 1 RANDEVU KONTROLÜ - Randevu türü farketmeksizin
-      // Aynı saat diliminde herhangi bir randevu varsa slot müsait değil
-      if (sameTimeEvents.length >= 1) {
+      // 3. AYNI TÜRDE RANDEVU KONTROLÜ
+      // Aynı saat diliminde AYNI TÜRDE randevu varsa slot müsait değil
+      const sameTypeEventsAtTime = sameTimeEvents.filter(event => {
+        const eventType = event.getTag('appointmentType');
+        return eventType === appointmentType;
+      });
+
+      if (sameTypeEventsAtTime.length >= 1) {
+        const typeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
         return {
           time: timeStr,
           available: false,
-          reason: 'Bu saat diliminde zaten bir randevu var'
+          reason: `Bu saatte ${typeLabel} randevusu var`
         };
       }
 

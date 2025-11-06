@@ -845,8 +845,14 @@ function displayAvailableTimeSlots() {
 
             let isBookedInCalendar = false;
 
-            // BİR SAATTE SADECE 1 RANDEVU - Randevu türü farketmeksizin
-            if (sameTimeEvents.length >= 1) {
+            // BİR SAATTE AYNI TÜRDE SADECE 1 RANDEVU
+            // Aynı saatte AYNI TÜRDE randevu varsa bloke et (Teslim+Teslim BLOKE, Teslim+Görüşme İZİN)
+            const sameTypeEventsAtTime = sameTimeEvents.filter(event => {
+                const eventType = event.extendedProperties?.private?.appointmentType;
+                return eventType === selectedAppointmentType;
+            });
+
+            if (sameTypeEventsAtTime.length >= 1) {
                 isBookedInCalendar = true;
             }
 
