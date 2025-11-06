@@ -156,15 +156,20 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // YENİ: URL'den randevu türünü al
     const urlAppointmentType = urlParams.get('type'); // ?type=teslim
+    console.log('🔍 URL Parameter "type":', urlAppointmentType);
+
     const appointmentTypeFromURL = {
         'teslim': 'delivery',
         'gorusme': 'meeting',
         'servis': 'service'
     }[urlAppointmentType];
 
+    console.log('🔍 appointmentTypeFromURL:', appointmentTypeFromURL);
+
     // Eğer URL'de type varsa, randevu türünü otomatik seç
     if (appointmentTypeFromURL) {
         selectedAppointmentType = appointmentTypeFromURL;
+        console.log('✅ selectedAppointmentType set edildi:', selectedAppointmentType);
     }
 
     // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
@@ -218,11 +223,13 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     // YENİ: Eğer URL'den type geldiyse, randevu türü seçimini GIZLE ve direkt takvimi göster
     if (appointmentTypeFromURL) {
+        console.log('✅ URL routing aktif - Takvim gösteriliyor, tür seçimi gizleniyor');
         typesContainer.style.display = 'none'; // Randevu türü seçimini gizle
         document.getElementById('calendarSection').style.display = 'block'; // Takvimi göster
         renderCalendar();
         loadMonthData();
     } else {
+        console.log('⚠️ URL routing YOK - Normal akış (tür seçimi göster)');
         // Normal akış: Randevu türü seçimini göster
         typesContainer.style.display = 'grid';
     }
