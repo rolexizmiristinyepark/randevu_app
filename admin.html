@@ -938,6 +938,26 @@
                 window.open(input.value, '_blank');
             },
 
+            copyLinkByType(staffId, type) {
+                const input = document.getElementById(`staffLink_${staffId}_${type}`);
+                if (!input) {
+                    UI.showAlert('❌ Link bulunamadı!', 'error');
+                    return;
+                }
+                input.select();
+                document.execCommand('copy');
+                UI.showAlert('✅ Link kopyalandı!', 'success');
+            },
+
+            openLinkByType(staffId, type) {
+                const input = document.getElementById(`staffLink_${staffId}_${type}`);
+                if (!input) {
+                    UI.showAlert('❌ Link bulunamadı!', 'error');
+                    return;
+                }
+                window.open(input.value, '_blank');
+            },
+
             openEditModal(staffId) {
                 const staff = Data.staff.find(s => s.id === staffId);
                 if (!staff) return;
