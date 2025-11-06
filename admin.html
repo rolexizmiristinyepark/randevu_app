@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rolex İzmir İstinyepark - Admin Paneli</title>
-    <link rel="icon" type="image/svg+xml" href="/randevu_app/assets/rolex-logo-CWgDBaQq.svg">
+    <link rel="icon" type="image/svg+xml" href="assets/rolex-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -402,14 +402,10 @@
             }
         }
     </style>
-  <script type="module" crossorigin src="/randevu_app/assets/modulepreload-polyfill-YP0FEG5d.js"></script>
-  <script type="module" crossorigin src="/randevu_app/assets/vendor-utils-D2GrUhHX.js"></script>
-  <script type="module" crossorigin src="/randevu_app/assets/customer-Bfo7cNc1.js"></script>
-  <script type="module" crossorigin src="/randevu_app/assets/admin-panel-Cujw4X8F.js"></script>
 </head>
 <body>
     <div class="header">
-        <img src="/randevu_app/assets/rolex-logo-CWgDBaQq.svg" class="rolex-logo" alt="Rolex Logo">
+        <img src="assets/rolex-logo.svg" class="rolex-logo" alt="Rolex Logo">
         <h1>Rolex İzmir İstinyepark</h1>
         <p>Admin Paneli</p>
     </div>
@@ -583,9 +579,13 @@
     </div>
 
     <!-- Date Utility Functions -->
+    <script type="module" src="date-utils.js"></script>
     <!-- Güvenlik Helper Fonksiyonları -->
+    <script type="module" src="security-helpers.js"></script>
     <!-- API Service -->
+    <script type="module" src="api-service.js"></script>
     <!-- Admin Authentication -->
+    <script type="module" src="admin-auth.js"></script>
 
     <script>
         // ==================== CONFIG ====================
