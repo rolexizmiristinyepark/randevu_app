@@ -845,44 +845,21 @@ function displayAvailableTimeSlots() {
 
             let isBookedInCalendar = false;
 
-            // Maksimum 2 servis masası var, 3. randevu alınamaz
-            if (sameTimeEvents.length >= 2) {
+            // BİR SAATTE SADECE 1 RANDEVU - Randevu türü farketmeksizin
+            if (sameTimeEvents.length >= 1) {
                 isBookedInCalendar = true;
-            } else {
-                // Aynı çalışanda randevu var mı kontrol et
-                isBookedInCalendar = sameTimeEvents.some(event => {
-                    const eventStaffId = event.extendedProperties?.private?.staffId;
-                    const eventAppointmentType = event.extendedProperties?.private?.appointmentType;
-
-                    // TESLİM randevusu kontrolü: Eğer o saatte BAŞKA BİR ÇALIŞANDA TESLİM varsa bloke et
-                    if (selectedAppointmentType === 'delivery' && eventAppointmentType === 'delivery') {
-                        return true;
-                    }
-
-                    // Aynı çalışanın randevusu veya genel randevu
-                    if (!eventStaffId || eventStaffId === String(selectedStaff)) {
-                        return true;
-                    }
-
-                    return false;
-                });
             }
 
             const isBooked = isBookedInSystem || isBookedInCalendar || isPastTime;
 
-            const btn = document.createElement('div');
-            btn.className = 'slot-btn' + (isBooked ? ' disabled' : '');
-            btn.textContent = timeStr;
-
-            if (isBooked) {
-                btn.title = 'Bu saat dolu';
-            }
-
+            // DOLU SAATLER HİÇ GÖSTERILMEZ - Sadece müsait saatler DOM'a eklenir
             if (!isBooked) {
+                const btn = document.createElement('div');
+                btn.className = 'slot-btn';
+                btn.textContent = timeStr;
                 btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
+                container.appendChild(btn);
             }
-
-            container.appendChild(btn);
         }
     }
 }
