@@ -87,15 +87,26 @@ if (typeof window !== 'undefined') {
 
 // SessionStorage tabanlı cache mekanizması - API çağrılarını optimize eder
 // Sayfa yenilemelerinde de çalışır, tarayıcı kapatılınca temizlenir
-const CACHE_DURATION = 300000; // 5 dakika (milisaniye)
+const CACHE_DURATION = 1800000; // 30 dakika (milisaniye) - Otomatik expire
 const CACHE_PREFIX = 'rolex_cache_'; // sessionStorage key prefix
 
-// SessionStorage cache helper - Map API ile aynı interface
+// SessionStorage cache helper - Map API ile aynı interface + auto-expiration
 const sessionStorageCache = {
     get(key) {
         try {
             const item = sessionStorage.getItem(CACHE_PREFIX + key);
-            return item ? JSON.parse(item) : undefined;
+            if (!item) return undefined;
+
+            const cached = JSON.parse(item);
+
+            // Timestamp kontrolü - Expire olmuş mu?
+            if (cached.timestamp && (Date.now() - cached.timestamp > CACHE_DURATION)) {
+                log.info(`Cache expired for key: ${key} (${Math.floor((Date.now() - cached.timestamp) / 60000)} dakika önce)`);
+                this.delete(key);
+                return undefined;
+            }
+
+            return cached.value;
         } catch (e) {
             log.warn('SessionStorage okuma hatası:', e);
             return undefined;
@@ -104,7 +115,12 @@ const sessionStorageCache = {
 
     set(key, value) {
         try {
-            sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify(value));
+            // Timestamp ile birlikte sakla
+            const cacheObject = {
+                value: value,
+                timestamp: Date.now()
+            };
+            sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheObject));
         } catch (e) {
             log.warn('SessionStorage yazma hatası (quota aşımı olabilir):', e);
             // Quota aşımı durumunda eski cache'leri temizle
@@ -113,7 +129,9 @@ const sessionStorageCache = {
     },
 
     has(key) {
-        return sessionStorage.getItem(CACHE_PREFIX + key) !== null;
+        // Sadece varlık değil, expire kontrolü de yap
+        const item = this.get(key);
+        return item !== undefined;
     },
 
     delete(key) {
