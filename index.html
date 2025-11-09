@@ -13,6 +13,8 @@
     <script type="module" src="date-utils.js"></script>
     <!-- Security Helper Functions -->
     <script type="module" src="security-helpers.js"></script>
+    <!-- Cloudflare Turnstile -->
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 <body>
     <div class="container">
@@ -83,6 +85,16 @@
             <div class="input-group">
                 <label for="customerNote">Not</label>
                 <textarea id="customerNote" placeholder="Randevu ile ilgili eklemek istediğiniz bir not varsa..."></textarea>
+            </div>
+        </div>
+
+        <!-- Cloudflare Turnstile Widget (Bot Protection) -->
+        <div id="turnstileContainer" style="display: none; margin: 20px auto; text-align: center;">
+            <div class="cf-turnstile"
+                 data-sitekey="1x00000000000000000000AA"
+                 data-callback="onTurnstileSuccess"
+                 data-theme="light"
+                 data-size="normal">
             </div>
         </div>
 

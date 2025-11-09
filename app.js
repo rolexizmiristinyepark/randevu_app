@@ -485,9 +485,10 @@ function selectManagementOption(option, event) {
         event.currentTarget.classList.add('selected');
     }
 
-    // Detayları ve submit butonunu göster
+    // Detayları, Turnstile ve submit butonunu göster
     document.getElementById('staffSection').style.display = 'none';
     document.getElementById('detailsSection').style.display = 'block';
+    document.getElementById('turnstileContainer').style.display = 'block';
     document.getElementById('submitBtn').style.display = 'block';
 }
 
@@ -890,9 +891,11 @@ function selectTimeSlot(timeStr, element) {
         displayManagementOptions();
         document.getElementById('staffSection').style.display = 'block';
         document.getElementById('detailsSection').style.display = 'none';
+        document.getElementById('turnstileContainer').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     } else {
         document.getElementById('detailsSection').style.display = 'block';
+        document.getElementById('turnstileContainer').style.display = 'block';
         document.getElementById('submitBtn').style.display = 'block';
     }
 }
@@ -902,6 +905,13 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
     const phone = document.getElementById('customerPhone').value.trim();
     const email = document.getElementById('customerEmail').value.trim();
     const note = document.getElementById('customerNote').value.trim();
+
+    // Cloudflare Turnstile token kontrolü
+    const turnstileToken = window.turnstile?.getResponse();
+    if (!turnstileToken) {
+        showAlert('Lütfen robot kontrolünü tamamlayın.', 'error');
+        return;
+    }
 
     if (!selectedAppointmentType) {
         showAlert('Lutfen randevu tipi secin.', 'error');
@@ -957,7 +967,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async function()
             customerNote: note,
             shiftType: selectedShiftType,
             appointmentType: selectedAppointmentType,
-            duration: CONFIG.APPOINTMENT_HOURS.interval
+            duration: CONFIG.APPOINTMENT_HOURS.interval,
+            turnstileToken: turnstileToken  // Bot protection token
         });
 
         if (result.success) {
