@@ -4,6 +4,7 @@
 // Import shared utilities
 import { StringUtils } from './string-utils.js';
 import { StateManager } from './state-manager.js';
+import { apiCall } from './api-service.js';
 
 // APPS SCRIPT URL
 const CONFIG = {
@@ -31,6 +32,11 @@ const CONFIG = {
         { value: 'general', name: 'Genel Görüşme' }
     ]
 };
+
+// Export CONFIG to window for api-service.js and other modules
+if (typeof window !== 'undefined') {
+    window.CONFIG = CONFIG;
+}
 
 // ==================== UTILITY FONKSİYONLARI ====================
 
@@ -172,7 +178,92 @@ const sessionStorageCache = {
 
 const monthCache = sessionStorageCache;
 
+// ==================== CONFIG LOADING (Backend Single Source of Truth) ====================
+
+/**
+ * Backend'den CONFIG yükler - tek kaynak prensib i
+ * Cache kullanarak performans optimize eder
+ * Fallback olarak mevcut CONFIG kullanılır
+ */
+async function loadConfig() {
+    try {
+        // Cache kontrolü (30 dakika)
+        const cached = sessionStorageCache.get('backend_config');
+        if (cached) {
+            log.info('Config loaded from cache');
+            return cached;
+        }
+
+        log.info('Loading config from backend...');
+        const result = await apiCall('getConfig', {});
+
+        if (result.success && result.data) {
+            // Cache'e kaydet
+            sessionStorageCache.set('backend_config', result.data);
+            log.info('Config loaded from backend successfully');
+            return result.data;
+        } else {
+            throw new Error(result.error || 'Config loading failed');
+        }
+    } catch (error) {
+        log.warn('Config loading failed, using fallback:', error);
+        // Fallback - mevcut CONFIG kullan
+        return null;
+    }
+}
+
+/**
+ * Backend config ile mevcut CONFIG'i merge eder
+ */
+function mergeConfig(backendConfig) {
+    if (!backendConfig) return;
+
+    try {
+        // SHIFTS güncelle
+        if (backendConfig.shifts) {
+            CONFIG.SHIFTS = {
+                'morning': {
+                    start: parseInt(backendConfig.shifts.morning.start.split(':')[0]),
+                    end: parseInt(backendConfig.shifts.morning.end.split(':')[0]),
+                    label: `Sabah (${backendConfig.shifts.morning.start}-${backendConfig.shifts.morning.end})`
+                },
+                'evening': {
+                    start: parseInt(backendConfig.shifts.evening.start.split(':')[0]),
+                    end: parseInt(backendConfig.shifts.evening.end.split(':')[0]),
+                    label: `Akşam (${backendConfig.shifts.evening.start}-${backendConfig.shifts.evening.end})`
+                },
+                'full': {
+                    start: parseInt(backendConfig.shifts.full.start.split(':')[0]),
+                    end: parseInt(backendConfig.shifts.full.end.split(':')[0]),
+                    label: `Full (${backendConfig.shifts.full.start}-${backendConfig.shifts.full.end})`
+                }
+            };
+        }
+
+        // APPOINTMENT_HOURS güncelle
+        if (backendConfig.appointmentHours) {
+            CONFIG.APPOINTMENT_HOURS = {
+                earliest: backendConfig.appointmentHours.earliest,
+                latest: backendConfig.appointmentHours.latest,
+                interval: backendConfig.appointmentHours.interval
+            };
+        }
+
+        // MAX_DAILY güncelle
+        if (backendConfig.maxDailyDeliveryAppointments !== undefined) {
+            CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS = backendConfig.maxDailyDeliveryAppointments;
+        }
+
+        log.info('Config merged successfully:', CONFIG);
+    } catch (error) {
+        log.error('Config merge error:', error);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async function() {
+    // Backend'den config yükle (tek kaynak prensibi)
+    const backendConfig = await loadConfig();
+    mergeConfig(backendConfig);
     // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
     // Calendar modal buttons - Lazy loaded handlers
     document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);
@@ -627,56 +718,8 @@ async function safeApiCall(action, params = {}, options = {}) {
     }
 }
 
-function apiCall(action, params = {}) {
-    return new Promise(async (resolve, reject) => {
-        try {
-            // API parametrelerini hazırla
-            const allParams = { ...params, action };
-            const url = CONFIG.APPS_SCRIPT_URL + '?' + new URLSearchParams(allParams).toString();
-
-            // Fetch API ile güvenli istek
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
-
-            const response = await fetch(url, {
-                method: 'GET',
-                mode: 'cors', // CORS modunu aktif et
-                credentials: 'omit', // Kimlik bilgilerini gönderme
-                signal: controller.signal,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // JSON response'u parse et
-            const data = await response.json();
-
-            // Başarılı response kontrolü
-            if (data && typeof data === 'object') {
-                resolve(data);
-            } else {
-                throw new Error('Geçersiz API yanıtı');
-            }
-
-        } catch (error) {
-            if (error.name === 'AbortError') {
-                reject(new Error('Timeout - API cevap vermedi'));
-            } else if (error.message.includes('Failed to fetch')) {
-                reject(new Error('API bağlantısı kurulamadı. CORS veya ağ hatası.'));
-            } else {
-                reject(error);
-            }
-        }
-    });
-}
-
-// JSONP fonksiyonu kaldırıldı - sadece modern Fetch API kullanılıyor
+// apiCall function moved to api-service.js (DRY principle)
+// Now imported at the top of this file
 
 async function loadStaffMembers() {
     // Sessiz data loading (kullanıcıya mesaj gösterme)
