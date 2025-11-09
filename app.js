@@ -13,13 +13,13 @@ const CONFIG = {
     DEBUG: false,
 
     SHIFTS: {
-        'morning': { start: 10, end: 18, label: 'Sabah (10:00-18:00)' },
-        'evening': { start: 14, end: 22, label: 'Aksam (14:00-22:00)' },
-        'full': { start: 10, end: 22, label: 'Full (10:00-22:00)' }
+        'morning': { start: 11, end: 16, label: 'Sabah (11:00-16:00)' },
+        'evening': { start: 16, end: 21, label: 'Akşam (16:00-21:00)' },
+        'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
     },
     APPOINTMENT_HOURS: {
-        earliest: 11,
-        latest: 21,
+        earliest: 11,  // En erken randevu: 11:00 (11-12 aralığı)
+        latest: 21,    // En geç randevu: 20:00 (20-21 aralığı)
         interval: 60
     },
     MAX_DAILY_DELIVERY_APPOINTMENTS: 4,  // Teslim randevuları için max limit

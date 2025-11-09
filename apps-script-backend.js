@@ -159,10 +159,12 @@ const CONFIG = {
   },
 
   // Shift Hours (used in availability calculation)
+  // En erken randevu: 11:00 (11-12 aralığı)
+  // En geç randevu: 20:00 (20-21 aralığı)
   SHIFT_HOURS: {
-    morning: { start: '10:00', end: '14:30' },
-    evening: { start: '14:30', end: '19:00' },
-    full: { start: '10:00', end: '19:00' }
+    morning: { start: '11:00', end: '16:00' },
+    evening: { start: '16:00', end: '21:00' },
+    full: { start: '11:00', end: '21:00' }
   },
 
   // Email Template Texts
