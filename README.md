@@ -44,26 +44,26 @@ git push
 
 📖 **Detaylı bilgi:** [DEPLOYMENT.md](./DEPLOYMENT.md)
 
-## 📱 WhatsApp Otomasyonu
+## 📱 WhatsApp Business API
 
-WhatsApp otomatik mesaj gönderimi için:
+WhatsApp otomatik mesaj gönderimi için **Meta Business Cloud API** kullanılmaktadır.
 
-📖 **Detaylı kullanım:** [whatsapp-automation/README.md](./whatsapp-automation/README.md)
+📖 **Kurulum ve Kullanım:** [WHATSAPP_API_SETUP.md](./WHATSAPP_API_SETUP.md)
 
 ### Hızlı Kullanım:
 
-**Admin Panelden:**
-1. WhatsApp Hatırlatma sekmesi
-2. Tarih seç
-3. **🤖 Otomatik Gönder** butonuna tıkla
-4. Terminal aç → Cmd+V → Enter
+**Admin Panelden (Tek Tıkla):**
+1. **WhatsApp Business API Ayarları** bölümünden Phone Number ID ve Access Token'ı yapılandır
+2. **WhatsApp Hatırlatma** sekmesine git
+3. Tarih seç
+4. **📤 GÖNDER** butonuna tıkla
 5. Tüm mesajlar otomatik gönderilir!
 
-**Çift Tıklama (.command dosyası):**
-```bash
-# whatsapp-automation klasöründe:
-WhatsApp_Otomatik_Gonder_BUGUN.command
-```
+**Avantajlar:**
+- ✅ Tamamen otomatik (manuel işlem yok)
+- ✅ İlk 1000 mesaj/ay ücretsiz
+- ✅ Profesyonel Meta API
+- ✅ %99.9 uptime garantisi
 
 ## 🌐 Canlı Site
 
@@ -76,13 +76,13 @@ WhatsApp_Otomatik_Gonder_BUGUN.command
 ```
 randevu-sistemi-main/
 ├── .github/workflows/      # GitHub Actions (otomatik deployment)
-├── whatsapp-automation/    # WhatsApp mesaj otomasyonu
 ├── admin.html             # Yönetim paneli
 ├── index.html             # Müşteri randevu sayfası
 ├── app.js                 # Müşteri sayfası logic
 ├── admin-auth.js          # Admin authentication
 ├── api-service.js         # Backend API çağrıları
 ├── apps-script-backend.js # Google Apps Script backend
+├── WHATSAPP_API_SETUP.md  # Meta Business API kurulum rehberi
 ├── vite.config.js         # Build ayarları
 └── package.json           # Dependencies
 ```
@@ -95,9 +95,9 @@ randevu-sistemi-main/
 - **Database:** Google Sheets
 - **Calendar:** Google Calendar API
 - **Email:** Gmail API
+- **WhatsApp:** Meta Business Cloud API
 - **Deployment:** GitHub Pages
 - **CI/CD:** GitHub Actions
-- **WhatsApp:** Selenium + WhatsApp Web
 
 ## 📝 Lisans
 
@@ -107,4 +107,4 @@ Rolex İzmir İstinyepark için özel geliştirilmiştir.
 
 Sorun yaşarsanız:
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment sorunları
-- [whatsapp-automation/README.md](./whatsapp-automation/README.md) - WhatsApp otomasyonu
+- [WHATSAPP_API_SETUP.md](./WHATSAPP_API_SETUP.md) - WhatsApp Business API kurulumu
