@@ -3,6 +3,7 @@
 
 // Import shared utilities
 import { StringUtils } from './string-utils.js';
+import { StateManager } from './state-manager.js';
 
 // APPS SCRIPT URL
 const CONFIG = {
@@ -55,19 +56,51 @@ const ModalUtils = {
     }
 };
 
-// Global state
-let currentMonth = new Date();
-let selectedDate = null;
-let selectedStaff = null;
-let selectedTime = null;
-let selectedShiftType = null;
-let selectedAppointmentType = null;
-let staffMembers = [];
-let dayShifts = {};
-let allAppointments = {}; // Tüm ayın randevuları {date: [appointments]}
-let googleCalendarEvents = {}; // Google Calendar'dan gelen etkinlikler {date: [events]}
-let specificStaffId = null; // URL parametresinden gelen staff ID
-let lastAppointmentData = null; // Son oluşturulan randevu bilgileri
+// ==================== STATE MANAGEMENT ====================
+
+// AppState instance - Centralized state yönetimi
+const appState = new StateManager({
+    // Calendar state
+    currentMonth: new Date(),
+
+    // Selection state
+    selectedDate: null,
+    selectedStaff: null,
+    selectedTime: null,
+    selectedShiftType: null,
+    selectedAppointmentType: null,
+
+    // Data cache
+    staffMembers: [],
+    dayShifts: {},
+    allAppointments: {}, // Tüm ayın randevuları {date: [appointments]}
+    googleCalendarEvents: {}, // Google Calendar'dan gelen etkinlikler {date: [events]}
+
+    // URL state
+    specificStaffId: null, // URL parametresinden gelen staff ID
+
+    // Last action
+    lastAppointmentData: null // Son oluşturulan randevu bilgileri
+});
+
+// TODO: Global değişken kullanımını appState.get/set'e geçir
+// Örnek:
+//   - selectedDate yerine appState.get('selectedDate')
+//   - selectedDate = value yerine appState.set('selectedDate', value)
+
+// Backward compatibility için global değişkenleri tut (kademeli geçiş için)
+let currentMonth = appState.get('currentMonth');
+let selectedDate = appState.get('selectedDate');
+let selectedStaff = appState.get('selectedStaff');
+let selectedTime = appState.get('selectedTime');
+let selectedShiftType = appState.get('selectedShiftType');
+let selectedAppointmentType = appState.get('selectedAppointmentType');
+let staffMembers = appState.get('staffMembers');
+let dayShifts = appState.get('dayShifts');
+let allAppointments = appState.get('allAppointments');
+let googleCalendarEvents = appState.get('googleCalendarEvents');
+let specificStaffId = appState.get('specificStaffId');
+let lastAppointmentData = appState.get('lastAppointmentData');
 
 // Export to window for calendar-integration.js module access
 if (typeof window !== 'undefined') {
