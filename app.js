@@ -1,6 +1,9 @@
 // Calendar integration will be lazy loaded when needed
 // Removed direct import for bundle size optimization (~15kb saved)
 
+// Import shared utilities
+import { StringUtils } from './string-utils.js';
+
 // APPS SCRIPT URL
 const CONFIG = {
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
@@ -30,20 +33,6 @@ const CONFIG = {
 
 // ==================== UTILITY FONKSİYONLARI ====================
 
-/**
- * İsim ve soyisimleri title case formatına çevirir
- * Örnek: "SERDAR BENLİ" → "Serdar Benli"
- * @param {string} str - Formatlanacak metin
- * @returns {string} Title case formatında metin
- */
-function toTitleCase(str) {
-    if (!str) return str;
-    return str
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
-        .join(' ');
-}
 
 // Debug logger - Production'da log'ları devre dışı bırakır
 const log = {
@@ -909,7 +898,7 @@ function selectTimeSlot(timeStr, element) {
 }
 
 document.getElementById('submitBtn')?.addEventListener('click', async function() {
-    const name = toTitleCase(document.getElementById('customerName').value.trim());
+    const name = StringUtils.toTitleCase(document.getElementById('customerName').value.trim());
     const phone = document.getElementById('customerPhone').value.trim();
     const email = document.getElementById('customerEmail').value.trim();
     const note = document.getElementById('customerNote').value.trim();
