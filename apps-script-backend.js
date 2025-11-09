@@ -1485,25 +1485,42 @@ function createAppointment(params) {
     // getData() - tek seferlik çağrı (DRY prensibi)
     const data = getData();
 
-    // ===== RANDEVU ÇAKIŞMA KONTROLÜ =====
-    // 1. Aynı saat diliminde AYNI TÜRDE randevu var mı kontrol et
+    // ===== RANDEVU ÇAKIŞMA KONTROLÜ (SERVER-SIDE SINGLE SOURCE OF TRUTH) =====
+    // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
+    // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
     const calendar = getCalendar();
     const startDateTime = new Date(date + 'T' + time + ':00');
     const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
-    // Bu saat aralığında herhangi bir event var mı kontrol et
+    // Bu saat aralığındaki TÜM randevuları kontrol et (race condition koruması)
     const existingEvents = calendar.getEvents(startDateTime, endDateTime);
+    const existingCount = existingEvents.length;
 
-    // SADECE aynı türdeki randevuları kontrol et (Teslim+Teslim BLOKE, Teslim+Görüşme İZİN)
-    const sameTypeEvents = existingEvents.filter(event => {
-      const eventType = event.getTag('appointmentType');
-      return eventType === appointmentType;
-    });
+    // 1a. O saatte randevu yok → Devam et
+    if (existingCount === 0) {
+      // OK, devam et
+    }
+    // 1b. O saatte 1 randevu var
+    else if (existingCount === 1) {
+      // Yönetim randevusu ekleniyor VE mevcut yönetim değil → İzin ver
+      const existingType = existingEvents[0].getTag('appointmentType');
 
-    if (sameTypeEvents.length > 0) {
+      if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
+          existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+        // OK, yönetim randevusu eklenebilir
+      } else {
+        // Diğer tüm durumlar → BLOKE
+        return {
+          success: false,
+          error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+        };
+      }
+    }
+    // 1c. O saatte 2 veya daha fazla randevu var → BLOKE
+    else if (existingCount >= 2) {
       return {
         success: false,
-        error: `Bu saatte aynı türde (${CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType]}) başka bir randevu var. Lütfen başka bir saat seçin.`
+        error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
       };
     }
 
@@ -1961,7 +1978,7 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         };
       }
 
-      // 2. Bu saatteki tüm randevuları bul
+      // 2. Bu saatteki tüm randevuları bul (TÜR FARKETMEKSIZIN)
       const sameTimeEvents = events.filter(event => {
         const eventTime = Utilities.formatDate(
           event.getStartTime(),
@@ -1971,23 +1988,53 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         return eventTime === timeStr;
       });
 
-      // 3. AYNI TÜRDE RANDEVU KONTROLÜ
-      // Aynı saat diliminde AYNI TÜRDE randevu varsa slot müsait değil
-      const sameTypeEventsAtTime = sameTimeEvents.filter(event => {
-        const eventType = event.getTag('appointmentType');
-        return eventType === appointmentType;
-      });
+      // 3. SERVER-SIDE SINGLE SOURCE OF TRUTH KURAL:
+      // **1 SAATE 1 RANDEVU** (tür/link farketmeksizin)
+      // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
 
-      if (sameTypeEventsAtTime.length >= 1) {
-        const typeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
+      const existingCount = sameTimeEvents.length;
+
+      // 3a. O saatte randevu yok → MÜSAİT
+      if (existingCount === 0) {
         return {
           time: timeStr,
-          available: false,
-          reason: `Bu saatte ${typeLabel} randevusu var`
+          available: true,
+          reason: ''
         };
       }
 
-      // Tüm kontroller geçildi, slot müsait
+      // 3b. O saatte 1 randevu var
+      if (existingCount === 1) {
+        // Yönetim randevusu ekleniyor VE mevcut yönetim değil → MÜSAİT
+        const existingType = sameTimeEvents[0].getTag('appointmentType');
+
+        if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
+            existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+          return {
+            time: timeStr,
+            available: true,
+            reason: ''
+          };
+        }
+
+        // Diğer tüm durumlar → DOLU
+        return {
+          time: timeStr,
+          available: false,
+          reason: 'Bu saat dolu'
+        };
+      }
+
+      // 3c. O saatte 2 veya daha fazla randevu var → DOLU
+      if (existingCount >= 2) {
+        return {
+          time: timeStr,
+          available: false,
+          reason: 'Bu saat dolu'
+        };
+      }
+
+      // Fallback (teoride buraya gelmemeli)
       return {
         time: timeStr,
         available: true,
