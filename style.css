@@ -254,16 +254,22 @@ body {
     font-weight: 400;
 }
 
-.slot-btn.disabled {
-    opacity: 0.3;
+/* ⭐ Dolu slot - silik, tıklanamaz */
+.slot-btn.disabled,
+.slot-btn.slot--disabled {
+    opacity: 0.35;
     cursor: not-allowed;
     background: #FAFAFA;
     text-decoration: line-through;
+    pointer-events: none; /* Tıklamayı tamamen engelle */
+    color: #BDBDBD;
 }
 
-.slot-btn.disabled:hover {
+.slot-btn.disabled:hover,
+.slot-btn.slot--disabled:hover {
     background: #FAFAFA;
     border-color: #E8E8E8;
+    transform: none;
 }
 
 .staff-select {

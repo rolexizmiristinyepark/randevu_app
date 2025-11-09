@@ -299,6 +299,259 @@ const DateUtils = {
   }
 };
 
+// ==================== SLOT UNIVERSE & SHIFT HELPERS ====================
+/**
+ * ⭐⭐⭐⭐⭐ CORE: Slot Evreni Tanımı
+ *
+ * Sabit slot başlangıç saatleri: 11, 12, 13, 14, 15, 16, 17, 18, 19, 20
+ * Her slot 1 saat (60 dakika) sürer
+ * Yarım saat veya değişken süreler YOK
+ *
+ * Örnek:
+ * - 11:00-12:00 (slot başlangıcı: 11)
+ * - 12:00-13:00 (slot başlangıcı: 12)
+ * - ...
+ * - 20:00-21:00 (slot başlangıcı: 20)
+ */
+const SLOT_UNIVERSE = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
+
+/**
+ * Vardiya tipine göre slot filtresi
+ * morning: 11-16 arası (11,12,13,14,15,16 başlangıçları → 11:00-17:00)
+ * evening: 16-20 arası (16,17,18,19,20 başlangıçları → 16:00-21:00)
+ * full: 11-20 arası (tüm slotlar)
+ */
+const SHIFT_SLOT_FILTERS = {
+  morning: [11, 12, 13, 14, 15, 16],  // 11:00-17:00
+  evening: [16, 17, 18, 19, 20],      // 16:00-21:00
+  full: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]  // 11:00-21:00
+};
+
+/**
+ * Vardiya tipine göre filtrelenmiş slot saatlerini döndürür
+ * @param {string} shiftType - 'morning', 'evening', veya 'full'
+ * @returns {number[]} Slot başlangıç saatleri dizisi
+ */
+function getSlotsByShift(shiftType) {
+  return SHIFT_SLOT_FILTERS[shiftType] || SHIFT_SLOT_FILTERS.full;
+}
+
+/**
+ * Belirli bir gün için slot objelerini oluşturur
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {string} shiftType - Vardiya tipi (opsiyonel, varsayılan: 'full')
+ * @returns {Object[]} Slot objeleri [{start: ISO string, end: ISO string, hour: number}]
+ */
+function getDailySlots(date, shiftType = 'full') {
+  const hours = getSlotsByShift(shiftType);
+
+  return hours.map(hour => {
+    const startDate = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+    const endDate = new Date(startDate);
+    endDate.setHours(endDate.getHours() + 1);
+
+    return {
+      start: startDate.toISOString(),
+      end: endDate.toISOString(),
+      hour: hour,
+      time: `${String(hour).padStart(2, '0')}:00`
+    };
+  });
+}
+
+/**
+ * ⭐⭐⭐⭐⭐ CORE: Saat başına tek randevu kontrolü
+ * Tür fark etmeksizin bir saat başına SADECE 1 randevu
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {number} hour - Saat (11-20 arası)
+ * @returns {boolean} true ise slot boş, false ise dolu
+ */
+function isSlotFree(date, hour) {
+  try {
+    const calendar = getCalendar();
+    const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+    const slotEnd = new Date(slotStart);
+    slotEnd.setHours(slotEnd.getHours() + 1);
+
+    const events = calendar.getEvents(slotStart, slotEnd);
+
+    // KURAL: 0 randevu olmalı (tür fark etmez)
+    return events.length === 0;
+  } catch (error) {
+    log.error('isSlotFree error:', error);
+    return false; // Hata durumunda safe side: dolu kabul et
+  }
+}
+
+/**
+ * ⭐⭐⭐⭐⭐ CORE: Teslim randevusu global limiti
+ * Bir günde toplam 3 teslim randevusu alınabilir
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @returns {number} O gün için teslim randevusu sayısı
+ */
+function getDeliveryCount(date) {
+  try {
+    const calendar = getCalendar();
+    const dayStart = new Date(`${date}T00:00:00`);
+    const dayEnd = new Date(`${date}T23:59:59`);
+
+    const events = calendar.getEvents(dayStart, dayEnd);
+
+    // Sadece 'delivery' tipindeki randevuları say
+    const deliveryCount = events.filter(event => {
+      const type = event.getTag('appointmentType');
+      return type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery';
+    }).length;
+
+    return deliveryCount;
+  } catch (error) {
+    log.error('getDeliveryCount error:', error);
+    return 999; // Hata durumunda safe side: limit aşılmış kabul et
+  }
+}
+
+/**
+ * ⭐⭐⭐⭐ CORE: Personel bazında teslim limiti
+ * Bir personel aynı günde en fazla 2 teslim randevusu alabilir
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {string} staffId - Personel ID'si
+ * @returns {number} O personel için o gün teslim randevusu sayısı
+ */
+function getDeliveryCountByStaff(date, staffId) {
+  try {
+    const calendar = getCalendar();
+    const dayStart = new Date(`${date}T00:00:00`);
+    const dayEnd = new Date(`${date}T23:59:59`);
+
+    const events = calendar.getEvents(dayStart, dayEnd);
+
+    // Sadece bu personelin 'delivery' randevularını say
+    const deliveryCount = events.filter(event => {
+      const type = event.getTag('appointmentType');
+      const eventStaffId = event.getTag('staffId');
+
+      return (
+        (type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery') &&
+        eventStaffId === String(staffId)
+      );
+    }).length;
+
+    return deliveryCount;
+  } catch (error) {
+    log.error('getDeliveryCountByStaff error:', error);
+    return 999; // Hata durumunda safe side: limit aşılmış kabul et
+  }
+}
+
+/**
+ * ⭐⭐⭐⭐⭐ CORE: Rezervasyon Validasyonu (Race Condition Koruması)
+ * Tüm business rules'ları bir arada kontrol eder
+ *
+ * @param {Object} payload - {date, hour, appointmentType, staffId}
+ * @returns {Object} {valid: boolean, error: string}
+ */
+function validateReservation(payload) {
+  const { date, hour, appointmentType, staffId } = payload;
+
+  try {
+    // KURAL 1: Slot evreninde mi? (11-20 arası tam saat)
+    if (!SLOT_UNIVERSE.includes(parseInt(hour))) {
+      return {
+        valid: false,
+        error: `Geçersiz saat. Sadece ${SLOT_UNIVERSE[0]}:00-${SLOT_UNIVERSE[SLOT_UNIVERSE.length - 1]}:00 arası randevu alınabilir.`
+      };
+    }
+
+    // KURAL 2: Slot boş mu? (saat başına 1 randevu)
+    if (!isSlotFree(date, hour)) {
+      return {
+        valid: false,
+        error: 'Bu saat dolu. Lütfen başka bir saat seçin.',
+        suggestAlternatives: true
+      };
+    }
+
+    // KURAL 3: Teslim ise - Global limit kontrolü (max 3/gün)
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
+      const deliveryCount = getDeliveryCount(date);
+
+      if (deliveryCount >= 3) {
+        return {
+          valid: false,
+          error: 'Bu gün için teslim randevu limiti doldu (max 3). Lütfen başka bir gün seçin.',
+          isDayMaxed: true
+        };
+      }
+
+      // KURAL 4: Teslim ise - Personel limiti kontrolü (max 2/gün/personel)
+      if (staffId) {
+        const staffDeliveryCount = getDeliveryCountByStaff(date, staffId);
+
+        if (staffDeliveryCount >= 2) {
+          return {
+            valid: false,
+            error: 'Bu personel için günlük teslim randevu limiti doldu (max 2). Lütfen başka bir personel veya gün seçin.'
+          };
+        }
+      }
+    }
+
+    // Tüm kontroller geçildi
+    return { valid: true };
+
+  } catch (error) {
+    log.error('validateReservation error:', error);
+    return {
+      valid: false,
+      error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
+    };
+  }
+}
+
+/**
+ * Gün durumunu döndürür (UI için)
+ * @param {string} date - YYYY-MM-DD
+ * @param {string} appointmentType - Randevu tipi
+ * @returns {Object} {isDeliveryMaxed, availableHours, unavailableHours}
+ */
+function getDayStatus(date, appointmentType = null) {
+  try {
+    // Teslim limiti kontrolü
+    const isDeliveryMaxed = (appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY)
+      ? getDeliveryCount(date) >= 3
+      : false;
+
+    // Tüm slotlar için availability check
+    const availableHours = [];
+    const unavailableHours = [];
+
+    SLOT_UNIVERSE.forEach(hour => {
+      if (isSlotFree(date, hour)) {
+        availableHours.push(hour);
+      } else {
+        unavailableHours.push(hour);
+      }
+    });
+
+    return {
+      success: true,
+      isDeliveryMaxed,
+      availableHours,
+      unavailableHours,
+      deliveryCount: getDeliveryCount(date)
+    };
+  } catch (error) {
+    log.error('getDayStatus error:', error);
+    return {
+      success: false,
+      error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
+    };
+  }
+}
+
 // ==================== UTILITY FUNCTIONS ====================
 // Validation ve Sanitization
 function isValidEmail(email) {
@@ -857,6 +1110,19 @@ const ACTION_HANDLERS = {
 
   // Config management (public - no auth required)
   'getConfig': () => getConfig(),
+
+  // ⭐⭐⭐⭐⭐ NEW: Slot Universe & Business Rules
+  'getDayStatus': (e) => getDayStatus(e.parameter.date, e.parameter.appointmentType),
+  'getDailySlots': (e) => ({
+    success: true,
+    slots: getDailySlots(e.parameter.date, e.parameter.shiftType || 'full')
+  }),
+  'validateReservation': (e) => validateReservation({
+    date: e.parameter.date,
+    hour: parseInt(e.parameter.hour),
+    appointmentType: e.parameter.appointmentType,
+    staffId: e.parameter.staffId
+  }),
 
   // Data management
   'resetData': () => resetData()
@@ -1646,7 +1912,30 @@ function createAppointment(params) {
     // getData() - tek seferlik çağrı (DRY prensibi)
     const data = getData();
 
-    // ===== RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
+    // ⭐⭐⭐⭐⭐ CRITICAL: Master Validation (Race Condition Protection)
+    // Tüm business rules'ları bir arada kontrol et
+    const hour = parseInt(time.split(':')[0]);
+    const validation = validateReservation({
+      date,
+      hour,
+      appointmentType,
+      staffId
+    });
+
+    if (!validation.valid) {
+      log.warn('Reservation validation failed:', validation.error);
+      return {
+        success: false,
+        error: validation.error,
+        suggestAlternatives: validation.suggestAlternatives,
+        isDayMaxed: validation.isDayMaxed
+      };
+    }
+
+    log.info('Validation passed - creating appointment');
+
+    // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
+    // Not: validateReservation zaten kontrol ediyor ama backward compatibility için tutuldu
     // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
     // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
     // STANDART: [start, end) interval (start dahil, end hariç)
