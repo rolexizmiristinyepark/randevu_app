@@ -748,133 +748,77 @@ function selectStaff(staffId, shiftType, event) {
     document.getElementById('submitBtn').style.display = 'none';
 }
 
-function displayAvailableTimeSlots() {
+async function displayAvailableTimeSlots() {
     const container = document.getElementById('timeSlots');
-    container.innerHTML = '';
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #757575;">Müsait saatler yükleniyor...</div>';
 
-    const now = new Date();
-    const todayStr = DateUtils.toLocalDate(now);
-    const isToday = selectedDate === todayStr;
-
-    // YENİ: Yönetim randevusu için tüm saatler müsait, çakışma kontrolü yok
-    if (selectedAppointmentType === 'management') {
-        const { earliest, latest, interval } = CONFIG.APPOINTMENT_HOURS;
-
-        for (let hour = earliest; hour < latest; hour++) {
-            for (let minute = 0; minute < 60; minute += interval) {
-                const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-
-                const btn = document.createElement('div');
-                btn.className = 'slot-btn';
-                btn.textContent = timeStr;
-                btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
-                container.appendChild(btn);
-            }
-        }
-        return; // Erken çık, normal kontrolleri atlat
+    // Gerekli parametreleri kontrol et
+    if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih, vardiya ve randevu türü seçin.</div>';
+        return;
     }
 
-    // Google Calendar'dan SADECE gelecekteki TESLİM randevularını say
-    const calendarEvents = googleCalendarEvents[selectedDate] || [];
+    try {
+        // SERVER-SIDE SINGLE SOURCE OF TRUTH
+        // Backend'den müsait saatleri al - tüm kontroller server-side
+        const result = await apiCall('checkTimeSlotAvailability', {
+            date: selectedDate,
+            staffId: selectedStaff,
+            shiftType: selectedShiftType,
+            appointmentType: selectedAppointmentType,
+            interval: CONFIG.APPOINTMENT_HOURS.interval
+        });
 
-    // ⚡ PERFORMANS: Event'leri time'a göre önceden index'le (O(n) → O(1) lookup)
-    const eventsByTime = {};
-    calendarEvents.forEach(event => {
-        if (!event.start) return;
-        const eventTime = event.start.time || (() => {
-            const t = new Date(event.start.dateTime);
-            return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-        })();
-        if (!eventsByTime[eventTime]) eventsByTime[eventTime] = [];
-        eventsByTime[eventTime].push(event);
-    });
-    let deliveryCount = calendarEvents.filter(event => {
-        if (event.extendedProperties?.private?.appointmentType !== 'delivery') {
-            return false;
-        }
-        if (isToday && event.start?.dateTime) {
-            const eventStart = new Date(event.start.dateTime);
-            if (eventStart < now) {
-                return false;
-            }
-        }
-        return true;
-    }).length;
-
-    // Teslim randevusu için max 4 kontrolü
-    if (selectedAppointmentType === 'delivery') {
-        if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Bu gun icin teslim randevulari dolu (Max 4).</div>';
+        if (!result.success) {
+            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">${result.error || 'Müsait saatler yüklenemedi'}</div>`;
             return;
         }
-    }
 
-    const shift = CONFIG.SHIFTS[selectedShiftType];
-    if (!shift) return;
+        // TÜM saatleri göster (müsait + dolu)
+        // Dolu olanlar disabled/gri olacak - kullanıcı deneyimi için
+        container.innerHTML = '';
 
-    const { earliest, latest, interval } = CONFIG.APPOINTMENT_HOURS;
-    const startHour = Math.max(shift.start, earliest);
-    const endHour = Math.min(shift.end, latest);
+        const availableCount = result.slots.filter(slot => slot.available).length;
 
-    const existingAppointments = allAppointments[selectedDate] || [];
+        // Hiç müsait saat yoksa bilgi mesajı
+        if (availableCount === 0) {
+            let message = 'Bu gün için müsait saat bulunmamaktadır.';
 
-    // ⚡ PERFORMANS: Appointment'leri time'a göre önceden index'le (O(n) → O(1) lookup)
-    const appointmentsByTime = {};
-    existingAppointments.forEach(apt => {
-        if (!apt.start) return;
-        const aptTime = apt.start.time || (() => {
-            const t = new Date(apt.start.dateTime);
-            return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-        })();
-        if (!appointmentsByTime[aptTime]) appointmentsByTime[aptTime] = [];
-        appointmentsByTime[aptTime].push(apt);
-    });
-
-    for (let hour = startHour; hour < endHour; hour++) {
-        for (let minute = 0; minute < 60; minute += interval) {
-            const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
-
-            // Geçmiş saat kontrolü (bugünse)
-            let isPastTime = false;
-            if (isToday) {
-                const slotTime = new Date(now);
-                slotTime.setHours(hour, minute, 0, 0);
-                isPastTime = slotTime < now;
+            // Delivery limit mesajı
+            if (selectedAppointmentType === 'delivery' &&
+                result.dailyDeliveryCount >= result.maxDelivery) {
+                message = `Bu gün için teslim randevuları dolu (Max ${result.maxDelivery}).`;
             }
 
-            // Randevu sistemindeki çakışma kontrolü - O(1) lookup
-            const sameTimeAppointments = appointmentsByTime[timeStr] || [];
-            const isBookedInSystem = sameTimeAppointments.some(apt =>
-                parseInt(apt.extendedProperties?.private?.staffId) === selectedStaff
-            );
-
-            // ⚡ PERFORMANS: Direkt lookup yerine filter (O(1) vs O(n))
-            const sameTimeEvents = eventsByTime[timeStr] || [];
-
-            let isBookedInCalendar = false;
-
-            // BİR SAATTE AYNI TÜRDE SADECE 1 RANDEVU
-            // Aynı saatte AYNI TÜRDE randevu varsa bloke et (Teslim+Teslim BLOKE, Teslim+Görüşme İZİN)
-            const sameTypeEventsAtTime = sameTimeEvents.filter(event => {
-                const eventType = event.extendedProperties?.private?.appointmentType;
-                return eventType === selectedAppointmentType;
-            });
-
-            if (sameTypeEventsAtTime.length >= 1) {
-                isBookedInCalendar = true;
-            }
-
-            const isBooked = isBookedInSystem || isBookedInCalendar || isPastTime;
-
-            // DOLU SAATLER HİÇ GÖSTERILMEZ - Sadece müsait saatler DOM'a eklenir
-            if (!isBooked) {
-                const btn = document.createElement('div');
-                btn.className = 'slot-btn';
-                btn.textContent = timeStr;
-                btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
-                container.appendChild(btn);
-            }
+            const infoDiv = document.createElement('div');
+            infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545; margin-bottom: 10px;';
+            infoDiv.textContent = message;
+            container.appendChild(infoDiv);
         }
+
+        // Tüm saatleri render et (available + unavailable)
+        result.slots.forEach(slot => {
+            const btn = document.createElement('div');
+
+            if (slot.available) {
+                // MÜSAİT - normal slot butonu
+                btn.className = 'slot-btn';
+                btn.textContent = slot.time;
+                btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+            } else {
+                // DOLU - disabled slot butonu
+                btn.className = 'slot-btn disabled';
+                btn.textContent = slot.time;
+                btn.title = slot.reason || 'Bu saat dolu';
+                // Tıklama olayı eklenmez - disabled
+            }
+
+            container.appendChild(btn);
+        });
+
+    } catch (error) {
+        log.error('displayAvailableTimeSlots hatası:', error);
+        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Saatler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.</div>';
     }
 }
 
