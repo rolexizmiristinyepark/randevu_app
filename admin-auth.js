@@ -1,12 +1,16 @@
 // ==================== ADMIN AUTHENTICATION ====================
 // API Key yönetimi ve yetkilendirme sistemi
 // ✅ GÜVENLİK: Inline stil ve event handler'lar kaldırıldı
+// ✅ GÜVENLİK: sessionStorage + 15 dk inaktivite timeout
 
 import { ApiService } from './api-service.js';
 
 const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',
-    SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 saat
+    INACTIVITY_TIMEOUT: 15 * 60 * 1000, // 15 dakika inaktivite
+    _lastActivityTime: Date.now(),
+    _activityCheckInterval: null,
+    _activityHandler: null,
 
     // Stil tanımlarını inject et (sayfa başına bir kez)
     _injectStyles() {
@@ -192,14 +196,14 @@ const AdminAuth = {
 
     // API key kontrolü
     isAuthenticated() {
-        const savedKey = localStorage.getItem(this.API_KEY_STORAGE);
-        const savedTime = localStorage.getItem(this.API_KEY_STORAGE + '_time');
+        const savedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
+        const savedTime = sessionStorage.getItem(this.API_KEY_STORAGE + '_time');
 
         if (!savedKey || !savedTime) return false;
 
-        // Session timeout kontrolü
-        const elapsed = Date.now() - parseInt(savedTime);
-        if (elapsed > this.SESSION_DURATION) {
+        // İnaktivite timeout kontrolü
+        const elapsed = Date.now() - this._lastActivityTime;
+        if (elapsed > this.INACTIVITY_TIMEOUT) {
             this.logout();
             return false;
         }
@@ -209,14 +213,19 @@ const AdminAuth = {
 
     // API key kaydet
     saveApiKey(apiKey) {
-        localStorage.setItem(this.API_KEY_STORAGE, apiKey);
-        localStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
+        sessionStorage.setItem(this.API_KEY_STORAGE, apiKey);
+        sessionStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
+        this._lastActivityTime = Date.now();
+
+        // İnaktivite takibini başlat
+        this._startActivityTracking();
     },
 
     // Çıkış yap
     logout() {
-        localStorage.removeItem(this.API_KEY_STORAGE);
-        localStorage.removeItem(this.API_KEY_STORAGE + '_time');
+        sessionStorage.removeItem(this.API_KEY_STORAGE);
+        sessionStorage.removeItem(this.API_KEY_STORAGE + '_time');
+        this._stopActivityTracking();
         location.reload();
     },
 
@@ -387,6 +396,48 @@ const AdminAuth = {
 
         header.style.position = 'relative';
         header.appendChild(logoutBtn);
+    },
+
+    // İnaktivite takibini başlat
+    _startActivityTracking() {
+        // Kullanıcı aktivitelerini dinle
+        this._activityHandler = () => {
+            this._lastActivityTime = Date.now();
+        };
+
+        // Event listeners (referansı sakla ki sonra kaldırabiliriz)
+        document.addEventListener('mousemove', this._activityHandler);
+        document.addEventListener('keypress', this._activityHandler);
+        document.addEventListener('click', this._activityHandler);
+        document.addEventListener('scroll', this._activityHandler);
+        document.addEventListener('touchstart', this._activityHandler); // Mobil için
+
+        // Her 60 saniyede bir kontrol et
+        this._activityCheckInterval = setInterval(() => {
+            const elapsed = Date.now() - this._lastActivityTime;
+            if (elapsed > this.INACTIVITY_TIMEOUT) {
+                alert('⏰ 15 dakika boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.');
+                this.logout();
+            }
+        }, 60 * 1000); // 60 saniye
+    },
+
+    // İnaktivite takibini durdur
+    _stopActivityTracking() {
+        if (this._activityCheckInterval) {
+            clearInterval(this._activityCheckInterval);
+            this._activityCheckInterval = null;
+        }
+
+        // Event listeners'ı kaldır (memory leak önleme)
+        if (this._activityHandler) {
+            document.removeEventListener('mousemove', this._activityHandler);
+            document.removeEventListener('keypress', this._activityHandler);
+            document.removeEventListener('click', this._activityHandler);
+            document.removeEventListener('scroll', this._activityHandler);
+            document.removeEventListener('touchstart', this._activityHandler);
+            this._activityHandler = null;
+        }
     }
 };
 

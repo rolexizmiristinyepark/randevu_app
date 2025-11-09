@@ -1652,6 +1652,9 @@
             // Çıkış butonu ekle
             AdminAuth.addLogoutButton();
 
+            // İnaktivite takibini başlat (15 dk timeout)
+            AdminAuth._startActivityTracking();
+
             // Load all data from server
             await Data.loadStaff();
             await Data.loadShifts();
