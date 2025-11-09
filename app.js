@@ -824,6 +824,12 @@ function selectStaff(staffId, shiftType, event) {
     document.getElementById('submitBtn').style.display = 'none';
 }
 
+/**
+ * ⭐⭐⭐⭐⭐ CORE: Müsait saatleri backend'den al ve göster
+ * Backend = Single Source of Truth
+ * Slot Evreni: 11-20 arası tam saatler
+ * Dolu saatler: silik ve tıklanamaz
+ */
 async function displayAvailableTimeSlots() {
     const container = document.getElementById('timeSlots');
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #757575;">Müsait saatler yükleniyor...</div>';
@@ -835,63 +841,67 @@ async function displayAvailableTimeSlots() {
     }
 
     try {
-        // SERVER-SIDE SINGLE SOURCE OF TRUTH
-        // Backend'den müsait saatleri al - tüm kontroller server-side
-        const result = await apiCall('checkTimeSlotAvailability', {
-            date: selectedDate,
-            staffId: selectedStaff,
-            shiftType: selectedShiftType,
-            appointmentType: selectedAppointmentType,
-            interval: CONFIG.APPOINTMENT_HOURS.interval
-        });
+        // ⭐ YENİ: getDayStatus endpoint - tüm business rules tek seferde
+        const [dayStatusResult, slotsResult] = await Promise.all([
+            apiCall('getDayStatus', {
+                date: selectedDate,
+                appointmentType: selectedAppointmentType
+            }),
+            apiCall('getDailySlots', {
+                date: selectedDate,
+                shiftType: selectedShiftType
+            })
+        ]);
 
-        if (!result.success) {
-            // XSS korumalı hata mesajı
+        if (!dayStatusResult.success || !slotsResult.success) {
             container.textContent = '';
             const errorDiv = document.createElement('div');
             errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
-            errorDiv.textContent = result.error || 'Müsait saatler yüklenemedi';
+            errorDiv.textContent = 'Müsait saatler yüklenemedi';
             container.appendChild(errorDiv);
             return;
         }
 
-        // TÜM saatleri göster (müsait + dolu)
-        // Dolu olanlar disabled/gri olacak - kullanıcı deneyimi için
+        const { isDeliveryMaxed, availableHours, unavailableHours, deliveryCount } = dayStatusResult;
+        const { slots } = slotsResult;
+
         container.innerHTML = '';
 
-        const availableCount = result.slots.filter(slot => slot.available).length;
-
-        // Hiç müsait saat yoksa bilgi mesajı
-        if (availableCount === 0) {
-            let message = 'Bu gün için müsait saat bulunmamaktadır.';
-
-            // Delivery limit mesajı
-            if (selectedAppointmentType === 'delivery' &&
-                result.dailyDeliveryCount >= result.maxDelivery) {
-                message = `Bu gün için teslim randevuları dolu (Max ${result.maxDelivery}).`;
-            }
-
-            const infoDiv = document.createElement('div');
-            infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545; margin-bottom: 10px;';
-            infoDiv.textContent = message;
-            container.appendChild(infoDiv);
+        // Teslim limiti doluysa uyarı
+        if (isDeliveryMaxed) {
+            const warningDiv = document.createElement('div');
+            warningDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 15px; color: #dc3545; margin-bottom: 10px; background: #fff5f5; border-radius: 8px;';
+            warningDiv.textContent = `⚠️ Bu gün için teslim randevuları dolu (${deliveryCount}/3)`;
+            container.appendChild(warningDiv);
+            return;
         }
 
-        // Tüm saatleri render et (available + unavailable)
-        result.slots.forEach(slot => {
-            const btn = document.createElement('div');
+        // Hiç müsait saat yoksa bilgi
+        if (availableHours.length === 0) {
+            const infoDiv = document.createElement('div');
+            infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+            infoDiv.textContent = 'Bu gün için müsait saat bulunmamaktadır.';
+            container.appendChild(infoDiv);
+            return;
+        }
 
-            if (slot.available) {
-                // MÜSAİT - normal slot butonu
+        // Slot'ları render et
+        slots.forEach(slot => {
+            const btn = document.createElement('div');
+            const isAvailable = availableHours.includes(slot.hour);
+
+            if (isAvailable) {
+                // ✅ MÜSAİT - normal, tıklanabilir
                 btn.className = 'slot-btn';
                 btn.textContent = slot.time;
                 btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
             } else {
-                // DOLU - disabled slot butonu
-                btn.className = 'slot-btn disabled';
+                // ❌ DOLU - silik, tıklanamaz, aria-disabled
+                btn.className = 'slot-btn slot--disabled';
                 btn.textContent = slot.time;
-                btn.title = slot.reason || 'Bu saat dolu';
-                // Tıklama olayı eklenmez - disabled
+                btn.title = 'Bu saat dolu';
+                btn.setAttribute('aria-disabled', 'true');
+                // pointer-events: none CSS ile halledilecek
             }
 
             container.appendChild(btn);
