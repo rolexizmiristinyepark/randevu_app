@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rolex İzmir İstinyepark - Admin Paneli</title>
-    <link rel="icon" type="image/svg+xml" href="assets/rolex-logo.svg">
+    <link rel="icon" type="image/svg+xml" href="/randevu_app/assets/rolex-logo-CWgDBaQq.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -402,10 +402,14 @@
             }
         }
     </style>
+  <script type="module" crossorigin src="/randevu_app/assets/modulepreload-polyfill-YP0FEG5d.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/vendor-utils-D2GrUhHX.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/customer-B69yzcEN.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/admin-panel-BraLav7W.js"></script>
 </head>
 <body>
     <div class="header">
-        <img src="assets/rolex-logo.svg" class="rolex-logo" alt="Rolex Logo">
+        <img src="/randevu_app/assets/rolex-logo-CWgDBaQq.svg" class="rolex-logo" alt="Rolex Logo">
         <h1>Rolex İzmir İstinyepark</h1>
         <p>Admin Paneli</p>
     </div>
@@ -579,13 +583,9 @@
     </div>
 
     <!-- Date Utility Functions -->
-    <script type="module" src="date-utils.js"></script>
     <!-- Güvenlik Helper Fonksiyonları -->
-    <script type="module" src="security-helpers.js"></script>
     <!-- API Service -->
-    <script type="module" src="api-service.js"></script>
     <!-- Admin Authentication -->
-    <script type="module" src="admin-auth.js"></script>
 
     <script>
         // ==================== CONFIG ====================
@@ -935,26 +935,6 @@
 
             openLink(staffId) {
                 const input = document.getElementById('staffLink_' + staffId);
-                window.open(input.value, '_blank');
-            },
-
-            copyLinkByType(staffId, type) {
-                const input = document.getElementById(`staffLink_${staffId}_${type}`);
-                if (!input) {
-                    UI.showAlert('❌ Link bulunamadı!', 'error');
-                    return;
-                }
-                input.select();
-                document.execCommand('copy');
-                UI.showAlert('✅ Link kopyalandı!', 'success');
-            },
-
-            openLinkByType(staffId, type) {
-                const input = document.getElementById(`staffLink_${staffId}_${type}`);
-                if (!input) {
-                    UI.showAlert('❌ Link bulunamadı!', 'error');
-                    return;
-                }
                 window.open(input.value, '_blank');
             },
 
@@ -1671,6 +1651,9 @@
 
             // Çıkış butonu ekle
             AdminAuth.addLogoutButton();
+
+            // İnaktivite takibini başlat (15 dk timeout)
+            AdminAuth._startActivityTracking();
 
             // Load all data from server
             await Data.loadStaff();
