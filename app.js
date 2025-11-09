@@ -1,5 +1,5 @@
-// Import calendar integration directly (temporary fix for lazy loading issue)
-import * as CalendarIntegration from './calendar-integration.js';
+// Calendar integration will be lazy loaded when needed
+// Removed direct import for bundle size optimization (~15kb saved)
 
 // APPS SCRIPT URL
 const CONFIG = {
@@ -1080,30 +1080,45 @@ function showSuccessPage(dateStr, timeStr, staffName, customerNote) {
     }, 100);
 }
 
-// ==================== CALENDAR INTEGRATION (Direct Import - Temporary Fix) ====================
+// ==================== CALENDAR INTEGRATION (Lazy Loading) ====================
 
 /**
  * Calendar buton tıklamalarını handle et
- * Direkt import kullanarak calendar modülünü çağırır
+ * Lazy loading ile calendar modülünü dinamik yükler (bundle size optimization)
+ * İlk tıklamada modül yüklenir, sonraki tıklamalarda cache'den kullanılır
+ * @param {Event} event - Click event
  */
-function handleCalendarAction(event) {
+async function handleCalendarAction(event) {
     const buttonId = event.target.id;
 
-    // Buton ID'sine göre doğru fonksiyonu çağır
-    // Not: Her fonksiyon kendi hata yönetimini yapar
-    switch (buttonId) {
-        case 'calendarAppleBtn':
-            CalendarIntegration.addToCalendarApple();
-            break;
-        case 'calendarGoogleBtn':
-            CalendarIntegration.addToCalendarGoogle();
-            break;
-        case 'calendarOutlookBtn':
-            CalendarIntegration.addToCalendarOutlook();
-            break;
-        case 'calendarICSBtn':
-            CalendarIntegration.downloadICSUniversal();
-            break;
+    try {
+        // Lazy load calendar integration (first click only)
+        if (!window.CalendarIntegration) {
+            log.info('Lazy loading calendar-integration.js...');
+            const module = await import('./calendar-integration.js');
+            window.CalendarIntegration = module;
+            log.info('Calendar integration loaded successfully');
+        }
+
+        // Buton ID'sine göre doğru fonksiyonu çağır
+        // Not: Her fonksiyon kendi hata yönetimini yapar
+        switch (buttonId) {
+            case 'calendarAppleBtn':
+                window.CalendarIntegration.addToCalendarApple();
+                break;
+            case 'calendarGoogleBtn':
+                window.CalendarIntegration.addToCalendarGoogle();
+                break;
+            case 'calendarOutlookBtn':
+                window.CalendarIntegration.addToCalendarOutlook();
+                break;
+            case 'calendarICSBtn':
+                window.CalendarIntegration.downloadICSUniversal();
+                break;
+        }
+    } catch (error) {
+        log.error('Calendar integration yükleme hatası:', error);
+        alert('Takvim entegrasyonu yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
 }
 
