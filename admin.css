@@ -1,0 +1,391 @@
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F0 100%);
+            min-height: 100vh;
+        }
+
+        .header {
+            background: white;
+            color: #1A1A2E;
+            padding: 30px;
+            text-align: center;
+            border-bottom: 1px solid #E8E8E8;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+            position: relative;
+        }
+
+        .header .rolex-logo {
+            width: 40px;
+            height: auto;
+            margin: 0 auto 15px;
+            display: block;
+        }
+
+        .header h1 {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 18px;
+            font-weight: 400;
+            letter-spacing: 2px;
+            color: #1A1A2E;
+            margin-bottom: 5px;
+        }
+
+        .header p {
+            font-size: 11px;
+            letter-spacing: 1px;
+            color: #757575;
+            font-weight: 300;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 30px;
+            border-bottom: 1px solid #E8E8E8;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: white;
+            border: 1px solid #E8E8E8;
+            border-bottom: none;
+            border-radius: 2px 2px 0 0;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 1px;
+            color: #757575;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+
+        .tab:hover {
+            background: #FAFAFA;
+            border-color: #C9A55A;
+            color: #1A1A2E;
+        }
+
+        .tab.active {
+            background: #1A1A2E;
+            color: #FAFAFA;
+            border-color: #1A1A2E;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 4px;
+            padding: 25px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+            margin-bottom: 20px;
+            border: 1px solid #F5F5F5;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 400;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: #1A1A2E;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #757575;
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #E8E8E8;
+            border-radius: 2px;
+            font-size: 14px;
+            font-family: 'Montserrat', sans-serif;
+            transition: all 0.3s;
+            font-family: inherit;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #C9A55A;
+            box-shadow: 0 0 0 2px rgba(201, 165, 90, 0.1);
+        }
+
+        .btn {
+            padding: 12px 28px;
+            background: #1A1A2E;
+            color: #FAFAFA;
+            border: 1px solid #1A1A2E;
+            border-radius: 2px;
+            font-size: 12px;
+            font-weight: 400;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Montserrat', sans-serif;
+        }
+
+        .btn:hover {
+            background: #C9A55A;
+            border-color: #C9A55A;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(201, 165, 90, 0.2);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #1A1A2E;
+            border-color: #E8E8E8;
+        }
+
+        .btn-secondary:hover {
+            background: #FAFAFA;
+            border-color: #C9A55A;
+            color: #1A1A2E;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 11px;
+        }
+
+        .staff-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .staff-item {
+            background: #FAFAFA;
+            padding: 18px;
+            border-radius: 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #E8E8E8;
+            transition: all 0.3s;
+        }
+
+        .staff-item:hover {
+            border-color: #C9A55A;
+            box-shadow: 0 2px 8px rgba(201, 165, 90, 0.1);
+        }
+
+        .staff-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .staff-name {
+            font-weight: 400;
+            font-size: 14px;
+            color: #1A1A2E;
+            letter-spacing: 0.5px;
+        }
+
+        .staff-status {
+            padding: 3px 10px;
+            border-radius: 2px;
+            font-size: 9px;
+            font-weight: 400;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            display: inline-flex;
+            align-items: center;
+            height: 24px;
+        }
+
+        .status-active {
+            background: #E8F5E8;
+            color: #2E7D32;
+        }
+
+        .status-inactive {
+            background: #FFEBEE;
+            color: #C62828;
+        }
+
+        .staff-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .modal-header {
+            font-size: 18px;
+            font-weight: 400;
+            margin-bottom: 20px;
+            color: #1A1A2E;
+            letter-spacing: 1px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .alert {
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .alert-success {
+            background: #E8F5E8;
+            color: #2E7D32;
+            border: 1px solid #E8F5E8;
+        }
+
+        .alert-error {
+            background: #FFEBEE;
+            color: #C62828;
+            border: 1px solid #FFEBEE;
+        }
+
+        .shift-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        .shift-table th,
+        .shift-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid #e0e0e0;
+        }
+
+        .shift-table th {
+            background: #FAFAFA;
+            font-weight: 400;
+            color: #757575;
+            font-size: 11px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .shift-table select {
+            width: 100%;
+            padding: 8px 10px;
+            border: none;
+            border-radius: 4px;
+            font-weight: 400;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: 'Montserrat', sans-serif;
+            appearance: none;
+            text-align: center;
+        }
+
+        /* Vardiya renkleri - Modern lüks açık tonlar */
+        .shift-table select[data-shift=""] {
+            background: #FFE5E5; /* Açık kırmızı - İzin */
+            color: #C62828;
+        }
+
+        .shift-table select[data-shift="morning"] {
+            background: #F3E5F5; /* Açık mor - Sabah */
+            color: #7B1FA2;
+        }
+
+        .shift-table select[data-shift="evening"] {
+            background: #E5F5F0; /* Açık yeşil - Akşam */
+            color: #00897B;
+        }
+
+        .shift-table select[data-shift="full"] {
+            background: #E3F2FD; /* Açık mavi - Full */
+            color: #1976D2;
+        }
+
+        /* Responsive - Küçük ekranlarda */
+        @media (max-width: 1024px) {
+            .shift-table th,
+            .shift-table td {
+                padding: 8px 4px;
+            }
+
+            .shift-table select {
+                padding: 6px 4px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .staff-item {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+
+            .staff-actions {
+                flex-direction: column;
+            }
+        }

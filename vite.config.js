@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
           'vendor-utils': ['./date-utils.js'],
           // Customer page specific
           'customer': ['./app.js', './security-helpers.js'],
-          // Admin page specific
-          'admin-panel': ['./admin-auth.js', './api-service.js']
+          // Admin page specific (modular)
+          'admin-panel': ['./admin-panel.js', './admin-auth.js', './api-service.js']
         }
       }
     },
