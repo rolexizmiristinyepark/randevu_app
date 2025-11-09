@@ -20,6 +20,11 @@ const CONFIG = {
   PROPERTIES_KEY: 'RANDEVU_DATA',
   API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
 
+  // Security & Abuse Prevention
+  TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA', // Test key - Production'da değiştirin
+  RATE_LIMIT_MAX_REQUESTS: 10,      // 10 istek
+  RATE_LIMIT_WINDOW_SECONDS: 600,   // 10 dakika (600 saniye)
+
   // WhatsApp Business Cloud API
   WHATSAPP_API_VERSION: 'v18.0',
   WHATSAPP_PHONE_NUMBER_ID: '', // Meta Business'tan alınacak
@@ -1272,6 +1277,116 @@ function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
   }
 }
 
+// ==================== SECURITY & ABUSE PREVENTION ====================
+
+/**
+ * Rate limiting kontrolü - CacheService ile IP bazlı
+ * 10 dakika içinde max 10 istek
+ * @param {string} identifier - IP veya fingerprint
+ * @returns {object} { allowed: boolean, remaining: number, resetTime: number }
+ */
+function checkRateLimit(identifier) {
+  try {
+    const cache = CacheService.getScriptCache();
+    const cacheKey = 'rate_limit_' + identifier;
+
+    // Mevcut istek sayısını al
+    const cached = cache.get(cacheKey);
+    const now = Date.now();
+
+    if (!cached) {
+      // İlk istek - yeni kova oluştur
+      const data = {
+        count: 1,
+        firstRequest: now
+      };
+      cache.put(cacheKey, JSON.stringify(data), CONFIG.RATE_LIMIT_WINDOW_SECONDS);
+
+      return {
+        allowed: true,
+        remaining: CONFIG.RATE_LIMIT_MAX_REQUESTS - 1,
+        resetTime: now + (CONFIG.RATE_LIMIT_WINDOW_SECONDS * 1000)
+      };
+    }
+
+    const data = JSON.parse(cached);
+
+    // Limit aşıldı mı?
+    if (data.count >= CONFIG.RATE_LIMIT_MAX_REQUESTS) {
+      const resetTime = data.firstRequest + (CONFIG.RATE_LIMIT_WINDOW_SECONDS * 1000);
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: resetTime
+      };
+    }
+
+    // İstek sayısını artır
+    data.count++;
+    cache.put(cacheKey, JSON.stringify(data), CONFIG.RATE_LIMIT_WINDOW_SECONDS);
+
+    return {
+      allowed: true,
+      remaining: CONFIG.RATE_LIMIT_MAX_REQUESTS - data.count,
+      resetTime: data.firstRequest + (CONFIG.RATE_LIMIT_WINDOW_SECONDS * 1000)
+    };
+
+  } catch (error) {
+    log.error('Rate limit kontrolü hatası:', error);
+    // Hata durumunda izin ver (fail-open)
+    return { allowed: true, remaining: -1, resetTime: 0 };
+  }
+}
+
+/**
+ * Cloudflare Turnstile token doğrulama
+ * @param {string} token - Client'tan gelen Turnstile token
+ * @returns {object} { success: boolean, error?: string }
+ */
+function verifyTurnstileToken(token) {
+  try {
+    if (!token) {
+      return { success: false, error: 'Turnstile token bulunamadı' };
+    }
+
+    // Cloudflare Turnstile siteverify endpoint
+    const url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
+
+    const payload = {
+      secret: CONFIG.TURNSTILE_SECRET_KEY,
+      response: token
+    };
+
+    const options = {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true
+    };
+
+    const response = UrlFetchApp.fetch(url, options);
+    const result = JSON.parse(response.getContentText());
+
+    if (result.success) {
+      return { success: true };
+    } else {
+      log.warn('Turnstile doğrulama başarısız:', result['error-codes']);
+      return {
+        success: false,
+        error: 'Robot kontrolü başarısız: ' + (result['error-codes'] || []).join(', ')
+      };
+    }
+
+  } catch (error) {
+    log.error('Turnstile doğrulama hatası:', error);
+    // Test mode için başarılı dön
+    if (CONFIG.TURNSTILE_SECRET_KEY.startsWith('1x00')) {
+      return { success: true };
+    }
+    return { success: false, error: 'Doğrulama hatası: ' + error.message };
+  }
+}
+
 // Randevu oluştur
 function createAppointment(params) {
   try {
@@ -1286,8 +1401,36 @@ function createAppointment(params) {
       customerNote,
       shiftType,
       appointmentType,
-      duration
+      duration,
+      turnstileToken
     } = params;
+
+    // ===== SECURITY CHECKS =====
+    // 1. Cloudflare Turnstile bot kontrolü
+    const turnstileResult = verifyTurnstileToken(turnstileToken);
+    if (!turnstileResult.success) {
+      log.warn('Turnstile doğrulama başarısız:', turnstileResult.error);
+      return {
+        success: false,
+        error: turnstileResult.error || 'Robot kontrolü başarısız oldu. Lütfen sayfayı yenileyin.'
+      };
+    }
+
+    // 2. Rate limiting - IP veya fingerprint bazlı
+    // IP adresi almak için e.parameter'dan veya customerPhone+email hash'i kullanabiliriz
+    const identifier = customerPhone + '_' + customerEmail; // Basit bir identifier
+    const rateLimit = checkRateLimit(identifier);
+
+    if (!rateLimit.allowed) {
+      const waitMinutes = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
+      log.warn('Rate limit aşıldı:', identifier, rateLimit);
+      return {
+        success: false,
+        error: `Çok fazla istek gönderdiniz. Lütfen ${waitMinutes} dakika sonra tekrar deneyin.`
+      };
+    }
+
+    log.info('Rate limit OK - Kalan istek:', rateLimit.remaining);
 
     // ===== VALIDATION =====
     // Date validation (YYYY-MM-DD format)
