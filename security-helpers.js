@@ -231,6 +231,98 @@ function createSuccessPageSafe(dateStr, timeStr, staffName, customerNote) {
     return container;
 }
 
+// ==================== PII MASKELEME (KVKK/GDPR UYUMU) ====================
+
+/**
+ * E-posta adresini maskeler
+ * KVKK/GDPR uyumu için log ve debug çıktılarında kullanılır
+ *
+ * @param {string} email - E-posta adresi
+ * @returns {string} Maskelenmiş e-posta
+ *
+ * @example
+ * maskEmail('serdar.benli@example.com') → 's***r@e***.com'
+ * maskEmail('a@b.co') → 'a@b.co' (çok kısa ise maskelenmez)
+ * maskEmail(null) → '[email hidden]'
+ */
+function maskEmail(email) {
+    if (!email || typeof email !== 'string') return '[email hidden]';
+
+    const [local, domain] = email.split('@');
+    if (!local || !domain) return '[invalid email]';
+
+    // Çok kısa local part'lar için maskeleme yapma
+    if (local.length <= 2) {
+        return email;
+    }
+
+    // Local part: ilk ve son harf, ortası ***
+    const maskedLocal = local[0] + '***' + local[local.length - 1];
+
+    // Domain: ilk harf, ortası ***, extension
+    const [domainName, ...ext] = domain.split('.');
+    if (domainName.length <= 2) {
+        return `${maskedLocal}@${domain}`;
+    }
+
+    const maskedDomain = domainName[0] + '***.' + ext.join('.');
+
+    return `${maskedLocal}@${maskedDomain}`;
+}
+
+/**
+ * Telefon numarasını maskeler
+ * KVKK/GDPR uyumu için log ve debug çıktılarında kullanılır
+ *
+ * @param {string} phone - Telefon numarası
+ * @returns {string} Maskelenmiş telefon
+ *
+ * @example
+ * maskPhone('0555 123 45 67') → '0555 *** ** 67'
+ * maskPhone('05551234567') → '0555***67'
+ * maskPhone(null) → '[phone hidden]'
+ */
+function maskPhone(phone) {
+    if (!phone || typeof phone !== 'string') return '[phone hidden]';
+
+    // Sadece rakamları al
+    const digits = phone.replace(/\D/g, '');
+
+    if (digits.length < 6) {
+        // Çok kısa ise tamamını maskele
+        return '***';
+    }
+
+    // İlk 4 ve son 2 rakamı göster, ortası ***
+    const start = digits.substring(0, 4);
+    const end = digits.substring(digits.length - 2);
+
+    // Orijinal formatlama varsa koru
+    if (phone.includes(' ')) {
+        return `${start} *** ** ${end}`;
+    } else {
+        return `${start}***${end}`;
+    }
+}
+
+/**
+ * Ad soyad maskeler (opsiyonel - aşırı güvenlik için)
+ *
+ * @param {string} name - Ad soyad
+ * @returns {string} Maskelenmiş ad
+ *
+ * @example
+ * maskName('Serdar Benli') → 'S*** B***'
+ * maskName('Ali') → 'A***'
+ */
+function maskName(name) {
+    if (!name || typeof name !== 'string') return '[name hidden]';
+
+    return name.split(' ')
+        .map(word => word.length > 0 ? word[0] + '***' : '')
+        .join(' ');
+}
+
 // Export for ES6 modules
 export {
     escapeHtml,
@@ -240,7 +332,10 @@ export {
     createSafeFragment,
     createLoadingElement,
     createTableRow,
-    createSuccessPageSafe
+    createSuccessPageSafe,
+    maskEmail,
+    maskPhone,
+    maskName
 };
 
 // Also expose globally for backward compatibility
@@ -253,4 +348,7 @@ if (typeof window !== 'undefined') {
     window.createLoadingElement = createLoadingElement;
     window.createTableRow = createTableRow;
     window.createSuccessPageSafe = createSuccessPageSafe;
+    window.maskEmail = maskEmail;
+    window.maskPhone = maskPhone;
+    window.maskName = maskName;
 }
