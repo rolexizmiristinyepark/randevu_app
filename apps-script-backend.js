@@ -295,6 +295,63 @@ function toTitleCase(name) {
     .join(' ');
 }
 
+// ==================== TIME OVERLAP HELPERS (EPOCH-MINUTE STANDARD) ====================
+/**
+ * Tarih ve saat string'ini epoch-minute'a çevirir (dakika cinsinden Unix timestamp)
+ * Standart: 1970-01-01T00:00 UTC'den itibaren geçen dakika sayısı
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {string} time - HH:MM formatında saat
+ * @returns {number} Epoch minute (dakika cinsinden timestamp)
+ *
+ * @example
+ * dateTimeToEpochMinute('2025-01-15', '14:30') → 29073150
+ */
+function dateTimeToEpochMinute(date, time) {
+  const dateTime = new Date(date + 'T' + time + ':00');
+  return Math.floor(dateTime.getTime() / 60000); // milliseconds → minutes
+}
+
+/**
+ * Date objesini epoch-minute'a çevirir
+ *
+ * @param {Date} dateObj - JavaScript Date objesi
+ * @returns {number} Epoch minute
+ */
+function dateToEpochMinute(dateObj) {
+  return Math.floor(dateObj.getTime() / 60000);
+}
+
+/**
+ * İki zaman aralığının çakışıp çakışmadığını kontrol eder
+ * Standart: [start, end) interval (start dahil, end hariç)
+ *
+ * Çakışma mantığı:
+ * - [10:00, 11:00) ve [10:30, 11:30) → ÇAKIŞIR (10:30-11:00 ortak)
+ * - [10:00, 11:00) ve [11:00, 12:00) → ÇAKIŞMAZ (end hariç)
+ * - [10:00, 11:00) ve [09:00, 10:30) → ÇAKIŞIR (10:00-10:30 ortak)
+ *
+ * @param {number} start1 - 1. aralık başlangıcı (epoch minute)
+ * @param {number} end1 - 1. aralık bitişi (epoch minute, hariç)
+ * @param {number} start2 - 2. aralık başlangıcı (epoch minute)
+ * @param {number} end2 - 2. aralık bitişi (epoch minute, hariç)
+ * @returns {boolean} Çakışma var mı?
+ *
+ * @example
+ * // Test cases:
+ * checkTimeOverlap(600, 660, 630, 690) → true   // [10:00-11:00) ve [10:30-11:30) ÇAKIŞIR
+ * checkTimeOverlap(600, 660, 660, 720) → false  // [10:00-11:00) ve [11:00-12:00) ÇAKIŞMAZ
+ * checkTimeOverlap(600, 660, 540, 630) → true   // [10:00-11:00) ve [09:00-10:30) ÇAKIŞIR
+ * checkTimeOverlap(600, 660, 540, 600) → false  // [10:00-11:00) ve [09:00-10:00) ÇAKIŞMAZ
+ * checkTimeOverlap(600, 660, 700, 760) → false  // [10:00-11:00) ve [11:40-12:40) ÇAKIŞMAZ
+ */
+function checkTimeOverlap(start1, end1, start2, end2) {
+  // İki aralık çakışır eğer:
+  // start1 < end2 VE start2 < end1
+  // (end hariç olduğu için = yok)
+  return start1 < end2 && start2 < end1;
+}
+
 // Takvim nesnesini döndür - merkezi hata yönetimi ile
 function getCalendar() {
   const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
@@ -1485,29 +1542,44 @@ function createAppointment(params) {
     // getData() - tek seferlik çağrı (DRY prensibi)
     const data = getData();
 
-    // ===== RANDEVU ÇAKIŞMA KONTROLÜ (SERVER-SIDE SINGLE SOURCE OF TRUTH) =====
+    // ===== RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
     // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
     // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
+    // STANDART: [start, end) interval (start dahil, end hariç)
+
     const calendar = getCalendar();
-    const startDateTime = new Date(date + 'T' + time + ':00');
-    const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
-    // Bu saat aralığındaki TÜM randevuları kontrol et (race condition koruması)
-    const existingEvents = calendar.getEvents(startDateTime, endDateTime);
-    const existingCount = existingEvents.length;
+    // Yeni randevunun epoch-minute aralığı
+    const newStart = dateTimeToEpochMinute(date, time);
+    const newEnd = newStart + durationNum; // duration dakika cinsinden
 
-    // 1a. O saatte randevu yok → Devam et
-    if (existingCount === 0) {
+    // O günün tüm randevularını al (kesin çakışma kontrolü için)
+    const { startDate, endDate } = getDateRange(date);
+    const allEventsToday = calendar.getEvents(startDate, endDate);
+
+    // Çakışan randevuları filtrele (epoch-minute ile)
+    const overlappingEvents = allEventsToday.filter(event => {
+      const eventStart = dateToEpochMinute(event.getStartTime());
+      const eventEnd = dateToEpochMinute(event.getEndTime());
+
+      // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
+      return checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
+    });
+
+    const overlappingCount = overlappingEvents.length;
+
+    // 1a. Çakışan randevu yok → Devam et
+    if (overlappingCount === 0) {
       // OK, devam et
     }
-    // 1b. O saatte 1 randevu var
-    else if (existingCount === 1) {
+    // 1b. 1 çakışan randevu var
+    else if (overlappingCount === 1) {
       // Yönetim randevusu ekleniyor VE mevcut yönetim değil → İzin ver
-      const existingType = existingEvents[0].getTag('appointmentType');
+      const existingType = overlappingEvents[0].getTag('appointmentType');
 
       if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
           existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
-        // OK, yönetim randevusu eklenebilir
+        // OK, yönetim randevusu eklenebilir (2. randevu olarak)
       } else {
         // Diğer tüm durumlar → BLOKE
         return {
@@ -1516,13 +1588,17 @@ function createAppointment(params) {
         };
       }
     }
-    // 1c. O saatte 2 veya daha fazla randevu var → BLOKE
-    else if (existingCount >= 2) {
+    // 1c. 2 veya daha fazla çakışan randevu var → BLOKE
+    else if (overlappingCount >= 2) {
       return {
         success: false,
         error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
       };
     }
+
+    // Event oluşturma için Date objelerine ihtiyacımız var
+    const startDateTime = new Date(date + 'T' + time + ':00');
+    const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
     // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
     if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
@@ -1967,7 +2043,7 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
     const todayStr = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
     const currentTime = date === todayStr ? Utilities.formatDate(now, CONFIG.TIMEZONE, 'HH:mm') : null;
 
-    // Her slot için müsaitlik kontrolü
+    // Her slot için müsaitlik kontrolü (EPOCH-MINUTE STANDARD)
     const availabilityResults = slots.map(timeStr => {
       // 1. Geçmiş zaman kontrolü (bugünse)
       if (currentTime && timeStr <= currentTime) {
@@ -1978,24 +2054,28 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         };
       }
 
-      // 2. Bu saatteki tüm randevuları bul (TÜR FARKETMEKSIZIN)
-      const sameTimeEvents = events.filter(event => {
-        const eventTime = Utilities.formatDate(
-          event.getStartTime(),
-          CONFIG.TIMEZONE,
-          'HH:mm'
-        );
-        return eventTime === timeStr;
+      // 2. Slot'un epoch-minute aralığı [start, end)
+      const slotStart = dateTimeToEpochMinute(date, timeStr);
+      const slotEnd = slotStart + intervalNum; // interval dakika cinsinden
+
+      // 3. Bu slot ile ÇAKIŞAN randevuları bul (epoch-minute standardı ile)
+      // DEĞİŞKEN SÜRELİ randevular için de doğru çalışır
+      const overlappingEvents = events.filter(event => {
+        const eventStart = dateToEpochMinute(event.getStartTime());
+        const eventEnd = dateToEpochMinute(event.getEndTime());
+
+        // [start, end) standardı ile çakışma kontrolü
+        return checkTimeOverlap(slotStart, slotEnd, eventStart, eventEnd);
       });
 
-      // 3. SERVER-SIDE SINGLE SOURCE OF TRUTH KURAL:
+      const overlappingCount = overlappingEvents.length;
+
+      // 4. SERVER-SIDE SINGLE SOURCE OF TRUTH KURAL:
       // **1 SAATE 1 RANDEVU** (tür/link farketmeksizin)
       // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
 
-      const existingCount = sameTimeEvents.length;
-
-      // 3a. O saatte randevu yok → MÜSAİT
-      if (existingCount === 0) {
+      // 4a. Çakışan randevu yok → MÜSAİT
+      if (overlappingCount === 0) {
         return {
           time: timeStr,
           available: true,
@@ -2003,10 +2083,10 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         };
       }
 
-      // 3b. O saatte 1 randevu var
-      if (existingCount === 1) {
+      // 4b. 1 çakışan randevu var
+      if (overlappingCount === 1) {
         // Yönetim randevusu ekleniyor VE mevcut yönetim değil → MÜSAİT
-        const existingType = sameTimeEvents[0].getTag('appointmentType');
+        const existingType = overlappingEvents[0].getTag('appointmentType');
 
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
             existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
@@ -2025,8 +2105,8 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
         };
       }
 
-      // 3c. O saatte 2 veya daha fazla randevu var → DOLU
-      if (existingCount >= 2) {
+      // 4c. 2 veya daha fazla çakışan randevu var → DOLU
+      if (overlappingCount >= 2) {
         return {
           time: timeStr,
           available: false,
