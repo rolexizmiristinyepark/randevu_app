@@ -15,30 +15,14 @@
  * - lastAppointmentData (app.js)
  */
 
-// DateUtils import et
+// Shared utilities import et
 import { DateUtils } from './date-utils.js';
+import { StringUtils } from './string-utils.js';
 
 // Global scope'tan değişkenleri al
 const CONFIG = window.CONFIG;
 const ModalUtils = window.ModalUtils;
 const lastAppointmentData = () => window.lastAppointmentData;
-
-// ==================== UTILITY FONKSİYONLARI ====================
-
-/**
- * İsim ve soyisimleri title case formatına çevirir
- * Örnek: "SERDAR BENLİ" → "Serdar Benli"
- * @param {string} str - Formatlanacak metin
- * @returns {string} Title case formatında metin
- */
-function toTitleCase(str) {
-    if (!str) return str;
-    return str
-        .toLowerCase()
-        .split(' ')
-        .map(word => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
-        .join(' ');
-}
 
 // ==================== TAKVİME EKLEME FONKSİYONLARI ====================
 
@@ -111,7 +95,7 @@ export function addToCalendarGoogle() {
     }
 
     // İsim formatlaması
-    appointment.staffName = toTitleCase(appointment.staffName);
+    appointment.staffName = StringUtils.toTitleCase(appointment.staffName);
 
     const platform = detectPlatform();
     const date = new Date(appointment.date + 'T' + appointment.time);
@@ -169,7 +153,7 @@ export function addToCalendarOutlook() {
     }
 
     // İsim formatlaması
-    appointment.staffName = toTitleCase(appointment.staffName);
+    appointment.staffName = StringUtils.toTitleCase(appointment.staffName);
 
     const date = new Date(appointment.date + 'T' + appointment.time);
     const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
@@ -245,7 +229,7 @@ export function generateICS(startDate, endDate) {
 
     if (appointment) {
         // İsim formatlaması
-        appointment.staffName = toTitleCase(appointment.staffName);
+        appointment.staffName = StringUtils.toTitleCase(appointment.staffName);
 
         // Müşteri takvimi için özel isimler
         const customerAppointmentTypeNames = {
