@@ -5,12 +5,56 @@
 // Debug mode - Production'da false olmalı
 const DEBUG = false;
 
+// ==================== PII MASKELEME (KVKK/GDPR UYUMU) ====================
+/**
+ * E-posta adresini maskeler (log için)
+ * @param {string} email - E-posta adresi
+ * @returns {string} Maskelenmiş e-posta
+ */
+function maskEmail(email) {
+  if (!email || typeof email !== 'string') return '[email hidden]';
+
+  const [local, domain] = email.split('@');
+  if (!local || !domain) return '[invalid email]';
+
+  if (local.length <= 2) return email;
+
+  const maskedLocal = local[0] + '***' + local[local.length - 1];
+  const [domainName, ...ext] = domain.split('.');
+  if (domainName.length <= 2) return `${maskedLocal}@${domain}`;
+
+  const maskedDomain = domainName[0] + '***.' + ext.join('.');
+  return `${maskedLocal}@${maskedDomain}`;
+}
+
+/**
+ * Telefon numarasını maskeler (log için)
+ * @param {string} phone - Telefon numarası
+ * @returns {string} Maskelenmiş telefon
+ */
+function maskPhone(phone) {
+  if (!phone || typeof phone !== 'string') return '[phone hidden]';
+
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length < 6) return '***';
+
+  const start = digits.substring(0, 4);
+  const end = digits.substring(digits.length - 2);
+
+  return phone.includes(' ') ? `${start} *** ** ${end}` : `${start}***${end}`;
+}
+
 // Debug logger - Production'da log'ları devre dışı bırakır
+// KVKK/GDPR: PII verileri loglanmadan önce maskelenmeli
 const log = {
   error: (...args) => DEBUG && console.error(...args),
   warn: (...args) => DEBUG && console.warn(...args),
   info: (...args) => DEBUG && console.info(...args),
-  log: (...args) => DEBUG && console.log(...args)
+  log: (...args) => DEBUG && console.log(...args),
+
+  // PII-safe loggers
+  errorPII: (message, email, phone) => DEBUG && console.error(message, maskEmail(email), maskPhone(phone)),
+  infoPII: (message, email, phone) => DEBUG && console.info(message, maskEmail(email), maskPhone(phone))
 };
 
 const CONFIG = {
@@ -1862,20 +1906,21 @@ function createManualAppointment(params) {
 
     const isManagement = appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT;
 
-    // Sanitization
+    // Sanitization (customer + staff)
     const sanitizedCustomerName = toTitleCase(sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
     const sanitizedCustomerPhone = sanitizePhone(customerPhone);
     const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
     const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
+    const sanitizedStaffName = toTitleCase(sanitizeString(staff.name, VALIDATION.STRING_MAX_LENGTH));
 
     // Başlangıç ve bitiş zamanları
     const durationNum = parseInt(duration) || 60;
     const startDateTime = new Date(`${date}T${time}:00`);
     const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
-    // Event başlığı
+    // Event başlığı - sanitized değerleri kullan
     const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
-    const title = `${sanitizedCustomerName} - ${staff.name} (${appointmentTypeLabel})`;
+    const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})`;
 
     // Event açıklaması
     const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
@@ -1896,9 +1941,9 @@ function createManualAppointment(params) {
         const formattedDate = DateUtils.toTurkishDate(date);
         const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
-        // ICS oluştur
+        // ICS oluştur - sanitized staff name kullan
         const icsContent = generateCustomerICS({
-          staffName: staff.name,
+          staffName: sanitizedStaffName,
           staffPhone: staff.phone || '',
           staffEmail: staff.email || '',
           date,

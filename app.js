@@ -770,7 +770,12 @@ async function displayAvailableTimeSlots() {
         });
 
         if (!result.success) {
-            container.innerHTML = `<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">${result.error || 'Müsait saatler yüklenemedi'}</div>`;
+            // XSS korumalı hata mesajı
+            container.textContent = '';
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+            errorDiv.textContent = result.error || 'Müsait saatler yüklenemedi';
+            container.appendChild(errorDiv);
             return;
         }
 
