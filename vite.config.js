@@ -21,7 +21,7 @@ export default defineConfig(({ mode }) => ({
           // Customer page specific
           'customer': ['./app.js', './security-helpers.js'],
           // Admin page specific (modular)
-          'admin-panel': ['./admin-panel.js', './admin-auth.js', './api-service.js']
+          'admin-panel': ['./admin-panel.js', './admin-auth.js', './api-service.ts']
         }
       }
     },
