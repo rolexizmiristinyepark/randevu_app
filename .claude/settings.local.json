@@ -38,7 +38,8 @@
       "Bash(npm run test:run:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run lint:fix:*)",
-      "Bash(npm run size:*)"
+      "Bash(npm run size:*)",
+      "Bash(npm run type-check:*)"
     ],
     "deny": [],
     "ask": []
