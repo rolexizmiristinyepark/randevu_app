@@ -95,7 +95,7 @@ const appState = new StateManager({
 //   - selectedDate = value yerine appState.set('selectedDate', value)
 
 // Backward compatibility için global değişkenleri tut (kademeli geçiş için)
-let currentMonth = appState.get('currentMonth');
+const currentMonth = appState.get('currentMonth');
 let selectedDate = appState.get('selectedDate');
 let selectedStaff = appState.get('selectedStaff');
 let selectedTime = appState.get('selectedTime');
@@ -260,7 +260,7 @@ function mergeConfig(backendConfig) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async () => {
     // Backend'den config yükle (tek kaynak prensibi)
     const backendConfig = await loadConfig();
     mergeConfig(backendConfig);
@@ -488,7 +488,7 @@ function checkDayAvailability(dateStr) {
     const now = new Date();
     const todayStr = DateUtils.toLocalDate(now);
 
-    let deliveryCount = calendarEvents.filter(event => {
+    const deliveryCount = calendarEvents.filter(event => {
         // Sadece teslim randevularını say
         if (event.extendedProperties?.private?.appointmentType !== 'delivery') {
             return false;
@@ -935,7 +935,7 @@ function selectTimeSlot(timeStr, element) {
     }
 }
 
-document.getElementById('submitBtn')?.addEventListener('click', async function() {
+document.getElementById('submitBtn')?.addEventListener('click', async () => {
     const name = StringUtils.toTitleCase(document.getElementById('customerName').value.trim());
     const phone = document.getElementById('customerPhone').value.trim();
     const email = document.getElementById('customerEmail').value.trim();

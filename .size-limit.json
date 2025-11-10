@@ -1,0 +1,27 @@
+[
+  {
+    "name": "Customer Page (Main)",
+    "path": "dist/assets/customer-*.js",
+    "limit": "30 kB"
+  },
+  {
+    "name": "Admin Panel",
+    "path": "dist/assets/admin-panel-*.js",
+    "limit": "40 kB"
+  },
+  {
+    "name": "Vendor Utils",
+    "path": "dist/assets/vendor-utils-*.js",
+    "limit": "3 kB"
+  },
+  {
+    "name": "Calendar Integration (lazy)",
+    "path": "dist/assets/calendar-integration-*.js",
+    "limit": "8 kB"
+  },
+  {
+    "name": "Total CSS",
+    "path": "dist/assets/*.css",
+    "limit": "20 kB"
+  }
+]
