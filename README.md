@@ -103,8 +103,16 @@ randevu-sistemi-main/
 
 Rolex İzmir İstinyepark için özel geliştirilmiştir.
 
+## 🔧 Backend Refactoring
+
+Backend (Google Apps Script) modülerleştirmesi için detaylı plan:
+- [BACKEND_REFACTOR_PLAN.md](./BACKEND_REFACTOR_PLAN.md) - Modül yapısı, clasp deployment rehberi
+
+**Mevcut**: 3385 satır tek dosya → **Hedef**: 15 modüler dosya
+
 ## 🆘 Destek
 
 Sorun yaşarsanız:
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment sorunları
 - [WHATSAPP_API_SETUP.md](./WHATSAPP_API_SETUP.md) - WhatsApp Business API kurulumu
+- [BACKEND_REFACTOR_PLAN.md](./BACKEND_REFACTOR_PLAN.md) - Backend modülerleştirme
