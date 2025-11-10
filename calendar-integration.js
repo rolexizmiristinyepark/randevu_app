@@ -224,7 +224,7 @@ export function generateICS(startDate, endDate) {
     // Detaylı randevu bilgileri oluştur
     let description = 'RANDEVU BİLGİLERİ\\n\\n';
     let summary = 'Rolex Randevu';
-    let alarmTrigger = '-PT30M'; // Default
+    const alarmTrigger = '-PT30M'; // Default
     let alarms = null; // Müşteri takvimi için birden fazla alarm
 
     if (appointment) {

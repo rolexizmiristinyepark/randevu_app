@@ -1110,7 +1110,7 @@
             document.getElementById('saveEditStaffBtn')?.addEventListener('click', () => Staff.saveEdit());
 
             // ✅ EVENT DELEGATION: Tek listener tüm staff butonları için
-            document.getElementById('staffList')?.addEventListener('click', function(e) {
+            document.getElementById('staffList')?.addEventListener('click', (e) => {
                 // Tıklanan elementin bir buton olup olmadığını kontrol et
                 const button = e.target.closest('[data-action]');
 

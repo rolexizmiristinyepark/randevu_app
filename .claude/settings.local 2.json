@@ -28,17 +28,7 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nrefactor: Eski WhatsApp automation sistemi kaldırıldı\n\n❌ SİLİNEN:\n- whatsapp-automation/ klasörü (128MB - Selenium/PyAutoGUI)\n- Python bağımlılıkları (requirements.txt)\n- Terminal .command dosyaları\n- Manuel automation scriptleri\n\n✅ KORUNAN:\n- Meta Business Cloud API implementasyonu (apps-script-backend.js)\n- WHATSAPP_API_SETUP.md (Meta Business API kurulum rehberi)\n- Admin panel WhatsApp entegrasyonu\n\n📝 GÜNCELLENEN:\n- README.md: Meta Business API referansları\n- Proje yapısı: whatsapp-automation/ kaldırıldı\n- Teknolojiler: Selenium yerine Meta Business Cloud API\n\n🎯 SONUÇ:\n- Tek hat: Meta Business Cloud API\n- %100 otomatik (terminal/QR kod yok)\n- İlk 1000 mesaj/ay ücretsiz\n- Bakım maliyeti azaldı\n- Bağımlılıklar azaldı\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(tree:*)",
       "Bash(npm run build:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(admin.css)",
-      "Bash(admin.css.tmp)",
-      "Bash(admin-panel.js)",
-      "Bash(admin-panel.js.tmp)",
-      "Bash(npm install:*)",
-      "Bash(npm run test:run:*)",
-      "Bash(npm run lint:*)",
-      "Bash(npm run lint:fix:*)",
-      "Bash(npm run size:*)"
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
