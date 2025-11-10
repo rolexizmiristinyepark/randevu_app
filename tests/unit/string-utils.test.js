@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { StringUtils } from '../../string-utils.js';
+import { StringUtils } from '../../string-utils.ts';
 
 describe('StringUtils.toTitleCase()', () => {
   it('should convert to title case', () => {
