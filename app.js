@@ -4,7 +4,7 @@
 // Import shared utilities
 import { StringUtils } from './string-utils.ts';
 import { StateManager } from './state-manager.ts';
-import { apiCall } from './api-service.js';
+import { apiCall } from './api-service.ts';
 import { initMonitoring, logError, measureAsync } from './monitoring.ts';
 
 // APPS SCRIPT URL
