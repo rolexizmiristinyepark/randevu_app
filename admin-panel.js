@@ -1,5 +1,5 @@
         // Import monitoring utilities
-        import { initMonitoring, logError } from './monitoring.js';
+        import { initMonitoring, logError } from './monitoring.ts';
 
         // ==================== CONFIG ====================
         const CONFIG = {

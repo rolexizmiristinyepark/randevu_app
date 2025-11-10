@@ -2,10 +2,10 @@
 // Removed direct import for bundle size optimization (~15kb saved)
 
 // Import shared utilities
-import { StringUtils } from './string-utils.js';
-import { StateManager } from './state-manager.js';
+import { StringUtils } from './string-utils.ts';
+import { StateManager } from './state-manager.ts';
 import { apiCall } from './api-service.js';
-import { initMonitoring, logError, measureAsync } from './monitoring.js';
+import { initMonitoring, logError, measureAsync } from './monitoring.ts';
 
 // APPS SCRIPT URL
 const CONFIG = {
