@@ -10,9 +10,9 @@
     "limit": "40 kB"
   },
   {
-    "name": "Vendor Utils",
+    "name": "Vendor Utils (inc. Sentry + web-vitals)",
     "path": "dist/assets/vendor-utils-*.js",
-    "limit": "3 kB"
+    "limit": "80 kB"
   },
   {
     "name": "Calendar Integration (lazy)",

@@ -1,3 +1,6 @@
+        // Import monitoring utilities
+        import { initMonitoring, logError } from './monitoring.js';
+
         // ==================== CONFIG ====================
         const CONFIG = {
             APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
@@ -21,6 +24,7 @@
                     }
                 } catch (error) {
                     console.error('İlgili personel yüklenemedi:', error);
+                    logError(error, { context: 'loadStaff' });
                 }
             },
 
@@ -37,6 +41,7 @@
                     }
                 } catch (error) {
                     console.error('Ayarlar yüklenemedi:', error);
+                    logError(error, { context: 'loadSettings' });
                 }
             }
         };
@@ -1040,6 +1045,12 @@
         // ==================== INIT ====================
         // Wait for ES6 modules to load before checking authentication
         function initAdmin() {
+            // Initialize monitoring (Sentry + Web Vitals) - only once
+            if (!window.__monitoringInitialized) {
+                initMonitoring();
+                window.__monitoringInitialized = true;
+            }
+
             // Check if AdminAuth module is loaded
             if (typeof window.AdminAuth === 'undefined') {
                 // Module not loaded yet, wait a bit and try again
