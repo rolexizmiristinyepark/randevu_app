@@ -141,7 +141,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue';
-import { DateUtils } from '../../date-utils.ts';
+import { DateUtils } from '../../../date-utils.ts';
 
 // Props
 interface Props {
