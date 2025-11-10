@@ -152,7 +152,7 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { DateUtils } from '../../date-utils.ts';
+import { DateUtils } from '../../../date-utils.ts';
 
 // Props
 interface Props {
