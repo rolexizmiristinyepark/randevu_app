@@ -17,14 +17,12 @@ export default defineConfig(({ mode }) => ({
       output: {
         // Optimize chunk splitting
         manualChunks: {
-          // Vue 3 vendor
-          'vendor-vue': ['vue'],
           // Shared utilities go to a separate chunk
-          'vendor-utils': ['./date-utils.ts', './string-utils.ts', './state-manager.ts', './monitoring.ts', './api-service.ts'],
-          // Customer page specific (Vue 3)
-          'customer': ['./app.ts', './src/customer.ts', './src/composables/useAppointment.ts'],
-          // Admin page specific (Vue 3)
-          'admin-panel': ['./src/admin.ts', './src/composables/useAdmin.ts']
+          'vendor-utils': ['./date-utils.ts', './string-utils.ts', './state-manager.ts', './monitoring.ts'],
+          // Customer page specific
+          'customer': ['./app.js', './security-helpers.js'],
+          // Admin page specific (modular)
+          'admin-panel': ['./admin-panel.js', './admin-auth.js', './api-service.ts']
         }
       }
     },
@@ -85,13 +83,5 @@ export default defineConfig(({ mode }) => ({
         brotliSize: true
       })
     ] : [])
-  ],
-
-  // Resolve configuration
-  resolve: {
-    extensions: ['.ts', '.js', '.vue', '.json'],
-    alias: {
-      '@': resolve(__dirname, './src')
-    }
-  }
+  ]
 }));
