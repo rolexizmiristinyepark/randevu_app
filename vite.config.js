@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
-import vue from '@vitejs/plugin-vue';
 
 export default defineConfig(({ mode }) => ({
   // GitHub Pages base path
@@ -13,17 +12,6 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html')
-      },
-      output: {
-        // Optimize chunk splitting
-        manualChunks: {
-          // Shared utilities go to a separate chunk
-          'vendor-utils': ['./date-utils.ts', './string-utils.ts', './state-manager.ts', './monitoring.ts'],
-          // Customer page specific
-          'customer': ['./app.js', './security-helpers.js'],
-          // Admin page specific (modular)
-          'admin-panel': ['./admin-panel.js', './admin-auth.js', './api-service.ts']
-        }
       }
     },
 
@@ -74,7 +62,6 @@ export default defineConfig(({ mode }) => ({
 
   // Plugin configuration
   plugins: [
-    vue(), // Vue 3 plugin
     ...(mode === 'analyze' ? [
       visualizer({
         open: true,
