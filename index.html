@@ -8,145 +8,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-    <!-- Date Utility Functions -->
-    <!-- Security Helper Functions -->
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
   <script type="module" crossorigin src="/randevu_app/assets/modulepreload-polyfill-YP0FEG5d.js"></script>
-  <script type="module" crossorigin src="/randevu_app/assets/vendor-utils-D2GrUhHX.js"></script>
-  <script type="module" crossorigin src="/randevu_app/assets/customer-C1LZgiHc.js"></script>
-  <link rel="stylesheet" crossorigin href="/randevu_app/assets/main-DFEBJ7YY.css">
+  <script type="module" crossorigin src="/randevu_app/assets/vendor-vue-B0YdXg1C.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/vendor-utils-C6OB7xGj.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/customer-CoDgEaDP.js"></script>
+  <link rel="stylesheet" crossorigin href="/randevu_app/assets/customer-BRl4le0I.css">
+  <link rel="stylesheet" crossorigin href="/randevu_app/assets/main-ec88rlkK.css">
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <img src="/randevu_app/assets/rolex-logo-CWgDBaQq.svg" class="rolex-logo" alt="Rolex Logo">            <h2 style="margin: 20px 0 2px; font-size: 14px; font-weight: normal; letter-spacing: 1px; text-align: center; color: #757575; font-family: 'Montserrat', sans-serif;">Rolex İzmir İstinyepark</h2>
-            <p id="staffHeader" style="margin: 5px 0 0; font-size: 12px; color: #666; text-align: center; visibility: hidden; font-family: 'Montserrat', sans-serif; text-transform: capitalize;">-</p>
-        </div>
+    <!-- Vue 3 App Root -->
+    <div id="app"></div>
 
-        <div id="alertContainer"></div>
-
-        <!-- Randevu Tipi Seçimi -->
-        <div class="section">
-            <div class="appointment-types" id="appointmentTypesContainer">
-                <div class="type-card" id="typeDelivery" data-type="delivery">
-                    <h3>Teslim</h3>
-                </div>
-                <div class="type-card" id="typeService" data-type="service">
-                    <h3>Teknik Servis</h3>
-                </div>
-                <div class="type-card" id="typeMeeting" data-type="meeting">
-                    <h3>Görüşme</h3>
-                </div>
-                <!-- Yönetim butonu sadece staff=0 için gösterilecek -->
-                <div class="type-card" id="typeManagement" data-type="management" style="display: none;">
-                    <h3>Yönetim</h3>
-                </div>
-            </div>
-        </div>
-
-        <!-- Aylık Takvim -->
-        <div class="section" id="calendarSection" style="display: none;">
-            <div class="calendar-container">
-                <div class="calendar-header">
-                    <h2 id="currentMonth"></h2>
-                    <div class="calendar-nav">
-                        <button class="nav-btn" id="prevMonthBtn">◀ Önceki</button>
-                        <button class="nav-btn" id="nextMonthBtn">Sonraki ▶</button>
-                    </div>
-                </div>
-                <div class="calendar-grid" id="calendarGrid"></div>
-            </div>
-        </div>
-
-        <div class="section" id="staffSection" style="display: none;">
-            <div class="section-title">Çalışan Seçiniz</div>
-            <div id="staffLoading" class="loading" style="display: none;"><div class="spinner"></div></div>
-            <div class="staff-select" id="staffList"></div>
-        </div>
-
-        <div class="section" id="timeSection" style="display: none;">
-            <div class="available-slots" id="timeSlots"></div>
-        </div>
-
-        <div class="section" id="detailsSection" style="display: none;">
-            <div class="section-title">İletişim bilgileriniz</div>
-            <div class="input-group">
-                <label for="customerName">Adınız soyadınız *</label>
-                <input type="text" id="customerName" placeholder="Örn: Ahmet Yılmaz" required>
-            </div>
-            <div class="input-group">
-                <label for="customerPhone">Telefon *</label>
-                <input type="tel" id="customerPhone" placeholder="0555 123 45 67" required>
-            </div>
-            <div class="input-group">
-                <label for="customerEmail">E-posta *</label>
-                <input type="email" id="customerEmail" placeholder="ornek@email.com" required>
-            </div>
-            <div class="input-group">
-                <label for="customerNote">Not</label>
-                <textarea id="customerNote" placeholder="Randevu ile ilgili eklemek istediğiniz bir not varsa..."></textarea>
-            </div>
-        </div>
-
-        <!-- Cloudflare Turnstile Widget (Bot Protection) -->
-        <div id="turnstileContainer" style="display: none; margin: 20px auto; text-align: center;">
-            <div class="cf-turnstile"
-                 data-sitekey="1x00000000000000000000AA"
-                 data-callback="onTurnstileSuccess"
-                 data-theme="light"
-                 data-size="normal">
-            </div>
-        </div>
-
-        <button class="btn" id="submitBtn" style="display: none;">
-            Randevuyu Onayla
-        </button>
-
-        <div class="info-box">
-            <p>Randevunuz onaylandıktan sonra size e-posta ile bilgilendirme yapılacaktır.</p>
-        </div>
-    </div>
-
-    <!-- Application JavaScript -->
-
-    <!-- Calendar Selection Modal -->
-    <div id="calendarModal" class="calendar-modal">
-        <div class="calendar-modal-content">
-            <div class="calendar-modal-header">Takvim Seçin</div>
-            <div class="calendar-modal-subtitle">Randevunuzu hangi takvime eklemek istersiniz?</div>
-
-            <div class="calendar-options">
-                <button class="calendar-option-btn" id="calendarAppleBtn">
-                    Apple Calendar
-                </button>
-
-                <button class="calendar-option-btn" id="calendarGoogleBtn">
-                    Google Calendar
-                </button>
-
-                <button class="calendar-option-btn" id="calendarOutlookBtn">
-                    Outlook Calendar
-                </button>
-
-                <button class="calendar-option-btn" id="calendarICSBtn">
-                    Takvim Dosyası İndir
-                </button>
-            </div>
-
-            <button class="modal-close-btn" id="calendarModalCloseBtn">İptal</button>
-        </div>
-    </div>
-
-    <!-- iOS Guide Modal -->
-    <div id="guideModal" class="guide-modal">
-        <div class="guide-content">
-            <div class="guide-icon">📲</div>
-            <h3 class="guide-title">iOS - Son Adım</h3>
-            <p class="guide-text">İndirilenler'de "rolex-randevu.ics" dosyasına dokunun ve "Takvime Ekle" seçeneğini seçin</p>
-            <button class="guide-btn" id="guideCloseBtn">Anladım</button>
-        </div>
-    </div>
-
+    <!-- Vue 3 Customer App Entry Point -->
 </body>
 </html>
