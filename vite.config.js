@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
+import vue from '@vitejs/plugin-vue';
 
 export default defineConfig(({ mode }) => ({
   // GitHub Pages base path
@@ -72,12 +73,15 @@ export default defineConfig(({ mode }) => ({
   },
 
   // Plugin configuration
-  plugins: mode === 'analyze' ? [
-    visualizer({
-      open: true,
-      filename: 'dist/stats.html',
-      gzipSize: true,
-      brotliSize: true
-    })
-  ] : []
+  plugins: [
+    vue(), // Vue 3 plugin
+    ...(mode === 'analyze' ? [
+      visualizer({
+        open: true,
+        filename: 'dist/stats.html',
+        gzipSize: true,
+        brotliSize: true
+      })
+    ] : [])
+  ]
 }));
