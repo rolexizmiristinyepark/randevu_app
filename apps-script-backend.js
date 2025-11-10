@@ -2600,7 +2600,7 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
       to: cleanPhone,
       type: 'template',
       template: {
-        name: 'randevu_hatirlatma_v1',  // Template name
+        name: 'randevu_hatirlartma_v1',  // Template name (Meta'daki isimle eşleştirildi)
         language: {
           code: 'tr'  // Turkish
         },
