@@ -103,6 +103,14 @@ randevu-sistemi-main/
 
 Rolex İzmir İstinyepark için özel geliştirilmiştir.
 
+## ⚡ Vue 3 Migration
+
+Modern component-based architecture için Vue 3 geçiş planı:
+- [VUE3_MIGRATION_PLAN.md](./VUE3_MIGRATION_PLAN.md) - Component yapısı, migration stratejisi
+- **Örnek Component**: [src/components/TimeSlotPicker.vue](./src/components/TimeSlotPicker.vue)
+
+**Mevcut**: Vanilla JS (1200+ satır) → **Hedef**: Vue 3 Composition API
+
 ## 🔧 Backend Refactoring
 
 Backend (Google Apps Script) modülerleştirmesi için detaylı plan:
@@ -116,3 +124,4 @@ Sorun yaşarsanız:
 - [DEPLOYMENT.md](./DEPLOYMENT.md) - Deployment sorunları
 - [WHATSAPP_API_SETUP.md](./WHATSAPP_API_SETUP.md) - WhatsApp Business API kurulumu
 - [BACKEND_REFACTOR_PLAN.md](./BACKEND_REFACTOR_PLAN.md) - Backend modülerleştirme
+- [VUE3_MIGRATION_PLAN.md](./VUE3_MIGRATION_PLAN.md) - Vue 3 migration
