@@ -16,11 +16,12 @@
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:debug": "playwright test --debug",
     "test:all": "npm run test:run && npm run test:e2e",
+    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "size": "size-limit",
-    "validate": "run-p lint test:run size",
-    "ci": "run-s lint test:run build size"
+    "validate": "run-p type-check lint test:run size",
+    "ci": "run-s type-check lint test:run build size"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
@@ -28,6 +29,7 @@
     "@size-limit/preset-app": "^11.2.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.10.0",
     "@vitest/ui": "^4.0.8",
     "eslint": "^9.39.1",
     "eslint-plugin-security": "^3.0.1",
@@ -38,7 +40,9 @@
     "rollup-plugin-visualizer": "^5.12.0",
     "size-limit": "^11.2.0",
     "terser": "^5.44.0",
+    "typescript": "^5.9.3",
     "vite": "^5.4.0",
+    "vite-plugin-checker": "^0.11.0",
     "vitest": "^4.0.8"
   },
   "keywords": [
