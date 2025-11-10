@@ -5,6 +5,7 @@
 import { StringUtils } from './string-utils.js';
 import { StateManager } from './state-manager.js';
 import { apiCall } from './api-service.js';
+import { initMonitoring, logError, measureAsync } from './monitoring.js';
 
 // APPS SCRIPT URL
 const CONFIG = {
@@ -261,8 +262,11 @@ function mergeConfig(backendConfig) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize monitoring (Sentry + Web Vitals)
+    initMonitoring();
+
     // Backend'den config yükle (tek kaynak prensibi)
-    const backendConfig = await loadConfig();
+    const backendConfig = await measureAsync('loadConfig', () => loadConfig());
     mergeConfig(backendConfig);
     // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
     // Calendar modal buttons - Lazy loaded handlers
@@ -676,6 +680,7 @@ async function loadMonthData() {
         hideAlert();
     } catch (error) {
         log.error('Veri yukleme hatasi:', error);
+        logError(error, { context: 'loadAllData' });
         showLoadingError();
     }
 }
@@ -909,6 +914,7 @@ async function displayAvailableTimeSlots() {
 
     } catch (error) {
         log.error('displayAvailableTimeSlots hatası:', error);
+        logError(error, { context: 'displayAvailableTimeSlots', date: selectedDate, shiftType: selectedShiftType });
         container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Saatler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.</div>';
     }
 }
@@ -1032,6 +1038,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
             btn.textContent = 'Randevuyu Onayla';
         }
     } catch (error) {
+        logError(error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
         showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
         btn.disabled = false;
         btn.textContent = 'Randevuyu Onayla';
@@ -1171,6 +1178,7 @@ async function handleCalendarAction(event) {
         }
     } catch (error) {
         log.error('Calendar integration yükleme hatası:', error);
+        logError(error, { context: 'handleCalendarAction', buttonId: event.target.id });
         alert('Takvim entegrasyonu yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
     }
 }

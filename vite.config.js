@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => ({
         // Optimize chunk splitting
         manualChunks: {
           // Shared utilities go to a separate chunk
-          'vendor-utils': ['./date-utils.js', './string-utils.js', './state-manager.js'],
+          'vendor-utils': ['./date-utils.js', './string-utils.js', './state-manager.js', './monitoring.js'],
           // Customer page specific
           'customer': ['./app.js', './security-helpers.js'],
           // Admin page specific (modular)

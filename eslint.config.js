@@ -32,6 +32,8 @@ export default [
         Blob: 'readonly',
         Element: 'readonly',
         navigator: 'readonly',
+        performance: 'readonly',
+        btoa: 'readonly',
 
         // App globals (from modules)
         ApiService: 'readonly',
