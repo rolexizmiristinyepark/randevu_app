@@ -12,7 +12,7 @@
     <!-- Security Helper Functions -->
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <script type="module" crossorigin src="/randevu_app/assets/main-R26PqSys.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/main-CoyU0Xc4.js"></script>
   <link rel="modulepreload" crossorigin href="/randevu_app/assets/monitoring-DfJvXpdi.js">
   <link rel="stylesheet" crossorigin href="/randevu_app/assets/main-BGxYpKwv.css">
 </head>
@@ -36,6 +36,10 @@
                 </div>
                 <div class="type-card" id="typeMeeting" data-type="meeting">
                     <h3>Görüşme</h3>
+                </div>
+                <!-- Gönderi butonu sadece staff=0 için gösterilecek -->
+                <div class="type-card" id="typeShipping" data-type="shipping" style="display: none;">
+                    <h3>Gönderi</h3>
                 </div>
                 <!-- Yönetim butonu sadece staff=0 için gösterilecek -->
                 <div class="type-card" id="typeManagement" data-type="management" style="display: none;">
