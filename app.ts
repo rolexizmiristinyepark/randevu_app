@@ -53,7 +53,7 @@ const CONFIG: Config = {
     latest: 21,
     interval: 60
   },
-  MAX_DAILY_DELIVERY_APPOINTMENTS: 4,
+  MAX_DAILY_DELIVERY_APPOINTMENTS: 3,  // Günde maksimum 3 teslim randevusu
   APPOINTMENT_TYPES: [
     { value: 'delivery', name: 'Saat Teslim Alma' },
     { value: 'service', name: 'Servis & Bakım' },
@@ -483,7 +483,7 @@ function checkDayAvailability(dateStr: string): DayAvailability {
 
   if (selectedAppointmentType === 'delivery') {
     if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-      return { available: false, reason: 'Teslim randevuları dolu (Max 4)' };
+      return { available: false, reason: `Teslim randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
     }
   }
 
@@ -650,7 +650,7 @@ async function loadSettings(): Promise<void> {
     const response = await apiCall<{ data: Settings }>('getSettings');
     if (response.success) {
       CONFIG.APPOINTMENT_HOURS.interval = response.data?.interval || 60;
-      CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS = response.data?.maxDaily || 4;
+      CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS = response.data?.maxDaily || 3;
     }
   } catch (error) {
     log.error('Settings loading error:', error);
@@ -770,13 +770,8 @@ async function displayAvailableTimeSlots(): Promise<void> {
 
     container.innerHTML = '';
 
-    if (isDeliveryMaxed) {
-      const warningDiv = document.createElement('div');
-      warningDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 15px; color: #dc3545; margin-bottom: 10px; background: #fff5f5; border-radius: 8px;';
-      warningDiv.textContent = `⚠️ Bu gün için teslim randevuları dolu (${deliveryCount}/3)`;
-      container.appendChild(warningDiv);
-      return;
-    }
+    // NOT: Teslim limiti kontrolü takvimde yapılıyor (gün disabled)
+    // Bu fonksiyona ulaşılmamalı çünkü gün zaten seçilemiyor
 
     if (availableHours.length === 0) {
       const infoDiv = document.createElement('div');
