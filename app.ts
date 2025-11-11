@@ -739,7 +739,7 @@ function selectStaff(staffId: number | string, shiftType: ShiftType, event: Mous
 
 async function displayAvailableTimeSlots(): Promise<void> {
   const container = document.getElementById('timeSlots')!;
-  container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #757575;">Müsait saatler yükleniyor...</div>';
+  container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div></div>';
 
   if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih, vardiya ve randevu türü seçin.</div>';

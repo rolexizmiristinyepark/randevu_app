@@ -838,7 +838,7 @@ function selectStaff(staffId, shiftType, event) {
  */
 async function displayAvailableTimeSlots() {
     const container = document.getElementById('timeSlots');
-    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #757575;">Müsait saatler yükleniyor...</div>';
+    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div></div>';
 
     // Gerekli parametreleri kontrol et
     if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
