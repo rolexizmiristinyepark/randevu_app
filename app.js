@@ -25,7 +25,7 @@ const CONFIG = {
         latest: 21,    // En geç randevu: 20:00 (20-21 aralığı)
         interval: 60
     },
-    MAX_DAILY_DELIVERY_APPOINTMENTS: 4,  // Teslim randevuları için max limit
+    MAX_DAILY_DELIVERY_APPOINTMENTS: 3,  // Teslim randevuları için max limit (günde 3 teslim)
     APPOINTMENT_TYPES: [
         { value: 'delivery', name: 'Saat Teslim Alma' },
         { value: 'service', name: 'Servis & Bakım' },
@@ -514,10 +514,10 @@ function checkDayAvailability(dateStr) {
         return true;
     }).length;
 
-    // Teslim randevusu için max 4 kontrolü
+    // Teslim randevusu için max 3 kontrolü
     if (selectedAppointmentType === 'delivery') {
         if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-            return { available: false, reason: 'Teslim randevuları dolu (Max 4)' };
+            return { available: false, reason: `Teslim randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
         }
     }
 
@@ -872,14 +872,8 @@ async function displayAvailableTimeSlots() {
 
         container.innerHTML = '';
 
-        // Teslim limiti doluysa uyarı
-        if (isDeliveryMaxed) {
-            const warningDiv = document.createElement('div');
-            warningDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 15px; color: #dc3545; margin-bottom: 10px; background: #fff5f5; border-radius: 8px;';
-            warningDiv.textContent = `⚠️ Bu gün için teslim randevuları dolu (${deliveryCount}/3)`;
-            container.appendChild(warningDiv);
-            return;
-        }
+        // NOT: Teslim limiti kontrolü takvimde yapılıyor (gün disabled)
+        // Bu fonksiyona ulaşılmamalı çünkü gün zaten seçilemiyor
 
         // Hiç müsait saat yoksa bilgi
         if (availableHours.length === 0) {
