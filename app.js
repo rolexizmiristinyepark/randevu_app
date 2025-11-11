@@ -847,6 +847,29 @@ async function displayAvailableTimeSlots() {
     }
 
     try {
+        // Yönetim randevusu için özel logic - tüm saatler müsait (buçuklarla)
+        if (selectedAppointmentType === 'management') {
+            container.innerHTML = '';
+            const managementSlots = [];
+
+            // 10:00'dan 21:00'a kadar tüm saatler ve buçuklar
+            for (let hour = 10; hour <= 20; hour++) {
+                managementSlots.push({ time: `${hour}:00` });
+                managementSlots.push({ time: `${hour}:30` });
+            }
+            managementSlots.push({ time: '21:00' });
+
+            // Tüm slotları müsait olarak render et
+            managementSlots.forEach(slot => {
+                const btn = document.createElement('div');
+                btn.className = 'slot-btn';
+                btn.textContent = slot.time;
+                btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                container.appendChild(btn);
+            });
+            return;
+        }
+
         // ⭐ YENİ: getDayStatus endpoint - tüm business rules tek seferde
         const [dayStatusResult, slotsResult] = await Promise.all([
             apiCall('getDayStatus', {
