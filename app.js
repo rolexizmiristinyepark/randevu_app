@@ -30,7 +30,8 @@ const CONFIG = {
         { value: 'delivery', name: 'Saat Teslim Alma' },
         { value: 'service', name: 'Servis & Bakım' },
         { value: 'consultation', name: 'Ürün Danışmanlığı' },
-        { value: 'general', name: 'Genel Görüşme' }
+        { value: 'general', name: 'Genel Görüşme' },
+        { value: 'shipping', name: 'Gönderi' }
     ]
 };
 
@@ -340,7 +341,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
 
-        // Yönetim butonunu hemen göster ve grid'i 2x2 yap
+        // Gönderi ve Yönetim butonlarını göster ve grid'i ayarla
+        document.getElementById('typeShipping').style.display = 'block';
         document.getElementById('typeManagement').style.display = 'block';
         const typesContainer = document.getElementById('appointmentTypesContainer');
         typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
@@ -388,6 +390,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
     document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));
     document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
+    document.getElementById('typeShipping')?.addEventListener('click', () => selectAppointmentType('shipping'));
     document.getElementById('typeManagement')?.addEventListener('click', () => selectAppointmentType('management'));
 
     // Calendar navigation buttons

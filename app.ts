@@ -58,7 +58,8 @@ const CONFIG: Config = {
     { value: 'delivery', name: 'Saat Teslim Alma' },
     { value: 'service', name: 'Servis & Bakım' },
     { value: 'consultation', name: 'Ürün Danışmanlığı' },
-    { value: 'general', name: 'Genel Görüşme' }
+    { value: 'general', name: 'Genel Görüşme' },
+    { value: 'shipping', name: 'Gönderi' }
   ]
 };
 
