@@ -294,6 +294,7 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
       header.style.visibility = 'visible';
     }
 
+    document.getElementById('typeShipping')!.style.display = 'block';
     document.getElementById('typeManagement')!.style.display = 'block';
     const typesContainer = document.getElementById('appointmentTypesContainer')!;
     typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
@@ -302,14 +303,8 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     typesContainer.style.justifyContent = 'center';
   }
 
-  // Show loading
+  // Main spinner is already showing
   const typesContainer = document.getElementById('appointmentTypesContainer')!;
-  const loadingDiv = document.createElement('div');
-  loadingDiv.id = 'typesLoading';
-  loadingDiv.style.cssText = 'text-align: center; padding: 40px; color: #757575; font-size: 14px;';
-  loadingDiv.innerHTML = '<div class="spinner" style="margin: 0 auto 15px;"></div>Yükleniyor...';
-  typesContainer.style.display = 'none';
-  typesContainer.parentElement!.insertBefore(loadingDiv, typesContainer);
 
   await loadSettings();
 
@@ -327,13 +322,20 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     }
   }
 
-  loadingDiv?.remove();
+  // Hide main spinner and show appointment types with animation
+  const mainSpinner = document.getElementById('mainLoadingSpinner');
+  if (mainSpinner) {
+    mainSpinner.style.display = 'none';
+  }
+
   typesContainer.style.display = 'grid';
+  revealSection('appointmentTypesSection', false);
 
   // Event listeners for appointment types
   document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
   document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));
   document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
+  document.getElementById('typeShipping')?.addEventListener('click', () => selectAppointmentType('shipping'));
   document.getElementById('typeManagement')?.addEventListener('click', () => selectAppointmentType('management'));
 
   // Calendar navigation

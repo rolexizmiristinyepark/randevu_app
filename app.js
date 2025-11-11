@@ -352,14 +352,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         typesContainer.style.justifyContent = 'center';
     }
 
-    // Butonları gizle ve loading göster
+    // Ana spinner zaten gösteriliyor, sadece verilerini yükle
     const typesContainer = document.getElementById('appointmentTypesContainer');
-    const loadingDiv = document.createElement('div');
-    loadingDiv.id = 'typesLoading';
-    loadingDiv.style.cssText = 'text-align: center; padding: 40px; color: #757575; font-size: 14px;';
-    loadingDiv.innerHTML = '<div class="spinner" style="margin: 0 auto 15px;"></div>Yükleniyor...';
-    typesContainer.style.display = 'none';
-    typesContainer.parentElement.insertBefore(loadingDiv, typesContainer);
 
     // Load settings first
     await loadSettings();
@@ -382,9 +376,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadStaffMembers();
     }
 
-    // Loading'i kaldır ve butonları göster
-    loadingDiv?.remove();
+    // Ana spinner'ı gizle ve butonları göster
+    const mainSpinner = document.getElementById('mainLoadingSpinner');
+    if (mainSpinner) {
+        mainSpinner.style.display = 'none';
+    }
+
+    // Buton section'ını göster ve animate et
     typesContainer.style.display = 'grid';
+    revealSection('appointmentTypesSection', false);
 
     // Appointment type cards event listeners
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
