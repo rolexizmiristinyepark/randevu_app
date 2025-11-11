@@ -50,6 +50,51 @@ const log = {
     log: (...args) => CONFIG.DEBUG && console.log(...args)
 };
 
+// ==================== SMOOTH SCROLL & REVEAL ANIMATIONS ====================
+
+/**
+ * Bölümü göster ve smooth scroll yap
+ * @param {string} sectionId - Section ID
+ * @param {boolean} scroll - Scroll yapılsın mı?
+ */
+function revealSection(sectionId, scroll = true) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    // Display'i göster
+    section.style.display = 'block';
+
+    // Animasyon için visible class ekle
+    setTimeout(() => {
+        section.classList.add('visible');
+
+        // Smooth scroll
+        if (scroll) {
+            setTimeout(() => {
+                section.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start',
+                    inline: 'nearest'
+                });
+            }, 100);
+        }
+    }, 50);
+}
+
+/**
+ * Bölümü gizle
+ * @param {string} sectionId - Section ID
+ */
+function hideSection(sectionId) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+
+    section.classList.remove('visible');
+    setTimeout(() => {
+        section.style.display = 'none';
+    }, 500);
+}
+
 // Modal utility - Generic modal açma/kapama
 const ModalUtils = {
     open(modalId) {
@@ -348,6 +393,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Calendar navigation buttons
     document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('nextMonthBtn')?.addEventListener('click', () => changeMonth(1));
+
+    // İlk yükleme animasyonu: Randevu tipi seçimini göster
+    const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
+    if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
+        setTimeout(() => {
+            appointmentTypesSection.classList.add('visible');
+        }, 100);
+    }
 });
 
 // Randevu tipi seçimi
@@ -359,8 +412,8 @@ function selectAppointmentType(type) {
     if (prev) prev.classList.remove('selected');
     document.querySelector(`.type-card[data-type="${type}"]`).classList.add('selected');
 
-    // Takvimi göster ve yükle
-    document.getElementById('calendarSection').style.display = 'block';
+    // Takvimi göster ve yükle (animasyonlu + smooth scroll)
+    revealSection('calendarSection');
     renderCalendar();
     loadMonthData();
 }
@@ -542,25 +595,25 @@ function selectDay(dateStr) {
         selectedStaff = 0;
         selectedShiftType = 'full';
         displayAvailableTimeSlots();
-        document.getElementById('timeSection').style.display = 'block';
-        document.getElementById('staffSection').style.display = 'none';
-        document.getElementById('detailsSection').style.display = 'none';
+        revealSection('timeSection');
+        hideSection('staffSection');
+        hideSection('detailsSection');
         document.getElementById('submitBtn').style.display = 'none';
     }
     // staff=0 ama diğer türler (delivery, service, meeting) için çalışan seçimi göster
     else if (specificStaffId === '0' && selectedAppointmentType !== 'management') {
         displayAvailableStaff();
-        document.getElementById('staffSection').style.display = 'block';
-        document.getElementById('timeSection').style.display = 'none';
-        document.getElementById('detailsSection').style.display = 'none';
+        revealSection('staffSection');
+        hideSection('timeSection');
+        hideSection('detailsSection');
         document.getElementById('submitBtn').style.display = 'none';
     }
     // Çalışan seçimi göster (genel link)
     else if (!specificStaffId) {
         displayAvailableStaff();
-        document.getElementById('staffSection').style.display = 'block';
-        document.getElementById('timeSection').style.display = 'none';
-        document.getElementById('detailsSection').style.display = 'none';
+        revealSection('staffSection');
+        hideSection('timeSection');
+        hideSection('detailsSection');
         document.getElementById('submitBtn').style.display = 'none';
     } else {
         // Normal staff link (staff=1, staff=2, vb.) - direkt saat seçimine geç
@@ -569,8 +622,8 @@ function selectDay(dateStr) {
         if (shiftType) {
             selectedShiftType = shiftType;
             displayAvailableTimeSlots();
-            document.getElementById('timeSection').style.display = 'block';
-            document.getElementById('detailsSection').style.display = 'none';
+            revealSection('timeSection');
+            hideSection('detailsSection');
             document.getElementById('submitBtn').style.display = 'none';
         }
     }
@@ -615,8 +668,8 @@ function selectManagementOption(option, event) {
     }
 
     // Detayları, Turnstile ve submit butonunu göster
-    document.getElementById('staffSection').style.display = 'none';
-    document.getElementById('detailsSection').style.display = 'block';
+    hideSection('staffSection');
+    revealSection('detailsSection');
     document.getElementById('turnstileContainer').style.display = 'block';
     document.getElementById('submitBtn').style.display = 'block';
 }
@@ -825,8 +878,8 @@ function selectStaff(staffId, shiftType, event) {
     }
 
     displayAvailableTimeSlots();
-    document.getElementById('timeSection').style.display = 'block';
-    document.getElementById('detailsSection').style.display = 'none';
+    revealSection('timeSection');
+    hideSection('detailsSection');
     document.getElementById('submitBtn').style.display = 'none';
 }
 
@@ -948,12 +1001,12 @@ function selectTimeSlot(timeStr, element) {
     // YENİ: Yönetim randevusu için HK/OK seçimini göster
     if (selectedAppointmentType === 'management') {
         displayManagementOptions();
-        document.getElementById('staffSection').style.display = 'block';
-        document.getElementById('detailsSection').style.display = 'none';
+        revealSection('staffSection');
+        hideSection('detailsSection');
         document.getElementById('turnstileContainer').style.display = 'none';
         document.getElementById('submitBtn').style.display = 'none';
     } else {
-        document.getElementById('detailsSection').style.display = 'block';
+        revealSection('detailsSection');
         document.getElementById('turnstileContainer').style.display = 'block';
         document.getElementById('submitBtn').style.display = 'block';
     }
