@@ -87,6 +87,7 @@ const CONFIG = {
   // Appointment Types
   APPOINTMENT_TYPES: {
     DELIVERY: 'delivery',
+    SHIPPING: 'shipping',      // YENİ: Gönderi (teslim limiti içinde)
     MEETING: 'meeting',
     SERVICE: 'service',        // YENİ: Teknik Servis
     MANAGEMENT: 'management'   // YENİ: Yönetim Randevusu
@@ -95,17 +96,19 @@ const CONFIG = {
   // Appointment Type Labels
   APPOINTMENT_TYPE_LABELS: {
     delivery: 'Teslim',
+    shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
-    service: 'Teknik Servis',     // YENİ
-    management: 'Yönetim'          // YENİ
+    service: 'Teknik Servis',
+    management: 'Yönetim'
   },
 
   // Service Names (Email "Konu" alanı için)
   SERVICE_NAMES: {
     delivery: 'Saat Teslimi',
+    shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
-    service: 'Teknik Servis',      // YENİ
-    management: 'Yönetim'           // YENİ
+    service: 'Teknik Servis',
+    management: 'Yönetim'
   },
 
   // Email Subjects
@@ -388,11 +391,12 @@ function isSlotFree(date, hour) {
 }
 
 /**
- * ⭐⭐⭐⭐⭐ CORE: Teslim randevusu global limiti
- * Bir günde toplam 3 teslim randevusu alınabilir
+ * ⭐⭐⭐⭐⭐ CORE: Teslim + Gönderi randevusu global limiti
+ * Bir günde toplam 3 teslim/gönderi randevusu alınabilir (toplamda)
+ * Gönderi de teslim limiti içinde sayılır
  *
  * @param {string} date - YYYY-MM-DD formatında tarih
- * @returns {number} O gün için teslim randevusu sayısı
+ * @returns {number} O gün için teslim + gönderi randevusu sayısı
  */
 function getDeliveryCount(date) {
   try {
@@ -402,10 +406,13 @@ function getDeliveryCount(date) {
 
     const events = calendar.getEvents(dayStart, dayEnd);
 
-    // Sadece 'delivery' tipindeki randevuları say
+    // 'delivery' VE 'shipping' tipindeki randevuları say (ikisi de aynı limit içinde)
     const deliveryCount = events.filter(event => {
       const type = event.getTag('appointmentType');
-      return type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery';
+      return (
+        type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
+        type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping'
+      );
     }).length;
 
     return deliveryCount;
@@ -416,12 +423,13 @@ function getDeliveryCount(date) {
 }
 
 /**
- * ⭐⭐⭐⭐ CORE: Personel bazında teslim limiti
- * Bir personel aynı günde en fazla 2 teslim randevusu alabilir
+ * ⭐⭐⭐⭐ CORE: Personel bazında teslim + gönderi limiti
+ * Bir personel aynı günde en fazla 2 teslim/gönderi randevusu alabilir
+ * Gönderi de teslim limiti içinde sayılır
  *
  * @param {string} date - YYYY-MM-DD formatında tarih
  * @param {string} staffId - Personel ID'si
- * @returns {number} O personel için o gün teslim randevusu sayısı
+ * @returns {number} O personel için o gün teslim + gönderi randevusu sayısı
  */
 function getDeliveryCountByStaff(date, staffId) {
   try {
@@ -431,13 +439,14 @@ function getDeliveryCountByStaff(date, staffId) {
 
     const events = calendar.getEvents(dayStart, dayEnd);
 
-    // Sadece bu personelin 'delivery' randevularını say
+    // Bu personelin 'delivery' VE 'shipping' randevularını say (ikisi de aynı limit içinde)
     const deliveryCount = events.filter(event => {
       const type = event.getTag('appointmentType');
       const eventStaffId = event.getTag('staffId');
 
       return (
-        (type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery') &&
+        (type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
+         type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping') &&
         eventStaffId === String(staffId)
       );
     }).length;
@@ -482,26 +491,31 @@ function validateReservation(payload) {
       };
     }
 
-    // KURAL 3: Teslim ise - Global limit kontrolü (max 3/gün)
-    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
+    // KURAL 3: Teslim/Gönderi ise - Global limit kontrolü (max 3/gün, ikisi toplamda)
+    const isDeliveryOrShipping = (
+      appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery' ||
+      appointmentType === CONFIG.APPOINTMENT_TYPES.SHIPPING || appointmentType === 'shipping'
+    );
+
+    if (isDeliveryOrShipping) {
       const deliveryCount = getDeliveryCount(date);
 
       if (deliveryCount >= 3) {
         return {
           valid: false,
-          error: 'Bu gün için teslim randevu limiti doldu (max 3). Lütfen başka bir gün seçin.',
+          error: 'Bu gün için teslim/gönderi randevu limiti doldu (max 3). Lütfen başka bir gün seçin.',
           isDayMaxed: true
         };
       }
 
-      // KURAL 4: Teslim ise - Personel limiti kontrolü (max 2/gün/personel)
+      // KURAL 4: Teslim/Gönderi ise - Personel limiti kontrolü (max 2/gün/personel)
       if (staffId) {
         const staffDeliveryCount = getDeliveryCountByStaff(date, staffId);
 
         if (staffDeliveryCount >= 2) {
           return {
             valid: false,
-            error: 'Bu personel için günlük teslim randevu limiti doldu (max 2). Lütfen başka bir personel veya gün seçin.'
+            error: 'Bu personel için günlük teslim/gönderi randevu limiti doldu (max 2). Lütfen başka bir personel veya gün seçin.'
           };
         }
       }
@@ -527,10 +541,12 @@ function validateReservation(payload) {
  */
 function getDayStatus(date, appointmentType = null) {
   try {
-    // Teslim limiti kontrolü
-    const isDeliveryMaxed = (appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY)
-      ? getDeliveryCount(date) >= 3
-      : false;
+    // Teslim/Gönderi limiti kontrolü (ikisi toplamda max 3)
+    const isDeliveryOrShipping = (
+      appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY ||
+      appointmentType === 'shipping' || appointmentType === CONFIG.APPOINTMENT_TYPES.SHIPPING
+    );
+    const isDeliveryMaxed = isDeliveryOrShipping ? getDeliveryCount(date) >= 3 : false;
 
     // Tüm slotlar için availability check
     const availableHours = [];

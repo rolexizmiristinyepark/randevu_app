@@ -544,14 +544,15 @@ function checkDayAvailability(dateStr) {
         }
     }
 
-    // Google Calendar'dan SADECE TESLİM randevularını say
+    // Google Calendar'dan TESLİM ve GÖNDERİ randevularını say (toplamda max 3)
     const calendarEvents = googleCalendarEvents[dateStr] || [];
     const now = new Date();
     const todayStr = DateUtils.toLocalDate(now);
 
     const deliveryCount = calendarEvents.filter(event => {
-        // Sadece teslim randevularını say
-        if (event.extendedProperties?.private?.appointmentType !== 'delivery') {
+        // Teslim VE gönderi randevularını say (ikisi toplamda)
+        const appointmentType = event.extendedProperties?.private?.appointmentType;
+        if (appointmentType !== 'delivery' && appointmentType !== 'shipping') {
             return false;
         }
 
@@ -571,10 +572,10 @@ function checkDayAvailability(dateStr) {
         return true;
     }).length;
 
-    // Teslim randevusu için max 3 kontrolü
-    if (selectedAppointmentType === 'delivery') {
+    // Teslim/Gönderi randevusu için max 3 kontrolü (toplamda)
+    if (selectedAppointmentType === 'delivery' || selectedAppointmentType === 'shipping') {
         if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-            return { available: false, reason: `Teslim randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
+            return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
         }
     }
 
