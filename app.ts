@@ -468,7 +468,8 @@ function checkDayAvailability(dateStr: string): DayAvailability {
   const todayStr = DateUtils.toLocalDate(now);
 
   const deliveryCount = calendarEvents.filter(event => {
-    if (event.extendedProperties?.private?.appointmentType !== 'delivery') {
+    const appointmentType = event.extendedProperties?.private?.appointmentType;
+    if (appointmentType !== 'delivery' && appointmentType !== 'shipping') {
       return false;
     }
 
@@ -486,9 +487,9 @@ function checkDayAvailability(dateStr: string): DayAvailability {
     return true;
   }).length;
 
-  if (selectedAppointmentType === 'delivery') {
+  if (selectedAppointmentType === 'delivery' || selectedAppointmentType === 'shipping') {
     if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-      return { available: false, reason: `Teslim randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
+      return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
     }
   }
 
