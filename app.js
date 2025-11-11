@@ -16,8 +16,8 @@ const CONFIG = {
     DEBUG: false,
 
     SHIFTS: {
-        'morning': { start: 11, end: 16, label: 'Sabah (11:00-16:00)' },
-        'evening': { start: 16, end: 21, label: 'Akşam (16:00-21:00)' },
+        'morning': { start: 11, end: 18, label: 'Sabah (11:00-18:00)' },
+        'evening': { start: 14, end: 21, label: 'Akşam (14:00-21:00)' },
         'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
     },
     APPOINTMENT_HOURS: {
@@ -594,9 +594,9 @@ function selectDay(dateStr) {
 
     // YENİ: staff=0 ve management randevusu için direkt saat seçimine geç
     if (specificStaffId === '0' && selectedAppointmentType === 'management') {
-        // Yönetim randevusu için full vardiya ile direkt saat seçimi
+        // Yönetim randevusu için vardiya sınırı yok - tüm saatler müsait
         selectedStaff = 0;
-        selectedShiftType = 'full';
+        selectedShiftType = 'management';
         displayAvailableTimeSlots();
         revealSection('timeSection');
         hideSection('staffSection');

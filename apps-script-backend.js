@@ -159,11 +159,12 @@ const CONFIG = {
   },
 
   // Shift Hours (used in availability calculation)
-  // En erken randevu: 11:00 (11-12 aralığı)
-  // En geç randevu: 20:00 (20-21 aralığı)
+  // Sabah: 11-18 çalışma → Randevular: 11:00-17:00 (en son slot 17:00-18:00)
+  // Akşam: 14-21 çalışma → Randevular: 14:00-20:00 (en son slot 20:00-21:00)
+  // Full: 11-21 çalışma → Randevular: 11:00-20:00 (en son slot 20:00-21:00)
   SHIFT_HOURS: {
-    morning: { start: '11:00', end: '16:00' },
-    evening: { start: '16:00', end: '21:00' },
+    morning: { start: '11:00', end: '18:00' },
+    evening: { start: '14:00', end: '21:00' },
     full: { start: '11:00', end: '21:00' }
   },
 
@@ -317,14 +318,16 @@ const SLOT_UNIVERSE = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 /**
  * Vardiya tipine göre slot filtresi
- * morning: 11-16 arası (11,12,13,14,15,16 başlangıçları → 11:00-17:00)
- * evening: 16-20 arası (16,17,18,19,20 başlangıçları → 16:00-21:00)
- * full: 11-20 arası (tüm slotlar)
+ * morning: 11-18 çalışma (11,12,13,14,15,16,17 slotları → en son 17:00 slotu yani 17:00-18:00)
+ * evening: 14-21 çalışma (14,15,16,17,18,19,20 slotları → en son 20:00 slotu yani 20:00-21:00)
+ * full: 11-21 çalışma (11-20 slotları → en son 20:00 slotu yani 20:00-21:00)
+ * management: Vardiya sınırı yok - tüm çalışma saatleri (yönetim randevuları için)
  */
 const SHIFT_SLOT_FILTERS = {
-  morning: [11, 12, 13, 14, 15, 16],  // 11:00-17:00
-  evening: [16, 17, 18, 19, 20],      // 16:00-21:00
-  full: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]  // 11:00-21:00
+  morning: [11, 12, 13, 14, 15, 16, 17],  // 11:00-18:00 (en son slot 17:00-18:00)
+  evening: [14, 15, 16, 17, 18, 19, 20],  // 14:00-21:00 (en son slot 20:00-21:00)
+  full: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],  // 11:00-21:00 (en son slot 20:00-21:00)
+  management: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]  // Yönetim için vardiya sınırı yok, tüm slotlar
 };
 
 /**

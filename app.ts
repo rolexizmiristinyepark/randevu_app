@@ -44,8 +44,8 @@ const CONFIG: Config = {
   BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
   DEBUG: false,
   SHIFTS: {
-    'morning': { start: 11, end: 16, label: 'Sabah (11:00-16:00)' },
-    'evening': { start: 16, end: 21, label: 'Akşam (16:00-21:00)' },
+    'morning': { start: 11, end: 18, label: 'Sabah (11:00-18:00)' },
+    'evening': { start: 14, end: 21, label: 'Akşam (14:00-21:00)' },
     'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
   },
   APPOINTMENT_HOURS: {
@@ -506,7 +506,7 @@ function selectDay(dateStr: string): void {
 
   if (specificStaffId === '0' && selectedAppointmentType === 'management') {
     selectedStaff = 0;
-    selectedShiftType = 'full';
+    selectedShiftType = 'management';
     displayAvailableTimeSlots();
     document.getElementById('timeSection')!.style.display = 'block';
     document.getElementById('staffSection')!.style.display = 'none';
