@@ -443,8 +443,9 @@ function renderCalendar() {
         // data-date attribute ekle
         dayEl.setAttribute('data-date', dateStr);
 
-        // Geçmiş günler ve bugün - müşteri aynı gün randevu alamaz
-        if (date <= today) {
+        // Geçmiş günler - yönetim randevusu için bugüne izin ver
+        const allowToday = selectedAppointmentType === 'management';
+        if (date < today || (date.getTime() === today.getTime() && !allowToday)) {
             dayEl.classList.add('past');
         } else {
             // Müsaitliği kontrol et

@@ -422,7 +422,9 @@ function renderCalendar(): void {
 
     dayEl.setAttribute('data-date', dateStr);
 
-    if (date <= today) {
+    // Geçmiş günler - yönetim randevusu için bugüne izin ver
+    const allowToday = selectedAppointmentType === 'management';
+    if (date < today || (date.getTime() === today.getTime() && !allowToday)) {
       dayEl.classList.add('past');
     } else {
       const availability = checkDayAvailability(dateStr);
