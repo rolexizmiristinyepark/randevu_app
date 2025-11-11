@@ -25,8 +25,14 @@
 
         <div id="alertContainer"></div>
 
+        <!-- Ana Yükleme Spinner'ı -->
+        <div id="mainLoadingSpinner" class="section" style="text-align: center; padding: 60px 20px;">
+            <div class="spinner" style="margin: 0 auto 20px;"></div>
+            <p style="color: #757575; font-size: 14px; font-family: 'Montserrat', sans-serif;">Yükleniyor...</p>
+        </div>
+
         <!-- Randevu Tipi Seçimi -->
-        <div class="section">
+        <div class="section" id="appointmentTypesSection" style="display: none;">
             <div class="appointment-types" id="appointmentTypesContainer">
                 <div class="type-card" id="typeDelivery" data-type="delivery">
                     <h3>Teslim</h3>
