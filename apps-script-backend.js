@@ -457,6 +457,11 @@ function validateReservation(payload) {
   const { date, hour, appointmentType, staffId } = payload;
 
   try {
+    // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları için tüm kontrolleri bypass et
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+      return { valid: true };
+    }
+
     // KURAL 1: Slot evreninde mi? (11-20 arası tam saat)
     if (!SLOT_UNIVERSE.includes(parseInt(hour))) {
       return {
@@ -1961,20 +1966,24 @@ function createAppointment(params) {
 
     const overlappingCount = overlappingEvents.length;
 
+    // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları her zaman çakışabilir
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+      // OK, yönetim randevusu için çakışma kontrolünü bypass et
+      log.info('Yönetim randevusu - çakışma kontrolü bypass edildi');
+    }
     // 1a. Çakışan randevu yok → Devam et
-    if (overlappingCount === 0) {
+    else if (overlappingCount === 0) {
       // OK, devam et
     }
     // 1b. 1 çakışan randevu var
     else if (overlappingCount === 1) {
-      // Yönetim randevusu ekleniyor VE mevcut yönetim değil → İzin ver
+      // Mevcut randevu yönetim mi? Yönetim randevuları üzerine yeni randevu eklenebilir
       const existingType = overlappingEvents[0].getTag('appointmentType');
 
-      if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
-          existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
-        // OK, yönetim randevusu eklenebilir (2. randevu olarak)
+      if (existingType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+        // OK, yönetim randevusu üzerine normal randevu eklenebilir
       } else {
-        // Diğer tüm durumlar → BLOKE
+        // Normal randevu üzerine normal randevu eklenemez → BLOKE
         return {
           success: false,
           error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
