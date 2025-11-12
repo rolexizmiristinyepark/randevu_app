@@ -1147,9 +1147,10 @@ function showLoadingError() {
     // Header oluştur (güvenli DOM manipülasyonu)
     const header = createElement('div', { className: 'header' });
 
-    // Logo'yu direkt oluştur
+    // Logo'yu direkt oluştur (Vite base path ile)
+    const basePath = import.meta.env.BASE_URL || '/';
     const logo = createElement('img', {
-        src: 'assets/rolex-logo.svg',
+        src: basePath + 'assets/rolex-logo.svg',
         className: 'rolex-logo',
         alt: 'Rolex Logo'
     });
