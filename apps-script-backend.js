@@ -2631,6 +2631,9 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
       }
     };
 
+    // Debug: Payload'u logla
+    log.info('WhatsApp API Payload:', JSON.stringify(payload, null, 2));
+
     // API çağrısı
     const options = {
       method: 'post',
@@ -3485,12 +3488,17 @@ function testWhatsAppMessage() {
       console.error('');
       console.error('❌ BAŞARISIZ! Mesaj gönderilemedi');
       console.error('Hata:', result.error);
+      console.error('Hata Kodu:', result.errorCode);
+      console.error('');
+      console.error('TAM HATA DETAYI:');
+      console.error(JSON.stringify(result.errorDetails, null, 2));
       console.error('');
       console.error('SORUN GİDERME:');
       console.error('1. Phone Number ID doğru mu?');
       console.error('2. Access Token geçerli mi? (permanent token)');
       console.error('3. Test numarası Meta\'da kayıtlı mı?');
       console.error('4. Ödeme yöntemi eklendi mi?');
+      console.error('5. Template parametreleri doğru mu?');
     }
 
   } catch (error) {
