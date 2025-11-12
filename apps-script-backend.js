@@ -2582,28 +2582,52 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
     // Meta WhatsApp Cloud API endpoint
     const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
-    // Mesaj metni oluştur (direkt text mesajı - template gerekmez!)
-    const messageText = `Merhaba ${customerName},
+    // Template adını türkçeleştir
+    const typeMapping = {
+      'delivery': 'Teslim',
+      'shipping': 'Gönderi',
+      'service': 'Teknik Servis',
+      'meeting': 'Görüşme',
+      'management': 'Yönetim'
+    };
+    const translatedType = typeMapping[appointmentType.toLowerCase()] || appointmentType;
 
-Rolex İzmir İstinyepark randevunuz onaylandı:
+    // WhatsApp template components
+    const components = [
+      {
+        type: "body",
+        parameters: [
+          {
+            type: "text",
+            text: customerName  // {{1}}
+          },
+          {
+            type: "text",
+            text: appointmentDateTime  // {{2}}
+          },
+          {
+            type: "text",
+            text: staffName  // {{3}}
+          },
+          {
+            type: "text",
+            text: translatedType  // {{4}}
+          }
+        ]
+      }
+    ];
 
-📅 Tarih: ${appointmentDateTime}
-👤 Yetkili: ${staffName}
-📞 İletişim: ${staffPhone || 'Bilgi yok'}
-📋 Tür: ${appointmentType}
-
-Randevunuza zamanında gelmenizi rica ederiz.
-
-Rolex İzmir İstinyepark`;
-
-    // Text message payload (Template gerekmez!)
+    // WhatsApp template payload
     const payload = {
       messaging_product: 'whatsapp',
       to: cleanPhone,
-      type: 'text',
-      text: {
-        preview_url: false,
-        body: messageText
+      type: 'template',
+      template: {
+        name: 'randevu_hatirlatma_v1',
+        language: {
+          code: 'tr'
+        },
+        components: components
       }
     };
 
