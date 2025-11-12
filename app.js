@@ -499,8 +499,8 @@ function renderCalendar() {
         // data-date attribute ekle
         dayEl.setAttribute('data-date', dateStr);
 
-        // Geçmiş günler - yönetim randevusu için bugüne izin ver
-        const allowToday = selectedAppointmentType === 'management';
+        // Geçmiş günler - staff=0 veya yönetim randevusu için bugüne izin ver
+        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management';
         if (date < today || (date.getTime() === today.getTime() && !allowToday)) {
             dayEl.classList.add('past');
         } else {
