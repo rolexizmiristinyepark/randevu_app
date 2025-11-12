@@ -3411,3 +3411,105 @@ function testSlackIntegration() {
   console.log('\n===== TEST TAMAMLANDI =====');
 }
 
+// ==================== WHATSAPP TEST FUNCTION ====================
+
+/**
+ * WhatsApp mesajı test fonksiyonu
+ * Google Apps Script editor'de Run butonu ile çalıştırın
+ *
+ * KULLANIM:
+ * 1. Apps Script editor'ü açın
+ * 2. Fonksiyon dropdown'dan "testWhatsAppMessage" seçin
+ * 3. ▶ Run butonuna tıklayın
+ * 4. Execution log'u kontrol edin
+ * 5. Telefonunuzu kontrol edin - mesaj geldi mi?
+ */
+function testWhatsAppMessage() {
+  console.log('===== WHATSAPP TEST BAŞLADI =====\n');
+
+  // Test telefon numarası
+  const TEST_PHONE = '+905382348625';
+
+  console.log('Test telefonu:', TEST_PHONE);
+  console.log('');
+
+  // 1. WhatsApp API ayarlarını kontrol et
+  console.log('1. WhatsApp API ayarları kontrol ediliyor...');
+
+  const props = PropertiesService.getScriptProperties();
+  const phoneNumberId = props.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+  const accessToken = props.getProperty('WHATSAPP_ACCESS_TOKEN');
+
+  if (!phoneNumberId || !accessToken) {
+    console.error('❌ HATA: WhatsApp API ayarları yapılmamış!');
+    console.error('Admin panelden Phone Number ID ve Access Token ekleyin.');
+    return;
+  }
+
+  console.log('✅ WhatsApp API ayarları bulundu');
+  console.log('Phone Number ID:', phoneNumberId.substring(0, 5) + '...');
+  console.log('Access Token:', accessToken.substring(0, 10) + '...');
+  console.log('');
+
+  // 2. Test randevusu verisi oluştur
+  console.log('2. Test mesajı hazırlanıyor...');
+
+  const testData = {
+    customerName: 'Test Müşteri',
+    appointmentDateTime: '15 Kasım 2025, 14:00',
+    staffName: 'Gökhan Tokol',
+    appointmentType: 'Teslim',
+    staffPhone: '+905382348625'
+  };
+
+  console.log('Test verisi:', JSON.stringify(testData, null, 2));
+  console.log('');
+
+  // 3. WhatsApp mesajı gönder
+  console.log('3. WhatsApp mesajı gönderiliyor...');
+
+  try {
+    const result = sendWhatsAppMessage(
+      TEST_PHONE,
+      testData.customerName,
+      testData.appointmentDateTime,
+      testData.staffName,
+      testData.appointmentType,
+      testData.staffPhone
+    );
+
+    if (result.success) {
+      console.log('');
+      console.log('✅ BAŞARILI! WhatsApp mesajı gönderildi!');
+      console.log('Message ID:', result.messageId);
+      console.log('');
+      console.log('📱 Telefonunuzu kontrol edin:', TEST_PHONE);
+      console.log('');
+      console.log('✅ WhatsApp API çalışıyor!');
+    } else {
+      console.error('');
+      console.error('❌ BAŞARISIZ! Mesaj gönderilemedi');
+      console.error('Hata:', result.error);
+      console.error('');
+      console.error('SORUN GİDERME:');
+      console.error('1. Phone Number ID doğru mu?');
+      console.error('2. Access Token geçerli mi? (permanent token)');
+      console.error('3. Test numarası Meta\'da kayıtlı mı?');
+      console.error('4. Ödeme yöntemi eklendi mi?');
+    }
+
+  } catch (error) {
+    console.error('');
+    console.error('❌ HATA: İstek gönderilemedi!');
+    console.error('Hata mesajı:', error.message);
+    console.error('Stack:', error.stack);
+    console.error('');
+    console.error('Bu hatayı aldıysanız:');
+    console.error('1. WHATSAPP_API_SETUP.md dosyasını kontrol edin');
+    console.error('2. Meta Business hesabınızı kontrol edin');
+    console.error('3. WhatsApp Business API\'nin aktif olduğundan emin olun');
+  }
+
+  console.log('');
+  console.log('===== WHATSAPP TEST TAMAMLANDI =====');
+}
