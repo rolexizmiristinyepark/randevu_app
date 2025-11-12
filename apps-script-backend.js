@@ -2582,57 +2582,28 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
     // Meta WhatsApp Cloud API endpoint
     const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
 
-    // Template components
-    const components = [
-      {
-        type: 'body',
-        parameters: [
-          {
-            type: 'text',
-            text: customerName  // {{1}} - Müşteri adı
-          },
-          {
-            type: 'text',
-            text: appointmentDateTime  // {{2}} - Tarih ve saat
-          },
-          {
-            type: 'text',
-            text: staffName  // {{3}} - İlgili personel
-          },
-          {
-            type: 'text',
-            text: appointmentType  // {{4}} - Görüşme türü (küçük harf)
-          }
-        ]
-      }
-    ];
+    // Mesaj metni oluştur (direkt text mesajı - template gerekmez!)
+    const messageText = `Merhaba ${customerName},
 
-    // Eğer personel telefonu varsa, button parametresi ekle
-    if (staffPhone && staffPhone.length > 0) {
-      components.push({
-        type: 'button',
-        sub_type: 'url',
-        index: '0',
-        parameters: [
-          {
-            type: 'text',
-            text: staffPhone  // Dynamic phone number for "Call on WhatsApp" button
-          }
-        ]
-      });
-    }
+Rolex İzmir İstinyepark randevunuz onaylandı:
 
-    // Template payload (Meta onaylı template kullanıyoruz)
+📅 Tarih: ${appointmentDateTime}
+👤 Yetkili: ${staffName}
+📞 İletişim: ${staffPhone || 'Bilgi yok'}
+📋 Tür: ${appointmentType}
+
+Randevunuza zamanında gelmenizi rica ederiz.
+
+Rolex İzmir İstinyepark`;
+
+    // Text message payload (Template gerekmez!)
     const payload = {
       messaging_product: 'whatsapp',
       to: cleanPhone,
-      type: 'template',
-      template: {
-        name: 'randevu_hatirlartma_v1',  // Template name (Meta'daki isimle eşleştirildi)
-        language: {
-          code: 'tr'  // Turkish
-        },
-        components: components
+      type: 'text',
+      text: {
+        preview_url: false,
+        body: messageText
       }
     };
 
