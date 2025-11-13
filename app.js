@@ -656,11 +656,19 @@ function selectDay(dateStr) {
         hideSection('detailsSection');
         document.getElementById('submitBtn').style.display = 'none';
     }
-    // Çalışan seçimi göster (genel link)
-    else if (!specificStaffId) {
+    // Çalışan seçimi göster (genel link) - Yönetim linki DEĞİLSE
+    else if (!specificStaffId && !isManagementLink) {
         displayAvailableStaff();
         revealSection('staffSection');
         hideSection('timeSection');
+        hideSection('detailsSection');
+        document.getElementById('submitBtn').style.display = 'none';
+    }
+    // Yönetim linki ise direkt saat seçimine geç
+    else if (isManagementLink) {
+        displayAvailableTimeSlots();
+        hideSection('staffSection');
+        revealSection('timeSection');
         hideSection('detailsSection');
         document.getElementById('submitBtn').style.display = 'none';
     } else {
