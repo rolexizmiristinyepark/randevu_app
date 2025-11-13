@@ -1863,7 +1863,8 @@ function createAppointment(params) {
       shiftType,
       appointmentType,
       duration,
-      turnstileToken
+      turnstileToken,
+      managementLevel
     } = params;
 
     // ===== SECURITY CHECKS =====
@@ -2051,7 +2052,18 @@ function createAppointment(params) {
 
     // Event başlığı - sanitized değerleri kullan
     const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
-    const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})`;
+
+    // Yönetim linki bilgisini ekle (HK, OK, HMK)
+    let managementSuffix = '';
+    if (managementLevel === 1) {
+      managementSuffix = ' (HK)';
+    } else if (managementLevel === 2) {
+      managementSuffix = ' (OK)';
+    } else if (managementLevel === 3) {
+      managementSuffix = ' (HMK)';
+    }
+
+    const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})${managementSuffix}`;
 
     // Event açıklaması - sanitized değerleri kullan
     const description = `
@@ -2307,7 +2319,18 @@ function createManualAppointment(params) {
 
     // Event başlığı - sanitized değerleri kullan
     const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
-    const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})`;
+
+    // Yönetim linki bilgisini ekle (HK, OK, HMK)
+    let managementSuffix = '';
+    if (managementLevel === 1) {
+      managementSuffix = ' (HK)';
+    } else if (managementLevel === 2) {
+      managementSuffix = ' (OK)';
+    } else if (managementLevel === 3) {
+      managementSuffix = ' (HMK)';
+    }
+
+    const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})${managementSuffix}`;
 
     // Event açıklaması
     const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
