@@ -360,7 +360,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Yönetim linki ise UI'yi ayarla
     if (isManagementLink) {
         const header = document.getElementById('staffHeader');
-        header.textContent = `Yönetim-${managementLevel} Randevu Sistemi`;
+        header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
 
         // Direkt management type'ı seç ve takvimi göster
@@ -1093,8 +1093,21 @@ function selectTimeSlot(timeStr, element) {
     if (prev) prev.classList.remove('selected');
     element.classList.add('selected');
 
-    // YENİ: Yönetim randevusu için HK/OK seçimini göster
-    if (selectedAppointmentType === 'management') {
+    // Yönetim linki ise (hk, ok, hmk) direkt form'a geç
+    if (isManagementLink) {
+        // Personel seçimi yok, backend'de random atama yapılacak
+        selectedStaff = -1; // Placeholder: Backend random atayacak
+
+        // Direkt form göster
+        revealSection('detailsSection');
+        document.getElementById('turnstileContainer').style.display = 'block';
+        document.getElementById('submitBtn').style.display = 'block';
+
+        // Staff section'ı gizli tut
+        hideSection('staffSection');
+    }
+    // Normal yönetim randevusu (staff=0'dan gelen) için HK/OK seçimi göster
+    else if (selectedAppointmentType === 'management') {
         displayManagementOptions();
         revealSection('staffSection');
         hideSection('detailsSection');
@@ -1125,8 +1138,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
         return;
     }
 
-    // YENİ: selectedStaff için 0 da geçerli (yönetim randevusu), sadece null/undefined kontrolü
-    if (!selectedDate || selectedStaff == null || !selectedTime) {
+    // YENİ: selectedStaff için -1 (yönetim linki random), 0 (normal yönetim), pozitif sayı (personel) geçerli
+    if (!selectedDate || selectedStaff === null || selectedStaff === undefined || !selectedTime) {
         showAlert('Lutfen tarih, calisan ve saat secin.', 'error');
         return;
     }
