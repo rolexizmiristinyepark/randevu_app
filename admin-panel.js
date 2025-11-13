@@ -1232,7 +1232,7 @@
                         const statusEl = document.getElementById('whatsappApiStatus');
                         if (response.configured) {
                             statusEl.innerHTML = `
-                                <div style="padding: 12px; background: #E8F5E8; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                <div style="padding: 12px; background: #F0F9F5; border: 1px solid #E8E8E8; border-radius: 2px;">
                                     <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
                                         WhatsApp API Yapılandırıldı
                                     </div>
@@ -1299,7 +1299,7 @@
                         const statusEl = document.getElementById('slackStatus');
                         if (response.configured) {
                             statusEl.innerHTML = `
-                                <div style="padding: 12px; background: #E8F5E8; border: 1px solid #E8E8E8; border-radius: 2px;">
+                                <div style="padding: 12px; background: #F0F9F5; border: 1px solid #E8E8E8; border-radius: 2px;">
                                     <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
                                         Slack Webhook Yapılandırıldı
                                     </div>

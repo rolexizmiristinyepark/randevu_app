@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-11-13T21:23:33.316Z",
+  "optimizations": {
+    "cufflinks": {
+      "count": 9,
+      "originalSize": 950318,
+      "optimizedSize": 151140,
+      "savings": 799178,
+      "savingsPercent": "84.1"
+    },
+    "brands": {
+      "count": 4,
+      "originalSize": 374355,
+      "optimizedSize": 87260,
+      "savings": 287095,
+      "savingsPercent": "76.7"
+    },
+    "jpeg": {
+      "count": 0,
+      "originalSize": 0,
+      "optimizedSize": 0
+    }
+  },
+  "total": {
+    "count": 13,
+    "originalSize": 1324673,
+    "optimizedSize": 238400,
+    "savings": 1086273,
+    "savingsPercent": "82.0"
+  }
+}
