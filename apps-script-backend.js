@@ -1106,6 +1106,7 @@ const ACTION_HANDLERS = {
   }),
   'getWeekAppointments': (e) => getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
   'deleteAppointment': (e) => deleteAppointment(e.parameter.eventId),
+  'updateAppointment': (e) => updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
   'getMonthAppointments': (e) => getMonthAppointments(e.parameter.month),
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
   'createAppointment': (e) => createAppointment(e.parameter),
@@ -1620,6 +1621,46 @@ function deleteAppointment(eventId) {
     return { success: true, message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_DELETED };
   } catch (error) {
     log.error('deleteAppointment hatası:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Randevu güncelle - sadece tarih ve saat
+ * @param {string} eventId - Google Calendar event ID
+ * @param {string} newDate - Yeni tarih (YYYY-MM-DD)
+ * @param {string} newTime - Yeni saat (HH:MM)
+ * @returns {object} - { success, message }
+ */
+function updateAppointment(eventId, newDate, newTime) {
+  try {
+    const calendar = getCalendar();
+    const event = calendar.getEventById(eventId);
+
+    if (!event) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
+    }
+
+    // Mevcut randevu süresini hesapla
+    const currentStart = event.getStartTime();
+    const currentEnd = event.getEndTime();
+    const durationMs = currentEnd.getTime() - currentStart.getTime();
+
+    // Yeni başlangıç ve bitiş zamanları
+    const newStartDateTime = new Date(newDate + 'T' + newTime + ':00');
+    const newEndDateTime = new Date(newStartDateTime.getTime() + durationMs);
+
+    // Randevuyu güncelle
+    event.setTime(newStartDateTime, newEndDateTime);
+
+    log.info('Randevu güncellendi:', eventId, newDate, newTime);
+    return {
+      success: true,
+      message: 'Randevu başarıyla güncellendi'
+    };
+
+  } catch (error) {
+    log.error('updateAppointment hatası:', error);
     return { success: false, error: error.toString() };
   }
 }

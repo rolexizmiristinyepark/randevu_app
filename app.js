@@ -691,8 +691,8 @@ function displayManagementOptions() {
     staffList.innerHTML = '';
 
     const managementOptions = [
-        { id: 'HK', name: 'HK' },
-        { id: 'OK', name: 'OK' }
+        { id: 'HK', name: 'Haluk Külahçıoğlu' },
+        { id: 'OK', name: 'Onur Külahçıoğlu' }
     ];
 
     managementOptions.forEach(option => {
@@ -709,11 +709,11 @@ function displayManagementOptions() {
 function selectManagementOption(option, event) {
     // İlgili kişi olarak bu seçeneği kaydet (staffName yerine kullanılacak)
     selectedStaff = 0; // staff ID olarak 0
-    window.managementContactPerson = option.name; // HK veya OK
+    window.managementContactPerson = option.id; // HK veya OK (kısa form)
 
     // Header'da seçilen seçeneği göster
     const header = document.getElementById('staffHeader');
-    header.textContent = `Yönetim - ${option.name}`;
+    header.textContent = option.name; // Tam isim göster
     header.style.visibility = 'visible';
 
     // Seçili kartı işaretle
@@ -723,11 +723,16 @@ function selectManagementOption(option, event) {
         event.currentTarget.classList.add('selected');
     }
 
-    // Detayları, Turnstile ve submit butonunu göster
+    // Staff section'ı gizle, takvimi göster (tarih ve saat seçimi için)
     hideSection('staffSection');
-    revealSection('detailsSection');
-    document.getElementById('turnstileContainer').style.display = 'block';
-    document.getElementById('submitBtn').style.display = 'block';
+    revealSection('calendarSection');
+    renderCalendar();
+    loadMonthData();
+
+    // Detayları gizle (saat seçilince gösterilecek)
+    hideSection('detailsSection');
+    document.getElementById('turnstileContainer').style.display = 'none';
+    document.getElementById('submitBtn').style.display = 'none';
 }
 
 // Ayın verilerini yükle (Cache destekli)
