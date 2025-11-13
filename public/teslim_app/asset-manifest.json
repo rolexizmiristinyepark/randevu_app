@@ -1,0 +1,17 @@
+{
+  "files": {
+    "main.css": "/teslim_app/static/css/main.3c1d4e94.css",
+    "main.js": "/teslim_app/static/js/main.8c94f960.js",
+    "static/css/32.d576a1ae.chunk.css": "/teslim_app/static/css/32.d576a1ae.chunk.css",
+    "static/js/32.3d3b7851.chunk.js": "/teslim_app/static/js/32.3d3b7851.chunk.js",
+    "index.html": "/teslim_app/index.html",
+    "main.3c1d4e94.css.map": "/teslim_app/static/css/main.3c1d4e94.css.map",
+    "main.8c94f960.js.map": "/teslim_app/static/js/main.8c94f960.js.map",
+    "32.d576a1ae.chunk.css.map": "/teslim_app/static/css/32.d576a1ae.chunk.css.map",
+    "32.3d3b7851.chunk.js.map": "/teslim_app/static/js/32.3d3b7851.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.3c1d4e94.css",
+    "static/js/main.8c94f960.js"
+  ]
+}

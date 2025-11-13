@@ -26,6 +26,7 @@
             <div class="tab" data-tab="staff">İlgili Personel</div>
             <div class="tab" data-tab="shifts">Vardiyalar</div>
             <div class="tab" data-tab="appointments">Randevular</div>
+            <div class="tab" data-tab="teslim">Teslim Tutanak</div>
         </div>
 
         <!-- AYARLAR -->
@@ -193,6 +194,17 @@
             </div>
         </div>
 
+        <!-- TESLİM TUTANAK -->
+        <div id="teslim" class="tab-content">
+            <div class="card" style="padding: 0; overflow: hidden; height: calc(100vh - 200px); min-height: 600px;">
+                <iframe
+                    src="/randevu_app/teslim_app/index.html"
+                    style="width: 100%; height: 100%; border: none;"
+                    title="Teslim Tutanağı"
+                ></iframe>
+            </div>
+        </div>
+
         <!-- Personel Düzenleme Modal -->
         <div id="editStaffModal" class="modal">
             <div class="modal-content">
@@ -212,6 +224,28 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelEditStaffBtn">İptal</button>
                     <button class="btn" id="saveEditStaffBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Randevu Düzenleme Modal -->
+    <div id="editAppointmentModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-body">
+                <h3 style="margin-bottom: 20px;">Randevu Düzenle</h3>
+                <div class="input-group">
+                    <label for="editAppointmentDate">Tarih</label>
+                    <input type="date" id="editAppointmentDate">
+                </div>
+                <div class="input-group">
+                    <label for="editAppointmentTime">Saat</label>
+                    <input type="time" id="editAppointmentTime">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
+                    <button class="btn" id="saveEditAppointmentBtn">Kaydet</button>
                 </div>
             </div>
         </div>
