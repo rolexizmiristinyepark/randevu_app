@@ -337,18 +337,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     specificStaffId = urlParams.get('staff');
 
-    // YENİ: URL pathname'den yönetim linkini kontrol et
+    // YENİ: URL pathname veya hash'den yönetim linkini kontrol et
     const pathname = window.location.pathname;
+    const hash = window.location.hash.replace('#/', '').replace('#', '');
     const basePath = import.meta.env.BASE_URL || '/';
     const relativePath = pathname.replace(basePath, '').replace(/^\//, '');
 
-    if (relativePath === 'hk') {
+    // Hash routing (GitHub Pages için) veya path routing
+    const route = hash || relativePath;
+
+    if (route === 'hk') {
         managementLevel = 1;
         isManagementLink = true;
-    } else if (relativePath === 'ok') {
+    } else if (route === 'ok') {
         managementLevel = 2;
         isManagementLink = true;
-    } else if (relativePath === 'hmk') {
+    } else if (route === 'hmk') {
         managementLevel = 3;
         isManagementLink = true;
     }
