@@ -363,11 +363,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
 
-        // Direkt management type'ı seç ve takvimi göster
-        selectedAppointmentType = 'management';
+        // Randevu türü seçimi göster (Teslim, Teknik Servis, Görüşme, vs.)
+        // selectedAppointmentType henüz seçilmedi - kullanıcı seçecek
 
-        // Randevu tipi seçim butonlarını gizle (direkt takvime geç)
-        hideSection('appointmentTypesSection');
+        // Gönderi ve Yönetim butonlarını gizle (sadece normal randevu türleri)
+        const typeShipping = document.getElementById('typeShipping');
+        const typeManagement = document.getElementById('typeManagement');
+        if (typeShipping) typeShipping.style.display = 'none';
+        if (typeManagement) typeManagement.style.display = 'none';
 
         // Staff seçimini gizle (random atama yapılacak)
         hideSection('staffSection');
@@ -419,23 +422,16 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainSpinner.style.display = 'none';
     }
 
-    // Yönetim linki ise direkt takvimi göster
-    if (isManagementLink) {
-        revealSection('calendarSection');
-        renderCalendar();
-        loadMonthData();
-    } else {
-        // Buton section'ını göster ve animate et
-        typesContainer.style.display = 'grid';
-        revealSection('appointmentTypesSection', false);
+    // Buton section'ını göster ve animate et
+    typesContainer.style.display = 'grid';
+    revealSection('appointmentTypesSection', false);
 
-        // İlk yükleme animasyonu: Randevu tipi seçimini göster
-        const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
-        if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
-            setTimeout(() => {
-                appointmentTypesSection.classList.add('visible');
-            }, 100);
-        }
+    // İlk yükleme animasyonu: Randevu tipi seçimini göster
+    const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
+    if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
+        setTimeout(() => {
+            appointmentTypesSection.classList.add('visible');
+        }, 100);
     }
 
     // Appointment type cards event listeners

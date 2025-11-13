@@ -298,32 +298,29 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
   if (route === 'hk') {
     managementLevel = 1;
     isManagementLink = true;
-    selectedAppointmentType = 'management';
     console.log('[Management Link] Detected: HK (Level 1)');
   } else if (route === 'ok') {
     managementLevel = 2;
     isManagementLink = true;
-    selectedAppointmentType = 'management';
     console.log('[Management Link] Detected: OK (Level 2)');
   } else if (route === 'hmk') {
     managementLevel = 3;
     isManagementLink = true;
-    selectedAppointmentType = 'management';
     console.log('[Management Link] Detected: HMK (Level 3)');
   }
 
-  // If management link, hide appointment type selection and show header
+  // If management link, show appointment type selection but hide shipping/management types
   if (isManagementLink) {
     const header = document.getElementById('staffHeader');
     if (header) {
       header.textContent = 'Randevu Sistemi';
       header.style.visibility = 'visible';
     }
-    // Hide appointment types section
-    const appointmentTypesSection = document.getElementById('appointmentTypesSection');
-    if (appointmentTypesSection) {
-      appointmentTypesSection.style.display = 'none';
-    }
+    // Hide shipping and management type buttons (only show normal appointment types)
+    const typeShipping = document.getElementById('typeShipping');
+    const typeManagement = document.getElementById('typeManagement');
+    if (typeShipping) typeShipping.style.display = 'none';
+    if (typeManagement) typeManagement.style.display = 'none';
   }
 
   // URL parameters
@@ -372,15 +369,9 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     mainSpinner.style.display = 'none';
   }
 
-  // If management link, skip appointment types and go straight to calendar
-  if (isManagementLink) {
-    document.getElementById('calendarSection')!.style.display = 'block';
-    renderCalendar();
-    loadMonthData();
-  } else {
-    typesContainer.style.display = 'grid';
-    revealSection('appointmentTypesSection', false);
-  }
+  // Show appointment types for all cases
+  typesContainer.style.display = 'grid';
+  revealSection('appointmentTypesSection', false);
 
   // Event listeners for appointment types
   document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
