@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönlendiriliyor...</title>
+    <script>
+        // GitHub Pages 404 redirect for SPA routing
+        // Captures the path and redirects to index.html with the path preserved
+        (function() {
+            const path = window.location.pathname;
+            const base = '/randevu_app/';
+
+            // Get the path after base
+            const route = path.replace(base, '').replace(/^\//, '');
+
+            // Redirect to index.html, the app will handle the routing
+            if (route && route !== '404.html') {
+                window.location.replace(base + '#/' + route + window.location.search);
+            } else {
+                // No specific route, go to home
+                window.location.replace(base);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 100px 20px;">
+        <h2>Yönlendiriliyor...</h2>
+        <p>Lütfen bekleyin...</p>
+    </div>
+</body>
+</html>
