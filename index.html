@@ -12,9 +12,9 @@
     <!-- Security Helper Functions -->
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-  <script type="module" crossorigin src="/randevu_app/assets/main-CpRzBPnj.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/main-DUZ0u1dw.js"></script>
   <link rel="modulepreload" crossorigin href="/randevu_app/assets/monitoring-DfJvXpdi.js">
-  <link rel="stylesheet" crossorigin href="/randevu_app/assets/main-BGxYpKwv.css">
+  <link rel="stylesheet" crossorigin href="/randevu_app/assets/main-BFo0lAf5.css">
 </head>
 <body>
     <div class="container">
@@ -50,6 +50,15 @@
                 <!-- Yönetim butonu sadece staff=0 için gösterilecek -->
                 <div class="type-card" id="typeManagement" data-type="management" style="display: none;">
                     <h3>Yönetim</h3>
+                    <!-- HK/OK sub-butonlar - animasyonla açılacak -->
+                    <div class="management-sub-options" id="managementSubOptions" style="display: none;">
+                        <button class="management-sub-btn" id="selectHK" data-management="HK">
+                            Haluk Külahçıoğlu
+                        </button>
+                        <button class="management-sub-btn" id="selectOK" data-management="OK">
+                            Onur Külahçıoğlu
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
