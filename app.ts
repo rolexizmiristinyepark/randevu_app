@@ -119,6 +119,8 @@ let allAppointments: Record<string, any[]> = appState.get('allAppointments') as 
 let googleCalendarEvents: Record<string, GoogleCalendarEvent[]> = appState.get('googleCalendarEvents') as Record<string, GoogleCalendarEvent[]>;
 let specificStaffId: string | null = appState.get('specificStaffId') as string | null;
 let lastAppointmentData: LastAppointmentData | null = appState.get('lastAppointmentData') as LastAppointmentData | null;
+let managementLevel: number | null = null; // YENİ: Yönetim linki seviyesi (1, 2, 3)
+let isManagementLink: boolean = false; // YENİ: Yönetim linki mi?
 
 // Export to window
 if (typeof window !== 'undefined') {
@@ -282,6 +284,48 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     return;
   }
 
+  // ==================== URL ROUTING ====================
+  // Check for management links first (hash routing: #hk, #ok, #hmk)
+  const hash = window.location.hash.replace('#/', '').replace('#', '');
+  const pathname = window.location.pathname;
+  const relativePath = pathname.replace('/randevu_app/', '').replace(/^\//, '');
+  const route = hash || relativePath;
+
+  console.log('[URL Routing] pathname:', pathname);
+  console.log('[URL Routing] hash:', hash);
+  console.log('[URL Routing] route:', route);
+
+  if (route === 'hk') {
+    managementLevel = 1;
+    isManagementLink = true;
+    selectedAppointmentType = 'management';
+    console.log('[Management Link] Detected: HK (Level 1)');
+  } else if (route === 'ok') {
+    managementLevel = 2;
+    isManagementLink = true;
+    selectedAppointmentType = 'management';
+    console.log('[Management Link] Detected: OK (Level 2)');
+  } else if (route === 'hmk') {
+    managementLevel = 3;
+    isManagementLink = true;
+    selectedAppointmentType = 'management';
+    console.log('[Management Link] Detected: HMK (Level 3)');
+  }
+
+  // If management link, hide appointment type selection and show header
+  if (isManagementLink) {
+    const header = document.getElementById('staffHeader');
+    if (header) {
+      header.textContent = 'Randevu Sistemi';
+      header.style.visibility = 'visible';
+    }
+    // Hide appointment types section
+    const appointmentTypesSection = document.getElementById('appointmentTypesSection');
+    if (appointmentTypesSection) {
+      appointmentTypesSection.style.display = 'none';
+    }
+  }
+
   // URL parameters
   const urlParams = new URLSearchParams(window.location.search);
   specificStaffId = urlParams.get('staff');
@@ -328,8 +372,15 @@ document.addEventListener('DOMContentLoaded', async (): Promise<void> => {
     mainSpinner.style.display = 'none';
   }
 
-  typesContainer.style.display = 'grid';
-  revealSection('appointmentTypesSection', false);
+  // If management link, skip appointment types and go straight to calendar
+  if (isManagementLink) {
+    document.getElementById('calendarSection')!.style.display = 'block';
+    renderCalendar();
+    loadMonthData();
+  } else {
+    typesContainer.style.display = 'grid';
+    revealSection('appointmentTypesSection', false);
+  }
 
   // Event listeners for appointment types
   document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
@@ -842,13 +893,25 @@ function selectTimeSlot(timeStr: string, element: HTMLElement): void {
   if (prev) prev.classList.remove('selected');
   element.classList.add('selected');
 
-  if (selectedAppointmentType === 'management') {
+  // Management links (hk, ok, hmk) - Skip staff selection entirely
+  if (isManagementLink) {
+    selectedStaff = -1; // Placeholder for backend random assignment
+    console.log('[Management Link] Time selected, skipping staff selection');
+    document.getElementById('staffSection')!.style.display = 'none';
+    document.getElementById('detailsSection')!.style.display = 'block';
+    document.getElementById('turnstileContainer')!.style.display = 'block';
+    document.getElementById('submitBtn')!.style.display = 'block';
+  }
+  // Manual appointment (staff=0) - Show HK/OK selection
+  else if (selectedAppointmentType === 'management') {
     displayManagementOptions();
     document.getElementById('staffSection')!.style.display = 'block';
     document.getElementById('detailsSection')!.style.display = 'none';
     document.getElementById('turnstileContainer')!.style.display = 'none';
     document.getElementById('submitBtn')!.style.display = 'none';
-  } else {
+  }
+  // Regular appointments - Show details form directly
+  else {
     document.getElementById('detailsSection')!.style.display = 'block';
     document.getElementById('turnstileContainer')!.style.display = 'block';
     document.getElementById('submitBtn')!.style.display = 'block';
@@ -938,10 +1001,43 @@ document.getElementById('submitBtn')?.addEventListener('click', async (): Promis
 
   let staffName: string;
   let staff: Staff | undefined = undefined;
+  let assignedStaffId: number | string = selectedStaff;
 
-  if (selectedStaff === 0) {
+  // Management link with random staff assignment
+  if (selectedStaff === -1 && isManagementLink) {
+    console.log('[Management Link] Getting available staff for random assignment...');
+    try {
+      const availableStaffResult = await apiCall<{ success: boolean; availableStaff: Staff[] }>('getAvailableStaffForSlot', {
+        date: selectedDate,
+        time: selectedTime
+      });
+
+      if (availableStaffResult.success && availableStaffResult.availableStaff && availableStaffResult.availableStaff.length > 0) {
+        const availableStaff = availableStaffResult.availableStaff;
+        const randomIndex = Math.floor(Math.random() * availableStaff.length);
+        staff = availableStaff[randomIndex];
+        assignedStaffId = staff.id;
+        staffName = staff.name;
+        console.log('[Management Link] Randomly assigned staff:', staffName);
+      } else {
+        showAlert('Üzgünüz, seçilen saat için müsait personel bulunamadı. Lütfen başka bir saat seçin.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Randevuyu Onayla';
+        return;
+      }
+    } catch (error) {
+      showAlert('Personel bilgileri alınamadı. Lütfen tekrar deneyin.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Randevuyu Onayla';
+      return;
+    }
+  }
+  // Manual appointment (staff=0) - Management contact
+  else if (selectedStaff === 0) {
     staffName = window.managementContactPerson || 'Yönetim';
-  } else {
+  }
+  // Regular appointment with selected staff
+  else {
     staff = staffMembers.find(s => s.id == selectedStaff);
     if (!staff) {
       showAlert('Çalışan bilgisi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
@@ -956,7 +1052,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async (): Promis
     const result = await apiCall<{ success: boolean; error?: string }>('createAppointment', {
       date: selectedDate,
       time: selectedTime,
-      staffId: selectedStaff,
+      staffId: assignedStaffId,
       staffName: staffName,
       customerName: name,
       customerPhone: phone,
@@ -965,7 +1061,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async (): Promis
       shiftType: selectedShiftType,
       appointmentType: selectedAppointmentType,
       duration: CONFIG.APPOINTMENT_HOURS.interval,
-      turnstileToken: turnstileToken
+      turnstileToken: turnstileToken,
+      managementLevel: managementLevel
     });
 
     if (result.success) {

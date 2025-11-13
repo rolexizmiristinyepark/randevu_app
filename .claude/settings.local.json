@@ -39,7 +39,18 @@
       "Bash(npm run lint:*)",
       "Bash(npm run lint:fix:*)",
       "Bash(npm run size:*)",
-      "Bash(npm run type-check:*)"
+      "Bash(npm run type-check:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run build:analyze:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(git restore:*)",
+      "Bash(curl:*)",
+      "Bash(cat:*)",
+      "Bash(pbcopy)",
+      "Bash(gh-pages:*)",
+      "Bash(npx gh-pages:*)",
+      "Bash(cd:*)"
     ],
     "deny": [],
     "ask": []
