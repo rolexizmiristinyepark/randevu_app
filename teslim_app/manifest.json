@@ -1,0 +1,19 @@
+{
+  "short_name": "Teslim Tutanağı",
+  "name": "Teslim Tutanağı Formu",
+  "description": "Rolex, Tudor ve Cufflinks ürünleri için teslim tutanağı oluşturma uygulaması",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "tr",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}
