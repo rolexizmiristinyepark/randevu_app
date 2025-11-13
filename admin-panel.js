@@ -1042,6 +1042,49 @@
             }
         }
 
+        // ==================== YÖNETİM LİNKLERİ (HK, OK, HMK) ====================
+        function copyManagement1Link() {
+            const link = document.getElementById('management1Link');
+            link.select();
+            document.execCommand('copy');
+            UI.showAlert('✅ Yönetim-1 linki kopyalandı!', 'success');
+        }
+
+        function openManagement1Page() {
+            const link = document.getElementById('management1Link').value;
+            if (link && !link.includes('⚠️')) {
+                window.open(link, '_blank');
+            }
+        }
+
+        function copyManagement2Link() {
+            const link = document.getElementById('management2Link');
+            link.select();
+            document.execCommand('copy');
+            UI.showAlert('✅ Yönetim-2 linki kopyalandı!', 'success');
+        }
+
+        function openManagement2Page() {
+            const link = document.getElementById('management2Link').value;
+            if (link && !link.includes('⚠️')) {
+                window.open(link, '_blank');
+            }
+        }
+
+        function copyManagement3Link() {
+            const link = document.getElementById('management3Link');
+            link.select();
+            document.execCommand('copy');
+            UI.showAlert('✅ Yönetim-3 linki kopyalandı!', 'success');
+        }
+
+        function openManagement3Page() {
+            const link = document.getElementById('management3Link').value;
+            if (link && !link.includes('⚠️')) {
+                window.open(link, '_blank');
+            }
+        }
+
         // ==================== INIT ====================
         // Wait for ES6 modules to load before checking authentication
         function initAdmin() {
@@ -1099,6 +1142,16 @@
             const manualLinkInput = document.getElementById('manualLink');
             manualLinkInput.value = CONFIG.BASE_URL + '?staff=0';
 
+            // Yönetim linkleri setup (VIP linkler)
+            const management1LinkInput = document.getElementById('management1Link');
+            management1LinkInput.value = CONFIG.BASE_URL + 'hk';
+
+            const management2LinkInput = document.getElementById('management2Link');
+            management2LinkInput.value = CONFIG.BASE_URL + 'ok';
+
+            const management3LinkInput = document.getElementById('management3Link');
+            management3LinkInput.value = CONFIG.BASE_URL + 'hmk';
+
             // Hafta seçimi - bu hafta
             const today = new Date();
             const year = today.getFullYear();
@@ -1114,6 +1167,14 @@
             document.getElementById('copyLinkBtn')?.addEventListener('click', copyLink);
             document.getElementById('openManualBtn')?.addEventListener('click', openManualPage);
             document.getElementById('copyManualLinkBtn')?.addEventListener('click', copyManualLink);
+
+            // Yönetim link buttons
+            document.getElementById('copyManagement1Btn')?.addEventListener('click', copyManagement1Link);
+            document.getElementById('openManagement1Btn')?.addEventListener('click', openManagement1Page);
+            document.getElementById('copyManagement2Btn')?.addEventListener('click', copyManagement2Link);
+            document.getElementById('openManagement2Btn')?.addEventListener('click', openManagement2Page);
+            document.getElementById('copyManagement3Btn')?.addEventListener('click', copyManagement3Link);
+            document.getElementById('openManagement3Btn')?.addEventListener('click', openManagement3Page);
 
             // Staff buttons
             document.getElementById('addStaffBtn')?.addEventListener('click', () => Staff.add());

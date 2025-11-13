@@ -154,6 +154,8 @@ let allAppointments = appState.get('allAppointments');
 let googleCalendarEvents = appState.get('googleCalendarEvents');
 let specificStaffId = appState.get('specificStaffId');
 let lastAppointmentData = appState.get('lastAppointmentData');
+let managementLevel = null; // YENİ: Yönetim linki seviyesi (1, 2, 3)
+let isManagementLink = false; // YENİ: Yönetim linki mi?
 
 // Export to window for calendar-integration.js module access
 if (typeof window !== 'undefined') {
@@ -335,8 +337,39 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     specificStaffId = urlParams.get('staff');
 
+    // YENİ: URL pathname'den yönetim linkini kontrol et
+    const pathname = window.location.pathname;
+    const basePath = import.meta.env.BASE_URL || '/';
+    const relativePath = pathname.replace(basePath, '').replace(/^\//, '');
+
+    if (relativePath === 'hk') {
+        managementLevel = 1;
+        isManagementLink = true;
+    } else if (relativePath === 'ok') {
+        managementLevel = 2;
+        isManagementLink = true;
+    } else if (relativePath === 'hmk') {
+        managementLevel = 3;
+        isManagementLink = true;
+    }
+
+    // Yönetim linki ise UI'yi ayarla
+    if (isManagementLink) {
+        const header = document.getElementById('staffHeader');
+        header.textContent = `Yönetim-${managementLevel} Randevu Sistemi`;
+        header.style.visibility = 'visible';
+
+        // Direkt management type'ı seç ve takvimi göster
+        selectedAppointmentType = 'management';
+
+        // Randevu tipi seçim butonlarını gizle (direkt takvime geç)
+        hideSection('appointmentTypesSection');
+
+        // Staff seçimini gizle (random atama yapılacak)
+        hideSection('staffSection');
+    }
     // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
-    if (specificStaffId === '0') {
+    else if (specificStaffId === '0') {
         const header = document.getElementById('staffHeader');
         header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
@@ -382,9 +415,24 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainSpinner.style.display = 'none';
     }
 
-    // Buton section'ını göster ve animate et
-    typesContainer.style.display = 'grid';
-    revealSection('appointmentTypesSection', false);
+    // Yönetim linki ise direkt takvimi göster
+    if (isManagementLink) {
+        revealSection('calendarSection');
+        renderCalendar();
+        loadMonthData();
+    } else {
+        // Buton section'ını göster ve animate et
+        typesContainer.style.display = 'grid';
+        revealSection('appointmentTypesSection', false);
+
+        // İlk yükleme animasyonu: Randevu tipi seçimini göster
+        const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
+        if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
+            setTimeout(() => {
+                appointmentTypesSection.classList.add('visible');
+            }, 100);
+        }
+    }
 
     // Appointment type cards event listeners
     document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
@@ -396,14 +444,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Calendar navigation buttons
     document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('nextMonthBtn')?.addEventListener('click', () => changeMonth(1));
-
-    // İlk yükleme animasyonu: Randevu tipi seçimini göster
-    const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
-    if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
-        setTimeout(() => {
-            appointmentTypesSection.classList.add('visible');
-        }, 100);
-    }
 });
 
 // Randevu tipi seçimi
@@ -499,8 +539,8 @@ function renderCalendar() {
         // data-date attribute ekle
         dayEl.setAttribute('data-date', dateStr);
 
-        // Geçmiş günler - staff=0 veya yönetim randevusu için bugüne izin ver
-        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management';
+        // Geçmiş günler - staff=0, yönetim randevusu veya yönetim linki için bugüne izin ver
+        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink;
         if (date < today || (date.getTime() === today.getTime() && !allowToday)) {
             dayEl.classList.add('past');
         } else {
@@ -904,9 +944,56 @@ async function displayAvailableTimeSlots() {
     }
 
     try {
-        // Yönetim randevusu için özel logic - tüm saatler müsait (buçuklarla)
+        // Yönetim randevusu için özel logic
         if (selectedAppointmentType === 'management') {
             container.innerHTML = '';
+
+            // Yönetim linki ise (hk, ok, hmk) backend'den slot doluluk durumunu al
+            if (isManagementLink) {
+                // Backend'den bu gün için tüm randevuları al
+                const appointmentsResult = await apiCall('getManagementSlotAvailability', {
+                    date: selectedDate,
+                    managementLevel: managementLevel
+                });
+
+                if (!appointmentsResult.success) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                    errorDiv.textContent = 'Müsait saatler yüklenemedi';
+                    container.appendChild(errorDiv);
+                    return;
+                }
+
+                const { slots } = appointmentsResult;
+
+                // Slot'ları render et
+                slots.forEach(slot => {
+                    const btn = document.createElement('div');
+
+                    if (slot.available) {
+                        // ✅ MÜSAİT - Slot'ta < 2 randevu var
+                        btn.className = 'slot-btn';
+                        btn.textContent = slot.time;
+                        if (slot.count === 1) {
+                            btn.title = `Bu saatte 1 randevu var (2. randevu olabilir)`;
+                        }
+                        btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                    } else {
+                        // ❌ DOLU - Slot'ta zaten 2 randevu var
+                        btn.className = 'slot-btn disabled';
+                        btn.textContent = slot.time;
+                        btn.title = 'Bu saat dolu (2 randevu)';
+                        btn.style.opacity = '0.4';
+                        btn.style.cursor = 'not-allowed';
+                        btn.setAttribute('aria-disabled', 'true');
+                    }
+
+                    container.appendChild(btn);
+                });
+                return;
+            }
+
+            // Normal yönetim randevusu (staff=0'dan seçilen) - tüm saatler müsait (buçuklarla)
             const managementSlots = [];
 
             // 10:00'dan 21:00'a kadar tüm saatler ve buçuklar
@@ -1057,9 +1144,32 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     // YENİ: staff=0 için staffName yerine managementContactPerson kullan
     let staffName;
     let staff = null;
+    let assignedStaffId = selectedStaff;
 
-    if (selectedStaff === 0) {
+    // Yönetim linki ise (hk, ok, hmk) - random staff atama
+    if (isManagementLink) {
+        // Backend'den bu slot için müsait personeli al
+        const availableStaffResult = await apiCall('getAvailableStaffForSlot', {
+            date: selectedDate,
+            time: selectedTime
+        });
+
+        if (!availableStaffResult.success || availableStaffResult.availableStaff.length === 0) {
+            showAlert('Bu saat için müsait personel bulunamadı. Lütfen başka bir saat seçin.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Randevuyu Onayla';
+            return;
+        }
+
+        // Random staff seç
+        const availableStaff = availableStaffResult.availableStaff;
+        const randomIndex = Math.floor(Math.random() * availableStaff.length);
+        staff = availableStaff[randomIndex];
+        assignedStaffId = staff.id;
+        staffName = staff.name;
+    } else if (selectedStaff === 0) {
         staffName = window.managementContactPerson || 'Yönetim';
+        assignedStaffId = 0;
     } else {
         staff = staffMembers.find(s => s.id == selectedStaff);
         if (!staff) {
@@ -1075,7 +1185,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
         const result = await apiCall('createAppointment', {
             date: selectedDate,
             time: selectedTime,
-            staffId: selectedStaff,
+            staffId: assignedStaffId,
             staffName: staffName,
             customerName: name,
             customerPhone: phone,
@@ -1084,7 +1194,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
             shiftType: selectedShiftType,
             appointmentType: selectedAppointmentType,
             duration: CONFIG.APPOINTMENT_HOURS.interval,
-            turnstileToken: turnstileToken  // Bot protection token
+            turnstileToken: turnstileToken,  // Bot protection token
+            managementLevel: managementLevel  // Yönetim linki seviyesi (1, 2, 3 veya null)
         });
 
         if (result.success) {

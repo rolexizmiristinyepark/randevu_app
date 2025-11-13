@@ -1148,6 +1148,16 @@ const ACTION_HANDLERS = {
     staffId: e.parameter.staffId
   }),
 
+  // ⭐ YENİ: Yönetim Linki API'leri (hk, ok, hmk)
+  'getManagementSlotAvailability': (e) => getManagementSlotAvailability(
+    e.parameter.date,
+    parseInt(e.parameter.managementLevel)
+  ),
+  'getAvailableStaffForSlot': (e) => getAvailableStaffForSlot(
+    e.parameter.date,
+    e.parameter.time
+  ),
+
   // Data management
   'resetData': () => resetData()
 };
@@ -3407,6 +3417,152 @@ function testSlackIntegration() {
   }
 
   console.log('\n===== TEST TAMAMLANDI =====');
+}
+
+// ==================== YÖNETİM LİNKİ API'LERİ (HK, OK, HMK) ====================
+
+/**
+ * Yönetim linki için slot müsaitliğini döndür
+ * Bir gün için tüm slotları ve her slottaki randevu sayısını döndürür
+ * Max 2 randevu/slot kuralı uygulanır
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {number} managementLevel - Yönetim linki seviyesi (1, 2, 3)
+ * @returns {object} - { success, slots: [{ time, count, available }] }
+ */
+function getManagementSlotAvailability(date, managementLevel) {
+  try {
+    const calendar = getCalendar();
+    const startDate = new Date(date + 'T00:00:00');
+    const endDate = new Date(date + 'T23:59:59');
+
+    // O gün için tüm randevuları al
+    const events = calendar.getEvents(startDate, endDate);
+
+    // Slot'ları oluştur: 10:00'dan 21:00'a kadar tam saatler ve buçuklar
+    const slots = [];
+    for (let hour = 10; hour <= 20; hour++) {
+      slots.push(`${hour}:00`);
+      slots.push(`${hour}:30`);
+    }
+    slots.push('21:00');
+
+    // Her slot için randevu sayısını hesapla
+    const slotCounts = {};
+    slots.forEach(slot => {
+      slotCounts[slot] = 0;
+    });
+
+    // Management randevularını say (tüm management level'lar dahil)
+    events.forEach(event => {
+      const eventTime = event.getStartTime();
+      const hours = eventTime.getHours();
+      const minutes = eventTime.getMinutes();
+      const timeStr = `${hours}:${minutes === 0 ? '00' : minutes}`;
+
+      const appointmentType = event.getTag('appointmentType');
+
+      // Sadece management randevularını say
+      if (appointmentType === 'management') {
+        if (slotCounts.hasOwnProperty(timeStr)) {
+          slotCounts[timeStr]++;
+        }
+      }
+    });
+
+    // Slot availability listesi oluştur
+    const availabilityList = slots.map(slot => ({
+      time: slot,
+      count: slotCounts[slot],
+      available: slotCounts[slot] < 2  // Max 2 randevu/slot
+    }));
+
+    return {
+      success: true,
+      slots: availabilityList
+    };
+
+  } catch (error) {
+    log.error('getManagementSlotAvailability hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
+
+/**
+ * Belirli bir slot için müsait personelleri döndür (random atama için)
+ * Müsait personel = vardiyada + o saatte başka randevusu yok
+ *
+ * @param {string} date - YYYY-MM-DD formatında tarih
+ * @param {string} time - HH:MM formatında saat (örn: "14:00")
+ * @returns {object} - { success, availableStaff: [{ id, name, shift }] }
+ */
+function getAvailableStaffForSlot(date, time) {
+  try {
+    const data = getData();
+    const calendar = getCalendar();
+
+    // Saat bilgisini parse et
+    const [hourStr, minuteStr] = time.split(':');
+    const targetHour = parseInt(hourStr);
+
+    // O günün vardiya bilgilerini al
+    const dayShifts = data.shifts[date] || {};
+
+    // Tüm aktif personelleri al
+    const activeStaff = data.staff.filter(s => s.active);
+
+    // O saat için müsait personelleri filtrele
+    const availableStaff = activeStaff.filter(staff => {
+      const shift = dayShifts[staff.id];
+
+      // Vardiya yoksa müsait değil
+      if (!shift) return false;
+
+      // Vardiya saatlerini kontrol et
+      const shiftHours = CONFIG.SHIFT_HOURS[shift];
+      if (!shiftHours) return false;
+
+      const shiftStart = parseInt(shiftHours.start.split(':')[0]);
+      const shiftEnd = parseInt(shiftHours.end.split(':')[0]);
+
+      // Hedef saat vardiya içinde mi?
+      if (targetHour < shiftStart || targetHour >= shiftEnd) {
+        return false;
+      }
+
+      // O saatte başka randevusu var mı kontrol et
+      const slotStart = new Date(date + `T${time}:00`);
+      const slotEnd = new Date(slotStart.getTime() + (60 * 60 * 1000)); // +1 saat
+
+      const staffEvents = calendar.getEvents(slotStart, slotEnd);
+      const hasConflict = staffEvents.some(event => {
+        const eventStaffId = parseInt(event.getTag('staffId'));
+        return eventStaffId === staff.id;
+      });
+
+      return !hasConflict;
+    });
+
+    // Sonuç döndür
+    return {
+      success: true,
+      availableStaff: availableStaff.map(staff => ({
+        id: staff.id,
+        name: staff.name,
+        shift: dayShifts[staff.id]
+      }))
+    };
+
+  } catch (error) {
+    log.error('getAvailableStaffForSlot hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
 }
 
 // ==================== WHATSAPP TEST FUNCTION ====================
