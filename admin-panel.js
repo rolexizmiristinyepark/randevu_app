@@ -1142,15 +1142,15 @@
             const manualLinkInput = document.getElementById('manualLink');
             manualLinkInput.value = CONFIG.BASE_URL + '?staff=0';
 
-            // Yönetim linkleri setup (VIP linkler)
+            // Yönetim linkleri setup (VIP linkler - hash routing for GitHub Pages)
             const management1LinkInput = document.getElementById('management1Link');
-            management1LinkInput.value = CONFIG.BASE_URL + 'hk';
+            management1LinkInput.value = CONFIG.BASE_URL + '#hk';
 
             const management2LinkInput = document.getElementById('management2Link');
-            management2LinkInput.value = CONFIG.BASE_URL + 'ok';
+            management2LinkInput.value = CONFIG.BASE_URL + '#ok';
 
             const management3LinkInput = document.getElementById('management3Link');
-            management3LinkInput.value = CONFIG.BASE_URL + 'hmk';
+            management3LinkInput.value = CONFIG.BASE_URL + '#hmk';
 
             // Hafta seçimi - bu hafta
             const today = new Date();
