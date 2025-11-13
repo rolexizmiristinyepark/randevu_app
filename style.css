@@ -898,3 +898,76 @@ label {
     .success-title { font-size: 22px; }
     .calendar-modal-content { padding: 30px 25px; }
 }
+
+/* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
+
+.management-sub-options {
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    opacity: 0;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.management-sub-options.show {
+    opacity: 1;
+    max-height: 200px;
+}
+
+.management-sub-btn {
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #C9A55A 0%, #B8944A 100%);
+    color: white;
+    border: 2px solid #C9A55A;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-family: 'Montserrat', sans-serif;
+    text-transform: uppercase;
+    box-shadow: 0 4px 12px rgba(201, 165, 90, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.management-sub-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+    transition: left 0.5s ease;
+}
+
+.management-sub-btn:hover::before {
+    left: 100%;
+}
+
+.management-sub-btn:hover {
+    background: linear-gradient(135deg, #D4B16A 0%, #C9A55A 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(201, 165, 90, 0.4);
+    border-color: #D4B16A;
+}
+
+.management-sub-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(201, 165, 90, 0.3);
+}
+
+/* Yönetim kartı seçiliyken genişlet */
+.type-card.management-expanded {
+    grid-column: 1 / -1; /* Full width */
+    background: #FAFAFA;
+}
+
+.type-card.management-expanded h3 {
+    margin-bottom: 10px;
+}
