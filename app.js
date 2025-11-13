@@ -759,55 +759,6 @@ function selectDay(dateStr) {
 }
 
 // YENİ: Yönetim randevuları için HK ve OK seçenekleri
-function displayManagementOptions() {
-    const staffList = document.getElementById('staffList');
-    staffList.innerHTML = '';
-
-    const managementOptions = [
-        { id: 'HK', name: 'Haluk Külahçıoğlu' },
-        { id: 'OK', name: 'Onur Külahçıoğlu' }
-    ];
-
-    managementOptions.forEach(option => {
-        const card = document.createElement('div');
-        card.className = 'staff-card';
-        const nameDiv = createElement('div', { className: 'staff-name' }, option.name);
-        card.appendChild(nameDiv);
-        card.addEventListener('click', (e) => selectManagementOption(option, e));
-        staffList.appendChild(card);
-    });
-}
-
-// YENİ: Yönetim seçeneği (HK veya OK) seçildiğinde
-function selectManagementOption(option, event) {
-    // İlgili kişi olarak bu seçeneği kaydet (staffName yerine kullanılacak)
-    selectedStaff = 0; // staff ID olarak 0
-    window.managementContactPerson = option.id; // HK veya OK (kısa form)
-
-    // Header'da seçilen seçeneği göster
-    const header = document.getElementById('staffHeader');
-    header.textContent = option.name; // Tam isim göster
-    header.style.visibility = 'visible';
-
-    // Seçili kartı işaretle
-    const prev = document.querySelector('.staff-card.selected');
-    if (prev) prev.classList.remove('selected');
-    if (event && event.currentTarget) {
-        event.currentTarget.classList.add('selected');
-    }
-
-    // Staff section'ı gizle, takvimi göster (tarih ve saat seçimi için)
-    hideSection('staffSection');
-    revealSection('calendarSection');
-    renderCalendar();
-    loadMonthData();
-
-    // Detayları gizle (saat seçilince gösterilecek)
-    hideSection('detailsSection');
-    document.getElementById('turnstileContainer').style.display = 'none';
-    document.getElementById('submitBtn').style.display = 'none';
-}
-
 // Ayın verilerini yükle (Cache destekli)
 async function loadMonthData() {
     const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -1192,13 +1143,13 @@ function selectTimeSlot(timeStr, element) {
         // Staff section'ı gizli tut
         hideSection('staffSection');
     }
-    // Normal yönetim randevusu (staff=0'dan gelen) için HK/OK seçimi göster
-    else if (selectedAppointmentType === 'management') {
-        displayManagementOptions();
-        revealSection('staffSection');
-        hideSection('detailsSection');
-        document.getElementById('turnstileContainer').style.display = 'none';
-        document.getElementById('submitBtn').style.display = 'none';
+    // Manuel randevu yönetimi (staff=0) - direkt form'a geç
+    else if (selectedAppointmentType === 'management' && selectedStaff === 0) {
+        // HK/OK zaten seçildi (inline butonlardan), direkt form göster
+        hideSection('staffSection');
+        revealSection('detailsSection');
+        document.getElementById('turnstileContainer').style.display = 'block';
+        document.getElementById('submitBtn').style.display = 'block';
     } else {
         revealSection('detailsSection');
         document.getElementById('turnstileContainer').style.display = 'block';
