@@ -441,18 +441,95 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('typeShipping')?.addEventListener('click', () => selectAppointmentType('shipping'));
     document.getElementById('typeManagement')?.addEventListener('click', () => selectAppointmentType('management'));
 
+    // HK/OK sub-buton event listeners
+    document.getElementById('selectHK')?.addEventListener('click', (e) => {
+        e.stopPropagation(); // Yönetim kartının tıklanmasını engelle
+        selectManagementContact('HK', 'Haluk Külahçıoğlu');
+    });
+    document.getElementById('selectOK')?.addEventListener('click', (e) => {
+        e.stopPropagation(); // Yönetim kartının tıklanmasını engelle
+        selectManagementContact('OK', 'Onur Külahçıoğlu');
+    });
+
     // Calendar navigation buttons
     document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
     document.getElementById('nextMonthBtn')?.addEventListener('click', () => changeMonth(1));
 });
 
+// HK/OK yönetim kişisi seçimi (altın butonlardan)
+function selectManagementContact(contactId, contactName) {
+    // Yönetim tipini ayarla
+    selectedAppointmentType = 'management';
+    selectedStaff = 0;
+    window.managementContactPerson = contactId; // HK veya OK
+
+    // Header'ı güncelle
+    const header = document.getElementById('staffHeader');
+    if (header) {
+        header.textContent = contactName;
+        header.style.visibility = 'visible';
+    }
+
+    // Sub-options'ı gizle
+    const subOptions = document.getElementById('managementSubOptions');
+    subOptions.classList.remove('show');
+    setTimeout(() => { subOptions.style.display = 'none'; }, 400);
+
+    // Takvimi göster
+    revealSection('calendarSection');
+    renderCalendar();
+    loadMonthData();
+}
+
 // Randevu tipi seçimi
 function selectAppointmentType(type) {
+    // Yönetim tipi seçildiyse, önce HK/OK butonlarını göster
+    if (type === 'management') {
+        const managementCard = document.getElementById('typeManagement');
+        const subOptions = document.getElementById('managementSubOptions');
+
+        // Eğer zaten açıksa kapat, değilse aç (toggle)
+        if (subOptions.classList.contains('show')) {
+            subOptions.classList.remove('show');
+            managementCard.classList.remove('management-expanded');
+            managementCard.classList.remove('selected');
+            selectedAppointmentType = null;
+        } else {
+            // Diğer kartların seçimini kaldır
+            const prev = document.querySelector('.type-card.selected');
+            if (prev) {
+                prev.classList.remove('selected');
+                const prevSub = prev.querySelector('.management-sub-options');
+                if (prevSub) prevSub.classList.remove('show');
+            }
+
+            // Management kartını seç ve genişlet
+            managementCard.classList.add('selected');
+            managementCard.classList.add('management-expanded');
+
+            // Sub-options'ı animasyonla göster
+            subOptions.style.display = 'flex';
+            setTimeout(() => {
+                subOptions.classList.add('show');
+            }, 10);
+        }
+        return; // Takvimi gösterme, HK/OK seçimini bekle
+    }
+
+    // Diğer tipler için normal akış
     selectedAppointmentType = type;
 
     // ⚡ PERFORMANS: Sadece önceki seçili elementi güncelle (reflow azaltma)
     const prev = document.querySelector('.type-card.selected');
-    if (prev) prev.classList.remove('selected');
+    if (prev) {
+        prev.classList.remove('selected');
+        prev.classList.remove('management-expanded');
+        const prevSub = prev.querySelector('.management-sub-options');
+        if (prevSub) {
+            prevSub.classList.remove('show');
+            setTimeout(() => { prevSub.style.display = 'none'; }, 400);
+        }
+    }
     document.querySelector(`.type-card[data-type="${type}"]`).classList.add('selected');
 
     // Takvimi göster ve yükle (animasyonlu + smooth scroll)
