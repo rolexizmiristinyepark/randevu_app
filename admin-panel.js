@@ -261,42 +261,20 @@
                     return;
                 }
 
-                // ✅ GÜVENLİ DOM MANIPULATION - DocumentFragment ile performans artışı
-                const fragment = document.createDocumentFragment();
+                // ✅ Grid Layout ile düzenli görünüm
+                const gridContainer = createElement('div', { className: 'link-grid' });
 
                 activeStaff.forEach(s => {
                     const staffLink = `${CONFIG.BASE_URL}?staff=${s.id}`;
 
-                    // Link container
-                    const linkContainer = createElement('div', {
-                        style: {
-                            background: 'white',
-                            padding: '18px',
-                            borderRadius: '2px',
-                            marginBottom: '12px',
-                            border: '1px solid #E8E8E8'
-                        }
-                    });
+                    // Link card
+                    const linkCard = createElement('div', { className: 'link-card' });
 
-                    // Staff name
-                    const nameDiv = createElement('div', {
-                        style: {
-                            fontWeight: '400',
-                            fontSize: '13px',
-                            marginBottom: '10px',
-                            color: '#1A1A2E',
-                            letterSpacing: '0.5px'
-                        }
-                    }, s.name);
+                    // Header
+                    const header = createElement('div', { className: 'link-card-header' }, s.name);
 
-                    // Controls container
-                    const controlsDiv = createElement('div', {
-                        style: {
-                            display: 'flex',
-                            gap: '10px',
-                            alignItems: 'center'
-                        }
-                    });
+                    // Body
+                    const body = createElement('div', { className: 'link-card-body' });
 
                     // Link input
                     const linkInput = createElement('input', {
@@ -304,41 +282,34 @@
                         value: staffLink,
                         readonly: true,
                         id: `staffLink_${s.id}`,
-                        style: {
-                            flex: '1',
-                            padding: '10px',
-                            background: '#FAFAFA',
-                            border: '1px solid #E8E8E8',
-                            borderRadius: '2px',
-                            fontSize: '12px',
-                            color: '#757575'
-                        }
+                        className: 'link-input'
                     });
 
-                    // Copy button
+                    // Actions
+                    const actions = createElement('div', { className: 'link-actions' });
+
                     const copyBtn = createElement('button', {
-                        className: 'btn btn-small btn-secondary',
-                        style: { whiteSpace: 'nowrap' }
+                        className: 'btn btn-small btn-secondary'
                     }, 'Kopyala');
                     copyBtn.addEventListener('click', () => Staff.copyLink(s.id));
 
-                    // Open button
                     const openBtn = createElement('button', {
-                        className: 'btn btn-small',
-                        style: { whiteSpace: 'nowrap' }
+                        className: 'btn btn-small'
                     }, 'Aç');
                     openBtn.addEventListener('click', () => Staff.openLink(s.id));
 
-                    controlsDiv.appendChild(linkInput);
-                    controlsDiv.appendChild(copyBtn);
-                    controlsDiv.appendChild(openBtn);
+                    actions.appendChild(copyBtn);
+                    actions.appendChild(openBtn);
 
-                    linkContainer.appendChild(nameDiv);
-                    linkContainer.appendChild(controlsDiv);
-                    fragment.appendChild(linkContainer);
+                    body.appendChild(linkInput);
+                    body.appendChild(actions);
+
+                    linkCard.appendChild(header);
+                    linkCard.appendChild(body);
+                    gridContainer.appendChild(linkCard);
                 });
 
-                container.appendChild(fragment);
+                container.appendChild(gridContainer);
             },
 
             copyLink(staffId) {
