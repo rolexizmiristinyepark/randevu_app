@@ -1129,6 +1129,16 @@ async function displayAvailableTimeSlots() {
         // NOT: Teslim limiti kontrolü takvimde yapılıyor (gün disabled)
         // Bu fonksiyona ulaşılmamalı çünkü gün zaten seçilemiyor
 
+        // Bugün mü kontrol et - staff=0 için geçmiş saatleri filtrelemek için
+        const today = new Date();
+        const todayStr = today.getFullYear() + '-' +
+                       String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                       String(today.getDate()).padStart(2, '0');
+        const isToday = selectedDate === todayStr;
+        const currentHour = today.getHours();
+        const currentMinute = today.getMinutes();
+        const isStaff0 = specificStaffId === '0';
+
         // Hiç müsait saat yoksa bilgi
         if (availableHours.length === 0) {
             const infoDiv = document.createElement('div');
@@ -1140,6 +1150,14 @@ async function displayAvailableTimeSlots() {
 
         // Slot'ları render et
         slots.forEach(slot => {
+            // staff=0 + bugünse + geçmiş saatse atla
+            if (isStaff0 && isToday) {
+                const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
+                    return; // Geçmiş slot, gösterme
+                }
+            }
+
             const btn = document.createElement('div');
             const isAvailable = availableHours.includes(slot.hour);
 
