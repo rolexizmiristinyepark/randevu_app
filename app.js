@@ -1014,6 +1014,9 @@ async function displayAvailableTimeSlots() {
 
             const { slots } = appointmentsResult;
 
+            // Spinner'ı temizle, slot'ları render et
+            container.innerHTML = '';
+
             // Bugün mü kontrol et - geçmiş saatleri filtrelemek için
             const today = new Date();
             const todayStr = today.getFullYear() + '-' +
