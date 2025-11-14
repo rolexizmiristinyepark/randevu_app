@@ -1200,27 +1200,11 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     let staff = null;
     let assignedStaffId = selectedStaff;
 
-    // Yönetim linki ise (hk, ok, hmk) - random staff atama
+    // Yönetim linki ise (hk, ok, hmk) - personel ataması yapma, admin atayacak
     if (isManagementLink) {
-        // Backend'den bu slot için müsait personeli al
-        const availableStaffResult = await apiCall('getAvailableStaffForSlot', {
-            date: selectedDate,
-            time: selectedTime
-        });
-
-        if (!availableStaffResult.success || availableStaffResult.availableStaff.length === 0) {
-            showAlert('Bu saat için müsait personel bulunamadı. Lütfen başka bir saat seçin.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Randevuyu Onayla';
-            return;
-        }
-
-        // Random staff seç
-        const availableStaff = availableStaffResult.availableStaff;
-        const randomIndex = Math.floor(Math.random() * availableStaff.length);
-        staff = availableStaff[randomIndex];
-        assignedStaffId = staff.id;
-        staffName = staff.name;
+        // Personel atanmamış randevu olarak oluştur
+        assignedStaffId = null;
+        staffName = 'Atanmadı'; // Placeholder
     } else if (selectedStaff === 0) {
         staffName = window.managementContactPerson || 'Yönetim';
         assignedStaffId = 0;
@@ -1249,7 +1233,8 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
             appointmentType: selectedAppointmentType,
             duration: CONFIG.APPOINTMENT_HOURS.interval,
             turnstileToken: turnstileToken,  // Bot protection token
-            managementLevel: managementLevel  // Yönetim linki seviyesi (1, 2, 3 veya null)
+            managementLevel: managementLevel,  // Yönetim linki seviyesi (1, 2, 3 veya null)
+            isVipLink: isManagementLink  // VIP link flag (#hk, #ok, #hmk)
         });
 
         if (result.success) {

@@ -1107,6 +1107,7 @@ const ACTION_HANDLERS = {
   'getWeekAppointments': (e) => getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
   'deleteAppointment': (e) => deleteAppointment(e.parameter.eventId),
   'updateAppointment': (e) => updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
+  'assignStaffToAppointment': (e) => assignStaffToAppointment(e.parameter.eventId, e.parameter.staffId),
   'getMonthAppointments': (e) => getMonthAppointments(e.parameter.month),
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
   'createAppointment': (e) => createAppointment(e.parameter),
@@ -1665,6 +1666,61 @@ function updateAppointment(eventId, newDate, newTime) {
   }
 }
 
+// Randevuya personel ata (VIP linkler için)
+function assignStaffToAppointment(eventId, staffId) {
+  try {
+    const calendar = getCalendar();
+    const event = calendar.getEventById(eventId);
+
+    if (!event) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
+    }
+
+    // Staff bilgilerini al
+    const data = getData();
+    const staff = data.staff.find(s => s.id === parseInt(staffId));
+
+    if (!staff) {
+      return { success: false, error: 'Personel bulunamadı' };
+    }
+
+    // Event tag'ini güncelle
+    event.setTag('staffId', String(staffId));
+
+    // Event title'ı güncelle (staff ismini ekle)
+    const currentTitle = event.getTitle();
+    // "Müşteri İsmi - Atanmadı (Randevu Türü) (HK)" formatından "Müşteri İsmi - Staff İsmi (Randevu Türü) (HK)" formatına çevir
+    const newTitle = currentTitle.replace(/- Atanmadı/, `- ${staff.name}`);
+    event.setTitle(newTitle);
+
+    // Description'ı güncelle (staff bilgilerini ekle)
+    const currentDesc = event.getDescription();
+    const staffInfo = `\n\n--- İLGİLİ PERSONEL ---\nİsim: ${staff.name}\nTelefon: ${staff.phone}\nE-posta: ${staff.email}`;
+
+    // Eğer "--- İLGİLİ PERSONEL ---" zaten varsa değiştir, yoksa ekle
+    let newDesc;
+    if (currentDesc.includes('--- İLGİLİ PERSONEL ---')) {
+      // Mevcut staff bilgisini değiştir
+      newDesc = currentDesc.replace(/\n\n--- İLGİLİ PERSONEL ---[\s\S]*?(?=\n\n---|$)/, staffInfo);
+    } else {
+      // Yeni staff bilgisi ekle
+      newDesc = currentDesc + staffInfo;
+    }
+    event.setDescription(newDesc);
+
+    log.info('Personel atandı:', eventId, staffId, staff.name);
+    return {
+      success: true,
+      message: `${staff.name} başarıyla atandı`,
+      staffName: staff.name
+    };
+
+  } catch (error) {
+    log.error('assignStaffToAppointment hatası:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // Bir ay için tüm randevuları getir
 function getMonthAppointments(month) {
   try {
@@ -1905,7 +1961,8 @@ function createAppointment(params) {
       appointmentType,
       duration,
       turnstileToken,
-      managementLevel
+      managementLevel,
+      isVipLink
     } = params;
 
     // ===== SECURITY CHECKS =====
@@ -2133,6 +2190,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
     event.setTag('customerEmail', sanitizedCustomerEmail);
     event.setTag('shiftType', shiftType);
     event.setTag('appointmentType', appointmentType);
+    event.setTag('isVipLink', isVipLink ? 'true' : 'false');
 
     // Tarih formatla (7 Ekim 2025, Salı) - DateUtils kullan
     const formattedDate = DateUtils.toTurkishDate(date);
