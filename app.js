@@ -739,6 +739,7 @@ function selectDay(dateStr) {
     }
     // Yönetim linki ise direkt saat seçimine geç
     else if (isManagementLink) {
+        selectedShiftType = 'management'; // VIP linkler için placeholder shift type
         displayAvailableTimeSlots();
         hideSection('staffSection');
         revealSection('timeSection');
@@ -979,9 +980,17 @@ async function displayAvailableTimeSlots() {
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div></div>';
 
     // Gerekli parametreleri kontrol et
-    if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
-        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih, vardiya ve randevu türü seçin.</div>';
-        return;
+    // VIP linkler için vardiya kontrolü yapma (personel sonradan atanacak)
+    if (isManagementLink) {
+        if (!selectedDate || !selectedAppointmentType) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih ve randevu türü seçin.</div>';
+            return;
+        }
+    } else {
+        if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
+            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih, vardiya ve randevu türü seçin.</div>';
+            return;
+        }
     }
 
     try {
