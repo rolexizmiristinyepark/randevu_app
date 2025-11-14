@@ -1023,8 +1023,18 @@ async function displayAvailableTimeSlots() {
             const currentHour = today.getHours();
             const currentMinute = today.getMinutes();
 
-            // Slot'ları render et
+            // Duplicate slot'ları temizle (20:00 iki kere gelebiliyor)
+            const uniqueSlots = [];
+            const seenTimes = new Set();
             slots.forEach(slot => {
+                if (!seenTimes.has(slot.time)) {
+                    seenTimes.add(slot.time);
+                    uniqueSlots.push(slot);
+                }
+            });
+
+            // Slot'ları render et
+            uniqueSlots.forEach(slot => {
                 // VIP linkler için sadece tam saatler göster (buçukları filtrele)
                 const [slotHour, slotMinute] = slot.time.split(':').map(Number);
                 if (slotMinute !== 0) {
