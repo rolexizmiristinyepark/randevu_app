@@ -808,6 +808,61 @@
                 }
             },
 
+            // Randevu düzenleme modal'ini aç
+            openEditModal(appointment) {
+                // Store current appointment data
+                this.currentEditingAppointment = appointment;
+
+                // Parse date and time
+                const startDate = new Date(appointment.start);
+                const dateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                const timeStr = startDate.toTimeString().split(':').slice(0, 2).join(':'); // HH:MM
+
+                // Fill modal inputs
+                document.getElementById('editAppointmentDate').value = dateStr;
+                document.getElementById('editAppointmentTime').value = timeStr;
+
+                // Show modal
+                document.getElementById('editAppointmentModal').classList.add('active');
+            },
+
+            // Modal'i kapat
+            closeEditModal() {
+                document.getElementById('editAppointmentModal').classList.remove('active');
+                this.currentEditingAppointment = null;
+            },
+
+            // Randevu düzenlemeyi kaydet
+            async saveEditedAppointment() {
+                if (!this.currentEditingAppointment) return;
+
+                const newDate = document.getElementById('editAppointmentDate').value;
+                const newTime = document.getElementById('editAppointmentTime').value;
+
+                if (!newDate || !newTime) {
+                    UI.showAlert('❌ Lütfen tarih ve saat seçin', 'error');
+                    return;
+                }
+
+                try {
+                    const result = await ApiService.call('updateAppointment', {
+                        eventId: this.currentEditingAppointment.id,
+                        newDate: newDate,
+                        newTime: newTime
+                    });
+
+                    if (result.success) {
+                        UI.showAlert('✅ Randevu güncellendi', 'success');
+                        this.closeEditModal();
+                        this.load(); // Listeyi yenile
+                    } else {
+                        UI.showAlert('❌ Güncelleme hatası: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    UI.showAlert('❌ Güncelleme hatası', 'error');
+                }
+            },
+
             render(appointments) {
                 const container = document.getElementById('appointmentsList');
 
@@ -927,7 +982,7 @@
                             className: 'btn btn-small btn-secondary'
                         }, 'Düzenle');
                         editBtn.addEventListener('click', () => {
-                            alert('Randevu düzenleme özelliği yakında eklenecek.');
+                            Appointments.openEditModal(apt);
                         });
 
                         // Cancel button
@@ -1326,6 +1381,25 @@
             if (document.getElementById('slackStatus')) {
                 loadSlackSettings();
             }
+
+            // ==================== RANDEVU DÜZENLEME MODAL ====================
+
+            // İptal butonu - modal'i kapat
+            document.getElementById('cancelEditAppointmentBtn')?.addEventListener('click', () => {
+                Appointments.closeEditModal();
+            });
+
+            // Kaydet butonu - randevu güncelle
+            document.getElementById('saveEditAppointmentBtn')?.addEventListener('click', () => {
+                Appointments.saveEditedAppointment();
+            });
+
+            // Modal overlay tıklaması - modal'i kapat
+            document.getElementById('editAppointmentModal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'editAppointmentModal') {
+                    Appointments.closeEditModal();
+                }
+            });
         }
 
         // Start initialization when DOM is ready
