@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/randevu_app/assets/admin-ChgzsYx9.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/admin-BgRQjddP.js"></script>
   <link rel="modulepreload" crossorigin href="/randevu_app/assets/monitoring-DfJvXpdi.js">
   <link rel="stylesheet" crossorigin href="/randevu_app/assets/admin-BXp2w_aj.css">
 </head>
@@ -255,6 +255,30 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
                     <button class="btn" id="saveEditAppointmentBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İlgili Personel Atama Modal -->
+    <div id="assignStaffModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-body">
+                <h3 style="margin-bottom: 20px;">İlgili Personel Ata</h3>
+                <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
+                    <!-- Randevu bilgileri buraya dinamik olarak eklenecek -->
+                </div>
+                <div class="input-group">
+                    <label for="assignStaffSelect">Personel Seçin</label>
+                    <select id="assignStaffSelect">
+                        <option value="">-- Seçin --</option>
+                        <!-- Personel listesi dinamik olarak eklenecek -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
+                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
                 </div>
             </div>
         </div>
