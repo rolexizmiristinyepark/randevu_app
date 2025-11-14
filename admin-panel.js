@@ -983,6 +983,7 @@
                         const phone = apt.extendedProperties?.private?.customerPhone || '-';
                         const customerName = apt.summary?.replace('Randevu: ', '') || 'İsimsiz';
                         const customerNote = apt.extendedProperties?.private?.customerNote || '';
+                        const isVipLink = apt.extendedProperties?.private?.isVipLink === 'true';
 
                         // Appointment card container
                         const aptCard = createElement('div', {
@@ -1065,9 +1066,12 @@
                         buttonsDiv.appendChild(editBtn);
                         buttonsDiv.appendChild(cancelBtn);
 
-                        // İlgili Ata button - sadece personel atanmamış randevular için
+                        // İlgili Ata button - sadece VIP linklerden gelen randevular için (#hk, #ok, #hmk)
+                        // Manuel yönetim randevularında (staff=0) gösterme
                         const staffName = staff?.name || '-';
-                        if (!staffId || !staff || staffName === 'Atanmadı' || staffName === '-') {
+                        const hasNoStaff = !staffId || !staff || staffName === 'Atanmadı' || staffName === '-';
+
+                        if (isVipLink && hasNoStaff) {
                             const assignBtn = createElement('button', {
                                 className: 'btn btn-small',
                                 style: { background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)', borderColor: '#C9A55A', color: 'white' }
