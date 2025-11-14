@@ -1025,9 +1025,14 @@ async function displayAvailableTimeSlots() {
 
             // Slot'ları render et
             slots.forEach(slot => {
+                // VIP linkler için sadece tam saatler göster (buçukları filtrele)
+                const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                if (slotMinute !== 0) {
+                    return; // Buçuk slot, gösterme (VIP linkler için 1 saatlik slot'lar)
+                }
+
                 // Bugünse ve geçmiş saatse atla
                 if (isToday) {
-                    const [slotHour, slotMinute] = slot.time.split(':').map(Number);
                     if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
                         return; // Geçmiş slot, gösterme
                     }
