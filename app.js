@@ -1014,8 +1014,25 @@ async function displayAvailableTimeSlots() {
 
             const { slots } = appointmentsResult;
 
+            // Bugün mü kontrol et - geçmiş saatleri filtrelemek için
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' +
+                           String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                           String(today.getDate()).padStart(2, '0');
+            const isToday = selectedDate === todayStr;
+            const currentHour = today.getHours();
+            const currentMinute = today.getMinutes();
+
             // Slot'ları render et
             slots.forEach(slot => {
+                // Bugünse ve geçmiş saatse atla
+                if (isToday) {
+                    const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                    if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
+                        return; // Geçmiş slot, gösterme
+                    }
+                }
+
                 const btn = document.createElement('div');
 
                 if (slot.available) {
@@ -1055,8 +1072,25 @@ async function displayAvailableTimeSlots() {
             }
             managementSlots.push({ time: '21:00' });
 
+            // Bugün mü kontrol et - geçmiş saatleri filtrelemek için
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' +
+                           String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                           String(today.getDate()).padStart(2, '0');
+            const isToday = selectedDate === todayStr;
+            const currentHour = today.getHours();
+            const currentMinute = today.getMinutes();
+
             // Tüm slotları müsait olarak render et
             managementSlots.forEach(slot => {
+                // Bugünse ve geçmiş saatse atla
+                if (isToday) {
+                    const [slotHour, slotMinute] = slot.time.split(':').map(Number);
+                    if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
+                        return; // Geçmiş slot, gösterme
+                    }
+                }
+
                 const btn = document.createElement('div');
                 btn.className = 'slot-btn';
                 btn.textContent = slot.time;
