@@ -996,7 +996,7 @@ async function displayAvailableTimeSlots() {
     try {
         // VIP linkler için (hk, ok, hmk) - TÜM randevu türlerinde özel logic
         if (isManagementLink) {
-            container.innerHTML = '';
+            // Spinner zaten var, API çağrısı yapılıyor...
 
             // Backend'den bu gün için tüm VIP randevularını al
             const appointmentsResult = await apiCall('getManagementSlotAvailability', {
