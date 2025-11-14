@@ -3583,9 +3583,14 @@ function getManagementSlotAvailability(date, managementLevel) {
       const timeStr = `${hours}:${minutes === 0 ? '00' : minutes}`;
 
       const isVipLink = event.getTag('isVipLink');
+      const title = event.getTitle();
 
       // VIP linklerden gelen TÜM randevu türlerini say (Teslim, Servis, Görüşme, Management)
-      if (isVipLink === 'true') {
+      // Yeni randevular: isVipLink === 'true'
+      // Eski randevular: başlıkta (HK), (OK), veya (HMK) var
+      const isVip = isVipLink === 'true' || title.includes('(HK)') || title.includes('(OK)') || title.includes('(HMK)');
+
+      if (isVip) {
         if (slotCounts.hasOwnProperty(timeStr)) {
           slotCounts[timeStr]++;
         }
