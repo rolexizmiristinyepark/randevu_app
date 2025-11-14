@@ -1065,12 +1065,13 @@ async function displayAvailableTimeSlots() {
             // Normal yönetim randevusu (staff=0'dan seçilen) - tüm saatler müsait (buçuklarla)
             const managementSlots = [];
 
-            // 10:00'dan 21:00'a kadar tüm saatler ve buçuklar
+            // 10:00'dan 20:00'a kadar tüm saatler ve buçuklar
             for (let hour = 10; hour <= 20; hour++) {
                 managementSlots.push({ time: `${hour}:00` });
-                managementSlots.push({ time: `${hour}:30` });
+                if (hour < 20) { // 20:30'u ekleme, 20:00'da bitir
+                    managementSlots.push({ time: `${hour}:30` });
+                }
             }
-            managementSlots.push({ time: '21:00' });
 
             // Bugün mü kontrol et - geçmiş saatleri filtrelemek için
             const today = new Date();
