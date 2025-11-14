@@ -3561,13 +3561,14 @@ function getManagementSlotAvailability(date, managementLevel) {
     // O gün için tüm randevuları al
     const events = calendar.getEvents(startDate, endDate);
 
-    // Slot'ları oluştur: 10:00'dan 21:00'a kadar tam saatler ve buçuklar
+    // Slot'ları oluştur: 10:00'dan 20:00'a kadar tam saatler ve buçuklar
     const slots = [];
     for (let hour = 10; hour <= 20; hour++) {
       slots.push(`${hour}:00`);
-      slots.push(`${hour}:30`);
+      if (hour < 20) { // 20:30'u ekleme, 20:00'da bitir
+        slots.push(`${hour}:30`);
+      }
     }
-    slots.push('21:00');
 
     // Her slot için randevu sayısını hesapla
     const slotCounts = {};
