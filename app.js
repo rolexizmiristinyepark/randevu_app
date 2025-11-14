@@ -994,54 +994,56 @@ async function displayAvailableTimeSlots() {
     }
 
     try {
-        // Yönetim randevusu için özel logic
-        if (selectedAppointmentType === 'management') {
+        // VIP linkler için (hk, ok, hmk) - TÜM randevu türlerinde özel logic
+        if (isManagementLink) {
             container.innerHTML = '';
 
-            // Yönetim linki ise (hk, ok, hmk) backend'den slot doluluk durumunu al
-            if (isManagementLink) {
-                // Backend'den bu gün için tüm randevuları al
-                const appointmentsResult = await apiCall('getManagementSlotAvailability', {
-                    date: selectedDate,
-                    managementLevel: managementLevel
-                });
+            // Backend'den bu gün için tüm VIP randevularını al
+            const appointmentsResult = await apiCall('getManagementSlotAvailability', {
+                date: selectedDate,
+                managementLevel: managementLevel
+            });
 
-                if (!appointmentsResult.success) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
-                    errorDiv.textContent = 'Müsait saatler yüklenemedi';
-                    container.appendChild(errorDiv);
-                    return;
-                }
-
-                const { slots } = appointmentsResult;
-
-                // Slot'ları render et
-                slots.forEach(slot => {
-                    const btn = document.createElement('div');
-
-                    if (slot.available) {
-                        // ✅ MÜSAİT - Slot'ta < 2 randevu var
-                        btn.className = 'slot-btn';
-                        btn.textContent = slot.time;
-                        if (slot.count === 1) {
-                            btn.title = `Bu saatte 1 randevu var (2. randevu olabilir)`;
-                        }
-                        btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
-                    } else {
-                        // ❌ DOLU - Slot'ta zaten 2 randevu var
-                        btn.className = 'slot-btn disabled';
-                        btn.textContent = slot.time;
-                        btn.title = 'Bu saat dolu (2 randevu)';
-                        btn.style.opacity = '0.4';
-                        btn.style.cursor = 'not-allowed';
-                        btn.setAttribute('aria-disabled', 'true');
-                    }
-
-                    container.appendChild(btn);
-                });
+            if (!appointmentsResult.success) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                errorDiv.textContent = 'Müsait saatler yüklenemedi';
+                container.appendChild(errorDiv);
                 return;
             }
+
+            const { slots } = appointmentsResult;
+
+            // Slot'ları render et
+            slots.forEach(slot => {
+                const btn = document.createElement('div');
+
+                if (slot.available) {
+                    // ✅ MÜSAİT - Slot'ta < 2 randevu var
+                    btn.className = 'slot-btn';
+                    btn.textContent = slot.time;
+                    if (slot.count === 1) {
+                        btn.title = `Bu saatte 1 randevu var (2. randevu olabilir)`;
+                    }
+                    btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                } else {
+                    // ❌ DOLU - Slot'ta zaten 2 randevu var
+                    btn.className = 'slot-btn disabled';
+                    btn.textContent = slot.time;
+                    btn.title = 'Bu saat dolu (2 randevu)';
+                    btn.style.opacity = '0.4';
+                    btn.style.cursor = 'not-allowed';
+                    btn.setAttribute('aria-disabled', 'true');
+                }
+
+                container.appendChild(btn);
+            });
+            return;
+        }
+
+        // Normal yönetim randevusu için (staff=0'dan seçilen Management türü)
+        if (selectedAppointmentType === 'management') {
+            container.innerHTML = '';
 
             // Normal yönetim randevusu (staff=0'dan seçilen) - tüm saatler müsait (buçuklarla)
             const managementSlots = [];
