@@ -863,6 +863,75 @@
                 }
             },
 
+            // İlgili personel atama modal'ini aç
+            openAssignStaffModal(appointment) {
+                // Store current appointment data
+                this.currentAssigningAppointment = appointment;
+
+                // Fill appointment info
+                const start = new Date(appointment.start.dateTime || appointment.start.date);
+                const customerName = appointment.summary?.replace('Randevu: ', '') || 'İsimsiz';
+                const dateStr = start.toLocaleDateString('tr-TR', {weekday: 'long', day: 'numeric', month: 'long'});
+                const timeStr = start.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
+
+                const infoDiv = document.getElementById('assignStaffInfo');
+                infoDiv.innerHTML = `
+                    <div style="font-size: 13px; line-height: 1.8; color: #757575;">
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Müşteri:</span> ${customerName}</div>
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Tarih:</span> ${dateStr}</div>
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Saat:</span> ${timeStr}</div>
+                    </div>
+                `;
+
+                // Populate staff dropdown
+                const select = document.getElementById('assignStaffSelect');
+                select.innerHTML = '<option value="">-- Seçin --</option>';
+
+                const activeStaff = Data.staff.filter(s => s.active);
+                activeStaff.forEach(staff => {
+                    const option = createElement('option', { value: staff.id }, staff.name);
+                    select.appendChild(option);
+                });
+
+                // Show modal
+                document.getElementById('assignStaffModal').classList.add('active');
+            },
+
+            // Modal'i kapat
+            closeAssignStaffModal() {
+                document.getElementById('assignStaffModal').classList.remove('active');
+                this.currentAssigningAppointment = null;
+            },
+
+            // Personel atamasını kaydet
+            async saveAssignedStaff() {
+                if (!this.currentAssigningAppointment) return;
+
+                const staffId = document.getElementById('assignStaffSelect').value;
+
+                if (!staffId) {
+                    UI.showAlert('❌ Lütfen personel seçin', 'error');
+                    return;
+                }
+
+                try {
+                    const result = await ApiService.call('assignStaffToAppointment', {
+                        eventId: this.currentAssigningAppointment.id,
+                        staffId: staffId
+                    });
+
+                    if (result.success) {
+                        UI.showAlert('✅ ' + result.staffName + ' atandı', 'success');
+                        this.closeAssignStaffModal();
+                        this.load(); // Listeyi yenile
+                    } else {
+                        UI.showAlert('❌ Atama hatası: ' + result.error, 'error');
+                    }
+                } catch (error) {
+                    UI.showAlert('❌ Atama hatası', 'error');
+                }
+            },
+
             render(appointments) {
                 const container = document.getElementById('appointmentsList');
 
@@ -995,6 +1064,19 @@
 
                         buttonsDiv.appendChild(editBtn);
                         buttonsDiv.appendChild(cancelBtn);
+
+                        // İlgili Ata button - sadece personel atanmamış randevular için
+                        const staffName = staff?.name || '-';
+                        if (!staffId || !staff || staffName === 'Atanmadı' || staffName === '-') {
+                            const assignBtn = createElement('button', {
+                                className: 'btn btn-small',
+                                style: { background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)', borderColor: '#C9A55A', color: 'white' }
+                            }, 'İlgili Ata');
+                            assignBtn.addEventListener('click', () => {
+                                Appointments.openAssignStaffModal(apt);
+                            });
+                            buttonsDiv.appendChild(assignBtn);
+                        }
 
                         flexContainer.appendChild(detailsDiv);
                         flexContainer.appendChild(buttonsDiv);
@@ -1398,6 +1480,25 @@
             document.getElementById('editAppointmentModal')?.addEventListener('click', (e) => {
                 if (e.target.id === 'editAppointmentModal') {
                     Appointments.closeEditModal();
+                }
+            });
+
+            // ==================== İLGİLİ PERSONEL ATAMA MODAL ====================
+
+            // İptal butonu - modal'i kapat
+            document.getElementById('cancelAssignStaffBtn')?.addEventListener('click', () => {
+                Appointments.closeAssignStaffModal();
+            });
+
+            // Ata butonu - personel atamasını kaydet
+            document.getElementById('saveAssignStaffBtn')?.addEventListener('click', () => {
+                Appointments.saveAssignedStaff();
+            });
+
+            // Modal overlay tıklaması - modal'i kapat
+            document.getElementById('assignStaffModal')?.addEventListener('click', (e) => {
+                if (e.target.id === 'assignStaffModal') {
+                    Appointments.closeAssignStaffModal();
                 }
             });
         }

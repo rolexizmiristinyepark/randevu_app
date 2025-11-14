@@ -258,6 +258,30 @@
         </div>
     </div>
 
+    <!-- İlgili Personel Atama Modal -->
+    <div id="assignStaffModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-body">
+                <h3 style="margin-bottom: 20px;">İlgili Personel Ata</h3>
+                <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
+                    <!-- Randevu bilgileri buraya dinamik olarak eklenecek -->
+                </div>
+                <div class="input-group">
+                    <label for="assignStaffSelect">Personel Seçin</label>
+                    <select id="assignStaffSelect">
+                        <option value="">-- Seçin --</option>
+                        <!-- Personel listesi dinamik olarak eklenecek -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
+                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Date Utility Functions -->
     <script type="module" src="date-utils.js"></script>
     <!-- Güvenlik Helper Fonksiyonları -->
