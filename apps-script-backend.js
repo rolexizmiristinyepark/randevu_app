@@ -3575,17 +3575,17 @@ function getManagementSlotAvailability(date, managementLevel) {
       slotCounts[slot] = 0;
     });
 
-    // Management randevularını say (tüm management level'lar dahil)
+    // VIP linklerden gelen randevuları say (tüm randevu türleri dahil)
     events.forEach(event => {
       const eventTime = event.getStartTime();
       const hours = eventTime.getHours();
       const minutes = eventTime.getMinutes();
       const timeStr = `${hours}:${minutes === 0 ? '00' : minutes}`;
 
-      const appointmentType = event.getTag('appointmentType');
+      const isVipLink = event.getTag('isVipLink');
 
-      // Sadece management randevularını say
-      if (appointmentType === 'management') {
+      // VIP linklerden gelen TÜM randevu türlerini say (Teslim, Servis, Görüşme, Management)
+      if (isVipLink === 'true') {
         if (slotCounts.hasOwnProperty(timeStr)) {
           slotCounts[timeStr]++;
         }
