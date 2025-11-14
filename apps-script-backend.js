@@ -2105,12 +2105,28 @@ function createAppointment(params) {
     }
     // 1b. 1 çakışan randevu var
     else if (overlappingCount === 1) {
-      // Mevcut randevu yönetim mi? Yönetim randevuları üzerine yeni randevu eklenebilir
+      // Mevcut randevu bilgilerini al
       const existingType = overlappingEvents[0].getTag('appointmentType');
+      const existingIsVipTag = overlappingEvents[0].getTag('isVipLink');
+      const existingTitle = overlappingEvents[0].getTitle();
 
-      if (existingType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+      // VIP link kontrolü (yeni tag veya eski başlık kontrolü)
+      const existingIsVip = existingIsVipTag === 'true' ||
+                           existingTitle.includes('(HK)') ||
+                           existingTitle.includes('(OK)') ||
+                           existingTitle.includes('(HMK)');
+
+      // VIP link üzerine VIP link → OK (max 2 VIP randevu)
+      if (isVipLink && existingIsVip) {
+        log.info('VIP link: 2. randevu oluşturuluyor (1 mevcut VIP randevu var)');
+        // OK, devam et
+      }
+      // Yönetim randevusu üzerine → OK
+      else if (existingType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
         // OK, yönetim randevusu üzerine normal randevu eklenebilir
-      } else {
+      }
+      // Diğer durumlar → BLOKE
+      else {
         // Normal randevu üzerine normal randevu eklenemez → BLOKE
         return {
           success: false,
