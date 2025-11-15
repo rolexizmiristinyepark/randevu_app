@@ -6,6 +6,7 @@ import { StringUtils } from './string-utils.ts';
 import { StateManager } from './state-manager.ts';
 import { apiCall } from './api-service.ts';
 import { initMonitoring, logError, measureAsync } from './monitoring.ts';
+import rolexLogoUrl from './assets/rolex-logo.svg';
 
 // APPS SCRIPT URL
 const CONFIG = {
@@ -106,6 +107,54 @@ const ModalUtils = {
     },
     toggle(modalId) {
         document.getElementById(modalId)?.classList.toggle('active');
+    }
+};
+
+// Button loading state utility
+const ButtonUtils = {
+    /**
+     * Set button to loading state
+     * @param {HTMLElement|string} button - Button element or ID
+     * @param {string} loadingText - Optional loading text
+     */
+    setLoading(button, loadingText = null) {
+        const btn = typeof button === 'string' ? document.getElementById(button) : button;
+        if (!btn) return;
+
+        // Store original content
+        if (!btn.dataset.originalText) {
+            btn.dataset.originalText = btn.textContent;
+        }
+
+        // Set loading state
+        btn.classList.add('loading');
+        btn.disabled = true;
+
+        // Update text if provided
+        if (loadingText) {
+            btn.textContent = loadingText;
+        }
+    },
+
+    /**
+     * Reset button from loading state
+     * @param {HTMLElement|string} button - Button element or ID
+     * @param {string} newText - Optional new text
+     */
+    reset(button, newText = null) {
+        const btn = typeof button === 'string' ? document.getElementById(button) : button;
+        if (!btn) return;
+
+        // Reset loading state
+        btn.classList.remove('loading');
+        btn.disabled = false;
+
+        // Restore text
+        if (newText) {
+            btn.textContent = newText;
+        } else if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
+        }
     }
 };
 
@@ -463,6 +512,17 @@ function selectManagementContact(contactId, contactName) {
     selectedStaff = 0;
     window.managementContactPerson = contactId; // HK veya OK
 
+    // Tüm yönetim butonlarından selected class'ını kaldır
+    document.querySelectorAll('.management-sub-btn').forEach(btn => {
+        btn.classList.remove('selected');
+    });
+
+    // Tıklanan butona selected class'ı ekle
+    const clickedBtn = document.querySelector(`[data-management="${contactId}"]`);
+    if (clickedBtn) {
+        clickedBtn.classList.add('selected');
+    }
+
     // Header'ı güncelle
     const header = document.getElementById('staffHeader');
     if (header) {
@@ -470,10 +530,8 @@ function selectManagementContact(contactId, contactName) {
         header.style.visibility = 'visible';
     }
 
-    // Sub-options'ı gizle
-    const subOptions = document.getElementById('managementSubOptions');
-    subOptions.classList.remove('show');
-    setTimeout(() => { subOptions.style.display = 'none'; }, 400);
+    // NOT: Sub-options'ı GİZLEME - seçili buton görünür kalmalı
+    // Butonlar açık kalsın, kullanıcı seçimini görsün
 
     // Takvimi göster
     revealSection('calendarSection');
@@ -1274,8 +1332,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     }
 
     const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-spinner"></span> Randevu oluşturuluyor...';
+    ButtonUtils.setLoading(btn, 'Randevu oluşturuluyor');
 
     // YENİ: staff=0 için staffName yerine managementContactPerson kullan
     let staffName;
@@ -1341,14 +1398,12 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
             showSuccessPage(selectedDate, selectedTime, staffName, note);
         } else {
             showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
-            btn.disabled = false;
-            btn.textContent = 'Randevuyu Onayla';
+            ButtonUtils.reset(btn);
         }
     } catch (error) {
         logError(error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
         showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Randevuyu Onayla';
+        ButtonUtils.reset(btn);
     }
 });
 
@@ -1379,10 +1434,9 @@ function showLoadingError() {
     // Header oluştur (güvenli DOM manipülasyonu)
     const header = createElement('div', { className: 'header' });
 
-    // Logo'yu direkt oluştur (Vite base path ile)
-    const basePath = import.meta.env.BASE_URL || '/';
+    // Logo'yu direkt oluştur (imported URL kullan)
     const logo = createElement('img', {
-        src: basePath + 'assets/rolex-logo.svg',
+        src: rolexLogoUrl,
         className: 'rolex-logo',
         alt: 'Rolex Logo'
     });

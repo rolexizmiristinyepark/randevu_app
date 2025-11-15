@@ -466,11 +466,18 @@ function getDeliveryCountByStaff(date, staffId) {
  * @returns {Object} {valid: boolean, error: string}
  */
 function validateReservation(payload) {
-  const { date, hour, appointmentType, staffId } = payload;
+  const { date, hour, appointmentType, staffId, isVipLink } = payload;
 
   try {
     // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları için tüm kontrolleri bypass et
     if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+      return { valid: true };
+    }
+
+    // VIP LINK EXCEPTION: VIP linkler için slot kontrolünü bypass et (max 2 randevu)
+    // Google Apps Script e.parameter'dan gelen değerler string olabilir ("true"/"false")
+    const isVip = isVipLink === true || isVipLink === 'true';
+    if (isVip) {
       return { valid: true };
     }
 
@@ -718,8 +725,11 @@ function mapEventToAppointment(event) {
       private: event.getTag('staffId') ? {
         staffId: event.getTag('staffId'),
         customerPhone: event.getTag('customerPhone'),
+        customerEmail: event.getTag('customerEmail'),
+        customerNote: event.getTag('customerNote') || '',
         shiftType: event.getTag('shiftType'),
-        appointmentType: event.getTag('appointmentType')
+        appointmentType: event.getTag('appointmentType'),
+        isVipLink: event.getTag('isVipLink') || 'false'
       } : {}
     }
   };
@@ -1107,6 +1117,7 @@ const ACTION_HANDLERS = {
   'getWeekAppointments': (e) => getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
   'deleteAppointment': (e) => deleteAppointment(e.parameter.eventId),
   'updateAppointment': (e) => updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
+  'getAvailableSlotsForEdit': (e) => getAvailableSlotsForEdit(e.parameter.date, e.parameter.currentEventId, e.parameter.appointmentType),
   'assignStaffToAppointment': (e) => assignStaffToAppointment(e.parameter.eventId, e.parameter.staffId),
   'getMonthAppointments': (e) => getMonthAppointments(e.parameter.month),
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
@@ -1642,7 +1653,8 @@ function updateAppointment(eventId, newDate, newTime) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
     }
 
-    // Mevcut randevu süresini hesapla
+    // Mevcut randevu bilgilerini al
+    const appointmentType = event.getTag('appointmentType');
     const currentStart = event.getStartTime();
     const currentEnd = event.getEndTime();
     const durationMs = currentEnd.getTime() - currentStart.getTime();
@@ -1651,7 +1663,52 @@ function updateAppointment(eventId, newDate, newTime) {
     const newStartDateTime = new Date(newDate + 'T' + newTime + ':00');
     const newEndDateTime = new Date(newStartDateTime.getTime() + durationMs);
 
-    // Randevuyu güncelle
+    // YÖNETİM RANDEVUSU → VALİDATION BYPASS
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+      event.setTime(newStartDateTime, newEndDateTime);
+      log.info('Yönetim randevusu güncellendi (validation bypass):', eventId);
+      return { success: true, message: 'Randevu başarıyla güncellendi' };
+    }
+
+    // NORMAL RANDEVULAR → VALİDATION YAP
+    const hour = parseInt(newTime.split(':')[0]);
+
+    // 1. SLOT KONTROLÜ: Aynı saatte başka randevu var mı? (kendisi hariç)
+    const overlappingEvents = calendar.getEvents(newStartDateTime, newEndDateTime);
+    const otherEvents = overlappingEvents.filter(e => e.getId() !== eventId);
+
+    if (otherEvents.length > 0) {
+      return {
+        success: false,
+        error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+      };
+    }
+
+    // 2. TESLİM RANDEVUSU → GÜNLÜK LİMİT KONTROLÜ
+    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
+      const data = getData();
+      const maxDaily = data.settings?.maxDaily || 4;
+
+      // O gündeki teslim randevularını say (kendisi hariç)
+      const dayStart = new Date(newDate + 'T00:00:00');
+      const dayEnd = new Date(newDate + 'T23:59:59');
+      const dayEvents = calendar.getEvents(dayStart, dayEnd);
+
+      const deliveryCount = dayEvents.filter(e => {
+        const type = e.getTag('appointmentType');
+        const id = e.getId();
+        return (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) && id !== eventId;
+      }).length;
+
+      if (deliveryCount >= maxDaily) {
+        return {
+          success: false,
+          error: `Bu gün için teslim randevuları dolu (maksimum ${maxDaily}).`
+        };
+      }
+    }
+
+    // VALİDATION BAŞARILI → Randevuyu güncelle
     event.setTime(newStartDateTime, newEndDateTime);
 
     log.info('Randevu güncellendi:', eventId, newDate, newTime);
@@ -1662,6 +1719,94 @@ function updateAppointment(eventId, newDate, newTime) {
 
   } catch (error) {
     log.error('updateAppointment hatası:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Admin panel randevu düzenleme için o günün mevcut slotlarını döndür
+ * @param {string} date - Tarih (YYYY-MM-DD)
+ * @param {string} currentEventId - Düzenlenmekte olan randevunun ID'si (hariç tutulacak)
+ * @param {string} appointmentType - Randevu tipi ('delivery', 'meeting', 'management')
+ * @returns {object} - { success, availableSlots: ['09:00', '10:00', ...], dailyLimitReached: boolean }
+ */
+function getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
+  try {
+    // Parametreleri valide et
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+    }
+
+    const calendar = getCalendar();
+    const data = getData();
+    const settings = data.settings || {};
+    const interval = parseInt(settings.interval) || 60;
+
+    // O günün başlangıç ve bitiş zamanları
+    const dayStart = new Date(date + 'T00:00:00');
+    const dayEnd = new Date(date + 'T23:59:59');
+
+    // O gündeki tüm randevuları çek
+    const dayEvents = calendar.getEvents(dayStart, dayEnd);
+
+    // Dolu slotları bul (currentEventId hariç)
+    const occupiedSlots = [];
+    let deliveryCount = 0;
+
+    dayEvents.forEach(event => {
+      const eventId = event.getId();
+
+      // Düzenlenmekte olan randevuyu hariç tut
+      if (eventId === currentEventId) return;
+
+      // Slot'u kaydet
+      const startTime = event.getStartTime();
+      const hours = String(startTime.getHours()).padStart(2, '0');
+      const minutes = String(startTime.getMinutes()).padStart(2, '0');
+      occupiedSlots.push(`${hours}:${minutes}`);
+
+      // Teslim randevularını say
+      const type = event.getTag('appointmentType');
+      if (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+        deliveryCount++;
+      }
+    });
+
+    // Teslim randevuları için günlük limit kontrolü
+    let dailyLimitReached = false;
+    if (appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+      const maxDaily = parseInt(settings.maxDaily) || 4;
+      if (deliveryCount >= maxDaily) {
+        dailyLimitReached = true;
+      }
+    }
+
+    // Tüm olası slotları oluştur (11:00 - 20:00 arası)
+    const allSlots = [];
+    const startHour = 11;
+    const endHour = 20;
+
+    for (let hour = startHour; hour <= endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += interval) {
+        const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+        allSlots.push(timeStr);
+      }
+    }
+
+    // Boş slotları filtrele
+    const availableSlots = allSlots.filter(slot => !occupiedSlots.includes(slot));
+
+    return {
+      success: true,
+      availableSlots: availableSlots,
+      dailyLimitReached: dailyLimitReached,
+      occupiedSlots: occupiedSlots,
+      deliveryCount: deliveryCount,
+      maxDaily: parseInt(settings.maxDaily) || 4
+    };
+
+  } catch (error) {
+    log.error('getAvailableSlotsForEdit hatası:', error);
     return { success: false, error: error.toString() };
   }
 }
@@ -1977,7 +2122,6 @@ function createAppointment(params) {
     }
 
     // 2. Rate limiting - IP veya fingerprint bazlı
-    // IP adresi almak için e.parameter'dan veya customerPhone+email hash'i kullanabiliriz
     const identifier = customerPhone + '_' + customerEmail; // Basit bir identifier
     const rateLimit = checkRateLimit(identifier);
 
@@ -2052,7 +2196,8 @@ function createAppointment(params) {
       date,
       hour,
       appointmentType,
-      staffId
+      staffId,
+      isVipLink
     });
 
     if (!validation.valid) {
@@ -2116,9 +2261,11 @@ function createAppointment(params) {
                            existingTitle.includes('(OK)') ||
                            existingTitle.includes('(HMK)');
 
-      // VIP link üzerine VIP link → OK (max 2 VIP randevu)
-      if (isVipLink && existingIsVip) {
-        log.info('VIP link: 2. randevu oluşturuluyor (1 mevcut VIP randevu var)');
+      // Yeni randevu VIP mi? (string/boolean karşılaştırması)
+      const newIsVip = isVipLink === true || isVipLink === 'true';
+
+      // VIP LINK → HER ZAMAN 2. RANDEVU EKLENEBİLİR (mevcut randevu ne olursa olsun)
+      if (newIsVip) {
         // OK, devam et
       }
       // Yönetim randevusu üzerine → OK
@@ -2204,6 +2351,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
     event.setTag('staffId', String(staffId));
     event.setTag('customerPhone', sanitizedCustomerPhone);
     event.setTag('customerEmail', sanitizedCustomerEmail);
+    event.setTag('customerNote', sanitizedCustomerNote || '');
     event.setTag('shiftType', shiftType);
     event.setTag('appointmentType', appointmentType);
     event.setTag('isVipLink', isVipLink ? 'true' : 'false');

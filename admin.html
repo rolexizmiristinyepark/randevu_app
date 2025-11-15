@@ -230,17 +230,38 @@
         <div class="modal-content">
             <div class="modal-body">
                 <h3 style="margin-bottom: 20px;">Randevu Düzenle</h3>
-                <div class="input-group">
-                    <label for="editAppointmentDate">Tarih</label>
-                    <input type="date" id="editAppointmentDate">
+
+                <!-- Uyarı mesajı (günlük limit doluysa) -->
+                <div id="editAppointmentWarning" style="display: none; padding: 12px; background: #FFF3CD; border: 1px solid #FFC107; border-radius: 2px; margin-bottom: 16px; font-size: 13px; color: #856404;"></div>
+
+                <!-- Takvim -->
+                <div id="editAppointmentCalendarSection">
+                    <div class="calendar-container">
+                        <div class="calendar-header">
+                            <h2 id="editCurrentMonth" style="font-size: 16px;"></h2>
+                            <div class="calendar-nav">
+                                <button class="nav-btn" id="editPrevMonthBtn">◀</button>
+                                <button class="nav-btn" id="editNextMonthBtn">▶</button>
+                            </div>
+                        </div>
+                        <div class="calendar-grid" id="editCalendarGrid"></div>
+                    </div>
                 </div>
-                <div class="input-group">
-                    <label for="editAppointmentTime">Saat</label>
-                    <input type="time" id="editAppointmentTime">
+
+                <!-- Slot Seçimi (gün seçildikten sonra görünecek) -->
+                <div id="editAppointmentSlotsSection" style="display: none; margin-top: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Saat Seçin</label>
+                    <div id="editAppointmentTimeSlots" class="time-slots-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
+                        <!-- Slotlar JavaScript ile doldurulacak -->
+                    </div>
+                    <!-- Hidden inputs to store selected date and time -->
+                    <input type="hidden" id="editAppointmentDate">
+                    <input type="hidden" id="editAppointmentTime">
                 </div>
+
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
-                    <button class="btn" id="saveEditAppointmentBtn">Kaydet</button>
+                    <button class="btn" id="saveEditAppointmentBtn" disabled>Kaydet</button>
                 </div>
             </div>
         </div>
