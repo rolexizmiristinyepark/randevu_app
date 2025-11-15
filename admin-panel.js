@@ -906,6 +906,8 @@
 
             // Tarih için mevcut slotları yükle ve slot butonları olarak göster
             async loadAvailableSlots(date, currentEventId, appointmentType, currentTime = null) {
+                console.log('🔍 loadAvailableSlots called with:', {date, currentEventId, appointmentType, currentTime});
+
                 const slotsContainer = document.getElementById('editAppointmentTimeSlots');
                 const hiddenInput = document.getElementById('editAppointmentTime');
                 const warningDiv = document.getElementById('editAppointmentWarning');
@@ -913,6 +915,7 @@
 
                 // YÖNETİM RANDEVUSU → Tüm kontrolleri bypass et
                 if (appointmentType === 'management') {
+                    console.log('✅ Management appointment - bypassing all checks');
                     // Tüm slotları serbest bırak (11:00-20:00 arası, 60 dakika aralıklarla)
                     slotsContainer.innerHTML = '';
                     const allSlots = [];
@@ -954,6 +957,7 @@
                 }
 
                 // NORMAL RANDEVULAR → Slot kontrolü yap
+                console.log('📞 Calling API: getAvailableSlotsForEdit');
                 slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Yükleniyor...</div>';
 
                 try {
@@ -962,6 +966,7 @@
                         currentEventId: currentEventId,
                         appointmentType: appointmentType
                     });
+                    console.log('📥 API Response received:', result);
 
                     if (result.success) {
                         // Günlük limit kontrolü
@@ -1021,6 +1026,10 @@
                             saveBtn.disabled = true;
                         }
                     } else {
+                        console.error('API result.success = false');
+                        console.error('API Error:', result.error);
+                        console.error('Full API result:', result);
+                        console.error('Parameters sent:', {date, currentEventId, appointmentType, currentTime});
                         UI.showAlert('❌ Slot bilgisi alınamadı: ' + result.error, 'error');
                         slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Hata oluştu</div>';
                         saveBtn.disabled = true;
