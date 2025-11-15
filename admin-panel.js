@@ -867,7 +867,7 @@
             },
 
             // Randevu düzenleme modal'ini aç
-            async openEditModal(appointment) {
+            openEditModal(appointment) {
                 // Store current appointment data
                 this.currentEditingAppointment = appointment;
 
@@ -886,167 +886,18 @@
                     const minutes = String(startDate.getMinutes()).padStart(2, '0');
                     const currentTime = `${hours}:${minutes}`;
 
-                    // Set date input value
+                    // Set date and time values
                     document.getElementById('editAppointmentDate').value = dateStr;
+                    document.getElementById('editAppointmentTime').value = currentTime;
 
-                    // Get appointment type
-                    const appointmentType = appointment.extendedProperties?.private?.appointmentType || 'meeting';
+                    // Enable save button if both date and time are set
+                    document.getElementById('saveEditAppointmentBtn').disabled = false;
 
-                    // Show modal first
+                    // Show modal
                     document.getElementById('editAppointmentModal').classList.add('active');
-
-                    // Load available slots for the current date
-                    await this.loadAvailableSlots(dateStr, appointment.id, appointmentType, currentTime);
                 } catch (error) {
                     console.error('Modal açma hatası:', error, appointment);
-                    console.error('Appointment data:', appointment);
-                    UI.showAlert('❌ Randevu tarihi okunamadı: ' + error.message, 'error');
-                }
-            },
-
-            // Tarih için mevcut slotları yükle ve slot butonları olarak göster
-            async loadAvailableSlots(date, currentEventId, appointmentType, currentTime = null) {
-                console.log('🔍 loadAvailableSlots called with:', {date, currentEventId, appointmentType, currentTime});
-
-                const slotsContainer = document.getElementById('editAppointmentTimeSlots');
-                const hiddenInput = document.getElementById('editAppointmentTime');
-                const warningDiv = document.getElementById('editAppointmentWarning');
-                const saveBtn = document.getElementById('saveEditAppointmentBtn');
-
-                // YÖNETİM RANDEVUSU → Tüm kontrolleri bypass et
-                if (appointmentType === 'management') {
-                    console.log('✅ Management appointment - bypassing all checks');
-                    // Tüm slotları serbest bırak (11:00-20:00 arası, 60 dakika aralıklarla)
-                    slotsContainer.innerHTML = '';
-                    const allSlots = [];
-                    for (let hour = 11; hour <= 20; hour++) {
-                        const timeStr = String(hour).padStart(2, '0') + ':00';
-                        allSlots.push(timeStr);
-                    }
-
-                    allSlots.forEach(slot => {
-                        const btn = createElement('button', {
-                            className: 'time-slot-btn' + (slot === currentTime ? ' selected' : ''),
-                            type: 'button'
-                        }, slot);
-
-                        btn.addEventListener('click', () => {
-                            // Tüm butonlardan selected kaldır
-                            slotsContainer.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
-                            // Tıklanan butonu seçili yap
-                            btn.classList.add('selected');
-                            // Hidden input'a değeri yaz
-                            hiddenInput.value = slot;
-                            // Kaydet butonunu aktif et
-                            saveBtn.disabled = false;
-                        });
-
-                        slotsContainer.appendChild(btn);
-                    });
-
-                    // Uyarıyı gizle
-                    warningDiv.style.display = 'none';
-
-                    // Eğer mevcut saat seçiliyse kaydet butonunu aktif et
-                    if (currentTime) {
-                        hiddenInput.value = currentTime;
-                        saveBtn.disabled = false;
-                    }
-
-                    return;
-                }
-
-                // NORMAL RANDEVULAR → Slot kontrolü yap
-                console.log('📞 Calling API: getAvailableSlotsForEdit');
-                slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Yükleniyor...</div>';
-
-                try {
-                    const result = await ApiService.call('getAvailableSlotsForEdit', {
-                        date: date,
-                        currentEventId: currentEventId,
-                        appointmentType: appointmentType
-                    });
-                    console.log('📥 API Response received:', result);
-
-                    if (result.success) {
-                        // Günlük limit kontrolü
-                        if (result.dailyLimitReached) {
-                            warningDiv.textContent = `⚠️ Bu gün için günlük teslim limiti dolu (${result.deliveryCount}/${result.maxDaily}). Lütfen başka bir tarih seçin.`;
-                            warningDiv.style.display = 'block';
-                            slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Bu gün için randevu alınamaz</div>';
-                            saveBtn.disabled = true;
-                            return;
-                        } else {
-                            warningDiv.style.display = 'none';
-                        }
-
-                        // Tüm olası slotları oluştur (11:00-20:00)
-                        const allPossibleSlots = [];
-                        for (let hour = 11; hour <= 20; hour++) {
-                            allPossibleSlots.push(String(hour).padStart(2, '0') + ':00');
-                        }
-
-                        // Container'ı temizle
-                        slotsContainer.innerHTML = '';
-
-                        // Her slotu buton olarak ekle
-                        allPossibleSlots.forEach(slot => {
-                            const isAvailable = result.availableSlots.includes(slot);
-                            const isCurrentTime = slot === currentTime;
-
-                            // Slot butonu oluştur
-                            const btn = createElement('button', {
-                                className: 'time-slot-btn' + (isCurrentTime ? ' selected' : ''),
-                                type: 'button',
-                                disabled: !isAvailable && !isCurrentTime // Mevcut saat her zaman seçilebilir
-                            }, slot);
-
-                            // Sadece müsait slotlara click event ekle
-                            if (isAvailable || isCurrentTime) {
-                                btn.addEventListener('click', () => {
-                                    // Tüm butonlardan selected kaldır
-                                    slotsContainer.querySelectorAll('.time-slot-btn').forEach(b => b.classList.remove('selected'));
-                                    // Tıklanan butonu seçili yap
-                                    btn.classList.add('selected');
-                                    // Hidden input'a değeri yaz
-                                    hiddenInput.value = slot;
-                                    // Kaydet butonunu aktif et
-                                    saveBtn.disabled = false;
-                                });
-                            }
-
-                            slotsContainer.appendChild(btn);
-                        });
-
-                        // Eğer mevcut saat seçiliyse kaydet butonunu aktif et
-                        if (currentTime) {
-                            hiddenInput.value = currentTime;
-                            saveBtn.disabled = false;
-                        } else {
-                            saveBtn.disabled = true;
-                        }
-                    } else {
-                        console.error('API result.success = false');
-                        console.error('API Error:', result.error);
-                        console.error('Full API result:', result);
-                        console.error('Parameters sent:', {date, currentEventId, appointmentType, currentTime});
-                        UI.showAlert('❌ Slot bilgisi alınamadı: ' + result.error, 'error');
-                        slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Hata oluştu</div>';
-                        saveBtn.disabled = true;
-                    }
-                } catch (error) {
-                    console.error('Slot yükleme hatası:', error);
-                    console.error('Error details:', {
-                        date,
-                        currentEventId,
-                        appointmentType,
-                        currentTime,
-                        errorMessage: error.message,
-                        errorStack: error.stack
-                    });
-                    UI.showAlert('❌ Slot yükleme hatası: ' + error.message, 'error');
-                    slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Hata oluştu: ' + error.message + '</div>';
-                    saveBtn.disabled = true;
+                    UI.showAlert('❌ Randevu tarihi okunamadı', 'error');
                 }
             },
 
@@ -1723,19 +1574,17 @@
 
             // ==================== RANDEVU DÜZENLEME MODAL ====================
 
-            // Tarih değiştiğinde slotları yeniden yükle
-            document.getElementById('editAppointmentDate')?.addEventListener('change', (e) => {
-                const newDate = e.target.value;
-                if (!newDate || !Appointments.currentEditingAppointment) return;
+            // Tarih veya saat değiştiğinde kaydet butonunu kontrol et
+            document.getElementById('editAppointmentDate')?.addEventListener('change', () => {
+                const date = document.getElementById('editAppointmentDate').value;
+                const time = document.getElementById('editAppointmentTime').value;
+                document.getElementById('saveEditAppointmentBtn').disabled = !(date && time);
+            });
 
-                const appointmentType = Appointments.currentEditingAppointment.extendedProperties?.private?.appointmentType || 'meeting';
-
-                // Clear current time selection
-                document.getElementById('editAppointmentTime').value = '';
-                document.getElementById('saveEditAppointmentBtn').disabled = true;
-
-                // Load slots for new date
-                Appointments.loadAvailableSlots(newDate, Appointments.currentEditingAppointment.id, appointmentType);
+            document.getElementById('editAppointmentTime')?.addEventListener('change', () => {
+                const date = document.getElementById('editAppointmentDate').value;
+                const time = document.getElementById('editAppointmentTime').value;
+                document.getElementById('saveEditAppointmentBtn').disabled = !(date && time);
             });
 
             // İptal butonu - modal'i kapat
