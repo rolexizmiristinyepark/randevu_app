@@ -510,3 +510,9 @@
         .time-slot-btn:disabled:hover {
             transform: none;
         }
+
+        /* Loading Spinner Animation */
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
