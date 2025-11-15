@@ -1626,7 +1626,7 @@
             // Hide loading overlay and show tabs after everything is loaded
             document.getElementById('loadingOverlay').style.display = 'none';
             document.querySelector('.tabs').style.display = 'flex';
-            document.getElementById('settings').style.display = 'block';
+            // Settings tab is already active by default (has .active class), CSS will show it
         }
 
         // Start initialization when DOM is ready
