@@ -239,9 +239,6 @@
             <div class="modal-body">
                 <h3 style="margin-bottom: 20px;">Randevu Düzenle</h3>
 
-                <!-- Uyarı mesajı (günlük limit doluysa) -->
-                <div id="editAppointmentWarning" style="display: none; padding: 12px; background: #FFF3CD; border: 1px solid #FFC107; border-radius: 2px; margin-bottom: 16px; font-size: 13px; color: #856404;"></div>
-
                 <!-- Tarih Seçimi -->
                 <div class="input-group">
                     <label for="editAppointmentDate">Tarih</label>
@@ -250,11 +247,20 @@
 
                 <!-- Saat Seçimi -->
                 <div class="input-group">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 500;">Saat Seçin</label>
-                    <div id="editAppointmentTimeSlots" class="time-slots-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
-                        <!-- Slotlar JavaScript ile doldurulacak -->
-                    </div>
-                    <input type="hidden" id="editAppointmentTime">
+                    <label for="editAppointmentTime">Saat</label>
+                    <select id="editAppointmentTime">
+                        <option value="">-- Seçin --</option>
+                        <option value="11:00">11:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="13:00">13:00</option>
+                        <option value="14:00">14:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="16:00">16:00</option>
+                        <option value="17:00">17:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="19:00">19:00</option>
+                        <option value="20:00">20:00</option>
+                    </select>
                 </div>
 
                 <div class="modal-footer">
