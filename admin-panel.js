@@ -788,10 +788,6 @@
 
         // ==================== APPOINTMENTS ====================
         const Appointments = {
-            editCurrentMonth: new Date(),
-            editMonthData: {},
-            editSelectedDate: null,
-
             async load() {
                 const filterWeek = document.getElementById('filterWeek').value;
                 const container = document.getElementById('appointmentsList');
@@ -879,15 +875,25 @@
                     // Parse date
                     const startDate = new Date(appointment.start.dateTime || appointment.start.date);
 
-                    // Takvimi başlat (randevunun ayında)
-                    this.editCurrentMonth = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
-                    this.editSelectedDate = null;
+                    // Format date as YYYY-MM-DD for date input
+                    const year = startDate.getFullYear();
+                    const month = String(startDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(startDate.getDate()).padStart(2, '0');
+                    const dateStr = `${year}-${month}-${day}`;
 
-                    // Slot bölümünü gizle
-                    document.getElementById('editAppointmentSlotsSection').style.display = 'none';
+                    // Format time as HH:MM
+                    const hours = String(startDate.getHours()).padStart(2, '0');
+                    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+                    const currentTime = `${hours}:${minutes}`;
 
-                    // Takvimi yükle
-                    this.loadEditMonthData();
+                    // Set date input value
+                    document.getElementById('editAppointmentDate').value = dateStr;
+
+                    // Get appointment type
+                    const appointmentType = appointment.extendedProperties?.private?.appointmentType || 'meeting';
+
+                    // Load available slots for the current date
+                    this.loadAvailableSlots(dateStr, appointment.id, appointmentType, currentTime);
 
                     // Show modal
                     document.getElementById('editAppointmentModal').classList.add('active');
@@ -1026,175 +1032,10 @@
                 }
             },
 
-            // Düzenleme takvimini render et
-            renderEditCalendar() {
-                const year = this.editCurrentMonth.getFullYear();
-                const month = this.editCurrentMonth.getMonth();
-
-                // Ay başlığı
-                const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                                   'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-                document.getElementById('editCurrentMonth').textContent = `${monthNames[month]} ${year}`;
-
-                // Grid'i temizle
-                const grid = document.getElementById('editCalendarGrid');
-                grid.innerHTML = '';
-
-                // Gün başlıkları
-                const dayHeaders = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
-                dayHeaders.forEach(day => {
-                    const header = createElement('div', { className: 'calendar-day-header' }, day);
-                    grid.appendChild(header);
-                });
-
-                // Ayın ilk günü ve son günü
-                const firstDay = new Date(year, month, 1);
-                const lastDay = new Date(year, month + 1, 0);
-
-                // İlk günün haftanın hangi günü olduğunu bul (Pazartesi = 0)
-                let startDay = firstDay.getDay() - 1;
-                if (startDay === -1) startDay = 6; // Pazar
-
-                // Boş hücreler ekle
-                for (let i = 0; i < startDay; i++) {
-                    grid.appendChild(createElement('div', { className: 'calendar-day empty' }));
-                }
-
-                // Günleri ekle
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                for (let day = 1; day <= lastDay.getDate(); day++) {
-                    const date = new Date(year, month, day);
-                    const dateStr = date.toISOString().split('T')[0];
-
-                    const dayElement = createElement('div', { className: 'calendar-day' });
-                    dayElement.textContent = day;
-                    dayElement.dataset.date = dateStr;
-
-                    // Bugün
-                    if (date.getTime() === today.getTime()) {
-                        dayElement.classList.add('today');
-                    }
-
-                    // Geçmiş günler
-                    if (date < today) {
-                        dayElement.classList.add('past');
-                    }
-
-                    // Seçili gün
-                    if (this.editSelectedDate && dateStr === this.editSelectedDate) {
-                        dayElement.classList.add('selected');
-                    }
-
-                    // Dolu günler (monthData'dan)
-                    const dayData = this.editMonthData[dateStr];
-                    if (dayData && dayData.blocked) {
-                        dayElement.classList.add('blocked');
-                        dayElement.title = `Bu gün için teslim kotası dolu (${dayData.count}/${dayData.max})`;
-                    }
-
-                    // Click event
-                    if (date >= today && (!dayData || !dayData.blocked)) {
-                        dayElement.addEventListener('click', () => this.selectEditDate(dateStr));
-                    }
-
-                    grid.appendChild(dayElement);
-                }
-            },
-
-            // Ay için randevu verilerini yükle
-            async loadEditMonthData() {
-                const appointmentType = this.currentEditingAppointment?.extendedProperties?.private?.appointmentType || 'meeting';
-
-                // Yönetim randevuları için blokaj yok
-                if (appointmentType === 'management') {
-                    this.editMonthData = {};
-                    this.renderEditCalendar();
-                    return;
-                }
-
-                const year = this.editCurrentMonth.getFullYear();
-                const month = String(this.editCurrentMonth.getMonth() + 1).padStart(2, '0');
-                const monthStr = `${year}-${month}`;
-
-                try {
-                    const result = await ApiService.call('getMonthAppointments', { month: monthStr });
-
-                    if (result.success) {
-                        // Her gün için teslim randevularını say
-                        const dailyCounts = {};
-                        const settings = await ApiService.call('getSettings');
-                        const maxDaily = settings.maxDaily || 4;
-
-                        result.appointments.forEach(apt => {
-                            if (apt.appointmentType === 'delivery') {
-                                const date = apt.date; // YYYY-MM-DD
-                                dailyCounts[date] = (dailyCounts[date] || 0) + 1;
-                            }
-                        });
-
-                        // Dolu günleri işaretle
-                        this.editMonthData = {};
-                        Object.keys(dailyCounts).forEach(date => {
-                            if (dailyCounts[date] >= maxDaily) {
-                                this.editMonthData[date] = {
-                                    blocked: true,
-                                    count: dailyCounts[date],
-                                    max: maxDaily
-                                };
-                            }
-                        });
-
-                        this.renderEditCalendar();
-                    }
-                } catch (error) {
-                    console.error('Ay verileri yüklenemedi:', error);
-                }
-            },
-
-            // Tarih seç ve slotları göster
-            selectEditDate(dateStr) {
-                this.editSelectedDate = dateStr;
-                this.renderEditCalendar();
-
-                // Hidden input'a yaz
-                document.getElementById('editAppointmentDate').value = dateStr;
-
-                // Slot bölümünü göster
-                document.getElementById('editAppointmentSlotsSection').style.display = 'block';
-
-                // Randevu tipini belirle
-                const appointmentType = this.currentEditingAppointment?.extendedProperties?.private?.appointmentType || 'meeting';
-
-                // Mevcut randevunun saati
-                const startDate = new Date(this.currentEditingAppointment.start.dateTime || this.currentEditingAppointment.start.date);
-                const hours = String(startDate.getHours()).padStart(2, '0');
-                const minutes = String(startDate.getMinutes()).padStart(2, '0');
-                const currentTime = `${hours}:${minutes}`;
-
-                // Slotları yükle
-                this.loadAvailableSlots(dateStr, this.currentEditingAppointment.id, appointmentType, currentTime);
-            },
-
-            // Ay değiştir
-            changeEditMonth(direction) {
-                this.editCurrentMonth = new Date(
-                    this.editCurrentMonth.getFullYear(),
-                    this.editCurrentMonth.getMonth() + direction,
-                    1
-                );
-                this.loadEditMonthData();
-            },
-
             // Modal'i kapat
             closeEditModal() {
                 document.getElementById('editAppointmentModal').classList.remove('active');
                 this.currentEditingAppointment = null;
-                this.editSelectedDate = null;
-
-                // Slot bölümünü gizle
-                document.getElementById('editAppointmentSlotsSection').style.display = 'none';
             },
 
             // Randevu düzenlemeyi kaydet
@@ -1864,13 +1705,19 @@
 
             // ==================== RANDEVU DÜZENLEME MODAL ====================
 
-            // Ay değiştirme butonları
-            document.getElementById('editPrevMonthBtn')?.addEventListener('click', () => {
-                Appointments.changeEditMonth(-1);
-            });
+            // Tarih değiştiğinde slotları yeniden yükle
+            document.getElementById('editAppointmentDate')?.addEventListener('change', (e) => {
+                const newDate = e.target.value;
+                if (!newDate || !Appointments.currentEditingAppointment) return;
 
-            document.getElementById('editNextMonthBtn')?.addEventListener('click', () => {
-                Appointments.changeEditMonth(1);
+                const appointmentType = Appointments.currentEditingAppointment.extendedProperties?.private?.appointmentType || 'meeting';
+
+                // Clear current time selection
+                document.getElementById('editAppointmentTime').value = '';
+                document.getElementById('saveEditAppointmentBtn').disabled = true;
+
+                // Load slots for new date
+                Appointments.loadAvailableSlots(newDate, Appointments.currentEditingAppointment.id, appointmentType);
             });
 
             // İptal butonu - modal'i kapat
