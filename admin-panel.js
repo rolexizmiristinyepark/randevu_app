@@ -867,7 +867,7 @@
             },
 
             // Randevu düzenleme modal'ini aç
-            openEditModal(appointment) {
+            async openEditModal(appointment) {
                 // Store current appointment data
                 this.currentEditingAppointment = appointment;
 
@@ -892,14 +892,15 @@
                     // Get appointment type
                     const appointmentType = appointment.extendedProperties?.private?.appointmentType || 'meeting';
 
-                    // Load available slots for the current date
-                    this.loadAvailableSlots(dateStr, appointment.id, appointmentType, currentTime);
-
-                    // Show modal
+                    // Show modal first
                     document.getElementById('editAppointmentModal').classList.add('active');
+
+                    // Load available slots for the current date
+                    await this.loadAvailableSlots(dateStr, appointment.id, appointmentType, currentTime);
                 } catch (error) {
                     console.error('Modal açma hatası:', error, appointment);
-                    UI.showAlert('❌ Randevu tarihi okunamadı', 'error');
+                    console.error('Appointment data:', appointment);
+                    UI.showAlert('❌ Randevu tarihi okunamadı: ' + error.message, 'error');
                 }
             },
 
@@ -1026,8 +1027,16 @@
                     }
                 } catch (error) {
                     console.error('Slot yükleme hatası:', error);
-                    UI.showAlert('❌ Slot yükleme hatası', 'error');
-                    slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Hata oluştu</div>';
+                    console.error('Error details:', {
+                        date,
+                        currentEventId,
+                        appointmentType,
+                        currentTime,
+                        errorMessage: error.message,
+                        errorStack: error.stack
+                    });
+                    UI.showAlert('❌ Slot yükleme hatası: ' + error.message, 'error');
+                    slotsContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; color: #999; padding: 20px;">Hata oluştu: ' + error.message + '</div>';
                     saveBtn.disabled = true;
                 }
             },
