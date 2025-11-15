@@ -922,7 +922,8 @@ label {
 /* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
 
 .management-sub-options {
-    margin-top: 4px;
+    margin-top: 10px;
+    margin-bottom: 10px;
     display: flex;
     flex-direction: column;
     gap: 10px;
@@ -950,7 +951,7 @@ label {
     transition: all 0.3s ease;
     font-family: 'Montserrat', sans-serif;
     text-transform: uppercase;
-    box-shadow: 0 4px 12px rgba(201, 165, 90, 0.3);
+    box-shadow: none;
     position: relative;
     overflow: hidden;
 }
@@ -973,20 +974,18 @@ label {
 .management-sub-btn:hover {
     background: linear-gradient(135deg, #D4B16A 0%, #C9A55A 100%);
     transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(201, 165, 90, 0.4);
     border-color: #D4B16A;
 }
 
 .management-sub-btn:active {
     transform: translateY(0);
-    box-shadow: 0 2px 8px rgba(201, 165, 90, 0.3);
 }
 
 /* Seçili yönetim butonu */
 .management-sub-btn.selected {
     background: linear-gradient(135deg, #D4B16A 0%, #C9A55A 100%);
     border-color: #D4B16A;
-    box-shadow: 0 0 0 3px rgba(201, 165, 90, 0.3), 0 6px 16px rgba(201, 165, 90, 0.5);
+    box-shadow: 0 0 0 3px rgba(201, 165, 90, 0.3);
     transform: scale(1.02);
     font-weight: 600;
 }
