@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <script type="module" crossorigin src="/randevu_app/assets/admin-B5P99ZIH.js"></script>
+  <script type="module" crossorigin src="/randevu_app/assets/admin-6Jzxt8lo.js"></script>
   <link rel="modulepreload" crossorigin href="/randevu_app/assets/monitoring-DfJvXpdi.js">
   <link rel="stylesheet" crossorigin href="/randevu_app/assets/admin-C4AehiHc.css">
 </head>
@@ -236,28 +236,18 @@
                 <!-- Uyarı mesajı (günlük limit doluysa) -->
                 <div id="editAppointmentWarning" style="display: none; padding: 12px; background: #FFF3CD; border: 1px solid #FFC107; border-radius: 2px; margin-bottom: 16px; font-size: 13px; color: #856404;"></div>
 
-                <!-- Takvim -->
-                <div id="editAppointmentCalendarSection">
-                    <div class="calendar-container">
-                        <div class="calendar-header">
-                            <h2 id="editCurrentMonth" style="font-size: 16px;"></h2>
-                            <div class="calendar-nav">
-                                <button class="nav-btn" id="editPrevMonthBtn">◀</button>
-                                <button class="nav-btn" id="editNextMonthBtn">▶</button>
-                            </div>
-                        </div>
-                        <div class="calendar-grid" id="editCalendarGrid"></div>
-                    </div>
+                <!-- Tarih Seçimi -->
+                <div class="input-group">
+                    <label for="editAppointmentDate">Tarih</label>
+                    <input type="date" id="editAppointmentDate">
                 </div>
 
-                <!-- Slot Seçimi (gün seçildikten sonra görünecek) -->
-                <div id="editAppointmentSlotsSection" style="display: none; margin-top: 20px;">
+                <!-- Saat Seçimi -->
+                <div class="input-group">
                     <label style="display: block; margin-bottom: 8px; font-weight: 500;">Saat Seçin</label>
                     <div id="editAppointmentTimeSlots" class="time-slots-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;">
                         <!-- Slotlar JavaScript ile doldurulacak -->
                     </div>
-                    <!-- Hidden inputs to store selected date and time -->
-                    <input type="hidden" id="editAppointmentDate">
                     <input type="hidden" id="editAppointmentTime">
                 </div>
 
