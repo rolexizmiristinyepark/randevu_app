@@ -1764,6 +1764,11 @@
                     Appointments.closeAssignStaffModal();
                 }
             });
+
+            // Hide loading overlay and show tabs after everything is loaded
+            document.getElementById('loadingOverlay').style.display = 'none';
+            document.querySelector('.tabs').style.display = 'flex';
+            document.getElementById('settings').style.display = 'block';
         }
 
         // Start initialization when DOM is ready
