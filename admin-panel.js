@@ -10,6 +10,54 @@
         // Export CONFIG to window for ES6 modules to access
         window.CONFIG = CONFIG;
 
+        // ==================== BUTTON UTILS ====================
+        const ButtonUtils = {
+            /**
+             * Set button to loading state
+             * @param {HTMLElement|string} button - Button element or ID
+             * @param {string} loadingText - Optional loading text
+             */
+            setLoading(button, loadingText = null) {
+                const btn = typeof button === 'string' ? document.getElementById(button) : button;
+                if (!btn) return;
+
+                // Store original content
+                if (!btn.dataset.originalText) {
+                    btn.dataset.originalText = btn.textContent;
+                }
+
+                // Set loading state
+                btn.classList.add('loading');
+                btn.disabled = true;
+
+                // Update text if provided
+                if (loadingText) {
+                    btn.textContent = loadingText;
+                }
+            },
+
+            /**
+             * Reset button from loading state
+             * @param {HTMLElement|string} button - Button element or ID
+             * @param {string} newText - Optional new text
+             */
+            reset(button, newText = null) {
+                const btn = typeof button === 'string' ? document.getElementById(button) : button;
+                if (!btn) return;
+
+                // Reset loading state
+                btn.classList.remove('loading');
+                btn.disabled = false;
+
+                // Restore text
+                if (newText) {
+                    btn.textContent = newText;
+                } else if (btn.dataset.originalText) {
+                    btn.textContent = btn.dataset.originalText;
+                }
+            }
+        };
+
         // ==================== DATA ====================
         const Data = {
             staff: [],
@@ -49,6 +97,9 @@
         // ==================== API ====================
         const API = {
             async save() {
+                const btn = document.getElementById('saveSettingsBtn');
+                ButtonUtils.setLoading(btn, 'Kaydediliyor');
+
                 try {
                     const response = await ApiService.call('saveSettings', {
                         interval: document.getElementById('interval').value,
@@ -63,6 +114,8 @@
                     }
                 } catch (error) {
                     UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+                } finally {
+                    ButtonUtils.reset(btn);
                 }
             },
 
@@ -472,6 +525,9 @@
                     }
                 });
 
+                const btn = document.getElementById('saveShiftsBtn');
+                ButtonUtils.setLoading(btn, 'Kaydediliyor');
+
                 try {
                     const response = await ApiService.call('saveShifts', {
                         shifts: JSON.stringify(shiftsData)
@@ -487,6 +543,8 @@
                     }
                 } catch (error) {
                     UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+                } finally {
+                    ButtonUtils.reset(btn);
                 }
             },
 
@@ -813,17 +871,24 @@
                 // Store current appointment data
                 this.currentEditingAppointment = appointment;
 
-                // Parse date and time
-                const startDate = new Date(appointment.start);
-                const dateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
-                const timeStr = startDate.toTimeString().split(':').slice(0, 2).join(':'); // HH:MM
+                try {
+                    // Parse date and time
+                    const startDate = new Date(appointment.start.dateTime || appointment.start.date);
+                    const dateStr = startDate.toISOString().split('T')[0]; // YYYY-MM-DD
+                    const hours = String(startDate.getHours()).padStart(2, '0');
+                    const minutes = String(startDate.getMinutes()).padStart(2, '0');
+                    const timeStr = `${hours}:${minutes}`;
 
-                // Fill modal inputs
-                document.getElementById('editAppointmentDate').value = dateStr;
-                document.getElementById('editAppointmentTime').value = timeStr;
+                    // Fill modal inputs
+                    document.getElementById('editAppointmentDate').value = dateStr;
+                    document.getElementById('editAppointmentTime').value = timeStr;
 
-                // Show modal
-                document.getElementById('editAppointmentModal').classList.add('active');
+                    // Show modal
+                    document.getElementById('editAppointmentModal').classList.add('active');
+                } catch (error) {
+                    console.error('Modal açma hatası:', error, appointment);
+                    UI.showAlert('❌ Randevu tarihi okunamadı', 'error');
+                }
             },
 
             // Modal'i kapat
@@ -908,11 +973,14 @@
                 if (!this.currentAssigningAppointment) return;
 
                 const staffId = document.getElementById('assignStaffSelect').value;
+                const btn = document.getElementById('saveAssignStaffBtn');
 
                 if (!staffId) {
                     UI.showAlert('❌ Lütfen personel seçin', 'error');
                     return;
                 }
+
+                ButtonUtils.setLoading(btn, 'Atanıyor');
 
                 try {
                     const result = await ApiService.call('assignStaffToAppointment', {
@@ -929,6 +997,8 @@
                     }
                 } catch (error) {
                     UI.showAlert('❌ Atama hatası', 'error');
+                } finally {
+                    ButtonUtils.reset(btn);
                 }
             },
 
