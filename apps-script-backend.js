@@ -57,6 +57,64 @@ const log = {
   infoPII: (message, email, phone) => DEBUG && console.info(message, maskEmail(email), maskPhone(phone))
 };
 
+// ==================== LOCK SERVICE (RACE CONDITION PROTECTION) ====================
+/**
+ * Critical section'ları kilitleyerek race condition'ı önler
+ * @param {Function} fn - Kilitli çalıştırılacak fonksiyon
+ * @param {number} timeout - Lock timeout (ms), default 30000 (30 saniye)
+ * @param {number} maxRetries - Başarısız olursa kaç kere deneyeceği, default 3
+ * @returns {*} Fonksiyonun return değeri
+ * @throws {Error} Lock alınamazsa veya timeout olursa
+ *
+ * @example
+ * const result = withLock(() => {
+ *   const data = getData();
+ *   data.counter++;
+ *   saveData(data);
+ *   return data.counter;
+ * });
+ */
+function withLock(fn, timeout = 30000, maxRetries = 3) {
+  const lock = LockService.getScriptLock();
+  let lastError = null;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Lock'u almayı dene
+      const hasLock = lock.tryLock(timeout);
+
+      if (!hasLock) {
+        throw new Error(`Lock timeout after ${timeout}ms (attempt ${attempt}/${maxRetries})`);
+      }
+
+      try {
+        // Critical section'ı çalıştır
+        log.info(`Lock acquired (attempt ${attempt}/${maxRetries})`);
+        const result = fn();
+        log.info('Lock operation completed successfully');
+        return result;
+      } finally {
+        // Her durumda lock'u serbest bırak
+        lock.releaseLock();
+        log.info('Lock released');
+      }
+    } catch (error) {
+      lastError = error;
+      log.error(`Lock attempt ${attempt}/${maxRetries} failed:`, error.message);
+
+      // Son deneme değilse, kısa bir süre bekle (exponential backoff)
+      if (attempt < maxRetries) {
+        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Max 5 saniye
+        log.info(`Waiting ${waitMs}ms before retry...`);
+        Utilities.sleep(waitMs);
+      }
+    }
+  }
+
+  // Tüm denemeler başarısız
+  throw new Error(`Failed to acquire lock after ${maxRetries} attempts. Last error: ${lastError.message}`);
+}
+
 const CONFIG = {
   // Calendar & Storage
   CALENDAR_ID: 'primary', // veya 'sizin@gmail.com'
@@ -1354,17 +1412,20 @@ function addStaff(name, phone, email) {
       return { success: false, error: validationResult.error };
     }
 
-    const data = getData();
-    const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
-    data.staff.push({
-      id: newId,
-      name: validationResult.name,
-      phone: validationResult.phone,
-      email: validationResult.email,
-      active: true
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
+      data.staff.push({
+        id: newId,
+        name: validationResult.name,
+        phone: validationResult.phone,
+        email: validationResult.email,
+        active: true
+      });
+      saveData(data);
+      return { success: true, data: data.staff };
     });
-    saveData(data);
-    return { success: true, data: data.staff };
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1373,14 +1434,17 @@ function addStaff(name, phone, email) {
 // Çalışan aktif/pasif yap
 function toggleStaff(staffId) {
   try {
-    const data = getData();
-    const staff = data.staff.find(s => s.id === parseInt(staffId));
-    if (staff) {
-      staff.active = !staff.active;
-      saveData(data);
-      return { success: true, data: data.staff };
-    }
-    return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      const staff = data.staff.find(s => s.id === parseInt(staffId));
+      if (staff) {
+        staff.active = !staff.active;
+        saveData(data);
+        return { success: true, data: data.staff };
+      }
+      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+    });
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1389,18 +1453,21 @@ function toggleStaff(staffId) {
 // Çalışan sil
 function removeStaff(staffId) {
   try {
-    const data = getData();
-    data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
 
-    // Vardiyalardan da sil
-    Object.keys(data.shifts).forEach(date => {
-      if (data.shifts[date][staffId]) {
-        delete data.shifts[date][staffId];
-      }
+      // Vardiyalardan da sil
+      Object.keys(data.shifts).forEach(date => {
+        if (data.shifts[date][staffId]) {
+          delete data.shifts[date][staffId];
+        }
+      });
+
+      saveData(data);
+      return { success: true, data: data.staff };
     });
-
-    saveData(data);
-    return { success: true, data: data.staff };
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1415,16 +1482,19 @@ function updateStaff(staffId, name, phone, email) {
       return { success: false, error: validationResult.error };
     }
 
-    const data = getData();
-    const staff = data.staff.find(s => s.id === parseInt(staffId));
-    if (staff) {
-      staff.name = validationResult.name;
-      staff.phone = validationResult.phone;
-      staff.email = validationResult.email;
-      saveData(data);
-      return { success: true, data: data.staff };
-    }
-    return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      const staff = data.staff.find(s => s.id === parseInt(staffId));
+      if (staff) {
+        staff.name = validationResult.name;
+        staff.phone = validationResult.phone;
+        staff.email = validationResult.email;
+        saveData(data);
+        return { success: true, data: data.staff };
+      }
+      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+    });
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1456,13 +1526,16 @@ function saveSettings(params) {
       return { success: false, error: `Günlük maksimum randevu sayısı ${VALIDATION.MAX_DAILY_MIN}-${VALIDATION.MAX_DAILY_MAX} arasında olmalıdır` };
     }
 
-    const data = getData();
-    data.settings = {
-      interval: interval,
-      maxDaily: maxDaily
-    };
-    saveData(data);
-    return { success: true, data: data.settings };
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      data.settings = {
+        interval: interval,
+        maxDaily: maxDaily
+      };
+      saveData(data);
+      return { success: true, data: data.settings };
+    });
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1528,16 +1601,19 @@ function getConfig() {
 // Vardiyaları kaydet
 function saveShifts(shiftsData) {
   try {
-    const data = getData();
-    // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
-    Object.keys(shiftsData).forEach(date => {
-      if (!data.shifts[date]) {
-        data.shifts[date] = {};
-      }
-      data.shifts[date] = shiftsData[date];
+    // Lock ile getData → modify → saveData atomik yap
+    return withLock(() => {
+      const data = getData();
+      // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
+      Object.keys(shiftsData).forEach(date => {
+        if (!data.shifts[date]) {
+          data.shifts[date] = {};
+        }
+        data.shifts[date] = shiftsData[date];
+      });
+      saveData(data);
+      return { success: true };
     });
-    saveData(data);
-    return { success: true };
   } catch (error) {
     return { success: false, error: error.toString() };
   }
@@ -1663,59 +1739,73 @@ function updateAppointment(eventId, newDate, newTime) {
     const newStartDateTime = new Date(newDate + 'T' + newTime + ':00');
     const newEndDateTime = new Date(newStartDateTime.getTime() + durationMs);
 
-    // YÖNETİM RANDEVUSU → VALİDATION BYPASS
-    if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
-      event.setTime(newStartDateTime, newEndDateTime);
-      log.info('Yönetim randevusu güncellendi (validation bypass):', eventId);
-      return { success: true, message: 'Randevu başarıyla güncellendi' };
-    }
+    // ===== RACE CONDITION PROTECTION =====
+    // updateAppointment için lock (overlap check + update atomik olmalı)
+    let updateResult;
+    try {
+      updateResult = withLock(() => {
+        log.info('Lock acquired - updating appointment');
 
-    // NORMAL RANDEVULAR → VALİDATION YAP
-    const hour = parseInt(newTime.split(':')[0]);
+        // YÖNETİM RANDEVUSU → VALİDATION BYPASS
+        if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+          event.setTime(newStartDateTime, newEndDateTime);
+          log.info('Yönetim randevusu güncellendi (validation bypass):', eventId);
+          return { success: true, message: 'Randevu başarıyla güncellendi' };
+        }
 
-    // 1. SLOT KONTROLÜ: Aynı saatte başka randevu var mı? (kendisi hariç)
-    const overlappingEvents = calendar.getEvents(newStartDateTime, newEndDateTime);
-    const otherEvents = overlappingEvents.filter(e => e.getId() !== eventId);
+        // NORMAL RANDEVULAR → VALİDATION YAP
+        const hour = parseInt(newTime.split(':')[0]);
 
-    if (otherEvents.length > 0) {
+        // 1. SLOT KONTROLÜ: Aynı saatte başka randevu var mı? (kendisi hariç)
+        const overlappingEvents = calendar.getEvents(newStartDateTime, newEndDateTime);
+        const otherEvents = overlappingEvents.filter(e => e.getId() !== eventId);
+
+        if (otherEvents.length > 0) {
+          return {
+            success: false,
+            error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+          };
+        }
+
+        // 2. TESLİM RANDEVUSU → GÜNLÜK LİMİT KONTROLÜ
+        if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
+          const data = getData();
+          const maxDaily = data.settings?.maxDaily || 4;
+
+          // O gündeki teslim randevularını say (kendisi hariç)
+          const dayStart = new Date(newDate + 'T00:00:00');
+          const dayEnd = new Date(newDate + 'T23:59:59');
+          const dayEvents = calendar.getEvents(dayStart, dayEnd);
+
+          const deliveryCount = dayEvents.filter(e => {
+            const type = e.getTag('appointmentType');
+            const id = e.getId();
+            return (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) && id !== eventId;
+          }).length;
+
+          if (deliveryCount >= maxDaily) {
+            return {
+              success: false,
+              error: `Bu gün için teslim randevuları dolu (maksimum ${maxDaily}).`
+            };
+          }
+        }
+
+        // VALİDATION BAŞARILI → Randevuyu güncelle
+        event.setTime(newStartDateTime, newEndDateTime);
+        log.info('Appointment updated successfully - releasing lock');
+        return { success: true, message: 'Randevu başarıyla güncellendi' };
+      });
+    } catch (lockError) {
+      log.error('Lock acquisition failed for update:', lockError.message);
       return {
         success: false,
-        error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+        error: 'Randevu güncelleme sırasında bir hata oluştu. Lütfen tekrar deneyin.'
       };
     }
 
-    // 2. TESLİM RANDEVUSU → GÜNLÜK LİMİT KONTROLÜ
-    if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
-      const data = getData();
-      const maxDaily = data.settings?.maxDaily || 4;
-
-      // O gündeki teslim randevularını say (kendisi hariç)
-      const dayStart = new Date(newDate + 'T00:00:00');
-      const dayEnd = new Date(newDate + 'T23:59:59');
-      const dayEvents = calendar.getEvents(dayStart, dayEnd);
-
-      const deliveryCount = dayEvents.filter(e => {
-        const type = e.getTag('appointmentType');
-        const id = e.getId();
-        return (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) && id !== eventId;
-      }).length;
-
-      if (deliveryCount >= maxDaily) {
-        return {
-          success: false,
-          error: `Bu gün için teslim randevuları dolu (maksimum ${maxDaily}).`
-        };
-      }
-    }
-
-    // VALİDATION BAŞARILI → Randevuyu güncelle
-    event.setTime(newStartDateTime, newEndDateTime);
-
-    log.info('Randevu güncellendi:', eventId, newDate, newTime);
-    return {
-      success: true,
-      message: 'Randevu başarıyla güncellendi'
-    };
+    // Lock'dan dönen sonucu return et
+    return updateResult;
 
   } catch (error) {
     log.error('updateAppointment hatası:', error);
@@ -2212,13 +2302,21 @@ function createAppointment(params) {
 
     log.info('Validation passed - creating appointment');
 
-    // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
-    // Not: validateReservation zaten kontrol ediyor ama backward compatibility için tutuldu
-    // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
-    // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
-    // STANDART: [start, end) interval (start dahil, end hariç)
+    // ===== RACE CONDITION PROTECTION =====
+    // withLock() ile critical section'ı koru (Calendar check + create atomik olmalı)
+    // Bu sayede aynı anda 2 kişi aynı saate randevu alamaz
+    let event;
+    try {
+      event = withLock(() => {
+        log.info('Lock acquired - starting critical section (Calendar check + create)');
 
-    const calendar = getCalendar();
+        // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
+        // Not: validateReservation zaten kontrol ediyor ama backward compatibility için tutuldu
+        // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
+        // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
+        // STANDART: [start, end) interval (start dahil, end hariç)
+
+        const calendar = getCalendar();
 
     // Yeni randevunun epoch-minute aralığı
     const newStart = dateTimeToEpochMinute(date, time);
@@ -2347,14 +2445,34 @@ Bu randevu otomatik olarak oluşturulmuştur.
       location: ''
     });
 
-    // Ek bilgileri tag olarak ekle (extendedProperties yerine) - sanitized değerleri kullan
-    event.setTag('staffId', String(staffId));
-    event.setTag('customerPhone', sanitizedCustomerPhone);
-    event.setTag('customerEmail', sanitizedCustomerEmail);
-    event.setTag('customerNote', sanitizedCustomerNote || '');
-    event.setTag('shiftType', shiftType);
-    event.setTag('appointmentType', appointmentType);
-    event.setTag('isVipLink', isVipLink ? 'true' : 'false');
+        // Ek bilgileri tag olarak ekle (extendedProperties yerine) - sanitized değerleri kullan
+        event.setTag('staffId', String(staffId));
+        event.setTag('customerPhone', sanitizedCustomerPhone);
+        event.setTag('customerEmail', sanitizedCustomerEmail);
+        event.setTag('customerNote', sanitizedCustomerNote || '');
+        event.setTag('shiftType', shiftType);
+        event.setTag('appointmentType', appointmentType);
+        event.setTag('isVipLink', isVipLink ? 'true' : 'false');
+
+        log.info('Calendar event created successfully - releasing lock');
+        return event; // Event'i return et, lock serbest bırakılacak
+      }); // withLock() sonu
+    } catch (lockError) {
+      log.error('Lock acquisition failed:', lockError.message);
+      return {
+        success: false,
+        error: 'Randevu oluşturma sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+      };
+    }
+
+    // Lock işlemi tamamlandı - Event veya error object döndü
+    // Eğer çakışma tespit edildiyse, error object return edilmiştir
+    if (event && event.success === false) {
+      log.info('Calendar conflict detected during lock - returning error');
+      return event; // Error object'i hemen return et, email gönderme
+    }
+
+    // Lock serbest bırakıldı - Email gönderme ve diğer işlemler lock dışında devam edebilir
 
     // Tarih formatla (7 Ekim 2025, Salı) - DateUtils kullan
     const formattedDate = DateUtils.toTurkishDate(date);
@@ -2598,15 +2716,32 @@ function createManualAppointment(params) {
     // Event açıklaması
     const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
 
-    // Event oluştur
-    const calendar = getCalendar();
-    const event = calendar.createEvent(title, startDateTime, endDateTime, { description });
+    // ===== RACE CONDITION PROTECTION =====
+    // Manuel randevu oluşturma için lock (Calendar write atomik olmalı)
+    let event;
+    try {
+      event = withLock(() => {
+        log.info('Lock acquired - creating manual appointment');
 
-    // Tag'leri ekle
-    event.setTag('staffId', String(staffId));
-    event.setTag('appointmentType', appointmentType);
-    event.setTag('customerPhone', sanitizedCustomerPhone);
-    event.setTag('customerEmail', sanitizedCustomerEmail);
+        const calendar = getCalendar();
+        const event = calendar.createEvent(title, startDateTime, endDateTime, { description });
+
+        // Tag'leri ekle
+        event.setTag('staffId', String(staffId));
+        event.setTag('appointmentType', appointmentType);
+        event.setTag('customerPhone', sanitizedCustomerPhone);
+        event.setTag('customerEmail', sanitizedCustomerEmail);
+
+        log.info('Manual appointment created successfully - releasing lock');
+        return event;
+      });
+    } catch (lockError) {
+      log.error('Lock acquisition failed for manual appointment:', lockError.message);
+      return {
+        success: false,
+        error: 'Randevu oluşturma sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+      };
+    }
 
     // YÖNETİM randevusu değilse ve e-posta varsa, müşteriye e-posta gönder
     if (!isManagement && sanitizedCustomerEmail && isValidEmail(sanitizedCustomerEmail)) {
