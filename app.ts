@@ -3,7 +3,6 @@
 
 // Import shared utilities
 import { StringUtils } from './string-utils';
-import { StateManager } from './state-manager';
 import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
 import rolexLogoUrl from './assets/rolex-logo.svg';
@@ -160,51 +159,35 @@ const ButtonUtils = {
 
 // ==================== STATE MANAGEMENT ====================
 
-// AppState instance - Centralized state yönetimi
-const appState = new StateManager({
-    // Calendar state
-    currentMonth: new Date(),
+// Application State - Basit ve performanslı global state
+// StateManager over-engineering olduğu için kaldırıldı (231 satır → 15 satır)
+// Proje ölçeği (tek sayfa, 10-15 state variable) için basit global obje yeterli
 
-    // Selection state
-    selectedDate: null,
-    selectedStaff: null,
-    selectedTime: null,
-    selectedShiftType: null,
-    selectedAppointmentType: null,
+// Calendar state
+let currentMonth = new Date();
 
-    // Data cache
-    staffMembers: [],
-    dayShifts: {},
-    allAppointments: {}, // Tüm ayın randevuları {date: [appointments]}
-    googleCalendarEvents: {}, // Google Calendar'dan gelen etkinlikler {date: [events]}
+// Selection state
+let selectedDate = null;
+let selectedStaff = null;
+let selectedTime = null;
+let selectedShiftType = null;
+let selectedAppointmentType = null;
 
-    // URL state
-    specificStaffId: null, // URL parametresinden gelen staff ID
+// Data cache
+let staffMembers = [];
+let dayShifts = {};
+let allAppointments = {}; // Tüm ayın randevuları {date: [appointments]}
+let googleCalendarEvents = {}; // Google Calendar'dan gelen etkinlikler {date: [events]}
 
-    // Last action
-    lastAppointmentData: null // Son oluşturulan randevu bilgileri
-});
+// URL state
+let specificStaffId = null; // URL parametresinden gelen staff ID
 
-// TODO: Global değişken kullanımını appState.get/set'e geçir
-// Örnek:
-//   - selectedDate yerine appState.get('selectedDate')
-//   - selectedDate = value yerine appState.set('selectedDate', value)
+// Last action
+let lastAppointmentData = null; // Son oluşturulan randevu bilgileri
 
-// Backward compatibility için global değişkenleri tut (kademeli geçiş için)
-const currentMonth = appState.get('currentMonth');
-let selectedDate = appState.get('selectedDate');
-let selectedStaff = appState.get('selectedStaff');
-let selectedTime = appState.get('selectedTime');
-let selectedShiftType = appState.get('selectedShiftType');
-let selectedAppointmentType = appState.get('selectedAppointmentType');
-let staffMembers = appState.get('staffMembers');
-let dayShifts = appState.get('dayShifts');
-let allAppointments = appState.get('allAppointments');
-let googleCalendarEvents = appState.get('googleCalendarEvents');
-let specificStaffId = appState.get('specificStaffId');
-let lastAppointmentData = appState.get('lastAppointmentData');
-let managementLevel = null; // YENİ: Yönetim linki seviyesi (1, 2, 3)
-let isManagementLink = false; // YENİ: Yönetim linki mi?
+// Management link state
+let managementLevel = null; // Yönetim linki seviyesi (1, 2, 3)
+let isManagementLink = false; // Yönetim linki mi?
 
 // Export to window for calendar-integration.js module access
 if (typeof window !== 'undefined') {
