@@ -18,6 +18,7 @@
 // Shared utilities import et
 import { DateUtils } from './date-utils';
 import { StringUtils } from './string-utils';
+import { APPOINTMENT_TYPE_NAMES } from './calendar-config';
 
 // Global scope'tan değişkenleri al
 const CONFIG = window.CONFIG;
@@ -109,14 +110,8 @@ export function addToCalendarGoogle() {
     const startTime = formatDateForGoogle(date);
     const endTime = formatDateForGoogle(endDate);
 
-    // Müşteri takvimi için başlık
-    const customerAppointmentTypeNames = {
-        'delivery': 'Saat Takdimi',
-        'service': 'Servis & Bakım',
-        'consultation': 'Ürün Danışmanlığı',
-        'general': 'Genel Görüşme'
-    };
-    const appointmentTypeName = customerAppointmentTypeNames[appointment.appointmentType] ||
+    // Müşteri takvimi için başlık (shared config kullan)
+    const appointmentTypeName = APPOINTMENT_TYPE_NAMES[appointment.appointmentType] ||
         CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
 
     const eventTitle = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
@@ -159,14 +154,8 @@ export function addToCalendarOutlook() {
     const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
 
-    // Müşteri takvimi için başlık
-    const customerAppointmentTypeNames = {
-        'delivery': 'Saat Takdimi',
-        'service': 'Servis & Bakım',
-        'consultation': 'Ürün Danışmanlığı',
-        'general': 'Genel Görüşme'
-    };
-    const appointmentTypeName = customerAppointmentTypeNames[appointment.appointmentType] ||
+    // Müşteri takvimi için başlık (shared config kullan)
+    const appointmentTypeName = APPOINTMENT_TYPE_NAMES[appointment.appointmentType] ||
         CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
 
     const eventTitle = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
@@ -231,16 +220,8 @@ export function generateICS(startDate, endDate) {
         // İsim formatlaması
         appointment.staffName = StringUtils.toTitleCase(appointment.staffName);
 
-        // Müşteri takvimi için özel isimler
-        const customerAppointmentTypeNames = {
-            'delivery': 'Saat Takdimi',
-            'service': 'Servis & Bakım',
-            'consultation': 'Ürün Danışmanlığı',
-            'general': 'Genel Görüşme'
-        };
-
-        // Müşteri takvimi için randevu türü adı
-        const appointmentTypeName = customerAppointmentTypeNames[appointment.appointmentType] ||
+        // Müşteri takvimi için randevu türü adı (shared config kullan)
+        const appointmentTypeName = APPOINTMENT_TYPE_NAMES[appointment.appointmentType] ||
             CONFIG.APPOINTMENT_TYPES?.find(t => t.value === appointment.appointmentType)?.name || 'Genel';
 
         // Müşteri takvimi için başlık: İzmir İstinyepark Rolex - İlgili (Görüşme Türü)

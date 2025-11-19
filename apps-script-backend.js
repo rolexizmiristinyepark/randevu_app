@@ -279,12 +279,15 @@ const CONFIG = {
   },
 
   // ICS Calendar Texts
+  // ⚠️ SOURCE OF TRUTH: calendar-config.ts (manuel sync gerekli - Apps Script TS import yapamıyor)
   ICS_TEMPLATES: {
     CUSTOMER_TYPES: {
       delivery: 'Saat Takdimi',
-      service: 'Teknik Servis',      // YENİ
-      meeting: 'Genel Görüşme',
-      management: 'Yönetim'           // YENİ
+      service: 'Servis & Bakım',      // Frontend ile sync (Teknik Servis → Servis & Bakım)
+      consultation: 'Ürün Danışmanlığı', // Frontend'den eklendi
+      general: 'Genel Görüşme',       // Frontend'den eklendi
+      meeting: 'Genel Görüşme',       // Alias for 'general'
+      management: 'Yönetim'
     },
     SECTION_TITLE: 'RANDEVU BİLGİLERİ',
     LABELS: {
