@@ -3,6 +3,9 @@ dist/
 .DS_Store
 *.zip
 
+# Local development settings
+.claude/
+
 # Test coverage and reports
 coverage/
 .nyc_output/
