@@ -12,188 +12,6 @@ const AdminAuth = {
     _activityCheckInterval: null,
     _activityHandler: null,
 
-    // Stil tanımlarını inject et (sayfa başına bir kez)
-    _injectStyles() {
-        if (document.getElementById('adminAuthStyles')) return; // Zaten enjekte edilmiş
-
-        const styles = document.createElement('style');
-        styles.id = 'adminAuthStyles';
-        styles.textContent = `
-            /* Admin Auth Modal Styles */
-            .admin-auth-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.7);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 10000;
-            }
-
-            .admin-auth-modal-content {
-                background: white;
-                border-radius: 15px;
-                padding: 40px;
-                max-width: 450px;
-                width: 90%;
-                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-            }
-
-            .admin-auth-title {
-                margin: 0 0 10px 0;
-                color: #333;
-                font-size: 24px;
-                text-align: center;
-            }
-
-            .admin-auth-subtitle {
-                color: #666;
-                text-align: center;
-                margin-bottom: 30px;
-                font-size: 14px;
-            }
-
-            .admin-auth-error {
-                display: none;
-                background: #f8d7da;
-                color: #721c24;
-                padding: 12px;
-                border-radius: 8px;
-                margin-bottom: 20px;
-                font-size: 14px;
-            }
-
-            .admin-auth-error.show {
-                display: block;
-            }
-
-            .admin-auth-input-group {
-                margin-bottom: 20px;
-            }
-
-            .admin-auth-label {
-                display: block;
-                margin-bottom: 8px;
-                color: #555;
-                font-size: 14px;
-                font-weight: 500;
-            }
-
-            .admin-auth-input {
-                width: 100%;
-                padding: 12px;
-                border: 1px solid #E8E8E8;
-                border-radius: 2px;
-                font-size: 14px;
-                font-family: 'Montserrat', monospace, sans-serif;
-                box-sizing: border-box;
-                transition: all 0.3s;
-            }
-
-            .admin-auth-input:focus {
-                outline: none;
-                border-color: #C9A55A;
-                box-shadow: 0 0 0 2px rgba(201, 165, 90, 0.1);
-            }
-
-            .admin-auth-btn {
-                width: 100%;
-                padding: 14px;
-                background: #1A1A2E;
-                color: #FAFAFA;
-                border: 1px solid #1A1A2E;
-                border-radius: 2px;
-                font-size: 12px;
-                font-weight: 500;
-                letter-spacing: 1.5px;
-                text-transform: uppercase;
-                cursor: pointer;
-                transition: all 0.3s;
-                font-family: 'Montserrat', sans-serif;
-            }
-
-            .admin-auth-btn:hover:not(:disabled) {
-                background: #C9A55A;
-                border-color: #C9A55A;
-                transform: translateY(-1px);
-                box-shadow: 0 4px 12px rgba(201, 165, 90, 0.2);
-            }
-
-            .admin-auth-btn:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-            }
-
-            .admin-auth-divider {
-                margin-top: 25px;
-                padding-top: 25px;
-                border-top: 1px solid #E8E8E8;
-                text-align: center;
-            }
-
-            .admin-auth-help-text {
-                color: #757575;
-                font-size: 11px;
-                letter-spacing: 0.5px;
-                margin-bottom: 15px;
-            }
-
-            .admin-auth-btn-secondary {
-                padding: 10px 20px;
-                background: white;
-                color: #1A1A2E;
-                border: 1px solid #E8E8E8;
-                border-radius: 2px;
-                font-size: 11px;
-                font-weight: 500;
-                letter-spacing: 1px;
-                text-transform: uppercase;
-                cursor: pointer;
-                transition: all 0.3s;
-                font-family: 'Montserrat', sans-serif;
-            }
-
-            .admin-auth-btn-secondary:hover:not(:disabled) {
-                background: #FAFAFA;
-                border-color: #C9A55A;
-            }
-
-            .admin-auth-btn-secondary:disabled {
-                opacity: 0.6;
-                cursor: not-allowed;
-            }
-
-            .admin-logout-btn {
-                position: absolute;
-                right: 25px;
-                top: 50%;
-                transform: translateY(-50%);
-                padding: 8px 18px;
-                background: transparent;
-                color: #757575;
-                border: 1px solid #E8E8E8;
-                border-radius: 2px;
-                font-size: 10px;
-                font-weight: 500;
-                letter-spacing: 1px;
-                text-transform: uppercase;
-                cursor: pointer;
-                transition: all 0.3s;
-                font-family: 'Montserrat', sans-serif;
-            }
-
-            .admin-logout-btn:hover {
-                background: #1A1A2E;
-                color: #FAFAFA;
-                border-color: #1A1A2E;
-            }
-        `;
-        document.head.appendChild(styles);
-    },
-
     // API key kontrolü
     isAuthenticated() {
         const savedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
@@ -231,10 +49,8 @@ const AdminAuth = {
 
     // Login modal göster
     showLoginModal() {
-        // Stilleri inject et
-        this._injectStyles();
-
         // Modal HTML oluştur (temiz, inline stil yok)
+        // CSS artık admin.css dosyasında yükleniyor
         const modalHtml = `
             <div id="authModal" class="admin-auth-modal">
                 <div class="admin-auth-modal-content">
@@ -379,9 +195,6 @@ const AdminAuth = {
     addLogoutButton() {
         const header = document.querySelector('.header');
         if (!header) return;
-
-        // Stilleri inject et
-        this._injectStyles();
 
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
