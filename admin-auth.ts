@@ -3,7 +3,7 @@
 // ✅ GÜVENLİK: Inline stil ve event handler'lar kaldırıldı
 // ✅ GÜVENLİK: sessionStorage + 15 dk inaktivite timeout
 
-import { ApiService } from './api-service.ts';
+import { ApiService } from './api-service';
 
 const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',

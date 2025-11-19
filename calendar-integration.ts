@@ -16,8 +16,8 @@
  */
 
 // Shared utilities import et
-import { DateUtils } from './date-utils.js';
-import { StringUtils } from './string-utils.js';
+import { DateUtils } from './date-utils';
+import { StringUtils } from './string-utils';
 
 // Global scope'tan değişkenleri al
 const CONFIG = window.CONFIG;
