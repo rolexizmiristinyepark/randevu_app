@@ -1370,11 +1370,11 @@ const ACTION_HANDLERS = {
   'regenerateApiKey': (e) => AuthService.regenerateApiKey(e.parameter.oldKey),
 
   // Staff management
-  'getStaff': () => getStaff(),
-  'addStaff': (e) => addStaff(e.parameter.name, e.parameter.phone, e.parameter.email),
-  'toggleStaff': (e) => toggleStaff(e.parameter.id),
-  'removeStaff': (e) => removeStaff(e.parameter.id),
-  'updateStaff': (e) => updateStaff(e.parameter.id, e.parameter.name, e.parameter.phone, e.parameter.email),
+  'getStaff': () => StaffService.getStaff(),
+  'addStaff': (e) => StaffService.addStaff(e.parameter.name, e.parameter.phone, e.parameter.email),
+  'toggleStaff': (e) => StaffService.toggleStaff(e.parameter.id),
+  'removeStaff': (e) => StaffService.removeStaff(e.parameter.id),
+  'updateStaff': (e) => StaffService.updateStaff(e.parameter.id, e.parameter.name, e.parameter.phone, e.parameter.email),
 
   // Shifts management
   'getShifts': (e) => getShifts(e.parameter.date),
@@ -1754,109 +1754,138 @@ function incrementDataVersion() {
 // ==================== API FUNCTIONS ====================
 
 // ==================== STAFF MANAGEMENT ====================
+/**
+ * Staff management service
+ * @namespace StaffService
+ */
+const StaffService = {
+  /**
+   * Get all staff members
+   * @returns {{success: boolean, data: Array}} Staff list
+   */
+  getStaff: function() {
+    const data = StorageService.getData();
+    return { success: true, data: data.staff || [] };
+  },
 
-// Çalışanları getir
-function getStaff() {
-  const data = StorageService.getData();
-  return { success: true, data: data.staff || [] };
-}
+  /**
+   * Add new staff member (with validation, sanitization, and race condition protection)
+   * @param {string} name - Staff name
+   * @param {string} phone - Phone number
+   * @param {string} email - Email address
+   * @returns {{success: boolean, data?: Array, error?: string}} Result with updated staff list
+   */
+  addStaff: function(name, phone, email) {
+    try {
+      // Validation ve sanitization - DRY prensibi
+      const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
+      if (validationResult.error) {
+        return { success: false, error: validationResult.error };
+      }
 
-// Çalışan ekle
-function addStaff(name, phone, email) {
-  try {
-    // Validation ve sanitization - DRY prensibi
-    const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
-    if (validationResult.error) {
-      return { success: false, error: validationResult.error };
-    }
-
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
-      data.staff.push({
-        id: newId,
-        name: validationResult.name,
-        phone: validationResult.phone,
-        email: validationResult.email,
-        active: true
-      });
-      StorageService.saveData(data);
-      return { success: true, data: data.staff };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-// Çalışan aktif/pasif yap
-function toggleStaff(staffId) {
-  try {
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id === parseInt(staffId));
-      if (staff) {
-        staff.active = !staff.active;
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
+        data.staff.push({
+          id: newId,
+          name: validationResult.name,
+          phone: validationResult.phone,
+          email: validationResult.email,
+          active: true
+        });
         StorageService.saveData(data);
         return { success: true, data: data.staff };
-      }
-      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
+      });
+    } catch (error) {
+      return { success: false, error: error.toString() };
+    }
+  },
 
-// Çalışan sil
-function removeStaff(staffId) {
-  try {
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
-
-      // Vardiyalardan da sil
-      Object.keys(data.shifts).forEach(date => {
-        if (data.shifts[date][staffId]) {
-          delete data.shifts[date][staffId];
+  /**
+   * Toggle staff active/inactive status
+   * @param {number|string} staffId - Staff ID
+   * @returns {{success: boolean, data?: Array, error?: string}} Result with updated staff list
+   */
+  toggleStaff: function(staffId) {
+    try {
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        const staff = data.staff.find(s => s.id === parseInt(staffId));
+        if (staff) {
+          staff.active = !staff.active;
+          StorageService.saveData(data);
+          return { success: true, data: data.staff };
         }
+        return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
       });
-
-      StorageService.saveData(data);
-      return { success: true, data: data.staff };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-// Çalışan güncelle
-function updateStaff(staffId, name, phone, email) {
-  try {
-    // Validation ve sanitization - DRY prensibi
-    const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
-    if (validationResult.error) {
-      return { success: false, error: validationResult.error };
+    } catch (error) {
+      return { success: false, error: error.toString() };
     }
+  },
 
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id === parseInt(staffId));
-      if (staff) {
-        staff.name = validationResult.name;
-        staff.phone = validationResult.phone;
-        staff.email = validationResult.email;
+  /**
+   * Remove staff member and clear from all shifts
+   * @param {number|string} staffId - Staff ID
+   * @returns {{success: boolean, data?: Array, error?: string}} Result with updated staff list
+   */
+  removeStaff: function(staffId) {
+    try {
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
+
+        // Vardiyalardan da sil
+        Object.keys(data.shifts).forEach(date => {
+          if (data.shifts[date][staffId]) {
+            delete data.shifts[date][staffId];
+          }
+        });
+
         StorageService.saveData(data);
         return { success: true, data: data.staff };
+      });
+    } catch (error) {
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Update staff member details (with validation and sanitization)
+   * @param {number|string} staffId - Staff ID
+   * @param {string} name - New name
+   * @param {string} phone - New phone
+   * @param {string} email - New email
+   * @returns {{success: boolean, data?: Array, error?: string}} Result with updated staff list
+   */
+  updateStaff: function(staffId, name, phone, email) {
+    try {
+      // Validation ve sanitization - DRY prensibi
+      const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
+      if (validationResult.error) {
+        return { success: false, error: validationResult.error };
       }
-      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
+
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        const staff = data.staff.find(s => s.id === parseInt(staffId));
+        if (staff) {
+          staff.name = validationResult.name;
+          staff.phone = validationResult.phone;
+          staff.email = validationResult.email;
+          StorageService.saveData(data);
+          return { success: true, data: data.staff };
+        }
+        return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
+      });
+    } catch (error) {
+      return { success: false, error: error.toString() };
+    }
   }
-}
+};
 
 // ==================== SETTINGS MANAGEMENT ====================
 
