@@ -187,9 +187,9 @@ const LockServiceWrapper = {
    *
    * @example
    * const result = LockServiceWrapper.withLock(() => {
-   *   const data = getData();
+   *   const data = StorageService.getData();
    *   data.counter++;
-   *   saveData(data);
+   *   StorageService.saveData(data);
    *   return data.counter;
    * });
    */
@@ -725,46 +725,92 @@ function getDayStatus(date, appointmentType = null) {
 }
 
 // ==================== UTILITY FUNCTIONS ====================
-// Validation ve Sanitization
-function isValidEmail(email) {
-  if (!email || typeof email !== 'string') return false;
-  // Basit email regex - RFC 5322 compliant değil ama pratik
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email.trim());
-}
-
-function sanitizeString(str, maxLength) {
-  if (!str || typeof str !== 'string') return '';
-  // Trim ve max length uygula
-  return str.trim().substring(0, maxLength);
-}
-
-function sanitizePhone(phone) {
-  if (!phone || typeof phone !== 'string') return '';
-  // Sadece rakam, +, -, boşluk ve parantez karakterlerine izin ver
-  return phone.replace(/[^0-9+\-\s()]/g, '').trim().substring(0, VALIDATION.PHONE_MAX_LENGTH);
-}
-
 /**
- * İsmi Title Case formatına çevirir (Her Kelimenin İlk Harfi Büyük)
- * Örnek: "SERDAR BENLİ" → "Serdar Benli", "serdar benli" → "Serdar Benli"
- * @param {string} name - Formatlanacak isim
- * @returns {string} Title Case formatında isim
+ * Utility functions for validation, sanitization, and formatting
+ * @namespace Utils
  */
-function toTitleCase(name) {
-  if (!name || typeof name !== 'string') return '';
+const Utils = {
+  /**
+   * E-posta adresini validate eder
+   * @param {string} email - E-posta adresi
+   * @returns {boolean} Geçerli mi?
+   */
+  isValidEmail: function(email) {
+    if (!email || typeof email !== 'string') return false;
+    // Basit email regex - RFC 5322 compliant değil ama pratik
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email.trim());
+  },
 
-  return name
-    .trim()
-    .toLowerCase()
-    .split(' ')
-    .map(word => {
-      if (word.length === 0) return word;
-      // İlk harfi büyük, geri kalanı küçük
-      return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1);
-    })
-    .join(' ');
-}
+  /**
+   * String'i sanitize eder (trim + max length)
+   * @param {string} str - String
+   * @param {number} maxLength - Maximum uzunluk
+   * @returns {string} Sanitized string
+   */
+  sanitizeString: function(str, maxLength) {
+    if (!str || typeof str !== 'string') return '';
+    return str.trim().substring(0, maxLength);
+  },
+
+  /**
+   * Telefon numarasını sanitize eder
+   * @param {string} phone - Telefon numarası
+   * @returns {string} Sanitized telefon
+   */
+  sanitizePhone: function(phone) {
+    if (!phone || typeof phone !== 'string') return '';
+    // Sadece rakam, +, -, boşluk ve parantez karakterlerine izin ver
+    return phone.replace(/[^0-9+\-\s()]/g, '').trim().substring(0, VALIDATION.PHONE_MAX_LENGTH);
+  },
+
+  /**
+   * İsmi Title Case formatına çevirir (Her Kelimenin İlk Harfi Büyük)
+   * Örnek: "SERDAR BENLİ" → "Serdar Benli"
+   * @param {string} name - Formatlanacak isim
+   * @returns {string} Title Case formatında isim
+   */
+  toTitleCase: function(name) {
+    if (!name || typeof name !== 'string') return '';
+
+    return name
+      .trim()
+      .toLowerCase()
+      .split(' ')
+      .map(word => {
+        if (word.length === 0) return word;
+        return word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1);
+      })
+      .join(' ');
+  },
+
+  /**
+   * Personel doğrulama ve temizleme - DRY prensibi
+   * @param {string} name - İsim
+   * @param {string} phone - Telefon
+   * @param {string} email - E-posta
+   * @returns {{name?: string, phone?: string, email?: string, error?: string}} Validation sonucu
+   */
+  validateAndSanitizeStaff: function(name, phone, email) {
+    if (!name || typeof name !== 'string' || name.trim().length === 0) {
+      return { error: CONFIG.ERROR_MESSAGES.NAME_REQUIRED };
+    }
+
+    if (!phone || typeof phone !== 'string' || phone.trim().length === 0) {
+      return { error: CONFIG.ERROR_MESSAGES.PHONE_REQUIRED };
+    }
+
+    if (email && !this.isValidEmail(email)) {
+      return { error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
+    }
+
+    return {
+      name: this.toTitleCase(name),
+      phone: this.sanitizePhone(phone),
+      email: email ? email.trim().toLowerCase() : ''
+    };
+  }
+};
 
 // ==================== DATE UTILITIES ====================
 /**
@@ -902,21 +948,6 @@ function getCalendar() {
     throw new Error(CONFIG.ERROR_MESSAGES.CALENDAR_NOT_FOUND);
   }
   return calendar;
-}
-
-// Personel doğrulama ve temizleme - DRY prensibi
-function validateAndSanitizeStaff(name, phone, email) {
-  if (!name || typeof name !== 'string' || name.trim().length === 0) {
-    return { error: CONFIG.ERROR_MESSAGES.NAME_REQUIRED };
-  }
-  if (email && !isValidEmail(email)) {
-    return { error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
-  }
-  return {
-    name: toTitleCase(sanitizeString(name, VALIDATION.STRING_MAX_LENGTH)),
-    phone: sanitizePhone(phone),
-    email: email ? sanitizeString(email, VALIDATION.STRING_MAX_LENGTH) : ''
-  };
 }
 
 // Event'i appointment objesine çevir (getAppointments, getWeekAppointments, getMonthAppointments için)
@@ -1380,7 +1411,7 @@ const ACTION_HANDLERS = {
   ),
 
   // Data management
-  'resetData': () => resetData()
+  'resetData': () => StorageService.resetData()
 };
 
 function doGet(e) {
@@ -1525,7 +1556,16 @@ function doPost(e) {
 }
 
 // ==================== DATA STORAGE ====================
-function getData() {
+/**
+ * Data storage service using PropertiesService + CacheService
+ * @namespace StorageService
+ */
+const StorageService = {
+  /**
+   * Veriyi getir (Cache + PropertiesService)
+   * @returns {Object} Data object
+   */
+  getData: function() {
   const cache = getCache();
 
   // 1. Cache'den veriyi kontrol et
@@ -1560,7 +1600,7 @@ function getData() {
         maxDaily: 3
       }
     };
-    saveData(defaultData);
+    this.saveData(defaultData);
     return defaultData;
   }
 
@@ -1574,47 +1614,55 @@ function getData() {
   }
 
   return parsedData;
-}
+  },
 
-function saveData(data) {
-  const props = PropertiesService.getScriptProperties();
-  const jsonData = JSON.stringify(data);
-
-  // 1. PropertiesService'e kaydet
-  props.setProperty(CONFIG.PROPERTIES_KEY, jsonData);
-
-  // 2. Cache'i temizle (veri değiştiği için)
-  const cache = getCache();
-  cache.remove(DATA_CACHE_KEY);
-
-  // 3. Yeni veriyi cache'e yaz (sonraki okumalar için)
-  try {
-    cache.put(DATA_CACHE_KEY, jsonData, CACHE_DURATION);
-  } catch (e) {
-    log.warn('Cache yazma hatası:', e);
-    // Cache yazılamazsa da devam et
-  }
-}
-
-// Tüm veriyi sıfırla ve yeni default data yükle
-function resetData() {
-  try {
+  /**
+   * Veriyi kaydet (PropertiesService + Cache invalidation)
+   * @param {Object} data - Kaydedilecek data
+   */
+  saveData: function(data) {
     const props = PropertiesService.getScriptProperties();
-    props.deleteProperty(CONFIG.PROPERTIES_KEY);
+    const jsonData = JSON.stringify(data);
 
-    // Cache'i temizle
+    // 1. PropertiesService'e kaydet
+    props.setProperty(CONFIG.PROPERTIES_KEY, jsonData);
+
+    // 2. Cache'i temizle (veri değiştiği için)
     const cache = getCache();
     cache.remove(DATA_CACHE_KEY);
 
-    // Yeni default data yüklenir
-    getData();
+    // 3. Yeni veriyi cache'e yaz (sonraki okumalar için)
+    try {
+      cache.put(DATA_CACHE_KEY, jsonData, CACHE_DURATION);
+    } catch (e) {
+      log.warn('Cache yazma hatası:', e);
+      // Cache yazılamazsa da devam et
+    }
+  },
 
-    return { success: true, message: CONFIG.SUCCESS_MESSAGES.DATA_RESET };
-  } catch (error) {
-    log.error('Reset data error:', error);
-    return { success: false, error: error.toString() };
+  /**
+   * Tüm veriyi sıfırla ve yeni default data yükle
+   * @returns {{success: boolean, message?: string, error?: string}} Reset sonucu
+   */
+  resetData: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      props.deleteProperty(CONFIG.PROPERTIES_KEY);
+
+      // Cache'i temizle
+      const cache = getCache();
+      cache.remove(DATA_CACHE_KEY);
+
+      // Yeni default data yüklenir
+      this.getData();
+
+      return { success: true, message: CONFIG.SUCCESS_MESSAGES.DATA_RESET };
+    } catch (error) {
+      log.error('Reset data error:', error);
+      return { success: false, error: error.toString() };
+    }
   }
-}
+};
 
 // ==================== DATA VERSION MANAGEMENT ====================
 // ⭐ Cache invalidation için version tracking
@@ -1669,7 +1717,7 @@ function incrementDataVersion() {
 
 // Çalışanları getir
 function getStaff() {
-  const data = getData();
+  const data = StorageService.getData();
   return { success: true, data: data.staff || [] };
 }
 
@@ -1677,14 +1725,14 @@ function getStaff() {
 function addStaff(name, phone, email) {
   try {
     // Validation ve sanitization - DRY prensibi
-    const validationResult = validateAndSanitizeStaff(name, phone, email);
+    const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
     if (validationResult.error) {
       return { success: false, error: validationResult.error };
     }
 
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
       data.staff.push({
         id: newId,
@@ -1693,7 +1741,7 @@ function addStaff(name, phone, email) {
         email: validationResult.email,
         active: true
       });
-      saveData(data);
+      StorageService.saveData(data);
       return { success: true, data: data.staff };
     });
   } catch (error) {
@@ -1706,11 +1754,11 @@ function toggleStaff(staffId) {
   try {
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       const staff = data.staff.find(s => s.id === parseInt(staffId));
       if (staff) {
         staff.active = !staff.active;
-        saveData(data);
+        StorageService.saveData(data);
         return { success: true, data: data.staff };
       }
       return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
@@ -1725,7 +1773,7 @@ function removeStaff(staffId) {
   try {
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
 
       // Vardiyalardan da sil
@@ -1735,7 +1783,7 @@ function removeStaff(staffId) {
         }
       });
 
-      saveData(data);
+      StorageService.saveData(data);
       return { success: true, data: data.staff };
     });
   } catch (error) {
@@ -1747,20 +1795,20 @@ function removeStaff(staffId) {
 function updateStaff(staffId, name, phone, email) {
   try {
     // Validation ve sanitization - DRY prensibi
-    const validationResult = validateAndSanitizeStaff(name, phone, email);
+    const validationResult = Utils.validateAndSanitizeStaff(name, phone, email);
     if (validationResult.error) {
       return { success: false, error: validationResult.error };
     }
 
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       const staff = data.staff.find(s => s.id === parseInt(staffId));
       if (staff) {
         staff.name = validationResult.name;
         staff.phone = validationResult.phone;
         staff.email = validationResult.email;
-        saveData(data);
+        StorageService.saveData(data);
         return { success: true, data: data.staff };
       }
       return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
@@ -1774,7 +1822,7 @@ function updateStaff(staffId, name, phone, email) {
 
 // Ayarları getir
 function getSettings() {
-  const data = getData();
+  const data = StorageService.getData();
   return {
     success: true,
     data: data.settings || { interval: 60, maxDaily: 4 }
@@ -1798,12 +1846,12 @@ function saveSettings(params) {
 
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       data.settings = {
         interval: interval,
         maxDaily: maxDaily
       };
-      saveData(data);
+      StorageService.saveData(data);
       return { success: true, data: data.settings };
     });
   } catch (error) {
@@ -1820,7 +1868,7 @@ function saveSettings(params) {
  */
 function getConfig() {
   try {
-    const data = getData();
+    const data = StorageService.getData();
     const settings = data.settings || { interval: 60, maxDaily: 4 };
 
     return {
@@ -1873,7 +1921,7 @@ function saveShifts(shiftsData) {
   try {
     // Lock ile getData → modify → saveData atomik yap
     return LockServiceWrapper.withLock(() => {
-      const data = getData();
+      const data = StorageService.getData();
       // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
       Object.keys(shiftsData).forEach(date => {
         if (!data.shifts[date]) {
@@ -1881,7 +1929,7 @@ function saveShifts(shiftsData) {
         }
         data.shifts[date] = shiftsData[date];
       });
-      saveData(data);
+      StorageService.saveData(data);
       return { success: true };
     });
   } catch (error) {
@@ -1891,14 +1939,14 @@ function saveShifts(shiftsData) {
 
 // Belirli bir gün için vardiyaları getir
 function getShifts(date) {
-  const data = getData();
+  const data = StorageService.getData();
   const shifts = data.shifts || {};
   return { success: true, data: shifts[date] || {} };
 }
 
 // Bir ay için tüm vardiyaları getir
 function getMonthShifts(month) {
-  const data = getData();
+  const data = StorageService.getData();
   const shifts = data.shifts || {};
   const monthShifts = {};
 
@@ -2043,7 +2091,7 @@ function updateAppointment(eventId, newDate, newTime) {
 
         // 2. TESLİM RANDEVUSU → GÜNLÜK LİMİT KONTROLÜ
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
-          const data = getData();
+          const data = StorageService.getData();
           const maxDaily = data.settings?.maxDaily || 4;
 
           // O gündeki teslim randevularını say (kendisi hariç)
@@ -2107,7 +2155,7 @@ function getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
     }
 
     const calendar = getCalendar();
-    const data = getData();
+    const data = StorageService.getData();
     const settings = data.settings || {};
     const interval = parseInt(settings.interval) || 60;
 
@@ -2191,7 +2239,7 @@ function assignStaffToAppointment(eventId, staffId) {
     }
 
     // Staff bilgilerini al
-    const data = getData();
+    const data = StorageService.getData();
     const staff = data.staff.find(s => s.id === parseInt(staffId));
 
     if (!staff) {
@@ -2418,7 +2466,7 @@ function createAppointment(params) {
     }
 
     // Email validation (optional but if provided must be valid)
-    if (customerEmail && !isValidEmail(customerEmail)) {
+    if (customerEmail && !Utils.isValidEmail(customerEmail)) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
     }
 
@@ -2440,14 +2488,14 @@ function createAppointment(params) {
     }
 
     // Sanitize inputs
-    const sanitizedCustomerName = toTitleCase(sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
-    const sanitizedCustomerPhone = sanitizePhone(customerPhone);
-    const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
-    const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
-    const sanitizedStaffName = staffName ? toTitleCase(sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '';
+    const sanitizedCustomerName = Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
+    const sanitizedCustomerPhone = Utils.sanitizePhone(customerPhone);
+    const sanitizedCustomerEmail = customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
+    const sanitizedCustomerNote = customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
+    const sanitizedStaffName = staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '';
 
-    // getData() - tek seferlik çağrı (DRY prensibi)
-    const data = getData();
+    // StorageService.getData() - tek seferlik çağrı (DRY prensibi)
+    const data = StorageService.getData();
 
     // ⭐⭐⭐⭐⭐ CRITICAL: Master Validation (Race Condition Protection)
     // Tüm business rules'ları bir arada kontrol et
@@ -2759,7 +2807,7 @@ function getTodayWhatsAppReminders(date) {
     const events = calendar.getEvents(startDate, endDate);
 
     // Staff verilerini al
-    const data = getData();
+    const data = StorageService.getData();
 
     const reminders = events.map(event => {
       const phoneTag = event.getTag('customerPhone');
@@ -2771,7 +2819,7 @@ function getTodayWhatsAppReminders(date) {
       // Event title formatı: "Müşteri Adı - Personel (Tür)"
       const title = event.getTitle();
       const parts = title.split(' - ');
-      const customerName = toTitleCase(parts[0]) || 'Değerli Müşterimiz';
+      const customerName = Utils.toTitleCase(parts[0]) || 'Değerli Müşterimiz';
 
       // İlgili kişi ve randevu türü
       let staffName = 'Temsilcimiz';
@@ -2784,11 +2832,11 @@ function getTodayWhatsAppReminders(date) {
         if (match) {
           const parsedStaffName = match[1].trim();
           // HK ve OK kısaltmalarını koruyoruz, diğerlerini Title Case yapıyoruz
-          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
+          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : Utils.toTitleCase(parsedStaffName);
           appointmentTypeName = match[2].trim().toLowerCase(); // "yönetim" veya "teslim" (KÜÇÜK HARF)
         } else {
           const parsedStaffName = secondPart.trim();
-          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : toTitleCase(parsedStaffName);
+          staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : Utils.toTitleCase(parsedStaffName);
         }
       }
 
@@ -2853,18 +2901,18 @@ function createManualAppointment(params) {
       return { success: false, error: 'Tarih, saat, müşteri adı ve personel zorunludur.' };
     }
 
-    const data = getData();
+    const data = StorageService.getData();
     const staff = data.staff.find(s => s.id == staffId);
     if (!staff) return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
 
     const isManagement = appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT;
 
     // Sanitization (customer + staff)
-    const sanitizedCustomerName = toTitleCase(sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
-    const sanitizedCustomerPhone = sanitizePhone(customerPhone);
-    const sanitizedCustomerEmail = customerEmail ? sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
-    const sanitizedCustomerNote = customerNote ? sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
-    const sanitizedStaffName = toTitleCase(sanitizeString(staff.name, VALIDATION.STRING_MAX_LENGTH));
+    const sanitizedCustomerName = Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
+    const sanitizedCustomerPhone = Utils.sanitizePhone(customerPhone);
+    const sanitizedCustomerEmail = customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
+    const sanitizedCustomerNote = customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
+    const sanitizedStaffName = Utils.toTitleCase(Utils.sanitizeString(staff.name, VALIDATION.STRING_MAX_LENGTH));
 
     // Başlangıç ve bitiş zamanları
     const durationNum = parseInt(duration) || 60;
@@ -2917,7 +2965,7 @@ function createManualAppointment(params) {
     }
 
     // YÖNETİM randevusu değilse ve e-posta varsa, müşteriye e-posta gönder
-    if (!isManagement && sanitizedCustomerEmail && isValidEmail(sanitizedCustomerEmail)) {
+    if (!isManagement && sanitizedCustomerEmail && Utils.isValidEmail(sanitizedCustomerEmail)) {
       try {
         const formattedDate = DateUtils.toTurkishDate(date);
         const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
@@ -3022,7 +3070,7 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
     const events = calendar.getEvents(startDate, endDate);
 
     // Data ayarlarını al (günlük max teslim sayısı için)
-    const data = getData();
+    const data = StorageService.getData();
     const maxDelivery = data.settings?.maxDaily || 4;
 
     // Teslim randevusu sayısını hesapla (günlük limit kontrolü için)
@@ -4093,7 +4141,7 @@ function getManagementSlotAvailability(date, managementLevel) {
  */
 function getAvailableStaffForSlot(date, time) {
   try {
-    const data = getData();
+    const data = StorageService.getData();
     const calendar = getCalendar();
 
     // Saat bilgisini parse et
