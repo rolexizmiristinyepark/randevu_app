@@ -442,47 +442,7 @@ const VALIDATION = {
 };
 
 // ==================== DATE UTILITIES ====================
-// Tarih formatlama fonksiyonları - tek yerden yönetim
-
-const DateUtils = {
-  /**
-   * YYYY-MM-DD formatında tarih döndürür (local timezone)
-   * @param {Date} date - Formatlanacak tarih
-   * @returns {string} YYYY-MM-DD formatında tarih
-   */
-  toLocalDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  },
-
-  /**
-   * ICS takvim formatında tarih döndürür (YYYYMMDDTHHmmss)
-   * @param {Date} date - Formatlanacak tarih
-   * @returns {string} ICS formatında tarih
-   */
-  toICSDate(date) {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
-  },
-
-  /**
-   * Türkçe okunabilir formatta tarih döndürür
-   * Örnek: "12 Ekim 2025, Salı"
-   * @param {string} dateStr - YYYY-MM-DD formatında tarih string
-   * @returns {string} Türkçe formatında tarih
-   */
-  toTurkishDate(dateStr) {
-    const d = new Date(dateStr);
-    return `${d.getDate()} ${CONFIG.LOCALIZATION.MONTHS[d.getMonth()]} ${d.getFullYear()}, ${CONFIG.LOCALIZATION.DAYS[d.getDay()]}`;
-  }
-};
+// Tarih formatlama fonksiyonları - DateUtils'e taşındı (line 814)
 
 // ==================== SLOT UNIVERSE & SHIFT HELPERS ====================
 /**
@@ -806,62 +766,133 @@ function toTitleCase(name) {
     .join(' ');
 }
 
-// ==================== TIME OVERLAP HELPERS (EPOCH-MINUTE STANDARD) ====================
+// ==================== DATE UTILITIES ====================
 /**
- * Tarih ve saat string'ini epoch-minute'a çevirir (dakika cinsinden Unix timestamp)
- * Standart: 1970-01-01T00:00 UTC'den itibaren geçen dakika sayısı
- *
- * @param {string} date - YYYY-MM-DD formatında tarih
- * @param {string} time - HH:MM formatında saat
- * @returns {number} Epoch minute (dakika cinsinden timestamp)
- *
- * @example
- * dateTimeToEpochMinute('2025-01-15', '14:30') → 29073150
+ * Date and time utility functions
+ * @namespace DateUtils
  */
-function dateTimeToEpochMinute(date, time) {
-  const dateTime = new Date(date + 'T' + time + ':00');
-  return Math.floor(dateTime.getTime() / 60000); // milliseconds → minutes
-}
+const DateUtils = {
+  /**
+   * Tarih ve saat string'ini epoch-minute'a çevirir (dakika cinsinden Unix timestamp)
+   * Standart: 1970-01-01T00:00 UTC'den itibaren geçen dakika sayısı
+   *
+   * @param {string} date - YYYY-MM-DD formatında tarih
+   * @param {string} time - HH:MM formatında saat
+   * @returns {number} Epoch minute (dakika cinsinden timestamp)
+   *
+   * @example
+   * DateUtils.dateTimeToEpochMinute('2025-01-15', '14:30') → 29073150
+   */
+  dateTimeToEpochMinute: function(date, time) {
+    const dateTime = new Date(date + 'T' + time + ':00');
+    return Math.floor(dateTime.getTime() / 60000); // milliseconds → minutes
+  },
 
-/**
- * Date objesini epoch-minute'a çevirir
- *
- * @param {Date} dateObj - JavaScript Date objesi
- * @returns {number} Epoch minute
- */
-function dateToEpochMinute(dateObj) {
-  return Math.floor(dateObj.getTime() / 60000);
-}
+  /**
+   * Date objesini epoch-minute'a çevirir
+   *
+   * @param {Date} dateObj - JavaScript Date objesi
+   * @returns {number} Epoch minute
+   */
+  dateToEpochMinute: function(dateObj) {
+    return Math.floor(dateObj.getTime() / 60000);
+  },
 
-/**
- * İki zaman aralığının çakışıp çakışmadığını kontrol eder
- * Standart: [start, end) interval (start dahil, end hariç)
- *
- * Çakışma mantığı:
- * - [10:00, 11:00) ve [10:30, 11:30) → ÇAKIŞIR (10:30-11:00 ortak)
- * - [10:00, 11:00) ve [11:00, 12:00) → ÇAKIŞMAZ (end hariç)
- * - [10:00, 11:00) ve [09:00, 10:30) → ÇAKIŞIR (10:00-10:30 ortak)
- *
- * @param {number} start1 - 1. aralık başlangıcı (epoch minute)
- * @param {number} end1 - 1. aralık bitişi (epoch minute, hariç)
- * @param {number} start2 - 2. aralık başlangıcı (epoch minute)
- * @param {number} end2 - 2. aralık bitişi (epoch minute, hariç)
- * @returns {boolean} Çakışma var mı?
- *
- * @example
- * // Test cases:
- * checkTimeOverlap(600, 660, 630, 690) → true   // [10:00-11:00) ve [10:30-11:30) ÇAKIŞIR
- * checkTimeOverlap(600, 660, 660, 720) → false  // [10:00-11:00) ve [11:00-12:00) ÇAKIŞMAZ
- * checkTimeOverlap(600, 660, 540, 630) → true   // [10:00-11:00) ve [09:00-10:30) ÇAKIŞIR
- * checkTimeOverlap(600, 660, 540, 600) → false  // [10:00-11:00) ve [09:00-10:00) ÇAKIŞMAZ
- * checkTimeOverlap(600, 660, 700, 760) → false  // [10:00-11:00) ve [11:40-12:40) ÇAKIŞMAZ
- */
-function checkTimeOverlap(start1, end1, start2, end2) {
-  // İki aralık çakışır eğer:
-  // start1 < end2 VE start2 < end1
-  // (end hariç olduğu için = yok)
-  return start1 < end2 && start2 < end1;
-}
+  /**
+   * İki zaman aralığının çakışıp çakışmadığını kontrol eder
+   * Standart: [start, end) interval (start dahil, end hariç)
+   *
+   * Çakışma mantığı:
+   * - [10:00, 11:00) ve [10:30, 11:30) → ÇAKIŞIR (10:30-11:00 ortak)
+   * - [10:00, 11:00) ve [11:00, 12:00) → ÇAKIŞMAZ (end hariç)
+   * - [10:00, 11:00) ve [09:00, 10:30) → ÇAKIŞIR (10:00-10:30 ortak)
+   *
+   * @param {number} start1 - 1. aralık başlangıcı (epoch minute)
+   * @param {number} end1 - 1. aralık bitişi (epoch minute, hariç)
+   * @param {number} start2 - 2. aralık başlangıcı (epoch minute)
+   * @param {number} end2 - 2. aralık bitişi (epoch minute, hariç)
+   * @returns {boolean} Çakışma var mı?
+   *
+   * @example
+   * // Test cases:
+   * DateUtils.checkTimeOverlap(600, 660, 630, 690) → true   // [10:00-11:00) ve [10:30-11:30) ÇAKIŞIR
+   * DateUtils.checkTimeOverlap(600, 660, 660, 720) → false  // [10:00-11:00) ve [11:00-12:00) ÇAKIŞMAZ
+   */
+  checkTimeOverlap: function(start1, end1, start2, end2) {
+    // İki aralık çakışır eğer:
+    // start1 < end2 VE start2 < end1
+    // (end hariç olduğu için = yok)
+    return start1 < end2 && start2 < end1;
+  },
+
+  /**
+   * Tarih string'inden başlangıç ve bitiş Date objelerini oluşturur
+   * @param {string} dateStr - YYYY-MM-DD formatında tarih
+   * @returns {{startDate: Date, endDate: Date}} Gün başı ve gün sonu
+   */
+  getDateRange: function(dateStr) {
+    const startDate = new Date(dateStr + 'T00:00:00');
+    const endDate = new Date(dateStr + 'T23:59:59');
+    return { startDate, endDate };
+  },
+
+  /**
+   * Tarih ve saati Türkçe formatta string'e çevirir
+   * @param {string} dateStr - YYYY-MM-DD formatında tarih
+   * @param {string} timeStr - HH:MM formatında saat
+   * @returns {string} Formatlanmış tarih-saat (örn: "15 Ocak 2025, 14:30")
+   */
+  formatAppointmentDateTime: function(dateStr, timeStr) {
+    const months = {
+      '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+      '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+      '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
+    };
+
+    const [year, month, day] = dateStr.split('-');
+    const monthName = months[month] || month;
+
+    return `${parseInt(day)} ${monthName} ${year}, ${timeStr}`;
+  },
+
+  /**
+   * YYYY-MM-DD formatında tarih döndürür (local timezone)
+   * @param {Date} date - Formatlanacak tarih
+   * @returns {string} YYYY-MM-DD formatında tarih
+   */
+  toLocalDate: function(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  /**
+   * ICS takvim formatında tarih döndürür (YYYYMMDDTHHmmss)
+   * @param {Date} date - Formatlanacak tarih
+   * @returns {string} ICS formatında tarih
+   */
+  toICSDate: function(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}${month}${day}T${hours}${minutes}${seconds}`;
+  },
+
+  /**
+   * Türkçe okunabilir formatta tarih döndürür
+   * Örnek: "12 Ekim 2025, Salı"
+   * @param {string} dateStr - YYYY-MM-DD formatında tarih string
+   * @returns {string} Türkçe formatında tarih
+   */
+  toTurkishDate: function(dateStr) {
+    const d = new Date(dateStr);
+    return `${d.getDate()} ${CONFIG.LOCALIZATION.MONTHS[d.getMonth()]} ${d.getFullYear()}, ${CONFIG.LOCALIZATION.DAYS[d.getDay()]}`;
+  }
+};
 
 // Takvim nesnesini döndür - merkezi hata yönetimi ile
 function getCalendar() {
@@ -871,13 +902,6 @@ function getCalendar() {
     throw new Error(CONFIG.ERROR_MESSAGES.CALENDAR_NOT_FOUND);
   }
   return calendar;
-}
-
-// Tarih aralığı hesaplama - kod tekrarını önler
-function getDateRange(dateStr) {
-  const startDate = new Date(dateStr + 'T00:00:00');
-  const endDate = new Date(dateStr + 'T23:59:59');
-  return { startDate, endDate };
 }
 
 // Personel doğrulama ve temizleme - DRY prensibi
@@ -1896,7 +1920,7 @@ function getAppointments(date, options = {}) {
 
   try {
     const calendar = getCalendar();
-    const { startDate, endDate } = getDateRange(date);
+    const { startDate, endDate } = DateUtils.getDateRange(date);
     let events = calendar.getEvents(startDate, endDate);
 
     // appointmentType filtresi varsa uygula
@@ -2465,20 +2489,20 @@ function createAppointment(params) {
         const calendar = getCalendar();
 
     // Yeni randevunun epoch-minute aralığı
-    const newStart = dateTimeToEpochMinute(date, time);
+    const newStart = DateUtils.dateTimeToEpochMinute(date, time);
     const newEnd = newStart + durationNum; // duration dakika cinsinden
 
     // O günün tüm randevularını al (kesin çakışma kontrolü için)
-    const { startDate, endDate } = getDateRange(date);
+    const { startDate, endDate } = DateUtils.getDateRange(date);
     const allEventsToday = calendar.getEvents(startDate, endDate);
 
     // Çakışan randevuları filtrele (epoch-minute ile)
     const overlappingEvents = allEventsToday.filter(event => {
-      const eventStart = dateToEpochMinute(event.getStartTime());
-      const eventEnd = dateToEpochMinute(event.getEndTime());
+      const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
+      const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
 
       // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
-      return checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
+      return DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
     });
 
     const overlappingCount = overlappingEvents.length;
@@ -2731,7 +2755,7 @@ function getTodayWhatsAppReminders(date) {
   try {
     const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
     const calendar = getCalendar();
-    const { startDate, endDate } = getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
+    const { startDate, endDate } = DateUtils.getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
     const events = calendar.getEvents(startDate, endDate);
 
     // Staff verilerini al
@@ -2994,7 +3018,7 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
 
     // Google Calendar'dan randevuları getir
     const calendar = getCalendar();
-    const { startDate, endDate } = getDateRange(date);
+    const { startDate, endDate } = DateUtils.getDateRange(date);
     const events = calendar.getEvents(startDate, endDate);
 
     // Data ayarlarını al (günlük max teslim sayısı için)
@@ -3060,17 +3084,17 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
       }
 
       // 2. Slot'un epoch-minute aralığı [start, end)
-      const slotStart = dateTimeToEpochMinute(date, timeStr);
+      const slotStart = DateUtils.dateTimeToEpochMinute(date, timeStr);
       const slotEnd = slotStart + intervalNum; // interval dakika cinsinden
 
       // 3. Bu slot ile ÇAKIŞAN randevuları bul (epoch-minute standardı ile)
       // DEĞİŞKEN SÜRELİ randevular için de doğru çalışır
       const overlappingEvents = events.filter(event => {
-        const eventStart = dateToEpochMinute(event.getStartTime());
-        const eventEnd = dateToEpochMinute(event.getEndTime());
+        const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
+        const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
 
         // [start, end) standardı ile çakışma kontrolü
-        return checkTimeOverlap(slotStart, slotEnd, eventStart, eventEnd);
+        return DateUtils.checkTimeOverlap(slotStart, slotEnd, eventStart, eventEnd);
       });
 
       const overlappingCount = overlappingEvents.length;
@@ -3263,19 +3287,8 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
  * @param {string} dateStr - YYYY-MM-DD formatında tarih
  * @param {string} timeStr - HH:MM formatında saat
  * @returns {string} - Türkçe formatlanmış tarih ve saat
+ * MOVED TO: DateUtils.formatAppointmentDateTime (line 845)
  */
-function formatAppointmentDateTime(dateStr, timeStr) {
-  const months = {
-    '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
-    '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
-    '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
-  };
-
-  const [year, month, day] = dateStr.split('-');
-  const monthName = months[month] || month;
-
-  return `${parseInt(day)} ${monthName} ${year}, ${timeStr}`;
-}
 
 /**
  * Bugünkü randevular için WhatsApp hatırlatmaları gönder
@@ -3319,7 +3332,7 @@ function sendWhatsAppReminders(date, apiKey) {
       const customerName = reminder.customerName;
 
       // Tarih ve saati formatla (21 Ekim 2025, 14:30)
-      const appointmentDateTime = formatAppointmentDateTime(reminder.date, reminder.time);
+      const appointmentDateTime = DateUtils.formatAppointmentDateTime(reminder.date, reminder.time);
 
       // İlgili personel
       const staffName = reminder.staffName;
@@ -3442,7 +3455,7 @@ function sendDailyWhatsAppReminders() {
       const customerName = reminder.customerName;
 
       // Tarih ve saati formatla (21 Ekim 2025, 14:30)
-      const appointmentDateTime = formatAppointmentDateTime(reminder.date, reminder.time);
+      const appointmentDateTime = DateUtils.formatAppointmentDateTime(reminder.date, reminder.time);
 
       // İlgili personel
       const staffName = reminder.staffName;
