@@ -1304,6 +1304,79 @@ function doGet(e) {
   }
 }
 
+// ==================== POST REQUEST HANDLER ====================
+// ⭐ GÜVENLİK: POST + JSON body ile API key koruması
+// API key artık URL'de görünmez (server logs, browser history güvenli)
+function doPost(e) {
+  try {
+    // POST body'sini parse et (JSON)
+    if (!e.postData || !e.postData.contents) {
+      return ContentService
+        .createTextOutput(JSON.stringify({
+          success: false,
+          error: 'POST body boş olamaz'
+        }))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    const params = JSON.parse(e.postData.contents);
+    const action = params.action;
+    const apiKey = params.apiKey;
+
+    log.info('POST request received:', action);
+
+    let response = {};
+
+    try {
+      // Admin action kontrolü - API key gerekli mi?
+      if (ADMIN_ACTIONS.includes(action)) {
+        if (!validateApiKey(apiKey)) {
+          response = {
+            success: false,
+            error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
+            requiresAuth: true
+          };
+        } else {
+          // API key geçerli, handler'ı çalıştır
+          const handler = ACTION_HANDLERS[action];
+          if (!handler) {
+            response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
+          } else {
+            // ⭐ Handler'a params'ı e.parameter formatında geçir (backward compatibility)
+            response = handler({ parameter: params });
+          }
+        }
+      } else {
+        // Normal action (API key gerekmez)
+        const handler = ACTION_HANDLERS[action];
+
+        if (!handler) {
+          response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
+        } else {
+          response = handler({ parameter: params });
+        }
+      }
+    } catch (handlerError) {
+      log.error('Handler error:', handlerError);
+      response = { success: false, error: handlerError.toString() };
+    }
+
+    // JSON döndür
+    return ContentService
+      .createTextOutput(JSON.stringify(response))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (mainError) {
+    log.error('doPost error:', mainError);
+    return ContentService
+      .createTextOutput(JSON.stringify({
+        success: false,
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR + ': ' + mainError.toString()
+      }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
 // ==================== DATA STORAGE ====================
 function getData() {
   const cache = getCache();

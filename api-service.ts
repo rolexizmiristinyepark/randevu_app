@@ -80,7 +80,7 @@ const ApiService = {
 
     /**
      * Internal method to make the actual Fetch API request
-     * ✅ GÜVENLİK GÜNCELLEMESİ: JSONP'den Fetch API'ye geçildi
+     * ✅ GÜVENLİK GÜNCELLEMESİ: POST + Body kullanımı (API key URL'de görünmez)
      * @private
      */
     _makeRequest<T = unknown>(
@@ -108,22 +108,20 @@ const ApiService = {
                     return;
                 }
 
-                const url = config.APPS_SCRIPT_URL + '?' + new URLSearchParams(
-                    Object.entries(allParams).map(([k, v]) => [k, String(v)])
-                ).toString();
-
-                // Fetch API ile güvenli istek
+                // ⭐ GÜVENLİK: POST + JSON body (API key artık URL'de değil)
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
 
-                const response = await fetch(url, {
-                    method: 'GET',
+                const response = await fetch(config.APPS_SCRIPT_URL, {
+                    method: 'POST',  // ✅ GET → POST
                     mode: 'cors',
                     credentials: 'omit',
                     signal: controller.signal,
                     headers: {
-                        'Accept': 'application/json'
-                    }
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'  // ✅ JSON header
+                    },
+                    body: JSON.stringify(allParams)  // ✅ Body'de gönder
                 });
 
                 clearTimeout(timeoutId);
