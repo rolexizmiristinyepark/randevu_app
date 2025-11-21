@@ -807,6 +807,29 @@ async function loadMonthData() {
     const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const monthStr = currentMonth.toISOString().slice(0, 7); // YYYY-MM
 
+    // ⭐ VERSION-BASED CACHE INVALIDATION
+    // Admin randevu silerse/düzenlerse backend version artırır → cache invalidate
+    try {
+        const cachedVersion = sessionStorage.getItem('dataVersion');
+        const versionResult = await apiCall('getDataVersion');
+
+        if (versionResult.success && versionResult.data) {
+            const serverVersion = versionResult.data;
+
+            // Version değişmişse cache'i temizle
+            if (cachedVersion && cachedVersion !== serverVersion) {
+                monthCache.clear();
+                log.info('Cache invalidated: version changed', { old: cachedVersion, new: serverVersion });
+            }
+
+            // Yeni version'ı kaydet
+            sessionStorage.setItem('dataVersion', serverVersion);
+        }
+    } catch (error) {
+        log.warn('Version check failed, continuing with cache:', error);
+        // Version check hatası cache kullanımını engellemez
+    }
+
     // Cache kontrolü
     const cacheKey = `${monthStr}_${specificStaffId || 'all'}`;
     if (monthCache.has(cacheKey)) {

@@ -1170,6 +1170,9 @@ const ACTION_HANDLERS = {
   'getSettings': () => getSettings(),
   'saveSettings': (e) => saveSettings(e.parameter),
 
+  // Data version (cache invalidation)
+  'getDataVersion': () => getDataVersion(),
+
   // Appointments
   'getAppointments': (e) => getAppointments(e.parameter.date, {
     countOnly: e.parameter.countOnly === 'true',
@@ -1465,6 +1468,53 @@ function resetData() {
     return { success: true, message: CONFIG.SUCCESS_MESSAGES.DATA_RESET };
   } catch (error) {
     log.error('Reset data error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== DATA VERSION MANAGEMENT ====================
+// ⭐ Cache invalidation için version tracking
+// Frontend cache'i invalidate etmek için kullanılır
+
+const DATA_VERSION_KEY = 'DATA_VERSION';
+
+/**
+ * Mevcut data version'ı döndürür
+ * Frontend cache invalidation için kullanılır
+ * @returns {object} { success: boolean, data: string }
+ */
+function getDataVersion() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const version = props.getProperty(DATA_VERSION_KEY) || Date.now().toString();
+
+    // İlk kez çağrılıyorsa, version initialize et
+    if (!props.getProperty(DATA_VERSION_KEY)) {
+      props.setProperty(DATA_VERSION_KEY, version);
+    }
+
+    return { success: true, data: version };
+  } catch (error) {
+    log.error('getDataVersion error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Data version'ı increment eder (cache invalidation trigger)
+ * Appointments ekleme/silme/güncelleme sonrasında çağrılır
+ */
+function incrementDataVersion() {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const newVersion = Date.now().toString();
+    props.setProperty(DATA_VERSION_KEY, newVersion);
+
+    log.info('Data version incremented:', newVersion);
+    return { success: true, version: newVersion };
+  } catch (error) {
+    log.error('incrementDataVersion error:', error);
+    // Version increment başarısız olsa bile devam et (critical değil)
     return { success: false, error: error.toString() };
   }
 }
@@ -1782,6 +1832,10 @@ function deleteAppointment(eventId) {
 
     event.deleteEvent();
     log.info('Randevu silindi:', eventId);
+
+    // ⭐ Cache invalidation: Version increment
+    incrementDataVersion();
+
     return { success: true, message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_DELETED };
   } catch (error) {
     log.error('deleteAppointment hatası:', error);
@@ -1878,6 +1932,11 @@ function updateAppointment(eventId, newDate, newTime) {
         success: false,
         error: 'Randevu güncelleme sırasında bir hata oluştu. Lütfen tekrar deneyin.'
       };
+    }
+
+    // ⭐ Cache invalidation: Version increment (only if update successful)
+    if (updateResult && updateResult.success) {
+      incrementDataVersion();
     }
 
     // Lock'dan dönen sonucu return et
@@ -2636,6 +2695,9 @@ Bu randevu otomatik olarak oluşturulmuştur.
       log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
     }
 
+    // ⭐ Cache invalidation: Version increment
+    incrementDataVersion();
+
     return {
       success: true,
       eventId: event.getId(),
@@ -2863,6 +2925,9 @@ function createManualAppointment(params) {
         log.error('Manuel randevu e-posta gönderilemedi:', emailError);
       }
     }
+
+    // ⭐ Cache invalidation: Version increment
+    incrementDataVersion();
 
     return { success: true, eventId: event.getId(), message: 'Manuel randevu oluşturuldu.' };
   } catch (error) {
