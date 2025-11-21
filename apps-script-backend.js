@@ -1382,8 +1382,8 @@ const ACTION_HANDLERS = {
   'saveShifts': (e) => saveShifts(JSON.parse(e.parameter.shifts)),
 
   // Settings management
-  'getSettings': () => getSettings(),
-  'saveSettings': (e) => saveSettings(e.parameter),
+  'getSettings': () => SettingsService.getSettings(),
+  'saveSettings': (e) => SettingsService.saveSettings(e.parameter),
 
   // Data version (cache invalidation)
   'getDataVersion': () => getDataVersion(),
@@ -1888,45 +1888,57 @@ const StaffService = {
 };
 
 // ==================== SETTINGS MANAGEMENT ====================
+/**
+ * Application settings service (interval, maxDaily limits)
+ * @namespace SettingsService
+ */
+const SettingsService = {
+  /**
+   * Get application settings
+   * @returns {{success: boolean, data: {interval: number, maxDaily: number}}} Settings object
+   */
+  getSettings: function() {
+    const data = StorageService.getData();
+    return {
+      success: true,
+      data: data.settings || { interval: 60, maxDaily: 4 }
+    };
+  },
 
-// Ayarları getir
-function getSettings() {
-  const data = StorageService.getData();
-  return {
-    success: true,
-    data: data.settings || { interval: 60, maxDaily: 4 }
-  };
-}
+  /**
+   * Save application settings (with validation and race condition protection)
+   * @param {{interval: number|string, maxDaily: number|string}} params - Settings to save
+   * @returns {{success: boolean, data?: {interval: number, maxDaily: number}, error?: string}} Result
+   */
+  saveSettings: function(params) {
+    try {
+      // Validation
+      const interval = parseInt(params.interval);
+      const maxDaily = parseInt(params.maxDaily);
 
-// Ayarları kaydet
-function saveSettings(params) {
-  try {
-    // Validation
-    const interval = parseInt(params.interval);
-    const maxDaily = parseInt(params.maxDaily);
+      if (isNaN(interval) || interval < VALIDATION.INTERVAL_MIN || interval > VALIDATION.INTERVAL_MAX) {
+        return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
+      }
 
-    if (isNaN(interval) || interval < VALIDATION.INTERVAL_MIN || interval > VALIDATION.INTERVAL_MAX) {
-      return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
+      if (isNaN(maxDaily) || maxDaily < VALIDATION.MAX_DAILY_MIN || maxDaily > VALIDATION.MAX_DAILY_MAX) {
+        return { success: false, error: `Günlük maksimum randevu sayısı ${VALIDATION.MAX_DAILY_MIN}-${VALIDATION.MAX_DAILY_MAX} arasında olmalıdır` };
+      }
+
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        data.settings = {
+          interval: interval,
+          maxDaily: maxDaily
+        };
+        StorageService.saveData(data);
+        return { success: true, data: data.settings };
+      });
+    } catch (error) {
+      return { success: false, error: error.toString() };
     }
-
-    if (isNaN(maxDaily) || maxDaily < VALIDATION.MAX_DAILY_MIN || maxDaily > VALIDATION.MAX_DAILY_MAX) {
-      return { success: false, error: `Günlük maksimum randevu sayısı ${VALIDATION.MAX_DAILY_MIN}-${VALIDATION.MAX_DAILY_MAX} arasında olmalıdır` };
-    }
-
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      data.settings = {
-        interval: interval,
-        maxDaily: maxDaily
-      };
-      StorageService.saveData(data);
-      return { success: true, data: data.settings };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
   }
-}
+};
 
 // ==================== CONFIG MANAGEMENT ====================
 
