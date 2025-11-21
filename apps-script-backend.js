@@ -235,6 +235,139 @@ const LockServiceWrapper = {
   }
 };
 
+// ==================== AUTHENTICATION SERVICE ====================
+/**
+ * API Key authentication service
+ * @namespace AuthService
+ */
+const AuthService = {
+  /**
+   * Generate a new random API key with 'RLX_' prefix
+   * @returns {string} Generated API key (format: RLX_[32 random chars])
+   */
+  generateApiKey: function() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let key = 'RLX_'; // Prefix for Rolex
+    for (let i = 0; i < 32; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return key;
+  },
+
+  /**
+   * Save API key to PropertiesService
+   * @param {string} key - API key to save
+   * @returns {string} Saved key
+   */
+  saveApiKey: function(key) {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty(CONFIG.API_KEY_PROPERTY, key);
+    return key;
+  },
+
+  /**
+   * Get stored API key (creates new one if doesn't exist)
+   * @returns {string} Current API key
+   */
+  getApiKey: function() {
+    const props = PropertiesService.getScriptProperties();
+    let key = props.getProperty(CONFIG.API_KEY_PROPERTY);
+
+    // Eğer key yoksa yeni oluştur
+    if (!key) {
+      key = this.generateApiKey();
+      this.saveApiKey(key);
+    }
+
+    return key;
+  },
+
+  /**
+   * Validate provided API key against stored key
+   * @param {string} providedKey - API key to validate
+   * @returns {boolean} True if valid
+   */
+  validateApiKey: function(providedKey) {
+    if (!providedKey) return false;
+
+    const storedKey = this.getApiKey();
+    return providedKey === storedKey;
+  },
+
+  /**
+   * Regenerate API key (requires old key for verification)
+   * Sends email notification to admin
+   * @param {string} oldKey - Current API key for verification
+   * @returns {{success: boolean, apiKey?: string, error?: string}} Regeneration result
+   */
+  regenerateApiKey: function(oldKey) {
+    if (!this.validateApiKey(oldKey)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_API_KEY };
+    }
+
+    const newKey = this.generateApiKey();
+    this.saveApiKey(newKey);
+
+    // Admin'e e-posta gönder
+    try {
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: CONFIG.EMAIL_SUBJECTS.API_KEY_RENEWED,
+        name: CONFIG.COMPANY_NAME,
+        htmlBody: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h3>API Key Yenilendi</h3>
+            <p>Randevu sistemi admin paneli API key'iniz yenilenmiştir.</p>
+            <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace;">
+              ${newKey}
+            </div>
+            <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
+            <p>Tarih: ${new Date().toLocaleString('tr-TR')}</p>
+          </div>
+        `
+      });
+    } catch (e) {
+      log.error('API key yenileme e-postası gönderilemedi:', e);
+    }
+
+    return { success: true, apiKey: newKey };
+  },
+
+  /**
+   * Initialize API key and send to admin email
+   * Used for initial setup or manual key retrieval
+   * @returns {{success: boolean, apiKey: string, message?: string, warning?: string}} Initialization result
+   */
+  initializeApiKey: function() {
+    const existingKey = this.getApiKey();
+
+    // Admin'e e-posta gönder
+    try {
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: CONFIG.EMAIL_SUBJECTS.API_KEY_INITIAL,
+        name: CONFIG.COMPANY_NAME,
+        htmlBody: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h3>Randevu Sistemi API Key</h3>
+            <p>Admin paneline erişim için API key'iniz:</p>
+            <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace; word-break: break-all;">
+              ${existingKey}
+            </div>
+            <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
+            <p>Admin paneline giriş yaparken bu key'i kullanın.</p>
+          </div>
+        `
+      });
+      return { success: true, message: CONFIG.SUCCESS_MESSAGES.API_KEY_SENT, apiKey: existingKey };
+    } catch (e) {
+      log.error('API key e-postası gönderilemedi:', e);
+      // E-posta gönderilmese bile API key'i döndür
+      return { success: true, apiKey: existingKey, warning: 'API key oluşturuldu ancak e-posta gönderilemedi' };
+    }
+  }
+};
+
 const CONFIG = {
   // Calendar & Storage
   CALENDAR_ID: 'primary', // veya 'sizin@gmail.com'
@@ -1189,109 +1322,7 @@ function getStaffEmailTemplate(data) {
 
 // ==================== API KEY MANAGEMENT ====================
 // Admin fonksiyonları için API key yönetimi
-
-// API Key oluştur/yenile
-function generateApiKey() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  let key = 'RLX_'; // Prefix for Rolex
-  for (let i = 0; i < 32; i++) {
-    key += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return key;
-}
-
-// API Key'i kaydet
-function saveApiKey(key) {
-  const props = PropertiesService.getScriptProperties();
-  props.setProperty(CONFIG.API_KEY_PROPERTY, key);
-  return key;
-}
-
-// API Key'i getir
-function getApiKey() {
-  const props = PropertiesService.getScriptProperties();
-  let key = props.getProperty(CONFIG.API_KEY_PROPERTY);
-
-  // Eğer key yoksa yeni oluştur
-  if (!key) {
-    key = generateApiKey();
-    saveApiKey(key);
-  }
-
-  return key;
-}
-
-// API Key doğrula
-function validateApiKey(providedKey) {
-  if (!providedKey) return false;
-
-  const storedKey = getApiKey();
-  return providedKey === storedKey;
-}
-
-// API Key'i yenile (eski key ile doğrulama gerekir)
-function regenerateApiKey(oldKey) {
-  if (!validateApiKey(oldKey)) {
-    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_API_KEY };
-  }
-
-  const newKey = generateApiKey();
-  saveApiKey(newKey);
-
-  // Admin'e e-posta gönder
-  try {
-    MailApp.sendEmail({
-      to: CONFIG.ADMIN_EMAIL,
-      subject: CONFIG.EMAIL_SUBJECTS.API_KEY_RENEWED,
-      name: CONFIG.COMPANY_NAME,
-      htmlBody: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h3>API Key Yenilendi</h3>
-          <p>Randevu sistemi admin paneli API key'iniz yenilenmiştir.</p>
-          <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace;">
-            ${newKey}
-          </div>
-          <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
-          <p>Tarih: ${new Date().toLocaleString('tr-TR')}</p>
-        </div>
-      `
-    });
-  } catch (e) {
-    log.error('API key yenileme e-postası gönderilemedi:', e);
-  }
-
-  return { success: true, apiKey: newKey };
-}
-
-// İlk kurulum - API key oluştur ve admin'e gönder
-function initializeApiKey() {
-  const existingKey = getApiKey();
-
-  // Admin'e e-posta gönder
-  try {
-    MailApp.sendEmail({
-      to: CONFIG.ADMIN_EMAIL,
-      subject: CONFIG.EMAIL_SUBJECTS.API_KEY_INITIAL,
-      name: CONFIG.COMPANY_NAME,
-      htmlBody: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h3>Randevu Sistemi API Key</h3>
-          <p>Admin paneline erişim için API key'iniz:</p>
-          <div style="background: #f5f5f5; padding: 15px; margin: 20px 0; font-family: monospace; word-break: break-all;">
-            ${existingKey}
-          </div>
-          <p><strong>Önemli:</strong> Bu key'i güvenli bir yerde saklayın ve kimseyle paylaşmayın.</p>
-          <p>Admin paneline giriş yaparken bu key'i kullanın.</p>
-        </div>
-      `
-    });
-    return { success: true, message: CONFIG.SUCCESS_MESSAGES.API_KEY_SENT, apiKey: existingKey };
-  } catch (e) {
-    log.error('API key e-postası gönderilemedi:', e);
-    // E-posta gönderilmese bile API key'i döndür
-    return { success: true, apiKey: existingKey, warning: 'API key oluşturuldu ancak e-posta gönderilemedi' };
-  }
-}
+// API Key fonksiyonları - AuthService namespace'ine taşındı (line 238)
 
 // ==================== CACHE (Script-wide with CacheService) ====================
 // Google Apps Script CacheService kullanarak gerçek cache implementasyonu
@@ -1326,8 +1357,8 @@ const ACTION_HANDLERS = {
   'test': () => ({ status: 'ok', message: 'Apps Script çalışıyor!' }),
 
   // API Key management
-  'initializeApiKey': () => initializeApiKey(),
-  'regenerateApiKey': (e) => regenerateApiKey(e.parameter.oldKey),
+  'initializeApiKey': () => AuthService.initializeApiKey(),
+  'regenerateApiKey': (e) => AuthService.regenerateApiKey(e.parameter.oldKey),
 
   // Staff management
   'getStaff': () => getStaff(),
@@ -1425,7 +1456,7 @@ function doGet(e) {
     try {
       // Admin action kontrolü - API key gerekli mi?
       if (ADMIN_ACTIONS.includes(action)) {
-        if (!validateApiKey(apiKey)) {
+        if (!AuthService.validateApiKey(apiKey)) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
@@ -1508,7 +1539,7 @@ function doPost(e) {
     try {
       // Admin action kontrolü - API key gerekli mi?
       if (ADMIN_ACTIONS.includes(action)) {
-        if (!validateApiKey(apiKey)) {
+        if (!AuthService.validateApiKey(apiKey)) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
@@ -3347,7 +3378,7 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
 function sendWhatsAppReminders(date, apiKey) {
   try {
     // API key kontrolü
-    if (!validateApiKey(apiKey)) {
+    if (!AuthService.validateApiKey(apiKey)) {
       throw new Error('Geçersiz API key');
     }
 
@@ -3617,7 +3648,7 @@ function sendAdminNotification(summary) {
 function updateWhatsAppSettings(settings, apiKey) {
   try {
     // API key kontrolü
-    if (!validateApiKey(apiKey)) {
+    if (!AuthService.validateApiKey(apiKey)) {
       throw new Error('Geçersiz API key');
     }
 
@@ -3656,7 +3687,7 @@ function updateWhatsAppSettings(settings, apiKey) {
 function getWhatsAppSettings(apiKey) {
   try {
     // API key kontrolü
-    if (!validateApiKey(apiKey)) {
+    if (!AuthService.validateApiKey(apiKey)) {
       throw new Error('Geçersiz API key');
     }
 
@@ -3691,7 +3722,7 @@ function getWhatsAppSettings(apiKey) {
 function updateSlackSettings(webhookUrl, apiKey) {
   try {
     // API key kontrolü
-    if (!validateApiKey(apiKey)) {
+    if (!AuthService.validateApiKey(apiKey)) {
       throw new Error('Geçersiz API key');
     }
 
@@ -3729,7 +3760,7 @@ function updateSlackSettings(webhookUrl, apiKey) {
 function getSlackSettings(apiKey) {
   try {
     // API key kontrolü
-    if (!validateApiKey(apiKey)) {
+    if (!AuthService.validateApiKey(apiKey)) {
       throw new Error('Geçersiz API key');
     }
 
