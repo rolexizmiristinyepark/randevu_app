@@ -173,61 +173,67 @@ const log = {
 
 // ==================== LOCK SERVICE (RACE CONDITION PROTECTION) ====================
 /**
- * Critical section'ları kilitleyerek race condition'ı önler
- * @param {Function} fn - Kilitli çalıştırılacak fonksiyon
- * @param {number} timeout - Lock timeout (ms), default 30000 (30 saniye)
- * @param {number} maxRetries - Başarısız olursa kaç kere deneyeceği, default 3
- * @returns {*} Fonksiyonun return değeri
- * @throws {Error} Lock alınamazsa veya timeout olursa
- *
- * @example
- * const result = withLock(() => {
- *   const data = getData();
- *   data.counter++;
- *   saveData(data);
- *   return data.counter;
- * });
+ * Lock service wrapper for race condition protection
+ * @namespace LockServiceWrapper
  */
-function withLock(fn, timeout = 30000, maxRetries = 3) {
-  const lock = LockService.getScriptLock();
-  let lastError = null;
+const LockServiceWrapper = {
+  /**
+   * Critical section'ları kilitleyerek race condition'ı önler
+   * @param {Function} fn - Kilitli çalıştırılacak fonksiyon
+   * @param {number} timeout - Lock timeout (ms), default 30000 (30 saniye)
+   * @param {number} maxRetries - Başarısız olursa kaç kere deneyeceği, default 3
+   * @returns {*} Fonksiyonun return değeri
+   * @throws {Error} Lock alınamazsa veya timeout olursa
+   *
+   * @example
+   * const result = LockServiceWrapper.withLock(() => {
+   *   const data = getData();
+   *   data.counter++;
+   *   saveData(data);
+   *   return data.counter;
+   * });
+   */
+  withLock: function(fn, timeout = 30000, maxRetries = 3) {
+    const lock = LockService.getScriptLock();
+    let lastError = null;
 
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      // Lock'u almayı dene
-      const hasLock = lock.tryLock(timeout);
-
-      if (!hasLock) {
-        throw new Error(`Lock timeout after ${timeout}ms (attempt ${attempt}/${maxRetries})`);
-      }
-
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Critical section'ı çalıştır
-        log.info(`Lock acquired (attempt ${attempt}/${maxRetries})`);
-        const result = fn();
-        log.info('Lock operation completed successfully');
-        return result;
-      } finally {
-        // Her durumda lock'u serbest bırak
-        lock.releaseLock();
-        log.info('Lock released');
-      }
-    } catch (error) {
-      lastError = error;
-      log.error(`Lock attempt ${attempt}/${maxRetries} failed:`, error.message);
+        // Lock'u almayı dene
+        const hasLock = lock.tryLock(timeout);
 
-      // Son deneme değilse, kısa bir süre bekle (exponential backoff)
-      if (attempt < maxRetries) {
-        const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Max 5 saniye
-        log.info(`Waiting ${waitMs}ms before retry...`);
-        Utilities.sleep(waitMs);
+        if (!hasLock) {
+          throw new Error(`Lock timeout after ${timeout}ms (attempt ${attempt}/${maxRetries})`);
+        }
+
+        try {
+          // Critical section'ı çalıştır
+          log.info(`Lock acquired (attempt ${attempt}/${maxRetries})`);
+          const result = fn();
+          log.info('Lock operation completed successfully');
+          return result;
+        } finally {
+          // Her durumda lock'u serbest bırak
+          lock.releaseLock();
+          log.info('Lock released');
+        }
+      } catch (error) {
+        lastError = error;
+        log.error(`Lock attempt ${attempt}/${maxRetries} failed:`, error.message);
+
+        // Son deneme değilse, kısa bir süre bekle (exponential backoff)
+        if (attempt < maxRetries) {
+          const waitMs = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Max 5 saniye
+          log.info(`Waiting ${waitMs}ms before retry...`);
+          Utilities.sleep(waitMs);
+        }
       }
     }
-  }
 
-  // Tüm denemeler başarısız
-  throw new Error(`Failed to acquire lock after ${maxRetries} attempts. Last error: ${lastError.message}`);
-}
+    // Tüm denemeler başarısız
+    throw new Error(`Failed to acquire lock after ${maxRetries} attempts. Last error: ${lastError.message}`);
+  }
+};
 
 const CONFIG = {
   // Calendar & Storage
@@ -1653,7 +1659,7 @@ function addStaff(name, phone, email) {
     }
 
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
       data.staff.push({
@@ -1675,7 +1681,7 @@ function addStaff(name, phone, email) {
 function toggleStaff(staffId) {
   try {
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       const staff = data.staff.find(s => s.id === parseInt(staffId));
       if (staff) {
@@ -1694,7 +1700,7 @@ function toggleStaff(staffId) {
 function removeStaff(staffId) {
   try {
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       data.staff = data.staff.filter(s => s.id !== parseInt(staffId));
 
@@ -1723,7 +1729,7 @@ function updateStaff(staffId, name, phone, email) {
     }
 
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       const staff = data.staff.find(s => s.id === parseInt(staffId));
       if (staff) {
@@ -1767,7 +1773,7 @@ function saveSettings(params) {
     }
 
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       data.settings = {
         interval: interval,
@@ -1842,7 +1848,7 @@ function getConfig() {
 function saveShifts(shiftsData) {
   try {
     // Lock ile getData → modify → saveData atomik yap
-    return withLock(() => {
+    return LockServiceWrapper.withLock(() => {
       const data = getData();
       // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
       Object.keys(shiftsData).forEach(date => {
@@ -1987,7 +1993,7 @@ function updateAppointment(eventId, newDate, newTime) {
     // updateAppointment için lock (overlap check + update atomik olmalı)
     let updateResult;
     try {
-      updateResult = withLock(() => {
+      updateResult = LockServiceWrapper.withLock(() => {
         log.info('Lock acquired - updating appointment');
 
         // YÖNETİM RANDEVUSU → VALİDATION BYPASS
@@ -2447,7 +2453,7 @@ function createAppointment(params) {
     // Bu sayede aynı anda 2 kişi aynı saate randevu alamaz
     let event;
     try {
-      event = withLock(() => {
+      event = LockServiceWrapper.withLock(() => {
         log.info('Lock acquired - starting critical section (Calendar check + create)');
 
         // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
@@ -2863,7 +2869,7 @@ function createManualAppointment(params) {
     // Manuel randevu oluşturma için lock (Calendar write atomik olmalı)
     let event;
     try {
-      event = withLock(() => {
+      event = LockServiceWrapper.withLock(() => {
         log.info('Lock acquired - creating manual appointment');
 
         const calendar = getCalendar();
