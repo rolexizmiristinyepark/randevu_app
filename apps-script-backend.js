@@ -1331,10 +1331,19 @@ function getStaffEmailTemplate(data) {
 const CACHE_DURATION = 900; // 15 dakika (saniye cinsinden)
 const DATA_CACHE_KEY = 'app_data';
 
-// CacheService helper - DRY prensibi
-function getCache() {
-  return CacheService.getScriptCache();
-}
+/**
+ * CacheService wrapper for DRY principle
+ * @namespace CacheServiceWrapper
+ */
+const CacheServiceWrapper = {
+  /**
+   * Get script-level cache instance
+   * @returns {Cache} Google Apps Script CacheService.Cache instance
+   */
+  getCache: function() {
+    return CacheService.getScriptCache();
+  }
+};
 
 // ==================== MAIN HANDLER ====================
 // Admin işlemleri için API key gereken action'lar
@@ -1597,7 +1606,7 @@ const StorageService = {
    * @returns {Object} Data object
    */
   getData: function() {
-  const cache = getCache();
+  const cache = CacheServiceWrapper.getCache();
 
   // 1. Cache'den veriyi kontrol et
   const cachedData = cache.get(DATA_CACHE_KEY);
@@ -1659,7 +1668,7 @@ const StorageService = {
     props.setProperty(CONFIG.PROPERTIES_KEY, jsonData);
 
     // 2. Cache'i temizle (veri değiştiği için)
-    const cache = getCache();
+    const cache = CacheServiceWrapper.getCache();
     cache.remove(DATA_CACHE_KEY);
 
     // 3. Yeni veriyi cache'e yaz (sonraki okumalar için)
@@ -1681,7 +1690,7 @@ const StorageService = {
       props.deleteProperty(CONFIG.PROPERTIES_KEY);
 
       // Cache'i temizle
-      const cache = getCache();
+      const cache = CacheServiceWrapper.getCache();
       cache.remove(DATA_CACHE_KEY);
 
       // Yeni default data yüklenir
