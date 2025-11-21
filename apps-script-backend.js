@@ -1377,9 +1377,9 @@ const ACTION_HANDLERS = {
   'updateStaff': (e) => StaffService.updateStaff(e.parameter.id, e.parameter.name, e.parameter.phone, e.parameter.email),
 
   // Shifts management
-  'getShifts': (e) => getShifts(e.parameter.date),
-  'getMonthShifts': (e) => getMonthShifts(e.parameter.month),
-  'saveShifts': (e) => saveShifts(JSON.parse(e.parameter.shifts)),
+  'getShifts': (e) => ShiftService.getShifts(e.parameter.date),
+  'getMonthShifts': (e) => ShiftService.getMonthShifts(e.parameter.month),
+  'saveShifts': (e) => ShiftService.saveShifts(JSON.parse(e.parameter.shifts)),
 
   // Settings management
   'getSettings': () => SettingsService.getSettings(),
@@ -1996,50 +1996,67 @@ function getConfig() {
 }
 
 // ==================== SHIFTS MANAGEMENT ====================
-
-// Vardiyaları kaydet
-function saveShifts(shiftsData) {
-  try {
-    // Lock ile getData → modify → saveData atomik yap
-    return LockServiceWrapper.withLock(() => {
-      const data = StorageService.getData();
-      // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
-      Object.keys(shiftsData).forEach(date => {
-        if (!data.shifts[date]) {
-          data.shifts[date] = {};
-        }
-        data.shifts[date] = shiftsData[date];
+/**
+ * Staff shift scheduling service (morning/evening/full shifts)
+ * @namespace ShiftService
+ */
+const ShiftService = {
+  /**
+   * Save shifts for one or more dates (with race condition protection)
+   * @param {Object.<string, Object.<string, string>>} shiftsData - Format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
+   * @returns {{success: boolean, error?: string}} Save result
+   */
+  saveShifts: function(shiftsData) {
+    try {
+      // Lock ile getData → modify → saveData atomik yap
+      return LockServiceWrapper.withLock(() => {
+        const data = StorageService.getData();
+        // shiftsData format: { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
+        Object.keys(shiftsData).forEach(date => {
+          if (!data.shifts[date]) {
+            data.shifts[date] = {};
+          }
+          data.shifts[date] = shiftsData[date];
+        });
+        StorageService.saveData(data);
+        return { success: true };
       });
-      StorageService.saveData(data);
-      return { success: true };
-    });
-  } catch (error) {
-    return { success: false, error: error.toString() };
-  }
-}
-
-// Belirli bir gün için vardiyaları getir
-function getShifts(date) {
-  const data = StorageService.getData();
-  const shifts = data.shifts || {};
-  return { success: true, data: shifts[date] || {} };
-}
-
-// Bir ay için tüm vardiyaları getir
-function getMonthShifts(month) {
-  const data = StorageService.getData();
-  const shifts = data.shifts || {};
-  const monthShifts = {};
-
-  // YYYY-MM formatında gelen ay parametresi
-  Object.keys(shifts).forEach(date => {
-    if (date.startsWith(month)) {
-      monthShifts[date] = shifts[date];
+    } catch (error) {
+      return { success: false, error: error.toString() };
     }
-  });
+  },
 
-  return { success: true, data: monthShifts };
-}
+  /**
+   * Get shifts for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {{success: boolean, data: Object.<string, string>}} Shifts for date
+   */
+  getShifts: function(date) {
+    const data = StorageService.getData();
+    const shifts = data.shifts || {};
+    return { success: true, data: shifts[date] || {} };
+  },
+
+  /**
+   * Get all shifts for a specific month
+   * @param {string} month - Month in YYYY-MM format
+   * @returns {{success: boolean, data: Object.<string, Object>}} All shifts for month
+   */
+  getMonthShifts: function(month) {
+    const data = StorageService.getData();
+    const shifts = data.shifts || {};
+    const monthShifts = {};
+
+    // YYYY-MM formatında gelen ay parametresi
+    Object.keys(shifts).forEach(date => {
+      if (date.startsWith(month)) {
+        monthShifts[date] = shifts[date];
+      }
+    });
+
+    return { success: true, data: monthShifts };
+  }
+};
 
 // Belirli bir gün için randevuları getir
 // options.countOnly: true → Sadece sayı döndür
