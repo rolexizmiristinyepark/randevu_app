@@ -649,7 +649,7 @@ function getDailySlots(date, shiftType = 'full') {
  */
 function isSlotFree(date, hour) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
     const slotEnd = new Date(slotStart);
     slotEnd.setHours(slotEnd.getHours() + 1);
@@ -674,7 +674,7 @@ function isSlotFree(date, hour) {
  */
 function getDeliveryCount(date) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const dayStart = new Date(`${date}T00:00:00`);
     const dayEnd = new Date(`${date}T23:59:59`);
 
@@ -707,7 +707,7 @@ function getDeliveryCount(date) {
  */
 function getDeliveryCountByStaff(date, staffId) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const dayStart = new Date(`${date}T00:00:00`);
     const dayEnd = new Date(`${date}T23:59:59`);
 
@@ -1073,15 +1073,25 @@ const DateUtils = {
   }
 };
 
-// Takvim nesnesini döndür - merkezi hata yönetimi ile
-function getCalendar() {
-  const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
-  if (!calendar) {
-    log.error('Takvim bulunamadı. CALENDAR_ID kontrol edin:', CONFIG.CALENDAR_ID);
-    throw new Error(CONFIG.ERROR_MESSAGES.CALENDAR_NOT_FOUND);
+/**
+ * Google Calendar service wrapper
+ * @namespace CalendarService
+ */
+const CalendarService = {
+  /**
+   * Get Google Calendar instance with error handling
+   * @returns {GoogleAppsScript.Calendar.Calendar} Calendar instance
+   * @throws {Error} If calendar not found
+   */
+  getCalendar: function() {
+    const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+    if (!calendar) {
+      log.error('Takvim bulunamadı. CALENDAR_ID kontrol edin:', CONFIG.CALENDAR_ID);
+      throw new Error(CONFIG.ERROR_MESSAGES.CALENDAR_NOT_FOUND);
+    }
+    return calendar;
   }
-  return calendar;
-}
+};
 
 // Event'i appointment objesine çevir (getAppointments, getWeekAppointments, getMonthAppointments için)
 // mapEventToAppointment - AppointmentService namespace'ine taşındı (line 2073)
@@ -2088,7 +2098,7 @@ const AppointmentService = {
   const { countOnly = false, appointmentType = null } = options;
 
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const { startDate, endDate } = DateUtils.getDateRange(date);
     let events = calendar.getEvents(startDate, endDate);
 
@@ -2125,7 +2135,7 @@ const AppointmentService = {
    */
   getWeekAppointments: function(startDateStr, endDateStr) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const startDate = new Date(startDateStr + 'T00:00:00');
     const endDate = new Date(endDateStr + 'T23:59:59');
     const events = calendar.getEvents(startDate, endDate);
@@ -2146,7 +2156,7 @@ const AppointmentService = {
    */
   deleteAppointment: function(eventId) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const event = calendar.getEventById(eventId);
     if (!event) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
@@ -2174,7 +2184,7 @@ const AppointmentService = {
    */
   updateAppointment: function(eventId, newDate, newTime) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const event = calendar.getEventById(eventId);
 
     if (!event) {
@@ -2277,7 +2287,7 @@ const AppointmentService = {
    */
   getMonthAppointments: function(month) {
     try {
-      const calendar = getCalendar();
+      const calendar = CalendarService.getCalendar();
 
       // YYYY-MM formatından tarihleri oluştur
       const [year, monthNum] = month.split('-');
@@ -2327,7 +2337,7 @@ function getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
     }
 
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const data = StorageService.getData();
     const settings = data.settings || {};
     const interval = parseInt(settings.interval) || 60;
@@ -2404,7 +2414,7 @@ function getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
 // Randevuya personel ata (VIP linkler için)
 function assignStaffToAppointment(eventId, staffId) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const event = calendar.getEventById(eventId);
 
     if (!event) {
@@ -2461,7 +2471,7 @@ function assignStaffToAppointment(eventId, staffId) {
 // Google Calendar'dan mevcut etkinlikleri getir
 function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const startDate = new Date(startDateStr + 'T00:00:00');
     const endDate = new Date(endDateStr + 'T23:59:59');
     const events = calendar.getEvents(startDate, endDate);
@@ -2673,7 +2683,7 @@ function createAppointment(params) {
         // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
         // STANDART: [start, end) interval (start dahil, end hariç)
 
-        const calendar = getCalendar();
+        const calendar = CalendarService.getCalendar();
 
     // Yeni randevunun epoch-minute aralığı
     const newStart = DateUtils.dateTimeToEpochMinute(date, time);
@@ -2941,7 +2951,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
 function getTodayWhatsAppReminders(date) {
   try {
     const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const { startDate, endDate } = DateUtils.getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
     const events = calendar.getEvents(startDate, endDate);
 
@@ -3083,7 +3093,7 @@ function createManualAppointment(params) {
       event = LockServiceWrapper.withLock(() => {
         log.info('Lock acquired - creating manual appointment');
 
-        const calendar = getCalendar();
+        const calendar = CalendarService.getCalendar();
         const event = calendar.createEvent(title, startDateTime, endDateTime, { description });
 
         // Tag'leri ekle
@@ -3204,7 +3214,7 @@ function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, in
     }
 
     // Google Calendar'dan randevuları getir
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const { startDate, endDate } = DateUtils.getDateRange(date);
     const events = calendar.getEvents(startDate, endDate);
 
@@ -4205,7 +4215,7 @@ function testSlackIntegration() {
  */
 function getManagementSlotAvailability(date, managementLevel) {
   try {
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
     const startDate = new Date(date + 'T00:00:00');
     const endDate = new Date(date + 'T23:59:59');
 
@@ -4281,7 +4291,7 @@ function getManagementSlotAvailability(date, managementLevel) {
 function getAvailableStaffForSlot(date, time) {
   try {
     const data = StorageService.getData();
-    const calendar = getCalendar();
+    const calendar = CalendarService.getCalendar();
 
     // Saat bilgisini parse et
     const [hourStr, minuteStr] = time.split(':');
