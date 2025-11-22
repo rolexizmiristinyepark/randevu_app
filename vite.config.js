@@ -21,10 +21,16 @@ export default defineConfig(({ mode }) => ({
       compress: {
         drop_console: true, // Remove console.log in production
         drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug']
+        pure_funcs: ['console.log', 'console.info', 'console.debug'],
+        passes: 2, // ✅ Extra minification pass (marginal benefit)
+        unsafe_arrows: true, // ✅ Convert arrow functions to shorter syntax
+        unsafe_methods: true // ✅ Optimize method calls
       },
       format: {
         comments: false // Remove all comments
+      },
+      mangle: {
+        safari10: true // ✅ Better Safari compatibility
       }
     },
 
