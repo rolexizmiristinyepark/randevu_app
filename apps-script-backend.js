@@ -1368,7 +1368,7 @@ const ACTION_HANDLERS = {
   'saveSettings': (e) => SettingsService.saveSettings(e.parameter),
 
   // Data version (cache invalidation)
-  'getDataVersion': () => getDataVersion(),
+  'getDataVersion': () => VersionService.getDataVersion(),
 
   // Appointments
   'getAppointments': (e) => AppointmentService.getAppointments(e.parameter.date, {
@@ -1693,45 +1693,51 @@ const StorageService = {
 const DATA_VERSION_KEY = 'DATA_VERSION';
 
 /**
- * Mevcut data version'ı döndürür
- * Frontend cache invalidation için kullanılır
- * @returns {object} { success: boolean, data: string }
+ * Data version management service for cache invalidation
+ * @namespace VersionService
  */
-function getDataVersion() {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const version = props.getProperty(DATA_VERSION_KEY) || Date.now().toString();
+const VersionService = {
+  /**
+   * Get current data version (for frontend cache invalidation)
+   * @returns {{success: boolean, data?: string, error?: string}} Current version
+   */
+  getDataVersion: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const version = props.getProperty(DATA_VERSION_KEY) || Date.now().toString();
 
-    // İlk kez çağrılıyorsa, version initialize et
-    if (!props.getProperty(DATA_VERSION_KEY)) {
-      props.setProperty(DATA_VERSION_KEY, version);
+      // İlk kez çağrılıyorsa, version initialize et
+      if (!props.getProperty(DATA_VERSION_KEY)) {
+        props.setProperty(DATA_VERSION_KEY, version);
+      }
+
+      return { success: true, data: version };
+    } catch (error) {
+      log.error('getDataVersion error:', error);
+      return { success: false, error: error.toString() };
     }
+  },
 
-    return { success: true, data: version };
-  } catch (error) {
-    log.error('getDataVersion error:', error);
-    return { success: false, error: error.toString() };
+  /**
+   * Increment data version (triggers cache invalidation)
+   * Called after appointments create/delete/update
+   * @returns {{success: boolean, version?: string, error?: string}} New version
+   */
+  incrementDataVersion: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const newVersion = Date.now().toString();
+      props.setProperty(DATA_VERSION_KEY, newVersion);
+
+      log.info('Data version incremented:', newVersion);
+      return { success: true, version: newVersion };
+    } catch (error) {
+      log.error('incrementDataVersion error:', error);
+      // Version increment başarısız olsa bile devam et (critical değil)
+      return { success: false, error: error.toString() };
+    }
   }
-}
-
-/**
- * Data version'ı increment eder (cache invalidation trigger)
- * Appointments ekleme/silme/güncelleme sonrasında çağrılır
- */
-function incrementDataVersion() {
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const newVersion = Date.now().toString();
-    props.setProperty(DATA_VERSION_KEY, newVersion);
-
-    log.info('Data version incremented:', newVersion);
-    return { success: true, version: newVersion };
-  } catch (error) {
-    log.error('incrementDataVersion error:', error);
-    // Version increment başarısız olsa bile devam et (critical değil)
-    return { success: false, error: error.toString() };
-  }
-}
+};
 
 // ==================== API FUNCTIONS ====================
 
@@ -2150,7 +2156,7 @@ const AppointmentService = {
     log.info('Randevu silindi:', eventId);
 
     // ⭐ Cache invalidation: Version increment
-    incrementDataVersion();
+    VersionService.incrementDataVersion();
 
     return { success: true, message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_DELETED };
   } catch (error) {
@@ -2252,7 +2258,7 @@ const AppointmentService = {
 
     // ⭐ Cache invalidation: Version increment (only if update successful)
     if (updateResult && updateResult.success) {
-      incrementDataVersion();
+      VersionService.incrementDataVersion();
     }
 
     // Lock'dan dönen sonucu return et
@@ -2912,7 +2918,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
     }
 
     // ⭐ Cache invalidation: Version increment
-    incrementDataVersion();
+    VersionService.incrementDataVersion();
 
     return {
       success: true,
@@ -3143,7 +3149,7 @@ function createManualAppointment(params) {
     }
 
     // ⭐ Cache invalidation: Version increment
-    incrementDataVersion();
+    VersionService.incrementDataVersion();
 
     return { success: true, eventId: event.getId(), message: 'Manuel randevu oluşturuldu.' };
   } catch (error) {
