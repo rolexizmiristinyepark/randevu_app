@@ -5,8 +5,7 @@
 import { StringUtils } from './string-utils';
 import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
-import { initConfig } from './config-loader';
-import type { Config } from './config-loader';
+import { initConfig, Config } from './config-loader';
 import rolexLogoUrl from './assets/rolex-logo.svg';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================

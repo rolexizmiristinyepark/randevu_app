@@ -3,9 +3,9 @@ import js from '@eslint/js';
 import securityPlugin from 'eslint-plugin-security';
 
 export default [
-  // Frontend TypeScript files
+  // Frontend JavaScript files (TypeScript checked by tsc)
   {
-    files: ['**/*.ts', '**/*.js'],
+    files: ['**/*.js'],
     ignores: ['apps-script-backend.js', 'measurement-script.js', 'dist/**', 'node_modules/**'],
     ...js.configs.recommended,
     languageOptions: {
@@ -49,6 +49,23 @@ export default [
       'no-var': 'error',
       'security/detect-object-injection': 'off', // Too many false positives
       'security/detect-non-literal-regexp': 'warn'
+    }
+  },
+
+  // Node.js configuration files
+  {
+    files: ['vite.config.js', 'eslint.config.js'],
+    languageOptions: {
+      ecmaVersion: 2022,
+      sourceType: 'module',
+      globals: {
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        process: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        console: 'readonly'
+      }
     }
   },
 
