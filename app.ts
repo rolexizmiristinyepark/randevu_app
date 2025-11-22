@@ -5,7 +5,8 @@
 import { StringUtils } from './string-utils';
 import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
-import { initConfig, type Config } from './config-loader';
+import { initConfig } from './config-loader';
+import type { Config } from './config-loader';
 import rolexLogoUrl from './assets/rolex-logo.svg';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
@@ -250,88 +251,17 @@ const monthCache = sessionStorageCache;
  * Cache kullanarak performans optimize eder
  * Fallback olarak mevcut CONFIG kullanılır
  */
-async function loadConfig() {
-    try {
-        // Cache kontrolü (30 dakika)
-        const cached = sessionStorageCache.get('backend_config');
-        if (cached) {
-            log.info('Config loaded from cache');
-            return cached;
-        }
-
-        log.info('Loading config from backend...');
-        const result = await apiCall('getConfig', {});
-
-        if (result.success && result.data) {
-            // Cache'e kaydet
-            sessionStorageCache.set('backend_config', result.data);
-            log.info('Config loaded from backend successfully');
-            return result.data;
-        } else {
-            throw new Error(result.error || 'Config loading failed');
-        }
-    } catch (error) {
-        log.warn('Config loading failed, using fallback:', error);
-        // Fallback - mevcut CONFIG kullan
-        return null;
-    }
-}
-
-/**
- * Backend config ile mevcut CONFIG'i merge eder
- */
-function mergeConfig(backendConfig) {
-    if (!backendConfig) return;
-
-    try {
-        // SHIFTS güncelle
-        if (backendConfig.shifts) {
-            CONFIG.SHIFTS = {
-                'morning': {
-                    start: parseInt(backendConfig.shifts.morning.start.split(':')[0]),
-                    end: parseInt(backendConfig.shifts.morning.end.split(':')[0]),
-                    label: `Sabah (${backendConfig.shifts.morning.start}-${backendConfig.shifts.morning.end})`
-                },
-                'evening': {
-                    start: parseInt(backendConfig.shifts.evening.start.split(':')[0]),
-                    end: parseInt(backendConfig.shifts.evening.end.split(':')[0]),
-                    label: `Akşam (${backendConfig.shifts.evening.start}-${backendConfig.shifts.evening.end})`
-                },
-                'full': {
-                    start: parseInt(backendConfig.shifts.full.start.split(':')[0]),
-                    end: parseInt(backendConfig.shifts.full.end.split(':')[0]),
-                    label: `Full (${backendConfig.shifts.full.start}-${backendConfig.shifts.full.end})`
-                }
-            };
-        }
-
-        // APPOINTMENT_HOURS güncelle
-        if (backendConfig.appointmentHours) {
-            CONFIG.APPOINTMENT_HOURS = {
-                earliest: backendConfig.appointmentHours.earliest,
-                latest: backendConfig.appointmentHours.latest,
-                interval: backendConfig.appointmentHours.interval
-            };
-        }
-
-        // MAX_DAILY güncelle
-        if (backendConfig.maxDailyDeliveryAppointments !== undefined) {
-            CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS = backendConfig.maxDailyDeliveryAppointments;
-        }
-
-        log.info('Config merged successfully:', CONFIG);
-    } catch (error) {
-        log.error('Config merge error:', error);
-    }
-}
+// ⚠️ REMOVED: loadConfig() and mergeConfig() - replaced by config-loader.ts
+// Config is now loaded via initConfig() (line 22) with localStorage cache
+// Old functions created duplicate API calls and race conditions
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize monitoring (Sentry + Web Vitals)
     initMonitoring();
 
-    // Backend'den config yükle (tek kaynak prensibi)
-    const backendConfig = await measureAsync('loadConfig', () => loadConfig());
-    mergeConfig(backendConfig);
+    // ⚠️ Config is loaded via initConfig() IIFE (line 22) - no need to load here
+    // CONFIG available globally via window.CONFIG after async initialization
+
     // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
     // Calendar modal buttons - Lazy loaded handlers
     document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);

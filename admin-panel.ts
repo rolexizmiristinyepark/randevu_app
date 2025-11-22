@@ -1,6 +1,7 @@
         // Import monitoring utilities
         import { initMonitoring, logError } from './monitoring';
-        import { initConfig, type Config } from './config-loader';
+        import { initConfig } from './config-loader';
+        import type { Config } from './config-loader';
 
         // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
         // ⭐ NEW: Config loaded dynamically from backend API
