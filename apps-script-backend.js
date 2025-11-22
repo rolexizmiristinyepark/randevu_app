@@ -681,65 +681,8 @@ const SlotService = {
  * @param {string} date - YYYY-MM-DD formatında tarih
  * @returns {number} O gün için teslim + gönderi randevusu sayısı
  */
-function getDeliveryCount(date) {
-  try {
-    const calendar = CalendarService.getCalendar();
-    const dayStart = new Date(`${date}T00:00:00`);
-    const dayEnd = new Date(`${date}T23:59:59`);
-
-    const events = calendar.getEvents(dayStart, dayEnd);
-
-    // 'delivery' VE 'shipping' tipindeki randevuları say (ikisi de aynı limit içinde)
-    const deliveryCount = events.filter(event => {
-      const type = event.getTag('appointmentType');
-      return (
-        type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
-        type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping'
-      );
-    }).length;
-
-    return deliveryCount;
-  } catch (error) {
-    log.error('getDeliveryCount error:', error);
-    return 999; // Hata durumunda safe side: limit aşılmış kabul et
-  }
-}
-
-/**
- * ⭐⭐⭐⭐ CORE: Personel bazında teslim + gönderi limiti
- * Bir personel aynı günde en fazla 2 teslim/gönderi randevusu alabilir
- * Gönderi de teslim limiti içinde sayılır
- *
- * @param {string} date - YYYY-MM-DD formatında tarih
- * @param {string} staffId - Personel ID'si
- * @returns {number} O personel için o gün teslim + gönderi randevusu sayısı
- */
-function getDeliveryCountByStaff(date, staffId) {
-  try {
-    const calendar = CalendarService.getCalendar();
-    const dayStart = new Date(`${date}T00:00:00`);
-    const dayEnd = new Date(`${date}T23:59:59`);
-
-    const events = calendar.getEvents(dayStart, dayEnd);
-
-    // Bu personelin 'delivery' VE 'shipping' randevularını say (ikisi de aynı limit içinde)
-    const deliveryCount = events.filter(event => {
-      const type = event.getTag('appointmentType');
-      const eventStaffId = event.getTag('staffId');
-
-      return (
-        (type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
-         type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping') &&
-        eventStaffId === String(staffId)
-      );
-    }).length;
-
-    return deliveryCount;
-  } catch (error) {
-    log.error('getDeliveryCountByStaff error:', error);
-    return 999; // Hata durumunda safe side: limit aşılmış kabul et
-  }
-}
+// getDeliveryCount - AvailabilityService namespace'ine taşındı (line 2353)
+// getDeliveryCountByStaff - AvailabilityService namespace'ine taşındı (line 2384)
 
 /**
  * ⭐⭐⭐⭐⭐ CORE: Rezervasyon Validasyonu (Race Condition Koruması)
@@ -788,7 +731,7 @@ function validateReservation(payload) {
     );
 
     if (isDeliveryOrShipping) {
-      const deliveryCount = getDeliveryCount(date);
+      const deliveryCount = AvailabilityService.getDeliveryCount(date);
 
       if (deliveryCount >= 3) {
         return {
@@ -800,7 +743,7 @@ function validateReservation(payload) {
 
       // KURAL 4: Teslim/Gönderi ise - Personel limiti kontrolü (max 2/gün/personel)
       if (staffId) {
-        const staffDeliveryCount = getDeliveryCountByStaff(date, staffId);
+        const staffDeliveryCount = AvailabilityService.getDeliveryCountByStaff(date, staffId);
 
         if (staffDeliveryCount >= 2) {
           return {
@@ -823,48 +766,7 @@ function validateReservation(payload) {
   }
 }
 
-/**
- * Gün durumunu döndürür (UI için)
- * @param {string} date - YYYY-MM-DD
- * @param {string} appointmentType - Randevu tipi
- * @returns {Object} {isDeliveryMaxed, availableHours, unavailableHours}
- */
-function getDayStatus(date, appointmentType = null) {
-  try {
-    // Teslim/Gönderi limiti kontrolü (ikisi toplamda max 3)
-    const isDeliveryOrShipping = (
-      appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY ||
-      appointmentType === 'shipping' || appointmentType === CONFIG.APPOINTMENT_TYPES.SHIPPING
-    );
-    const isDeliveryMaxed = isDeliveryOrShipping ? getDeliveryCount(date) >= 3 : false;
-
-    // Tüm slotlar için availability check
-    const availableHours = [];
-    const unavailableHours = [];
-
-    SLOT_UNIVERSE.forEach(hour => {
-      if (SlotService.isSlotFree(date, hour)) {
-        availableHours.push(hour);
-      } else {
-        unavailableHours.push(hour);
-      }
-    });
-
-    return {
-      success: true,
-      isDeliveryMaxed,
-      availableHours,
-      unavailableHours,
-      deliveryCount: getDeliveryCount(date)
-    };
-  } catch (error) {
-    log.error('getDayStatus error:', error);
-    return {
-      success: false,
-      error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
-    };
-  }
-}
+// getDayStatus - AvailabilityService namespace'ine taşındı (line 2417)
 
 // ==================== UTILITY FUNCTIONS ====================
 /**
@@ -1429,7 +1331,7 @@ const ACTION_HANDLERS = {
   'getConfig': () => ConfigService.getConfig(),
 
   // ⭐⭐⭐⭐⭐ NEW: Slot Universe & Business Rules
-  'getDayStatus': (e) => getDayStatus(e.parameter.date, e.parameter.appointmentType),
+  'getDayStatus': (e) => AvailabilityService.getDayStatus(e.parameter.date, e.parameter.appointmentType),
   'getDailySlots': (e) => ({
     success: true,
     slots: SlotService.getDailySlots(e.parameter.date, e.parameter.shiftType || 'full')
@@ -2333,6 +2235,121 @@ const AppointmentService = {
     } catch (error) {
       log.error('getMonthAppointments hatası:', error);
       return { success: true, data: {} };
+    }
+  }
+};
+
+// ==================== AVAILABILITY SERVICE ====================
+/**
+ * Slot and staff availability checking service
+ * Handles business rules: delivery limits, slot conflicts, shift availability
+ * @namespace AvailabilityService
+ */
+const AvailabilityService = {
+  /**
+   * Get total delivery+shipping appointment count for a date
+   * Used for daily limit enforcement (max 3 delivery/shipping per day)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @returns {number} Number of delivery+shipping appointments
+   */
+  getDeliveryCount: function(date) {
+    try {
+      const calendar = CalendarService.getCalendar();
+      const dayStart = new Date(`${date}T00:00:00`);
+      const dayEnd = new Date(`${date}T23:59:59`);
+
+      const events = calendar.getEvents(dayStart, dayEnd);
+
+      // 'delivery' VE 'shipping' tipindeki randevuları say (ikisi de aynı limit içinde)
+      const deliveryCount = events.filter(event => {
+        const type = event.getTag('appointmentType');
+        return (
+          type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
+          type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping'
+        );
+      }).length;
+
+      return deliveryCount;
+    } catch (error) {
+      log.error('getDeliveryCount error:', error);
+      return 999; // Hata durumunda safe side: limit aşılmış kabul et
+    }
+  },
+
+  /**
+   * Get delivery+shipping count for specific staff member on a date
+   * Used for per-staff limit enforcement (max 2 delivery/shipping per staff per day)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} staffId - Staff member ID
+   * @returns {number} Number of delivery+shipping appointments for this staff
+   */
+  getDeliveryCountByStaff: function(date, staffId) {
+    try {
+      const calendar = CalendarService.getCalendar();
+      const dayStart = new Date(`${date}T00:00:00`);
+      const dayEnd = new Date(`${date}T23:59:59`);
+
+      const events = calendar.getEvents(dayStart, dayEnd);
+
+      // Bu personelin 'delivery' VE 'shipping' randevularını say (ikisi de aynı limit içinde)
+      const deliveryCount = events.filter(event => {
+        const type = event.getTag('appointmentType');
+        const eventStaffId = event.getTag('staffId');
+
+        return (
+          (type === CONFIG.APPOINTMENT_TYPES.DELIVERY || type === 'delivery' ||
+           type === CONFIG.APPOINTMENT_TYPES.SHIPPING || type === 'shipping') &&
+          eventStaffId === String(staffId)
+        );
+      }).length;
+
+      return deliveryCount;
+    } catch (error) {
+      log.error('getDeliveryCountByStaff error:', error);
+      return 999; // Hata durumunda safe side: limit aşılmış kabul et
+    }
+  },
+
+  /**
+   * Get day status for UI (available/unavailable hours, delivery limits)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} appointmentType - Optional appointment type for delivery limit check
+   * @returns {{success: boolean, isDeliveryMaxed: boolean, availableHours: Array<number>, unavailableHours: Array<number>, deliveryCount: number}}
+   */
+  getDayStatus: function(date, appointmentType = null) {
+    try {
+      // Teslim/Gönderi limiti kontrolü (ikisi toplamda max 3)
+      const isDeliveryOrShipping = (
+        appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY ||
+        appointmentType === 'shipping' || appointmentType === CONFIG.APPOINTMENT_TYPES.SHIPPING
+      );
+      const isDeliveryMaxed = isDeliveryOrShipping ? this.getDeliveryCount(date) >= 3 : false;
+
+      // Tüm slotlar için availability check
+      const availableHours = [];
+      const unavailableHours = [];
+
+      SLOT_UNIVERSE.forEach(hour => {
+        if (SlotService.isSlotFree(date, hour)) {
+          availableHours.push(hour);
+        } else {
+          unavailableHours.push(hour);
+        }
+      });
+
+      return {
+        success: true,
+        isDeliveryMaxed,
+        availableHours,
+        unavailableHours,
+        deliveryCount: this.getDeliveryCount(date)
+      };
+    } catch (error) {
+      log.error('getDayStatus error:', error);
+      return {
+        success: false,
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
+      };
     }
   }
 };
