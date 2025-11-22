@@ -149,10 +149,8 @@ const SecurityService = {
 
     } catch (error) {
       log.error('Turnstile doğrulama hatası:', error);
-      // Test mode için başarılı dön
-      if (CONFIG.TURNSTILE_SECRET_KEY.startsWith('1x00')) {
-        return { success: true };
-      }
+      // 🔒 SECURITY: Test bypass KALDIRILDI - production güvenliği için
+      // Hata durumunda asla başarılı dönme (bot koruması aktif kalmalı)
       return { success: false, error: 'Doğrulama hatası: ' + error.message };
     }
   }
@@ -377,8 +375,9 @@ const CONFIG = {
   API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
 
   // Security & Abuse Prevention
-  // ⚠️ SECURITY: TURNSTILE_SECRET_KEY Script Properties'den yüklenir (loadExternalConfigs)
-  TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA', // Test key - Production'da Script Properties'den override edilir
+  // 🔒 SECURITY: TURNSTILE_SECRET_KEY Script Properties'den yüklenir (loadExternalConfigs)
+  // Production key varsayılan olarak ayarlandı (Script Properties yoksa fallback)
+  TURNSTILE_SECRET_KEY: '0x4AAAAAACCXZ9dfNEJxoB2t4Rkx7qvSO6Y', // Production secret - Script Properties'de de aynı değer olmalı
   RATE_LIMIT_MAX_REQUESTS: 10,      // 10 istek
   RATE_LIMIT_WINDOW_SECONDS: 600,   // 10 dakika (600 saniye)
 
