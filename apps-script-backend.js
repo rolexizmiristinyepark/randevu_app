@@ -1426,7 +1426,7 @@ const ACTION_HANDLERS = {
   'getSlackSettings': (e) => getSlackSettings(e.parameter.apiKey),
 
   // Config management (public - no auth required)
-  'getConfig': () => getConfig(),
+  'getConfig': () => ConfigService.getConfig(),
 
   // ⭐⭐⭐⭐⭐ NEW: Slot Universe & Business Rules
   'getDayStatus': (e) => getDayStatus(e.parameter.date, e.parameter.appointmentType),
@@ -1947,60 +1947,7 @@ const SettingsService = {
   }
 };
 
-// ==================== CONFIG MANAGEMENT ====================
-
-/**
- * Frontend için public config döndürür
- * Hassas bilgiler (API keys, secrets) HARİÇ
- * Cache ile optimize edilir
- */
-function getConfig() {
-  try {
-    const data = StorageService.getData();
-    const settings = data.settings || { interval: 60, maxDaily: 4 };
-
-    return {
-      success: true,
-      data: {
-        // Shift hours
-        shifts: CONFIG.SHIFT_HOURS,
-
-        // Appointment hours (earliest, latest, interval from settings)
-        appointmentHours: {
-          earliest: 11,  // En erken randevu: 11:00
-          latest: 21,    // En geç randevu: 20:00
-          interval: settings.interval
-        },
-
-        // Max daily appointments
-        maxDailyDeliveryAppointments: settings.maxDaily,
-
-        // Appointment types
-        appointmentTypes: CONFIG.APPOINTMENT_TYPES,
-        appointmentTypeLabels: CONFIG.APPOINTMENT_TYPE_LABELS,
-        serviceNames: CONFIG.SERVICE_NAMES,
-
-        // Company info (public)
-        companyName: CONFIG.COMPANY_NAME,
-        companyLocation: CONFIG.COMPANY_LOCATION,
-
-        // Validation limits
-        validation: {
-          intervalMin: VALIDATION.INTERVAL_MIN,
-          intervalMax: VALIDATION.INTERVAL_MAX,
-          maxDailyMin: VALIDATION.MAX_DAILY_MIN,
-          maxDailyMax: VALIDATION.MAX_DAILY_MAX
-        }
-      }
-    };
-  } catch (error) {
-    log.error('getConfig error:', error);
-    return {
-      success: false,
-      error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
-    };
-  }
-}
+// getConfig - ConfigService namespace'ine taşındı (line 2074)
 
 // ==================== SHIFTS MANAGEMENT ====================
 /**
@@ -2062,6 +2009,66 @@ const ShiftService = {
     });
 
     return { success: true, data: monthShifts };
+  }
+};
+
+// ==================== CONFIG MANAGEMENT ====================
+/**
+ * Public configuration service for frontend
+ * Returns non-sensitive configuration (excludes API keys and secrets)
+ * @namespace ConfigService
+ */
+const ConfigService = {
+  /**
+   * Get public configuration for frontend
+   * @returns {{success: boolean, data: {shifts: Object, appointmentHours: Object, maxDailyDeliveryAppointments: number, appointmentTypes: Array, appointmentTypeLabels: Object, serviceNames: Object, companyName: string, companyLocation: string, validation: Object}}}
+   */
+  getConfig: function() {
+    try {
+      const data = StorageService.getData();
+      const settings = data.settings || { interval: 60, maxDaily: 4 };
+
+      return {
+        success: true,
+        data: {
+          // Shift hours
+          shifts: CONFIG.SHIFT_HOURS,
+
+          // Appointment hours (earliest, latest, interval from settings)
+          appointmentHours: {
+            earliest: 11,  // En erken randevu: 11:00
+            latest: 21,    // En geç randevu: 20:00
+            interval: settings.interval
+          },
+
+          // Max daily appointments
+          maxDailyDeliveryAppointments: settings.maxDaily,
+
+          // Appointment types
+          appointmentTypes: CONFIG.APPOINTMENT_TYPES,
+          appointmentTypeLabels: CONFIG.APPOINTMENT_TYPE_LABELS,
+          serviceNames: CONFIG.SERVICE_NAMES,
+
+          // Company info (public)
+          companyName: CONFIG.COMPANY_NAME,
+          companyLocation: CONFIG.COMPANY_LOCATION,
+
+          // Validation limits
+          validation: {
+            intervalMin: VALIDATION.INTERVAL_MIN,
+            intervalMax: VALIDATION.INTERVAL_MAX,
+            maxDailyMin: VALIDATION.MAX_DAILY_MIN,
+            maxDailyMax: VALIDATION.MAX_DAILY_MAX
+          }
+        }
+      };
+    } catch (error) {
+      log.error('getConfig error:', error);
+      return {
+        success: false,
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
+      };
+    }
   }
 };
 
