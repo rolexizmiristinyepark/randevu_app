@@ -1,14 +1,20 @@
         // Import monitoring utilities
         import { initMonitoring, logError } from './monitoring';
+        import { initConfig, type Config } from './config-loader';
 
-        // ==================== CONFIG ====================
-        const CONFIG = {
-            APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
-            BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/'
-        };
+        // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
+        // ⭐ NEW: Config loaded dynamically from backend API
+        // - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded in config-loader
+        // - Business config (shifts, hours, limits): Fetched from API
+        // - Cache: localStorage with 1-hour TTL
 
-        // Export CONFIG to window for ES6 modules to access
-        window.CONFIG = CONFIG;
+        let CONFIG: Config;
+
+        // Initialize config asynchronously
+        (async () => {
+            CONFIG = await initConfig();
+            // CONFIG now available globally via window.CONFIG
+        })();
 
         // ==================== BUTTON UTILS ====================
         const ButtonUtils = {

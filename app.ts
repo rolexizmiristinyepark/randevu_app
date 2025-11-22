@@ -5,50 +5,34 @@
 import { StringUtils } from './string-utils';
 import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
+import { initConfig, type Config } from './config-loader';
 import rolexLogoUrl from './assets/rolex-logo.svg';
 
-// APPS SCRIPT URL
-const CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwmowzsBLrAOjn-HVtw_LSLf-Gn0jrWdaQMrxaJeulqnhJCQduyyeSvctsWPAXxSAuo/exec',
-    BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
+// ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
+// ⭐ NEW: Config loaded dynamically from backend API
+// - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded
+// - Business config (shifts, hours, limits): Fetched from API
+// - Cache: localStorage with 1-hour TTL
+// - Fallback: Default values if API fails
 
-    // Debug mode - Production'da false olmalı
-    DEBUG: false,
+let CONFIG: Config;
 
-    SHIFTS: {
-        'morning': { start: 11, end: 18, label: 'Sabah (11:00-18:00)' },
-        'evening': { start: 14, end: 21, label: 'Akşam (14:00-21:00)' },
-        'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
-    },
-    APPOINTMENT_HOURS: {
-        earliest: 11,  // En erken randevu: 11:00 (11-12 aralığı)
-        latest: 21,    // En geç randevu: 20:00 (20-21 aralığı)
-        interval: 60
-    },
-    MAX_DAILY_DELIVERY_APPOINTMENTS: 3,  // Teslim randevuları için max limit (günde 3 teslim)
-    APPOINTMENT_TYPES: [
-        { value: 'delivery', name: 'Saat Teslim Alma' },
-        { value: 'service', name: 'Servis & Bakım' },
-        { value: 'consultation', name: 'Ürün Danışmanlığı' },
-        { value: 'general', name: 'Genel Görüşme' },
-        { value: 'shipping', name: 'Gönderi' }
-    ]
-};
-
-// Export CONFIG to window for api-service.js and other modules
-if (typeof window !== 'undefined') {
-    window.CONFIG = CONFIG;
-}
+// Initialize config asynchronously
+(async () => {
+    CONFIG = await initConfig();
+    // CONFIG now available globally via window.CONFIG
+})();
 
 // ==================== UTILITY FONKSİYONLARI ====================
 
 
 // Debug logger - Production'da log'ları devre dışı bırakır
+// ⚠️ Uses window.CONFIG because CONFIG is loaded asynchronously
 const log = {
-    error: (...args) => CONFIG.DEBUG && console.error(...args),
-    warn: (...args) => CONFIG.DEBUG && console.warn(...args),
-    info: (...args) => CONFIG.DEBUG && console.info(...args),
-    log: (...args) => CONFIG.DEBUG && console.log(...args)
+    error: (...args) => (window as any).CONFIG?.DEBUG && console.error(...args),
+    warn: (...args) => (window as any).CONFIG?.DEBUG && console.warn(...args),
+    info: (...args) => (window as any).CONFIG?.DEBUG && console.info(...args),
+    log: (...args) => (window as any).CONFIG?.DEBUG && console.log(...args)
 };
 
 // ==================== SMOOTH SCROLL & REVEAL ANIMATIONS ====================
