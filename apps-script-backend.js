@@ -1084,25 +1084,7 @@ function getCalendar() {
 }
 
 // Event'i appointment objesine çevir (getAppointments, getWeekAppointments, getMonthAppointments için)
-function mapEventToAppointment(event) {
-  return {
-    id: event.getId(),
-    summary: event.getTitle(),
-    start: { dateTime: event.getStartTime().toISOString() },
-    end: { dateTime: event.getEndTime().toISOString() },
-    extendedProperties: {
-      private: event.getTag('staffId') ? {
-        staffId: event.getTag('staffId'),
-        customerPhone: event.getTag('customerPhone'),
-        customerEmail: event.getTag('customerEmail'),
-        customerNote: event.getTag('customerNote') || '',
-        shiftType: event.getTag('shiftType'),
-        appointmentType: event.getTag('appointmentType'),
-        isVipLink: event.getTag('isVipLink') || 'false'
-      } : {}
-    }
-  };
-}
+// mapEventToAppointment - AppointmentService namespace'ine taşındı (line 2073)
 
 // Email template'leri - kod organizasyonu için ayrı fonksiyonlar
 
@@ -1389,16 +1371,16 @@ const ACTION_HANDLERS = {
   'getDataVersion': () => getDataVersion(),
 
   // Appointments
-  'getAppointments': (e) => getAppointments(e.parameter.date, {
+  'getAppointments': (e) => AppointmentService.getAppointments(e.parameter.date, {
     countOnly: e.parameter.countOnly === 'true',
     appointmentType: e.parameter.appointmentType || null
   }),
-  'getWeekAppointments': (e) => getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
-  'deleteAppointment': (e) => deleteAppointment(e.parameter.eventId),
-  'updateAppointment': (e) => updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
+  'getWeekAppointments': (e) => AppointmentService.getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
+  'deleteAppointment': (e) => AppointmentService.deleteAppointment(e.parameter.eventId),
+  'updateAppointment': (e) => AppointmentService.updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
   'getAvailableSlotsForEdit': (e) => getAvailableSlotsForEdit(e.parameter.date, e.parameter.currentEventId, e.parameter.appointmentType),
   'assignStaffToAppointment': (e) => assignStaffToAppointment(e.parameter.eventId, e.parameter.staffId),
-  'getMonthAppointments': (e) => getMonthAppointments(e.parameter.month),
+  'getMonthAppointments': (e) => AppointmentService.getMonthAppointments(e.parameter.month),
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
   'createAppointment': (e) => createAppointment(e.parameter),
 
@@ -2058,10 +2040,45 @@ const ShiftService = {
   }
 };
 
-// Belirli bir gün için randevuları getir
-// options.countOnly: true → Sadece sayı döndür
-// options.appointmentType: 'delivery'|'meeting' → Sadece bu tipteki randevuları say/döndür
-function getAppointments(date, options = {}) {
+// ==================== APPOINTMENTS MANAGEMENT ====================
+/**
+ * Appointment CRUD service - Google Calendar integration
+ * @namespace AppointmentService
+ */
+const AppointmentService = {
+  /**
+   * Map Google Calendar event to appointment object (helper)
+   * @param {GoogleAppsScript.Calendar.CalendarEvent} event - Calendar event
+   * @returns {Object} Appointment object
+   * @private
+   */
+  mapEventToAppointment: function(event) {
+    return {
+      id: event.getId(),
+      summary: event.getTitle(),
+      start: { dateTime: event.getStartTime().toISOString() },
+      end: { dateTime: event.getEndTime().toISOString() },
+      extendedProperties: {
+        private: event.getTag('staffId') ? {
+          staffId: event.getTag('staffId'),
+          customerPhone: event.getTag('customerPhone'),
+          customerEmail: event.getTag('customerEmail'),
+          customerNote: event.getTag('customerNote') || '',
+          shiftType: event.getTag('shiftType'),
+          appointmentType: event.getTag('appointmentType'),
+          isVipLink: event.getTag('isVipLink') || 'false'
+        } : {}
+      }
+    };
+  },
+
+  /**
+   * Get appointments for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {{countOnly?: boolean, appointmentType?: string}} options - Query options
+   * @returns {{success: boolean, count?: number, items?: Array}} Appointments or count
+   */
+  getAppointments: function(date, options = {}) {
   const { countOnly = false, appointmentType = null } = options;
 
   try {
@@ -2083,7 +2100,7 @@ function getAppointments(date, options = {}) {
     }
 
     // Tüm veri istendiyse map'le
-    const appointments = events.map(event => mapEventToAppointment(event));
+    const appointments = events.map(event => this.mapEventToAppointment(event));
     return { success: true, items: appointments };
 
   } catch (error) {
@@ -2092,27 +2109,36 @@ function getAppointments(date, options = {}) {
       ? { success: true, count: 0 }
       : { success: true, items: [] };
   }
-}
+  },
 
-// Haftalık randevuları getir
-function getWeekAppointments(startDateStr, endDateStr) {
+  /**
+   * Get appointments for a week date range
+   * @param {string} startDateStr - Start date (YYYY-MM-DD)
+   * @param {string} endDateStr - End date (YYYY-MM-DD)
+   * @returns {{success: boolean, items: Array}} Week appointments
+   */
+  getWeekAppointments: function(startDateStr, endDateStr) {
   try {
     const calendar = getCalendar();
     const startDate = new Date(startDateStr + 'T00:00:00');
     const endDate = new Date(endDateStr + 'T23:59:59');
     const events = calendar.getEvents(startDate, endDate);
 
-    const appointments = events.map(event => mapEventToAppointment(event));
+    const appointments = events.map(event => this.mapEventToAppointment(event));
     return { success: true, items: appointments };
 
   } catch (error) {
     log.error('getWeekAppointments hatası:', error);
     return { success: true, items: [] };
   }
-}
+  },
 
-// Randevu sil
-function deleteAppointment(eventId) {
+  /**
+   * Delete an appointment
+   * @param {string} eventId - Google Calendar event ID
+   * @returns {{success: boolean, message?: string, error?: string}} Delete result
+   */
+  deleteAppointment: function(eventId) {
   try {
     const calendar = getCalendar();
     const event = calendar.getEventById(eventId);
@@ -2131,16 +2157,16 @@ function deleteAppointment(eventId) {
     log.error('deleteAppointment hatası:', error);
     return { success: false, error: error.toString() };
   }
-}
+  },
 
-/**
- * Randevu güncelle - sadece tarih ve saat
- * @param {string} eventId - Google Calendar event ID
- * @param {string} newDate - Yeni tarih (YYYY-MM-DD)
- * @param {string} newTime - Yeni saat (HH:MM)
- * @returns {object} - { success, message }
- */
-function updateAppointment(eventId, newDate, newTime) {
+  /**
+   * Update appointment date and time
+   * @param {string} eventId - Google Calendar event ID
+   * @param {string} newDate - New date (YYYY-MM-DD)
+   * @param {string} newTime - New time (HH:MM)
+   * @returns {{success: boolean, message?: string, error?: string}} Update result
+   */
+  updateAppointment: function(eventId, newDate, newTime) {
   try {
     const calendar = getCalendar();
     const event = calendar.getEventById(eventId);
@@ -2236,7 +2262,50 @@ function updateAppointment(eventId, newDate, newTime) {
     log.error('updateAppointment hatası:', error);
     return { success: false, error: error.toString() };
   }
-}
+  },
+
+  /**
+   * Get appointments for entire month (grouped by date)
+   * @param {string} month - Month in YYYY-MM format
+   * @returns {{success: boolean, data: Object}} Appointments grouped by date
+   */
+  getMonthAppointments: function(month) {
+    try {
+      const calendar = getCalendar();
+
+      // YYYY-MM formatından tarihleri oluştur
+      const [year, monthNum] = month.split('-');
+      const startDate = new Date(year, parseInt(monthNum) - 1, 1);
+      const endDate = new Date(year, parseInt(monthNum), 0, 23, 59, 59);
+      const events = calendar.getEvents(startDate, endDate);
+
+      // Tarihe göre grupla
+      const appointmentsByDate = {};
+
+      events.forEach(event => {
+        const eventDate = Utilities.formatDate(
+          event.getStartTime(),
+          CONFIG.TIMEZONE,
+          'yyyy-MM-dd'
+        );
+
+        if (!appointmentsByDate[eventDate]) {
+          appointmentsByDate[eventDate] = [];
+        }
+
+        appointmentsByDate[eventDate].push(this.mapEventToAppointment(event));
+      });
+
+      return { success: true, data: appointmentsByDate };
+
+    } catch (error) {
+      log.error('getMonthAppointments hatası:', error);
+      return { success: true, data: {} };
+    }
+  }
+};
+
+// Appointment helper functions moved to AppointmentService namespace (line 2066)
 
 /**
  * Admin panel randevu düzenleme için o günün mevcut slotlarını döndür
@@ -2381,41 +2450,7 @@ function assignStaffToAppointment(eventId, staffId) {
   }
 }
 
-// Bir ay için tüm randevuları getir
-function getMonthAppointments(month) {
-  try {
-    const calendar = getCalendar();
-
-    // YYYY-MM formatından tarihleri oluştur
-    const [year, monthNum] = month.split('-');
-    const startDate = new Date(year, parseInt(monthNum) - 1, 1);
-    const endDate = new Date(year, parseInt(monthNum), 0, 23, 59, 59);
-    const events = calendar.getEvents(startDate, endDate);
-
-    // Tarihe göre grupla
-    const appointmentsByDate = {};
-
-    events.forEach(event => {
-      const eventDate = Utilities.formatDate(
-        event.getStartTime(),
-        CONFIG.TIMEZONE,
-        'yyyy-MM-dd'
-      );
-
-      if (!appointmentsByDate[eventDate]) {
-        appointmentsByDate[eventDate] = [];
-      }
-
-      appointmentsByDate[eventDate].push(mapEventToAppointment(event));
-    });
-
-    return { success: true, data: appointmentsByDate };
-
-  } catch (error) {
-    log.error('getMonthAppointments hatası:', error);
-    return { success: true, data: {} };
-  }
-}
+// getMonthAppointments - AppointmentService namespace'ine taşındı (line 2290)
 
 // Google Calendar'dan mevcut etkinlikleri getir
 function getGoogleCalendarEvents(startDateStr, endDateStr, staffId) {
@@ -2712,7 +2747,7 @@ function createAppointment(params) {
       const maxDelivery = data.settings?.maxDaily || 3;
 
       // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
-      const countResult = getAppointments(date, {
+      const countResult = AppointmentService.getAppointments(date, {
         countOnly: true,
         appointmentType: CONFIG.APPOINTMENT_TYPES.DELIVERY
       });
