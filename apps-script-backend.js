@@ -612,57 +612,66 @@ const SHIFT_SLOT_FILTERS = {
  * @param {string} shiftType - 'morning', 'evening', veya 'full'
  * @returns {number[]} Slot başlangıç saatleri dizisi
  */
-function getSlotsByShift(shiftType) {
-  return SHIFT_SLOT_FILTERS[shiftType] || SHIFT_SLOT_FILTERS.full;
-}
-
 /**
- * Belirli bir gün için slot objelerini oluşturur
- * @param {string} date - YYYY-MM-DD formatında tarih
- * @param {string} shiftType - Vardiya tipi (opsiyonel, varsayılan: 'full')
- * @returns {Object[]} Slot objeleri [{start: ISO string, end: ISO string, hour: number}]
+ * Slot generation and availability service
+ * @namespace SlotService
  */
-function getDailySlots(date, shiftType = 'full') {
-  const hours = getSlotsByShift(shiftType);
+const SlotService = {
+  /**
+   * Get available hours for a shift type
+   * @param {string} shiftType - Shift type ('morning', 'evening', 'full')
+   * @returns {number[]} Array of hours
+   */
+  getSlotsByShift: function(shiftType) {
+    return SHIFT_SLOT_FILTERS[shiftType] || SHIFT_SLOT_FILTERS.full;
+  },
 
-  return hours.map(hour => {
-    const startDate = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
-    const endDate = new Date(startDate);
-    endDate.setHours(endDate.getHours() + 1);
+  /**
+   * Generate daily slot objects for a specific date
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} shiftType - Shift type (optional, default: 'full')
+   * @returns {Object[]} Slot objects [{start, end, hour, time}]
+   */
+  getDailySlots: function(date, shiftType = 'full') {
+    const hours = this.getSlotsByShift(shiftType);
 
-    return {
-      start: startDate.toISOString(),
-      end: endDate.toISOString(),
-      hour: hour,
-      time: `${String(hour).padStart(2, '0')}:00`
-    };
-  });
-}
+    return hours.map(hour => {
+      const startDate = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+      const endDate = new Date(startDate);
+      endDate.setHours(endDate.getHours() + 1);
 
-/**
- * ⭐⭐⭐⭐⭐ CORE: Saat başına tek randevu kontrolü
- * Tür fark etmeksizin bir saat başına SADECE 1 randevu
- *
- * @param {string} date - YYYY-MM-DD formatında tarih
- * @param {number} hour - Saat (11-20 arası)
- * @returns {boolean} true ise slot boş, false ise dolu
- */
-function isSlotFree(date, hour) {
-  try {
-    const calendar = CalendarService.getCalendar();
-    const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
-    const slotEnd = new Date(slotStart);
-    slotEnd.setHours(slotEnd.getHours() + 1);
+      return {
+        start: startDate.toISOString(),
+        end: endDate.toISOString(),
+        hour: hour,
+        time: `${String(hour).padStart(2, '0')}:00`
+      };
+    });
+  },
 
-    const events = calendar.getEvents(slotStart, slotEnd);
+  /**
+   * Check if a time slot is free (CORE RULE: Max 1 appointment per hour)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {number} hour - Hour (11-20)
+   * @returns {boolean} True if slot is free, false if occupied
+   */
+  isSlotFree: function(date, hour) {
+    try {
+      const calendar = CalendarService.getCalendar();
+      const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+      const slotEnd = new Date(slotStart);
+      slotEnd.setHours(slotEnd.getHours() + 1);
 
-    // KURAL: 0 randevu olmalı (tür fark etmez)
-    return events.length === 0;
-  } catch (error) {
-    log.error('isSlotFree error:', error);
-    return false; // Hata durumunda safe side: dolu kabul et
+      const events = calendar.getEvents(slotStart, slotEnd);
+
+      // KURAL: 0 randevu olmalı (tür fark etmez)
+      return events.length === 0;
+    } catch (error) {
+      log.error('isSlotFree error:', error);
+      return false; // Hata durumunda safe side: dolu kabul et
+    }
   }
-}
+};
 
 /**
  * ⭐⭐⭐⭐⭐ CORE: Teslim + Gönderi randevusu global limiti
@@ -764,7 +773,7 @@ function validateReservation(payload) {
     }
 
     // KURAL 2: Slot boş mu? (saat başına 1 randevu)
-    if (!isSlotFree(date, hour)) {
+    if (!SlotService.isSlotFree(date, hour)) {
       return {
         valid: false,
         error: 'Bu saat dolu. Lütfen başka bir saat seçin.',
@@ -834,7 +843,7 @@ function getDayStatus(date, appointmentType = null) {
     const unavailableHours = [];
 
     SLOT_UNIVERSE.forEach(hour => {
-      if (isSlotFree(date, hour)) {
+      if (SlotService.isSlotFree(date, hour)) {
         availableHours.push(hour);
       } else {
         unavailableHours.push(hour);
@@ -1423,7 +1432,7 @@ const ACTION_HANDLERS = {
   'getDayStatus': (e) => getDayStatus(e.parameter.date, e.parameter.appointmentType),
   'getDailySlots': (e) => ({
     success: true,
-    slots: getDailySlots(e.parameter.date, e.parameter.shiftType || 'full')
+    slots: SlotService.getDailySlots(e.parameter.date, e.parameter.shiftType || 'full')
   }),
   'validateReservation': (e) => validateReservation({
     date: e.parameter.date,
