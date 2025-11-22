@@ -17,13 +17,15 @@ export default defineConfig({
         '**/*.d.ts',
         'apps-script-backend.js' // Backend script (different runtime)
       ],
-      // Thresholds for quality gates (Phase 1: Critical utilities)
-      // Will increase to 70%+ as we add more tests in Phase 2-3
+      // Thresholds for quality gates (Phase 2: Business logic + utilities)
+      // Phase 1: 30% (critical utilities)
+      // Phase 2: 50% (business logic tests + date utils)
+      // Future: DOM mocking required for 70%+ (app.ts, admin-panel.ts)
       thresholds: {
-        lines: 30,
-        functions: 40,
-        branches: 40,
-        statements: 30
+        lines: 50,
+        functions: 50,
+        branches: 55,
+        statements: 50
       }
     },
     // Mock DOM APIs
