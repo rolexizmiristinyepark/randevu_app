@@ -2859,6 +2859,995 @@ const NotificationService = {
   }
 };
 
+// ==================== WHATSAPP SERVICE ====================
+/**
+ * WhatsApp Business API integration service
+ * Handles WhatsApp message sending, reminders, and settings management
+ */
+const WhatsAppService = {
+  /**
+   * Get today's WhatsApp reminders
+   * @param {string} date - Date in YYYY-MM-DD format (optional, defaults to today)
+   * @returns {{success: boolean, data?: Array, error?: string}}
+   */
+  getTodayWhatsAppReminders: function(date) {
+    try {
+      const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
+      const calendar = CalendarService.getCalendar();
+      const { startDate, endDate } = DateUtils.getDateRange(DateUtils.toLocalDate(targetDate).slice(0, 10));
+      const events = calendar.getEvents(startDate, endDate);
+
+      // Staff verilerini al
+      const data = StorageService.getData();
+
+      const reminders = events.map(event => {
+        const phoneTag = event.getTag('customerPhone');
+        if (!phoneTag) return null; // Telefonu yoksa atla
+
+        const appointmentType = event.getTag('appointmentType') || 'Randevu';
+        const staffId = event.getTag('staffId');
+
+        // Event title formatı: "Müşteri Adı - Personel (Tür)"
+        const title = event.getTitle();
+        const parts = title.split(' - ');
+        const customerName = Utils.toTitleCase(parts[0]) || 'Değerli Müşterimiz';
+
+        // İlgili kişi ve randevu türü
+        let staffName = 'Temsilcimiz';
+        let appointmentTypeName = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || 'randevu';
+
+        if (parts.length > 1) {
+          // "Personel (Tür)" kısmını parse et
+          const secondPart = parts[1];
+          const match = secondPart.match(/^(.+?)\s*\((.+?)\)$/);
+          if (match) {
+            const parsedStaffName = match[1].trim();
+            // HK ve OK kısaltmalarını koruyoruz, diğerlerini Title Case yapıyoruz
+            staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : Utils.toTitleCase(parsedStaffName);
+            appointmentTypeName = match[2].trim().toLowerCase(); // "yönetim" veya "teslim" (KÜÇÜK HARF)
+          } else {
+            const parsedStaffName = secondPart.trim();
+            staffName = (parsedStaffName === 'HK' || parsedStaffName === 'OK') ? parsedStaffName : Utils.toTitleCase(parsedStaffName);
+          }
+        }
+
+        // Staff phone numarasını bul
+        let staffPhone = '';
+        if (staffId) {
+          const staff = data.staff.find(s => s.id == staffId);
+          if (staff && staff.phone) {
+            // Telefon numarasını temizle ve formatla
+            const cleanStaffPhone = staff.phone.replace(/\D/g, '');
+            staffPhone = cleanStaffPhone.startsWith('0') ? '90' + cleanStaffPhone.substring(1) : cleanStaffPhone;
+          }
+        }
+
+        // Tarih ve saat bilgilerini çıkar
+        const eventDateTime = event.getStartTime();
+        const dateStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+        const timeStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'HH:mm');
+
+        // Yeni WhatsApp mesajı formatı (eski link için)
+        const message = `Sayın ${customerName},\n\nBugün saat ${timeStr}'teki ${staffName} ile ${appointmentTypeName} randevunuzu hatırlatmak isteriz. Randevunuzda bir değişiklik yapmanız gerekirse lütfen bizi önceden bilgilendiriniz.\n\nSaygılarımızla,\n\nRolex İzmir İstinyepark`;
+        const encodedMessage = encodeURIComponent(message);
+
+        // Türkiye telefon formatı: 05XX XXX XX XX → 905XXXXXXXXX
+        const cleanPhone = phoneTag.replace(/\D/g, ''); // Sadece rakamlar
+        const phone = cleanPhone.startsWith('0') ? '90' + cleanPhone.substring(1) : cleanPhone;
+        const link = `https://wa.me/${phone}?text=${encodedMessage}`;
+
+        return {
+          customerName,
+          date: dateStr,           // YYYY-MM-DD formatı
+          time: timeStr,           // HH:MM formatı
+          startTime: timeStr,      // Eski uyumluluk için
+          staffName,
+          staffPhone,              // YENİ: Personel telefonu
+          appointmentType: appointmentTypeName,
+          link
+        };
+      }).filter(Boolean); // null'ları filtrele
+
+      return { success: true, data: reminders };
+    } catch (error) {
+      log.error('getTodayWhatsAppReminders error:', error);
+      return { success: false, error: 'Hatırlatmalar oluşturulurken bir hata oluştu.' };
+    }
+  },
+
+  /**
+   * Send WhatsApp message using Meta WhatsApp Cloud API
+   * @param {string} phoneNumber - Phone number (will be cleaned)
+   * @param {string} customerName - Customer name ({{1}})
+   * @param {string} appointmentDateTime - Appointment date and time ({{2}})
+   * @param {string} staffName - Staff name ({{3}})
+   * @param {string} appointmentType - Appointment type ({{4}})
+   * @param {string} staffPhone - Staff phone number (for button)
+   * @returns {{success: boolean, messageId?: string, error?: string}}
+   */
+  sendWhatsAppMessage: function(phoneNumber, customerName, appointmentDateTime, staffName, appointmentType, staffPhone) {
+    try {
+      // Config kontrolü
+      if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
+        throw new Error('WhatsApp API ayarları yapılmamış! WHATSAPP_PHONE_NUMBER_ID ve WHATSAPP_ACCESS_TOKEN gerekli.');
+      }
+
+      // Telefon numarasını temizle (sadece rakamlar)
+      const cleanPhone = phoneNumber.replace(/[^0-9]/g, '');
+
+      // Meta WhatsApp Cloud API endpoint
+      const url = `https://graph.facebook.com/${CONFIG.WHATSAPP_API_VERSION}/${CONFIG.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+
+      // Template adını türkçeleştir
+      const typeMapping = {
+        'delivery': 'Teslim',
+        'shipping': 'Gönderi',
+        'service': 'Teknik Servis',
+        'meeting': 'Görüşme',
+        'management': 'Yönetim'
+      };
+      const translatedType = typeMapping[appointmentType.toLowerCase()] || appointmentType;
+
+      // WhatsApp template components
+      const components = [
+        {
+          type: "body",
+          parameters: [
+            {
+              type: "text",
+              text: customerName  // {{1}}
+            },
+            {
+              type: "text",
+              text: appointmentDateTime  // {{2}}
+            },
+            {
+              type: "text",
+              text: staffName  // {{3}}
+            },
+            {
+              type: "text",
+              text: translatedType  // {{4}}
+            }
+          ]
+        }
+      ];
+
+      // WhatsApp template payload
+      const payload = {
+        messaging_product: 'whatsapp',
+        to: cleanPhone,
+        type: 'template',
+        template: {
+          name: 'randevu_hatirlatma_v1',
+          language: {
+            code: 'tr'
+          },
+          components: components
+        }
+      };
+
+      // Debug: Payload'u logla
+      log.info('WhatsApp API Payload:', JSON.stringify(payload, null, 2));
+
+      // API çağrısı
+      const options = {
+        method: 'post',
+        contentType: 'application/json',
+        headers: {
+          'Authorization': `Bearer ${CONFIG.WHATSAPP_ACCESS_TOKEN}`
+        },
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      };
+
+      const response = UrlFetchApp.fetch(url, options);
+      const responseCode = response.getResponseCode();
+      const responseData = JSON.parse(response.getContentText());
+
+      if (responseCode === 200) {
+        log.info('WhatsApp template mesajı gönderildi:', responseData);
+        return {
+          success: true,
+          messageId: responseData.messages[0].id,
+          phone: cleanPhone
+        };
+      } else {
+        log.error('WhatsApp API hatası:', responseData);
+        return {
+          success: false,
+          error: responseData.error?.message || 'Bilinmeyen hata',
+          errorCode: responseData.error?.code,
+          errorDetails: responseData.error
+        };
+      }
+
+    } catch (error) {
+      log.error('sendWhatsAppMessage hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Send WhatsApp reminders for a specific date (admin action)
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} apiKey - Admin API key
+   * @returns {{success: boolean, sent: number, failed: number, details: Array}}
+   */
+  sendWhatsAppReminders: function(date, apiKey) {
+    try {
+      // API key kontrolü
+      if (!AuthService.validateApiKey(apiKey)) {
+        throw new Error('Geçersiz API key');
+      }
+
+      // WhatsApp config yükle
+      loadExternalConfigs();
+
+      // Bugünkü randevuları al
+      const reminders = this.getTodayWhatsAppReminders(date);
+
+      if (!reminders.success || reminders.data.length === 0) {
+        return {
+          success: true,
+          sent: 0,
+          failed: 0,
+          message: 'Bu tarihte randevu bulunamadı'
+        };
+      }
+
+      const results = [];
+      let sentCount = 0;
+      let failedCount = 0;
+
+      // Her randevu için mesaj gönder
+      for (const reminder of reminders.data) {
+        // Link'ten telefon çıkar
+        const linkParts = reminder.link.split('?');
+        const phone = linkParts[0].split('/').pop();
+
+        // Müşteri adı
+        const customerName = reminder.customerName;
+
+        // Tarih ve saati formatla (21 Ekim 2025, 14:30)
+        const appointmentDateTime = DateUtils.formatAppointmentDateTime(reminder.date, reminder.time);
+
+        // İlgili personel
+        const staffName = reminder.staffName;
+
+        // Görüşme türü (küçük harf)
+        const appointmentType = reminder.appointmentType.toLowerCase();
+
+        // Personel telefonu
+        const staffPhone = reminder.staffPhone || '';
+
+        // WhatsApp template mesajı gönder (4 parametreli + button)
+        const result = this.sendWhatsAppMessage(
+          phone,
+          customerName,
+          appointmentDateTime,
+          staffName,
+          appointmentType,
+          staffPhone
+        );
+
+        if (result.success) {
+          sentCount++;
+          results.push({
+            customer: customerName,
+            phone: phone,
+            status: 'success',
+            messageId: result.messageId
+          });
+        } else {
+          failedCount++;
+          results.push({
+            customer: customerName,
+            phone: phone,
+            status: 'failed',
+            error: result.error
+          });
+        }
+
+        // Rate limiting - Meta: 80 mesaj/saniye, ama güvenli olmak için bekleyelim
+        Utilities.sleep(100); // 100ms bekle
+      }
+
+      return {
+        success: true,
+        sent: sentCount,
+        failed: failedCount,
+        total: reminders.data.length,
+        details: results
+      };
+
+    } catch (error) {
+      log.error('sendWhatsAppReminders hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Daily automatic WhatsApp reminders (trigger function)
+   * Sends reminders for tomorrow's appointments
+   * NOTE: Called automatically by time-driven trigger, no API key needed
+   * @returns {{success: boolean, sent: number, failed: number, date: string}}
+   */
+  sendDailyWhatsAppReminders: function() {
+    try {
+      // WhatsApp config yükle
+      loadExternalConfigs();
+
+      // Config kontrolü
+      if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
+        log.error('WhatsApp API ayarları yapılmamış! Otomatik mesajlar gönderilemez.');
+        return {
+          success: false,
+          error: 'WhatsApp API ayarları yapılmamış'
+        };
+      }
+
+      // Yarının tarihini hesapla (ertesi gün)
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowDateStr = Utilities.formatDate(tomorrow, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+
+      log.info(`Otomatik WhatsApp hatırlatıcıları gönderiliyor: ${tomorrowDateStr}`);
+
+      // Yarının randevularını al
+      const reminders = this.getTodayWhatsAppReminders(tomorrowDateStr);
+
+      if (!reminders.success || reminders.data.length === 0) {
+        log.info(`${tomorrowDateStr} tarihinde randevu bulunamadı.`);
+        return {
+          success: true,
+          sent: 0,
+          failed: 0,
+          message: 'Yarın için randevu yok'
+        };
+      }
+
+      const results = [];
+      let sentCount = 0;
+      let failedCount = 0;
+
+      // Her randevu için mesaj gönder
+      for (const reminder of reminders.data) {
+        // Link'ten telefon çıkar
+        const linkParts = reminder.link.split('?');
+        const phone = linkParts[0].split('/').pop();
+
+        // Müşteri adı
+        const customerName = reminder.customerName;
+
+        // Tarih ve saati formatla (21 Ekim 2025, 14:30)
+        const appointmentDateTime = DateUtils.formatAppointmentDateTime(reminder.date, reminder.time);
+
+        // İlgili personel
+        const staffName = reminder.staffName;
+
+        // Görüşme türü (küçük harf)
+        const appointmentType = reminder.appointmentType.toLowerCase();
+
+        // Personel telefonu
+        const staffPhone = reminder.staffPhone || '';
+
+        // WhatsApp template mesajı gönder (4 parametreli + button)
+        const result = this.sendWhatsAppMessage(
+          phone,
+          customerName,
+          appointmentDateTime,
+          staffName,
+          appointmentType,
+          staffPhone
+        );
+
+        if (result.success) {
+          sentCount++;
+          results.push({
+            customer: customerName,
+            phone: phone,
+            status: 'success',
+            messageId: result.messageId
+          });
+          log.info(`✅ Mesaj gönderildi: ${customerName} (${phone})`);
+        } else {
+          failedCount++;
+          results.push({
+            customer: customerName,
+            phone: phone,
+            status: 'failed',
+            error: result.error
+          });
+          log.error(`❌ Mesaj gönderilemedi: ${customerName} (${phone}) - ${result.error}`);
+        }
+
+        // Rate limiting - Meta: 80 mesaj/saniye, ama güvenli olmak için bekleyelim
+        Utilities.sleep(100); // 100ms bekle
+      }
+
+      const summary = {
+        success: true,
+        sent: sentCount,
+        failed: failedCount,
+        total: reminders.data.length,
+        date: tomorrowDateStr,
+        details: results
+      };
+
+      log.info(`Otomatik gönderim tamamlandı: ${sentCount} başarılı, ${failedCount} başarısız`);
+
+      // İsteğe bağlı: Sonuçları e-posta ile bildir (admin'e)
+      if (failedCount > 0) {
+        this.sendAdminNotification(summary);
+      }
+
+      return summary;
+
+    } catch (error) {
+      log.error('sendDailyWhatsAppReminders hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Send admin notification about automatic reminder results
+   * (Optional - only sends if there are failures)
+   * @param {Object} summary - Summary object from sendDailyWhatsAppReminders
+   */
+  sendAdminNotification: function(summary) {
+    try {
+      const subject = `WhatsApp Hatırlatıcıları - ${summary.failed} Başarısız`;
+
+      let body = `Otomatik WhatsApp hatırlatıcıları gönderildi:\n\n`;
+      body += `Tarih: ${summary.date}\n`;
+      body += `Toplam: ${summary.total}\n`;
+      body += `✅ Başarılı: ${summary.sent}\n`;
+      body += `❌ Başarısız: ${summary.failed}\n\n`;
+
+      if (summary.failed > 0) {
+        body += `Başarısız Mesajlar:\n`;
+        summary.details.filter(d => d.status === 'failed').forEach(detail => {
+          body += `- ${detail.customer} (${detail.phone}): ${detail.error}\n`;
+        });
+      }
+
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: subject,
+        body: body
+      });
+
+      log.info('Admin bildirim e-postası gönderildi');
+    } catch (error) {
+      log.error('Admin bildirim hatası:', error);
+    }
+  },
+
+  /**
+   * Update WhatsApp API settings (admin only)
+   * @param {Object} settings - {phoneNumberId, accessToken, businessAccountId}
+   * @param {string} apiKey - Admin API key
+   * @returns {{success: boolean, message?: string, error?: string}}
+   */
+  updateWhatsAppSettings: function(settings, apiKey) {
+    try {
+      // API key kontrolü
+      if (!AuthService.validateApiKey(apiKey)) {
+        throw new Error('Geçersiz API key');
+      }
+
+      // Settings'i Script Properties'e kaydet
+      const scriptProperties = PropertiesService.getScriptProperties();
+
+      if (settings.phoneNumberId) {
+        scriptProperties.setProperty('WHATSAPP_PHONE_NUMBER_ID', settings.phoneNumberId);
+      }
+      if (settings.accessToken) {
+        scriptProperties.setProperty('WHATSAPP_ACCESS_TOKEN', settings.accessToken);
+      }
+      if (settings.businessAccountId) {
+        scriptProperties.setProperty('WHATSAPP_BUSINESS_ACCOUNT_ID', settings.businessAccountId);
+      }
+
+      return {
+        success: true,
+        message: 'WhatsApp ayarları güncellendi'
+      };
+
+    } catch (error) {
+      log.error('updateWhatsAppSettings hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Get WhatsApp API settings status (admin only)
+   * Returns configuration status without exposing tokens
+   * @param {string} apiKey - Admin API key
+   * @returns {{success: boolean, configured: boolean, hasPhoneNumberId: boolean, hasAccessToken: boolean}}
+   */
+  getWhatsAppSettings: function(apiKey) {
+    try {
+      // API key kontrolü
+      if (!AuthService.validateApiKey(apiKey)) {
+        throw new Error('Geçersiz API key');
+      }
+
+      const scriptProperties = PropertiesService.getScriptProperties();
+      const phoneNumberId = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+      const accessToken = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN');
+      const businessAccountId = scriptProperties.getProperty('WHATSAPP_BUSINESS_ACCOUNT_ID');
+
+      return {
+        success: true,
+        configured: !!(phoneNumberId && accessToken),
+        hasPhoneNumberId: !!phoneNumberId,
+        hasAccessToken: !!accessToken,
+        hasBusinessAccountId: !!businessAccountId
+      };
+
+    } catch (error) {
+      log.error('getWhatsAppSettings hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Test WhatsApp message sending (for debugging)
+   * Sends a test message to a predefined phone number
+   */
+  testWhatsAppMessage: function() {
+    console.log('===== WHATSAPP TEST BAŞLADI =====\n');
+
+    // Test telefon numarası
+    const TEST_PHONE = '+905382348625';
+
+    console.log('Test telefonu:', TEST_PHONE);
+    console.log('');
+
+    // 1. WhatsApp API ayarlarını kontrol et
+    console.log('1. WhatsApp API ayarları kontrol ediliyor...');
+
+    const props = PropertiesService.getScriptProperties();
+    const phoneNumberId = props.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+    const accessToken = props.getProperty('WHATSAPP_ACCESS_TOKEN');
+
+    if (!phoneNumberId || !accessToken) {
+      console.error('❌ HATA: WhatsApp API ayarları yapılmamış!');
+      console.error('Admin panelden Phone Number ID ve Access Token ekleyin.');
+      return;
+    }
+
+    console.log('✅ WhatsApp API ayarları bulundu');
+    console.log('Phone Number ID:', phoneNumberId.substring(0, 5) + '...');
+    console.log('Access Token:', accessToken.substring(0, 10) + '...');
+    console.log('');
+
+    // 2. Test randevusu verisi oluştur
+    console.log('2. Test mesajı hazırlanıyor...');
+
+    const testData = {
+      customerName: 'Test Müşteri',
+      appointmentDateTime: '15 Kasım 2025, 14:00',
+      staffName: 'Gökhan Tokol',
+      appointmentType: 'Teslim',
+      staffPhone: '+905382348625'
+    };
+
+    console.log('Test verisi:', JSON.stringify(testData, null, 2));
+    console.log('');
+
+    // 3. WhatsApp mesajı gönder
+    console.log('3. WhatsApp mesajı gönderiliyor...');
+
+    try {
+      const result = this.sendWhatsAppMessage(
+        TEST_PHONE,
+        testData.customerName,
+        testData.appointmentDateTime,
+        testData.staffName,
+        testData.appointmentType,
+        testData.staffPhone
+      );
+
+      if (result.success) {
+        console.log('');
+        console.log('✅ BAŞARILI! WhatsApp mesajı gönderildi!');
+        console.log('Message ID:', result.messageId);
+        console.log('');
+        console.log('📱 Telefonunuzu kontrol edin:', TEST_PHONE);
+        console.log('');
+        console.log('✅ WhatsApp API çalışıyor!');
+      } else {
+        console.error('');
+        console.error('❌ BAŞARISIZ! Mesaj gönderilemedi');
+        console.error('Hata:', result.error);
+        console.error('Hata Kodu:', result.errorCode);
+        console.error('');
+        console.error('TAM HATA DETAYI:');
+        console.error(JSON.stringify(result.errorDetails, null, 2));
+        console.error('');
+        console.error('SORUN GİDERME:');
+        console.error('1. Phone Number ID doğru mu?');
+        console.error('2. Access Token geçerli mi? (permanent token)');
+        console.error('3. Test numarası Meta\'da kayıtlı mı?');
+        console.error('4. Ödeme yöntemi eklendi mi?');
+        console.error('5. Template parametreleri doğru mu?');
+      }
+
+    } catch (error) {
+      console.error('');
+      console.error('❌ İSTİSNA HATASI!');
+      console.error('Hata:', error.toString());
+      console.error('Stack:', error.stack);
+    }
+
+    console.log('');
+    console.log('===== TEST TAMAMLANDI =====');
+  }
+};
+
+// ==================== SLACK SERVICE ====================
+/**
+ * Slack Webhook integration service
+ * Handles Slack notifications and settings management
+ */
+const SlackService = {
+  /**
+   * Update Slack Webhook settings (admin only)
+   * @param {string} webhookUrl - Slack Webhook URL
+   * @param {string} apiKey - Admin API key
+   * @returns {{success: boolean, message?: string, error?: string}}
+   */
+  updateSlackSettings: function(webhookUrl, apiKey) {
+    try {
+      // API key kontrolü
+      if (!AuthService.validateApiKey(apiKey)) {
+        throw new Error('Geçersiz API key');
+      }
+
+      // URL validasyonu
+      if (!webhookUrl || !webhookUrl.startsWith('https://hooks.slack.com/')) {
+        throw new Error('Geçerli bir Slack Webhook URL gerekli');
+      }
+
+      // Settings'i Script Properties'e kaydet
+      const scriptProperties = PropertiesService.getScriptProperties();
+      scriptProperties.setProperty('SLACK_WEBHOOK_URL', webhookUrl);
+
+      // Config'i güncelle
+      CONFIG.SLACK_WEBHOOK_URL = webhookUrl;
+
+      return {
+        success: true,
+        message: 'Slack ayarları güncellendi'
+      };
+
+    } catch (error) {
+      log.error('updateSlackSettings hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Get Slack Webhook settings status (admin only)
+   * Returns configuration status without exposing webhook URL
+   * @param {string} apiKey - Admin API key
+   * @returns {{success: boolean, configured: boolean}}
+   */
+  getSlackSettings: function(apiKey) {
+    try {
+      // API key kontrolü
+      if (!AuthService.validateApiKey(apiKey)) {
+        throw new Error('Geçersiz API key');
+      }
+
+      const scriptProperties = PropertiesService.getScriptProperties();
+      const webhookUrl = scriptProperties.getProperty('SLACK_WEBHOOK_URL');
+
+      return {
+        success: true,
+        configured: !!webhookUrl
+      };
+
+    } catch (error) {
+      log.error('getSlackSettings hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Daily automatic Slack reminders (trigger function)
+   * Sends today's appointments to Slack
+   * NOTE: Called automatically by time-driven trigger, no API key needed
+   * @returns {{success: boolean, appointmentCount: number, date: string}}
+   */
+  sendDailySlackReminders: function() {
+    try {
+      // Bugünün tarihini hesapla
+      const today = new Date();
+      const todayDateStr = Utilities.formatDate(today, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+      const todayFormatted = Utilities.formatDate(today, CONFIG.TIMEZONE, 'd MMMM yyyy, EEEE');
+
+      log.info(`Slack bildirimi gönderiliyor: ${todayDateStr}`);
+
+      // Bugünün randevularını al
+      const reminders = WhatsAppService.getTodayWhatsAppReminders(todayDateStr);
+
+      if (!reminders.success) {
+        log.error('Randevular alınamadı:', reminders.error);
+        return { success: false, error: reminders.error };
+      }
+
+      const appointments = reminders.data || [];
+
+      // Slack mesajını formatla
+      const slackMessage = this.formatSlackMessage(appointments, todayFormatted);
+
+      // Slack'e gönder
+      const response = UrlFetchApp.fetch(CONFIG.SLACK_WEBHOOK_URL, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(slackMessage),
+        muteHttpExceptions: true
+      });
+
+      const responseCode = response.getResponseCode();
+
+      if (responseCode === 200) {
+        log.info(`Slack bildirimi başarıyla gönderildi. Randevu sayısı: ${appointments.length}`);
+        return {
+          success: true,
+          appointmentCount: appointments.length,
+          date: todayDateStr
+        };
+      } else {
+        log.error('Slack webhook hatası:', response.getContentText());
+        return {
+          success: false,
+          error: `Slack webhook hatası: ${responseCode}`
+        };
+      }
+
+    } catch (error) {
+      log.error('sendDailySlackReminders hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Format Slack message using Slack Block Kit
+   * Modern, readable format similar to the website design
+   * @param {Array} appointments - Array of appointment objects
+   * @param {string} dateFormatted - Formatted date string
+   * @returns {{blocks: Array}} Slack Block Kit message
+   */
+  formatSlackMessage: function(appointments, dateFormatted) {
+    const appointmentTypeEmojis = {
+      'delivery': '📦',
+      'service': '🔧',
+      'meeting': '💼',
+      'management': '👔'
+    };
+
+    const appointmentTypeNames = {
+      'delivery': 'Teslim',
+      'service': 'Teknik Servis',
+      'meeting': 'Görüşme',
+      'management': 'Yönetim'
+    };
+
+    // Header - Daha modern
+    const blocks = [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: '📅 BUGÜNÜN RANDEVULARI',
+          emoji: true
+        }
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: `*${dateFormatted}*\n_${CONFIG.COMPANY_NAME}_`
+        }
+      },
+      {
+        type: 'divider'
+      }
+    ];
+
+    // Randevular yoksa
+    if (appointments.length === 0) {
+      blocks.push({
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: ':sparkles: *Bugün randevu yok!*'
+        }
+      });
+    } else {
+      // Her randevu için - fields kullanarak daha organize
+      appointments.forEach((apt, index) => {
+        const emoji = appointmentTypeEmojis[apt.appointmentType] || '📋';
+        const typeName = appointmentTypeNames[apt.appointmentType] || apt.appointmentType;
+
+        // Randevu kartı
+        blocks.push({
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `*${emoji} ${typeName}*\n🕐 *${apt.time}*`
+          },
+          fields: [
+            {
+              type: 'mrkdwn',
+              text: `*Müşteri:*\n${apt.customerName}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*Telefon:*\n${apt.customerPhone}`
+            },
+            {
+              type: 'mrkdwn',
+              text: `*İlgili Personel:*\n${apt.staffName}`
+            },
+            {
+              type: 'mrkdwn',
+              text: apt.customerNote ? `*Not:*\n_${apt.customerNote}_` : '*Not:*\n-'
+            }
+          ]
+        });
+
+        // Son randevudan sonra divider ekleme
+        if (index < appointments.length - 1) {
+          blocks.push({
+            type: 'divider'
+          });
+        }
+      });
+
+      // Footer - Daha belirgin
+      blocks.push(
+        {
+          type: 'divider'
+        },
+        {
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `📊 *Toplam: ${appointments.length} randevu*`
+          }
+        }
+      );
+    }
+
+    return { blocks };
+  },
+
+  /**
+   * Test Slack integration (for debugging)
+   * Step-by-step test of Slack webhook configuration
+   */
+  testSlackIntegration: function() {
+    console.log('===== SLACK ENTEGRASYON TESTİ BAŞLADI =====');
+
+    // 1. Script Properties'den Webhook URL'i kontrol et
+    console.log('\n1. Webhook URL kontrolü...');
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const webhookUrl = scriptProperties.getProperty('SLACK_WEBHOOK_URL');
+
+    if (!webhookUrl) {
+      console.error('❌ HATA: SLACK_WEBHOOK_URL Script Properties\'de bulunamadı!');
+      console.log('ÇÖZÜM: Admin panelden Slack Webhook URL\'ini kaydedin.');
+      return;
+    }
+
+    console.log('✅ Webhook URL bulundu:', webhookUrl.substring(0, 50) + '...');
+
+    // 2. Config'i yükle ve kontrol et
+    console.log('\n2. Config yükleme...');
+    loadExternalConfigs();
+
+    if (!CONFIG.SLACK_WEBHOOK_URL) {
+      console.error('❌ HATA: CONFIG.SLACK_WEBHOOK_URL yüklenemedi!');
+      return;
+    }
+
+    console.log('✅ Config yüklendi');
+
+    // 3. Bugünün randevularını kontrol et
+    console.log('\n3. Bugünün randevuları kontrol ediliyor...');
+    const today = new Date();
+    const todayDateStr = Utilities.formatDate(today, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+    console.log('Tarih:', todayDateStr);
+
+    const reminders = WhatsAppService.getTodayWhatsAppReminders(todayDateStr);
+
+    if (!reminders.success) {
+      console.error('❌ HATA: Randevular alınamadı:', reminders.error);
+      return;
+    }
+
+    const appointments = reminders.data || [];
+    console.log('✅ Randevu sayısı:', appointments.length);
+
+    if (appointments.length > 0) {
+      console.log('İlk randevu:', appointments[0]);
+    } else {
+      console.log('⚠️ UYARI: Bugün için randevu yok!');
+    }
+
+    // 4. Slack mesajını hazırla
+    console.log('\n4. Slack mesajı hazırlanıyor...');
+    const todayFormatted = Utilities.formatDate(today, CONFIG.TIMEZONE, 'd MMMM yyyy, EEEE');
+    const slackMessage = this.formatSlackMessage(appointments, todayFormatted);
+    console.log('✅ Mesaj hazırlandı');
+    console.log('Block sayısı:', slackMessage.blocks.length);
+
+    // 5. Slack'e gönder
+    console.log('\n5. Slack\'e gönderiliyor...');
+
+    try {
+      const response = UrlFetchApp.fetch(CONFIG.SLACK_WEBHOOK_URL, {
+        method: 'post',
+        contentType: 'application/json',
+        payload: JSON.stringify(slackMessage),
+        muteHttpExceptions: true
+      });
+
+      const responseCode = response.getResponseCode();
+      const responseText = response.getContentText();
+
+      console.log('HTTP Response Code:', responseCode);
+      console.log('Response Text:', responseText);
+
+      if (responseCode === 200) {
+        console.log('\n✅ BAŞARILI! Slack\'e mesaj gönderildi!');
+        console.log('Slack kanalınızı kontrol edin.');
+      } else {
+        console.error('\n❌ HATA: Slack webhook hatası!');
+        console.error('Response Code:', responseCode);
+        console.error('Response:', responseText);
+      }
+
+    } catch (error) {
+      console.error('\n❌ HATA: İstek gönderilemedi!');
+      console.error('Hata:', error.toString());
+      console.error('Stack:', error.stack);
+    }
+
+    console.log('\n===== TEST TAMAMLANDI =====');
+  }
+};
+
 // Appointment helper functions moved to AppointmentService namespace (line 2066)
 
 /**
@@ -3487,7 +4476,8 @@ Bu randevu otomatik olarak oluşturulmuştur.
  * @param {string} date - YYYY-MM-DD formatında tarih
  * @returns {Object} { success: true, data: [{ customerName, startTime, link }] }
  */
-function getTodayWhatsAppReminders(date) {
+// getTodayWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 2873)
+function OLD_getTodayWhatsAppReminders(date) {
   try {
     const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
     const calendar = CalendarService.getCalendar();
@@ -3913,7 +4903,8 @@ function OLD_checkTimeSlotAvailability(date, staffId, shiftType, appointmentType
  * @param {string} staffPhone - Personel telefon numarası (button için, 90XXXXXXXXXX formatında)
  * @returns {Object} - {success: boolean, messageId?: string, error?: string}
  */
-function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, staffName, appointmentType, staffPhone) {
+// sendWhatsAppMessage - WhatsAppService namespace'ine taşındı (line 2968)
+function OLD_sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, staffName, appointmentType, staffPhone) {
   try {
     // Config kontrolü
     if (!CONFIG.WHATSAPP_PHONE_NUMBER_ID || !CONFIG.WHATSAPP_ACCESS_TOKEN) {
@@ -4033,7 +5024,8 @@ function sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, sta
  * @param {string} apiKey - Admin API key
  * @returns {Object} - {success: boolean, sent: number, failed: number, details: []}
  */
-function sendWhatsAppReminders(date, apiKey) {
+// sendWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 3080)
+function OLD_sendWhatsAppReminders(date, apiKey) {
   try {
     // API key kontrolü
     if (!AuthService.validateApiKey(apiKey)) {
@@ -4144,7 +5136,8 @@ function sendWhatsAppReminders(date, apiKey) {
  * 5. Time: 10am to 11am
  * 6. Save
  */
-function sendDailyWhatsAppReminders() {
+// sendDailyWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 3182)
+function OLD_sendDailyWhatsAppReminders() {
   try {
     // WhatsApp config yükle
     loadWhatsAppConfig();
@@ -4268,7 +5261,8 @@ function sendDailyWhatsAppReminders() {
  * Admin'e otomatik gönderim sonuçlarını e-posta ile bildir
  * (Opsiyonel - sadece hata varsa gönderir)
  */
-function sendAdminNotification(summary) {
+// sendAdminNotification - WhatsAppService namespace'ine taşındı (line 3307)
+function OLD_sendAdminNotification(summary) {
   try {
     const subject = `WhatsApp Hatırlatıcıları - ${summary.failed} Başarısız`;
 
@@ -4303,7 +5297,8 @@ function sendAdminNotification(summary) {
  * @param {string} apiKey - Admin API key
  * @returns {Object} - {success: boolean}
  */
-function updateWhatsAppSettings(settings, apiKey) {
+// updateWhatsAppSettings - WhatsAppService namespace'ine taşındı (line 3342)
+function OLD_updateWhatsAppSettings(settings, apiKey) {
   try {
     // API key kontrolü
     if (!AuthService.validateApiKey(apiKey)) {
@@ -4342,7 +5337,8 @@ function updateWhatsAppSettings(settings, apiKey) {
  * @param {string} apiKey - Admin API key
  * @returns {Object} - {success: boolean, configured: boolean}
  */
-function getWhatsAppSettings(apiKey) {
+// getWhatsAppSettings - WhatsAppService namespace'ine taşındı (line 3382)
+function OLD_getWhatsAppSettings(apiKey) {
   try {
     // API key kontrolü
     if (!AuthService.validateApiKey(apiKey)) {
@@ -4377,7 +5373,8 @@ function getWhatsAppSettings(apiKey) {
  * @param {string} apiKey - Admin API key
  * @returns {Object} - {success: boolean}
  */
-function updateSlackSettings(webhookUrl, apiKey) {
+// updateSlackSettings - SlackService namespace'ine taşındı (line 3518)
+function OLD_updateSlackSettings(webhookUrl, apiKey) {
   try {
     // API key kontrolü
     if (!AuthService.validateApiKey(apiKey)) {
@@ -4415,7 +5412,8 @@ function updateSlackSettings(webhookUrl, apiKey) {
  * @param {string} apiKey - Admin API key
  * @returns {Object} - {success: boolean, configured: boolean}
  */
-function getSlackSettings(apiKey) {
+// getSlackSettings - SlackService namespace'ine taşındı (line 3557)
+function OLD_getSlackSettings(apiKey) {
   try {
     // API key kontrolü
     if (!AuthService.validateApiKey(apiKey)) {
@@ -4482,7 +5480,8 @@ loadExternalConfigs();
  * 5. Time: 10am to 11am
  * 6. Save
  */
-function sendDailySlackReminders() {
+// sendDailySlackReminders - SlackService namespace'ine taşındı (line 3587)
+function OLD_sendDailySlackReminders() {
   try {
     // Bugünün tarihini hesapla
     const today = new Date();
@@ -4542,7 +5541,8 @@ function sendDailySlackReminders() {
  * Slack mesajını formatla (Slack Block Kit kullanarak)
  * Sitedeki tasarıma benzer, modern ve okunabilir format
  */
-function formatSlackMessage(appointments, dateFormatted) {
+// formatSlackMessage - SlackService namespace'ine taşındı (line 3650)
+function OLD_formatSlackMessage(appointments, dateFormatted) {
   const appointmentTypeEmojis = {
     'delivery': '📦',
     'service': '🔧',
@@ -4651,7 +5651,8 @@ function formatSlackMessage(appointments, dateFormatted) {
  * TEST FONKSİYONU - Slack entegrasyonunu adım adım test et
  * Apps Script editöründe bu fonksiyonu çalıştırın ve console output'u kontrol edin
  */
-function testSlackIntegration() {
+// testSlackIntegration - SlackService namespace'ine taşındı (line 3759)
+function OLD_testSlackIntegration() {
   console.log('===== SLACK ENTEGRASYON TESTİ BAŞLADI =====');
 
   // 1. Script Properties'den Webhook URL'i kontrol et
@@ -4908,7 +5909,8 @@ function OLD_getAvailableStaffForSlot(date, time) {
  * 4. Execution log'u kontrol edin
  * 5. Telefonunuzu kontrol edin - mesaj geldi mi?
  */
-function testWhatsAppMessage() {
+// testWhatsAppMessage - WhatsAppService namespace'ine taşındı (line 3415)
+function OLD_testWhatsAppMessage() {
   console.log('===== WHATSAPP TEST BAŞLADI =====\n');
 
   // Test telefon numarası
