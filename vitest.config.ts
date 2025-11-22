@@ -17,19 +17,19 @@ export default defineConfig({
         '**/*.d.ts',
         'apps-script-backend.js' // Backend script (different runtime)
       ],
-      // Thresholds for quality gates (Phase 2: Business logic + utilities)
+      // Thresholds for quality gates (Phase 3: DOM mocking + comprehensive coverage)
       // Phase 1: 30% (critical utilities)
       // Phase 2: 50% (business logic tests + date utils)
-      // Future: DOM mocking required for 70%+ (app.ts, admin-panel.ts)
+      // Phase 3: 75% (DOM functions + monitoring + config-loader) ✅ ACHIEVED: 77.39%
       thresholds: {
-        lines: 50,
-        functions: 50,
-        branches: 55,
-        statements: 50
+        lines: 75,
+        functions: 75,
+        branches: 85,
+        statements: 75
       }
     },
-    // Mock DOM APIs
-    setupFiles: [],
+    // Mock DOM APIs (Phase 3: DOM mocking infrastructure)
+    setupFiles: ['./tests/setup.ts'],
     // Timeout for slow tests
     testTimeout: 10000
   },

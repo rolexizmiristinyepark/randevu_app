@@ -1,5 +1,17 @@
-import { describe, it, expect } from 'vitest';
-import { maskEmail, maskPhone, maskName, escapeHtml } from '../security-helpers';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+  maskEmail,
+  maskPhone,
+  maskName,
+  escapeHtml,
+  createElement,
+  showAlertSafe,
+  renderListSafe,
+  createSafeFragment,
+  createLoadingElement,
+  createTableRow
+} from '../security-helpers';
+import { cleanupDOM } from './setup';
 
 describe('Security Helpers', () => {
   describe('maskEmail', () => {
@@ -134,6 +146,327 @@ describe('Security Helpers', () => {
       // "onerror" word exists but quotes are escaped, making it safe
       expect(escaped).not.toContain('onerror="');
       expect(escaped).toContain('&lt;img');
+    });
+  });
+
+  // ==================== DOM FUNCTIONS (Phase 3) ====================
+
+  describe('createElement', () => {
+    afterEach(() => {
+      cleanupDOM();
+    });
+
+    it('should create basic element', () => {
+      const element = createElement('div');
+      expect(element.tagName).toBe('DIV');
+      expect(element).toBeInstanceOf(HTMLDivElement);
+    });
+
+    it('should create element with text content', () => {
+      const element = createElement('p', {}, 'Hello World');
+      expect(element.textContent).toBe('Hello World');
+      expect(element.tagName).toBe('P');
+    });
+
+    it('should set className attribute', () => {
+      const element = createElement('div', { className: 'test-class' });
+      expect(element.className).toBe('test-class');
+    });
+
+    it('should set data attributes', () => {
+      const element = createElement('div', {
+        'data-id': '123',
+        'data-type': 'test'
+      });
+      expect(element.getAttribute('data-id')).toBe('123');
+      expect(element.getAttribute('data-type')).toBe('test');
+    });
+
+    it('should set style object', () => {
+      const element = createElement('div', {
+        style: { color: 'red', fontSize: '14px' }
+      });
+      expect(element.style.color).toBe('red');
+      expect(element.style.fontSize).toBe('14px');
+    });
+
+    it('should set other attributes', () => {
+      const element = createElement('button', { id: 'btn-1', type: 'button' });
+      expect(element.getAttribute('id')).toBe('btn-1');
+      expect(element.getAttribute('type')).toBe('button');
+    });
+
+    it('should use textContent for XSS safety', () => {
+      const element = createElement('div', {}, '<script>alert("XSS")</script>');
+      // textContent escapes HTML automatically
+      expect(element.textContent).toBe('<script>alert("XSS")</script>');
+      expect(element.innerHTML).not.toContain('<script>');
+      expect(element.innerHTML).toContain('&lt;script&gt;');
+    });
+  });
+
+  describe('showAlertSafe', () => {
+    beforeEach(() => {
+      // Create alert container
+      const container = document.createElement('div');
+      container.id = 'alertContainer';
+      document.body.appendChild(container);
+      vi.useFakeTimers();
+    });
+
+    afterEach(() => {
+      cleanupDOM();
+      vi.useRealTimers();
+      vi.clearAllTimers();
+    });
+
+    it('should create alert element', () => {
+      showAlertSafe('Test message', 'info');
+      const container = document.getElementById('alertContainer');
+      expect(container?.children.length).toBe(1);
+      expect(container?.textContent).toContain('Test message');
+    });
+
+    it('should apply correct alert type class', () => {
+      showAlertSafe('Error message', 'error');
+      const container = document.getElementById('alertContainer');
+      const alert = container?.querySelector('.alert-error');
+      expect(alert).toBeTruthy();
+    });
+
+    it('should clear existing alerts before showing new one', () => {
+      showAlertSafe('First message', 'info');
+      showAlertSafe('Second message', 'success');
+
+      const container = document.getElementById('alertContainer');
+      expect(container?.children.length).toBe(1);
+      expect(container?.textContent).toBe('Second message');
+      expect(container?.textContent).not.toContain('First message');
+    });
+
+    it('should auto-dismiss after 4 seconds', () => {
+      showAlertSafe('Auto dismiss', 'warning');
+      const container = document.getElementById('alertContainer');
+
+      expect(container?.textContent).toBe('Auto dismiss');
+
+      // Fast-forward 4 seconds
+      vi.advanceTimersByTime(4000);
+
+      expect(container?.textContent).toBe('');
+    });
+
+    it('should handle missing container gracefully', () => {
+      cleanupDOM(); // Remove container
+      expect(() => {
+        showAlertSafe('Test', 'info');
+      }).not.toThrow();
+    });
+
+    it('should escape XSS in messages', () => {
+      showAlertSafe('<script>alert("XSS")</script>', 'info');
+      const container = document.getElementById('alertContainer');
+
+      // textContent is used, so HTML is escaped
+      expect(container?.innerHTML).not.toContain('<script>');
+    });
+  });
+
+  describe('renderListSafe', () => {
+    afterEach(() => {
+      cleanupDOM();
+    });
+
+    it('should render list items', () => {
+      const container = document.createElement('div');
+      const items = ['Item 1', 'Item 2', 'Item 3'];
+
+      renderListSafe(container, items, (item) => {
+        return createElement('li', {}, item);
+      });
+
+      expect(container.children.length).toBe(3);
+      expect(container.textContent).toContain('Item 1');
+      expect(container.textContent).toContain('Item 2');
+      expect(container.textContent).toContain('Item 3');
+    });
+
+    it('should clear container before rendering', () => {
+      const container = document.createElement('div');
+      container.innerHTML = '<p>Old content</p>';
+
+      renderListSafe(container, ['New item'], (item) => {
+        return createElement('span', {}, item);
+      });
+
+      expect(container.textContent).toBe('New item');
+      expect(container.textContent).not.toContain('Old content');
+    });
+
+    it('should skip null items', () => {
+      const container = document.createElement('div');
+      const items = ['Item 1', 'Item 2'];
+
+      renderListSafe(container, items, (item) => {
+        return item === 'Item 1' ? null : createElement('div', {}, item);
+      });
+
+      expect(container.children.length).toBe(1);
+      expect(container.textContent).toBe('Item 2');
+    });
+
+    it('should handle empty array', () => {
+      const container = document.createElement('div');
+      renderListSafe(container, [], () => createElement('div'));
+      expect(container.children.length).toBe(0);
+    });
+
+    it('should handle null container', () => {
+      expect(() => {
+        renderListSafe(null, ['item'], () => createElement('div'));
+      }).not.toThrow();
+    });
+  });
+
+  describe('createSafeFragment', () => {
+    it('should create document fragment from HTML', () => {
+      const html = '<div>Test</div><p>Content</p>';
+      const fragment = createSafeFragment(html);
+
+      expect(fragment).toBeInstanceOf(DocumentFragment);
+      expect(fragment.children.length).toBe(2);
+    });
+
+    it('should parse complex HTML structure', () => {
+      const html = '<ul><li>Item 1</li><li>Item 2</li></ul>';
+      const fragment = createSafeFragment(html);
+
+      const ul = fragment.querySelector('ul');
+      expect(ul).toBeTruthy();
+      expect(ul?.children.length).toBe(2);
+    });
+
+    it('should only be used with trusted HTML (comment check)', () => {
+      // This function should ONLY be used with trusted, sanitized HTML
+      // Using with user input would be dangerous
+      const trustedHtml = '<div class="safe">Trusted content</div>';
+      const fragment = createSafeFragment(trustedHtml);
+
+      expect(fragment.querySelector('.safe')).toBeTruthy();
+    });
+  });
+
+  describe('createLoadingElement', () => {
+    it('should create loading spinner with default message', () => {
+      const loading = createLoadingElement();
+
+      expect(loading.textContent).toContain('Yükleniyor...');
+      expect(loading.querySelector('.spinner')).toBeTruthy();
+    });
+
+    it('should create loading spinner with custom message', () => {
+      const loading = createLoadingElement('Lütfen bekleyin...');
+
+      expect(loading.textContent).toContain('Lütfen bekleyin...');
+      expect(loading.querySelector('.spinner')).toBeTruthy();
+      expect(loading.querySelector('p')).toBeTruthy();
+    });
+
+    it('should have centered styling', () => {
+      const loading = createLoadingElement();
+
+      expect(loading.style.textAlign).toBe('center');
+      expect(loading.style.padding).toBe('20px');
+    });
+
+    it('should contain spinner and text elements', () => {
+      const loading = createLoadingElement('Custom text');
+
+      const spinner = loading.querySelector('.spinner');
+      const text = loading.querySelector('p');
+
+      expect(spinner).toBeTruthy();
+      expect(text).toBeTruthy();
+      expect(text?.textContent).toBe('Custom text');
+    });
+  });
+
+  describe('createTableRow', () => {
+    it('should create table row with data cells', () => {
+      const row = createTableRow(['Cell 1', 'Cell 2', 'Cell 3']);
+
+      expect(row.tagName).toBe('TR');
+      expect(row.children.length).toBe(3);
+      expect(row.children[0].tagName).toBe('TD');
+      expect(row.textContent).toContain('Cell 1');
+    });
+
+    it('should create header row with th elements', () => {
+      const row = createTableRow(['Header 1', 'Header 2'], true);
+
+      expect(row.children[0].tagName).toBe('TH');
+      expect(row.children[1].tagName).toBe('TH');
+      expect(row.textContent).toContain('Header 1');
+    });
+
+    it('should handle string cell content', () => {
+      const row = createTableRow(['Text content']);
+      const cell = row.children[0] as HTMLTableCellElement;
+
+      expect(cell.textContent).toBe('Text content');
+    });
+
+    it('should handle element cell content', () => {
+      const button = createElement('button', {}, 'Click me');
+      const row = createTableRow([button]);
+      const cell = row.children[0] as HTMLTableCellElement;
+
+      expect(cell.querySelector('button')).toBeTruthy();
+      expect(cell.textContent).toBe('Click me');
+    });
+
+    it('should handle object cell content with text', () => {
+      const row = createTableRow([
+        { text: 'Object cell', class: 'highlight' }
+      ]);
+      const cell = row.children[0] as HTMLTableCellElement;
+
+      expect(cell.textContent).toBe('Object cell');
+      expect(cell.getAttribute('class')).toBe('highlight');
+    });
+
+    it('should handle object cell content with element', () => {
+      const span = createElement('span', {}, 'Span content');
+      const row = createTableRow([
+        { element: span, id: 'cell-1' }
+      ]);
+      const cell = row.children[0] as HTMLTableCellElement;
+
+      expect(cell.querySelector('span')).toBeTruthy();
+      expect(cell.getAttribute('id')).toBe('cell-1');
+    });
+
+    it('should handle mixed cell types', () => {
+      const button = createElement('button', {}, 'Button');
+      const row = createTableRow([
+        'String cell',
+        button,
+        { text: 'Object cell' }
+      ]);
+
+      expect(row.children.length).toBe(3);
+      expect(row.children[0].textContent).toBe('String cell');
+      expect(row.children[1].querySelector('button')).toBeTruthy();
+      expect(row.children[2].textContent).toBe('Object cell');
+    });
+
+    it('should escape XSS in string cells', () => {
+      const row = createTableRow(['<script>alert("XSS")</script>']);
+      const cell = row.children[0] as HTMLTableCellElement;
+
+      // textContent is used, so HTML is escaped
+      expect(cell.innerHTML).not.toContain('<script>');
+      expect(cell.textContent).toBe('<script>alert("XSS")</script>');
     });
   });
 });
