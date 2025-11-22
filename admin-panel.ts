@@ -1,6 +1,7 @@
         // Import monitoring utilities
         import { initMonitoring, logError } from './monitoring';
         import { initConfig, Config } from './config-loader';
+        import { escapeHtml } from './security-helpers';
 
         // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
         // ⭐ NEW: Config loaded dynamically from backend API
@@ -956,11 +957,12 @@
                 const timeStr = start.toLocaleTimeString('tr-TR', {hour: '2-digit', minute: '2-digit'});
 
                 const infoDiv = document.getElementById('assignStaffInfo');
+                // 🔒 SECURITY: escapeHtml() ile XSS koruması
                 infoDiv.innerHTML = `
                     <div style="font-size: 13px; line-height: 1.8; color: #757575;">
-                        <div><span style="color: #1A1A2E; font-weight: 500;">Müşteri:</span> ${customerName}</div>
-                        <div><span style="color: #1A1A2E; font-weight: 500;">Tarih:</span> ${dateStr}</div>
-                        <div><span style="color: #1A1A2E; font-weight: 500;">Saat:</span> ${timeStr}</div>
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Müşteri:</span> ${escapeHtml(customerName)}</div>
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Tarih:</span> ${escapeHtml(dateStr)}</div>
+                        <div><span style="color: #1A1A2E; font-weight: 500;">Saat:</span> ${escapeHtml(timeStr)}</div>
                     </div>
                 `;
 
