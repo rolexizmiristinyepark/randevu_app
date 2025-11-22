@@ -929,7 +929,8 @@ const CalendarService = {
 // Email template'leri - kod organizasyonu için ayrı fonksiyonlar
 
 // Generic email template builder - DRY prensibi
-function generateEmailTemplate(type, data) {
+// generateEmailTemplate - NotificationService namespace'ine taşındı (line 2419)
+function OLD_generateEmailTemplate(type, data) {
   const config = CONFIG.EMAIL_TEMPLATES[type.toUpperCase()];
   if (!config) throw new Error(`Geçersiz email template tipi: ${type}`);
 
@@ -1016,9 +1017,10 @@ function generateEmailTemplate(type, data) {
   }
 }
 
-function getCustomerEmailTemplate(data) {
+// getCustomerEmailTemplate - NotificationService namespace'ine taşındı (line 2377)
+function OLD_getCustomerEmailTemplate(data) {
   // Generic template builder kullan - DİNAMİK İÇERİK İÇİN appointmentType eklendi
-  return generateEmailTemplate('customer', {
+  return NotificationService.generateEmailTemplate('customer', {
     name: data.customerName,
     DATE: data.formattedDate,
     TIME: data.time,
@@ -1127,9 +1129,10 @@ function generateCustomerICS(data) {
   return icsContent;
 }
 
-function getStaffEmailTemplate(data) {
+// getStaffEmailTemplate - NotificationService namespace'ine taşındı (line 2398)
+function OLD_getStaffEmailTemplate(data) {
   // Generic template builder kullan
-  return generateEmailTemplate('staff', {
+  return NotificationService.generateEmailTemplate('staff', {
     name: data.staffName,
     CUSTOMER: data.customerName,
     CONTACT: data.customerPhone,
@@ -2362,6 +2365,148 @@ const ValidationService = {
   }
 };
 
+// ==================== NOTIFICATION SERVICE ====================
+/**
+ * Email notification and calendar file generation service
+ * Handles customer and staff email templates, ICS calendar files
+ * @namespace NotificationService
+ */
+const NotificationService = {
+  /**
+   * Get customer email HTML template
+   * @param {Object} data - {customerName, formattedDate, time, serviceName, staffName, staffPhone, staffEmail, customerNote, appointmentType}
+   * @returns {string} HTML email template
+   */
+  getCustomerEmailTemplate: function(data) {
+    // Generic template builder kullan - DİNAMİK İÇERİK İÇİN appointmentType eklendi
+    return this.generateEmailTemplate('customer', {
+      name: data.customerName,
+      DATE: data.formattedDate,
+      TIME: data.time,
+      SUBJECT: data.serviceName,
+      CONTACT_PERSON: data.staffName,
+      STORE: CONFIG.COMPANY_NAME,
+      NOTES: data.customerNote || '',
+      staffPhone: data.staffPhone,
+      staffEmail: data.staffEmail,
+      appointmentType: data.appointmentType  // YENİ: Dinamik içerik için
+    });
+  },
+
+  /**
+   * Get staff email HTML template
+   * @param {Object} data - {staffName, customerName, customerPhone, customerEmail, formattedDate, time, serviceName, customerNote}
+   * @returns {string} HTML email template
+   */
+  getStaffEmailTemplate: function(data) {
+    // Generic template builder kullan
+    return this.generateEmailTemplate('staff', {
+      name: data.staffName,
+      CUSTOMER: data.customerName,
+      CONTACT: data.customerPhone,
+      EMAIL: data.customerEmail,
+      DATE: data.formattedDate,
+      TIME: data.time,
+      SUBJECT: data.serviceName,
+      CONTACT_PERSON: data.staffName,
+      NOTES: data.customerNote || ''
+    });
+  },
+
+  /**
+   * Generate email HTML template (customer or staff)
+   * @param {string} type - 'customer' or 'staff'
+   * @param {Object} data - Template data
+   * @returns {string} HTML email template
+   */
+  generateEmailTemplate: function(type, data) {
+    const config = CONFIG.EMAIL_TEMPLATES[type.toUpperCase()];
+    if (!config) throw new Error(`Geçersiz email template tipi: ${type}`);
+
+    const { GREETING, SECTION_TITLE, LABELS, CLOSING } = config;
+
+    // Tablo satırları - config'deki label'lara göre dinamik
+    const tableRows = Object.entries(LABELS).map(([key, label]) => {
+      const value = data[key] || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED;
+      return `
+      <tr>
+        <td style="padding: 8px 12px 8px 0; font-weight: 400; width: 35%; vertical-align: top; color: #555;">${label}</td>
+        <td style="padding: 8px 0; vertical-align: top; word-wrap: break-word; color: #333;">${value}</td>
+      </tr>
+    `;
+    }).join('');
+
+    // Customer email için yeni yapı
+    if (type === 'customer') {
+      // Randevu türüne göre dinamik içerik seç
+      let typeSpecificInfo = '';
+      const { appointmentType } = data;
+      if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY && CONFIG.EMAIL_TEMPLATES.DELIVERY) {
+        typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.DELIVERY.INFO;
+      } else if (appointmentType === CONFIG.APPOINTMENT_TYPES.SERVICE && CONFIG.EMAIL_TEMPLATES.SERVICE) {
+        typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.SERVICE.INFO;
+      } else if (CONFIG.EMAIL_TEMPLATES.MEETING) {
+        typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.MEETING.INFO;
+      }
+
+      return `
+      <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
+          <h3 style="margin-top: 0; color: #1A1A2E; font-weight: 400; letter-spacing: 1px; font-size: 16px;">${SECTION_TITLE}</h3>
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            ${tableRows}
+          </table>
+        </div>
+
+        <p style="line-height: 1.8; font-weight: 400;">${GREETING} ${data.name},</p>
+
+        <p style="line-height: 1.8; font-weight: 400;">${config.CONFIRMATION}</p>
+
+        <p style="line-height: 1.8; font-weight: 400;">${typeSpecificInfo}</p>
+
+        <p style="line-height: 1.8; font-weight: 400;">${config.CHANGE_CONTACT_INFO}</p>
+
+        <p style="margin-top: 20px; line-height: 1.8; font-weight: 400;">
+          <span style="font-weight: 400;">Tel:</span> ${data.staffPhone}<br>
+          <span style="font-weight: 400;">E-posta:</span> ${data.staffEmail}
+        </p>
+
+        <p style="margin-top: 30px; font-weight: 400;">
+          ${CLOSING},<br>
+          <span style="font-weight: 400;">${CONFIG.COMPANY_NAME}</span>
+        </p>
+      </div>
+    `;
+    }
+    // Staff email için eski yapı korundu
+    else {
+      const mainText = config.NOTIFICATION;
+      const additionalContent = `<p style="font-weight: 400;">${config.PREPARATION}</p>`;
+
+      return `
+      <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
+        <p style="font-weight: 400;">${GREETING} ${data.name},</p>
+        <p style="font-weight: 400;">${mainText}</p>
+
+        <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
+          <h3 style="margin-top: 0; color: #1A1A2E; font-weight: 400; letter-spacing: 1px; font-size: 16px;">${SECTION_TITLE}</h3>
+          <table style="width: 100%; border-collapse: collapse; table-layout: fixed;">
+            ${tableRows}
+          </table>
+        </div>
+
+        ${additionalContent}
+
+        <p style="margin-top: 30px; font-weight: 400;">
+          ${CLOSING},<br>
+          <span style="font-weight: 400;">${CONFIG.COMPANY_NAME}</span>
+        </p>
+      </div>
+    `;
+    }
+  }
+};
+
 // Appointment helper functions moved to AppointmentService namespace (line 2066)
 
 /**
@@ -2915,7 +3060,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
           subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
           name: CONFIG.COMPANY_NAME,
           replyTo: staffEmail || CONFIG.ADMIN_EMAIL,
-          htmlBody: getCustomerEmailTemplate({
+          htmlBody: NotificationService.getCustomerEmailTemplate({
             customerName: sanitizedCustomerName,
             formattedDate,
             time,
@@ -2935,7 +3080,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
 
     // E-posta bildirimi - Çalışana ve Admin (sanitized değerleri kullan)
     try {
-      const staffEmailBody = getStaffEmailTemplate({
+      const staffEmailBody = NotificationService.getStaffEmailTemplate({
         staffName: sanitizedStaffName,
         customerName: sanitizedCustomerName,
         customerPhone: sanitizedCustomerPhone,
@@ -3181,7 +3326,7 @@ function createManualAppointment(params) {
           subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
           name: CONFIG.COMPANY_NAME,
           replyTo: staff.email || CONFIG.ADMIN_EMAIL,
-          htmlBody: getCustomerEmailTemplate({
+          htmlBody: NotificationService.getCustomerEmailTemplate({
             customerName: sanitizedCustomerName,
             formattedDate,
             time,
