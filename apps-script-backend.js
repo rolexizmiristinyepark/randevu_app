@@ -370,13 +370,15 @@ const AuthService = {
 
 const CONFIG = {
   // Calendar & Storage
-  CALENDAR_ID: 'primary', // veya 'sizin@gmail.com'
+  // ⚠️ SECURITY: CALENDAR_ID Script Properties'den yüklenir (loadExternalConfigs)
+  CALENDAR_ID: 'primary', // Default fallback - Production'da Script Properties'den override edilir
   TIMEZONE: 'Europe/Istanbul',
   PROPERTIES_KEY: 'RANDEVU_DATA',
   API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
 
   // Security & Abuse Prevention
-  TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA', // Test key - Production'da değiştirin
+  // ⚠️ SECURITY: TURNSTILE_SECRET_KEY Script Properties'den yüklenir (loadExternalConfigs)
+  TURNSTILE_SECRET_KEY: '1x0000000000000000000000000000000AA', // Test key - Production'da Script Properties'den override edilir
   RATE_LIMIT_MAX_REQUESTS: 10,      // 10 istek
   RATE_LIMIT_WINDOW_SECONDS: 600,   // 10 dakika (600 saniye)
 
@@ -5455,17 +5457,30 @@ function OLD_getSlackSettings(apiKey) {
 
 /**
  * Script Properties'den external config'leri yükle (internal kullanım)
- * WhatsApp ve Slack gibi dış servis ayarları
+ * 🔒 SECURITY: Tüm sensitive data (API keys, secrets, credentials) bu fonksiyonla yüklenir
+ * ✅ GitHub'a commit edilmez (Script Properties'de saklanır)
  */
 function loadExternalConfigs() {
   const scriptProperties = PropertiesService.getScriptProperties();
 
-  // WhatsApp Config
+  // 🔒 SECURITY: Calendar ID (Gmail hesabı - sensitive)
+  const calendarId = scriptProperties.getProperty('CALENDAR_ID');
+  if (calendarId) {
+    CONFIG.CALENDAR_ID = calendarId;
+  }
+
+  // 🔒 SECURITY: Cloudflare Turnstile Secret (production key)
+  const turnstileSecret = scriptProperties.getProperty('TURNSTILE_SECRET_KEY');
+  if (turnstileSecret) {
+    CONFIG.TURNSTILE_SECRET_KEY = turnstileSecret;
+  }
+
+  // 🔒 SECURITY: WhatsApp Business API Credentials
   CONFIG.WHATSAPP_PHONE_NUMBER_ID = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID') || '';
   CONFIG.WHATSAPP_ACCESS_TOKEN = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN') || '';
   CONFIG.WHATSAPP_BUSINESS_ACCOUNT_ID = scriptProperties.getProperty('WHATSAPP_BUSINESS_ACCOUNT_ID') || '';
 
-  // Slack Config
+  // 🔒 SECURITY: Slack Webhook URL
   CONFIG.SLACK_WEBHOOK_URL = scriptProperties.getProperty('SLACK_WEBHOOK_URL') || '';
 }
 

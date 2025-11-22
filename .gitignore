@@ -12,3 +12,34 @@ coverage/
 test-results/
 playwright-report/
 playwright/.cache/
+
+# ==================== SECURITY: SECRETS & CREDENTIALS ====================
+# Environment variables (API keys, tokens, secrets)
+.env
+.env.local
+.env.production
+.env.development
+.env.*.local
+
+# Configuration files with secrets
+config.local.js
+config.local.ts
+*-secret.json
+credentials.json
+service-account.json
+
+# Google Apps Script credentials
+.clasp.json
+.clasprc.json
+
+# API keys and tokens
+*.key
+*.pem
+*.p12
+api-keys.txt
+secrets.txt
+
+# Backup files that might contain sensitive data
+*.backup
+*.bak
+*.old
