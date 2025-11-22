@@ -1221,14 +1221,14 @@ const ACTION_HANDLERS = {
   'getWeekAppointments': (e) => AppointmentService.getWeekAppointments(e.parameter.startDate, e.parameter.endDate),
   'deleteAppointment': (e) => AppointmentService.deleteAppointment(e.parameter.eventId),
   'updateAppointment': (e) => AppointmentService.updateAppointment(e.parameter.eventId, e.parameter.newDate, e.parameter.newTime),
-  'getAvailableSlotsForEdit': (e) => getAvailableSlotsForEdit(e.parameter.date, e.parameter.currentEventId, e.parameter.appointmentType),
+  'getAvailableSlotsForEdit': (e) => AvailabilityService.getAvailableSlotsForEdit(e.parameter.date, e.parameter.currentEventId, e.parameter.appointmentType),
   'assignStaffToAppointment': (e) => assignStaffToAppointment(e.parameter.eventId, e.parameter.staffId),
   'getMonthAppointments': (e) => AppointmentService.getMonthAppointments(e.parameter.month),
   'getGoogleCalendarEvents': (e) => getGoogleCalendarEvents(e.parameter.startDate, e.parameter.endDate, e.parameter.staffId),
   'createAppointment': (e) => createAppointment(e.parameter),
 
   // Availability calculation (server-side blocking logic)
-  'checkTimeSlotAvailability': (e) => checkTimeSlotAvailability(
+  'checkTimeSlotAvailability': (e) => AvailabilityService.checkTimeSlotAvailability(
     e.parameter.date,
     e.parameter.staffId,
     e.parameter.shiftType,
@@ -1270,7 +1270,7 @@ const ACTION_HANDLERS = {
     e.parameter.date,
     parseInt(e.parameter.managementLevel)
   ),
-  'getAvailableStaffForSlot': (e) => getAvailableStaffForSlot(
+  'getAvailableStaffForSlot': (e) => AvailabilityService.getAvailableStaffForSlot(
     e.parameter.date,
     e.parameter.time
   ),
@@ -2273,6 +2273,358 @@ const AvailabilityService = {
         error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
       };
     }
+  },
+
+  /**
+   * Check time slot availability for a specific date, staff, shift and appointment type
+   * Server-side single source of truth for slot blocking rules
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} staffId - Staff ID
+   * @param {string} shiftType - Shift type ('morning', 'evening', 'full')
+   * @param {string} appointmentType - Appointment type
+   * @param {number} interval - Appointment duration in minutes
+   * @returns {{success: boolean, slots?: Array<{time: string, available: boolean, reason: string}>, dailyDeliveryCount?: number, maxDelivery?: number, error?: string}}
+   */
+  checkTimeSlotAvailability: function(date, staffId, shiftType, appointmentType, interval) {
+    try {
+      // Parametreleri valide et
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+      }
+
+      const intervalNum = parseInt(interval);
+      if (isNaN(intervalNum) || intervalNum < VALIDATION.INTERVAL_MIN) {
+        return { success: false, error: 'Geçersiz interval değeri' };
+      }
+
+      // Vardiya saatlerini CONFIG'den al
+      const shift = CONFIG.SHIFT_HOURS[shiftType];
+      if (!shift) {
+        return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_SHIFT_TYPE };
+      }
+
+      // Zaman slotlarını oluştur
+      const slots = [];
+      const [startHour, startMinute] = shift.start.split(':').map(Number);
+      const [endHour, endMinute] = shift.end.split(':').map(Number);
+      const startMinutes = startHour * 60 + startMinute;
+      const endMinutes = endHour * 60 + endMinute;
+
+      for (let minutes = startMinutes; minutes < endMinutes; minutes += intervalNum) {
+        const hours = Math.floor(minutes / 60);
+        const mins = minutes % 60;
+        const timeStr = String(hours).padStart(2, '0') + ':' + String(mins).padStart(2, '0');
+        slots.push(timeStr);
+      }
+
+      // Google Calendar'dan randevuları getir
+      const calendar = CalendarService.getCalendar();
+      const { startDate, endDate } = DateUtils.getDateRange(date);
+      const events = calendar.getEvents(startDate, endDate);
+
+      // Data ayarlarını al (günlük max teslim sayısı için)
+      const data = StorageService.getData();
+      const maxDelivery = data.settings?.maxDaily || 4;
+
+      // Teslim randevusu sayısını hesapla (günlük limit kontrolü için)
+      let dailyDeliveryCount = 0;
+      if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+        dailyDeliveryCount = events.filter(event => {
+          const eventType = event.getTag('appointmentType');
+          if (eventType !== CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+            return false;
+          }
+
+          // Bugünse ve saat geçmişse sayma
+          const now = new Date();
+          const todayStr = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+
+          if (date === todayStr) {
+            const eventTime = Utilities.formatDate(
+              event.getStartTime(),
+              CONFIG.TIMEZONE,
+              'HH:mm'
+            );
+            const currentTime = Utilities.formatDate(now, CONFIG.TIMEZONE, 'HH:mm');
+            if (eventTime < currentTime) {
+              return false;
+            }
+          }
+
+          return true;
+        }).length;
+
+        // Eğer günlük limit dolmuşsa, tüm slotları bloke et
+        if (dailyDeliveryCount >= maxDelivery) {
+          return {
+            success: true,
+            slots: slots.map(time => ({
+              time: time,
+              available: false,
+              reason: CONFIG.ERROR_MESSAGES.DAILY_DELIVERY_LIMIT.replace('{max}', maxDelivery)
+            })),
+            dailyDeliveryCount: dailyDeliveryCount
+          };
+        }
+      }
+
+      // Şu anki zaman (geçmiş slot kontrolü için)
+      const now = new Date();
+      const todayStr = Utilities.formatDate(now, CONFIG.TIMEZONE, 'yyyy-MM-dd');
+      const currentTime = date === todayStr ? Utilities.formatDate(now, CONFIG.TIMEZONE, 'HH:mm') : null;
+
+      // Her slot için müsaitlik kontrolü (EPOCH-MINUTE STANDARD)
+      const availabilityResults = slots.map(timeStr => {
+        // 1. Geçmiş zaman kontrolü (bugünse)
+        if (currentTime && timeStr <= currentTime) {
+          return {
+            time: timeStr,
+            available: false,
+            reason: CONFIG.ERROR_MESSAGES.PAST_TIME
+          };
+        }
+
+        // 2. Slot'un epoch-minute aralığı [start, end)
+        const slotStart = DateUtils.dateTimeToEpochMinute(date, timeStr);
+        const slotEnd = slotStart + intervalNum; // interval dakika cinsinden
+
+        // 3. Bu slot ile ÇAKIŞAN randevuları bul (epoch-minute standardı ile)
+        // DEĞİŞKEN SÜRELİ randevular için de doğru çalışır
+        const overlappingEvents = events.filter(event => {
+          const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
+          const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
+
+          // [start, end) standardı ile çakışma kontrolü
+          return DateUtils.checkTimeOverlap(slotStart, slotEnd, eventStart, eventEnd);
+        });
+
+        const overlappingCount = overlappingEvents.length;
+
+        // 4. SERVER-SIDE SINGLE SOURCE OF TRUTH KURAL:
+        // **1 SAATE 1 RANDEVU** (tür/link farketmeksizin)
+        // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
+
+        // 4a. Çakışan randevu yok → MÜSAİT
+        if (overlappingCount === 0) {
+          return {
+            time: timeStr,
+            available: true,
+            reason: ''
+          };
+        }
+
+        // 4b. 1 çakışan randevu var
+        if (overlappingCount === 1) {
+          // Yönetim randevusu ekleniyor VE mevcut yönetim değil → MÜSAİT
+          const existingType = overlappingEvents[0].getTag('appointmentType');
+
+          if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT &&
+              existingType !== CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+            return {
+              time: timeStr,
+              available: true,
+              reason: ''
+            };
+          }
+
+          // Diğer tüm durumlar → DOLU
+          return {
+            time: timeStr,
+            available: false,
+            reason: 'Bu saat dolu'
+          };
+        }
+
+        // 4c. 2 veya daha fazla çakışan randevu var → DOLU
+        if (overlappingCount >= 2) {
+          return {
+            time: timeStr,
+            available: false,
+            reason: 'Bu saat dolu'
+          };
+        }
+
+        // Fallback (teoride buraya gelmemeli)
+        return {
+          time: timeStr,
+          available: true,
+          reason: ''
+        };
+      });
+
+      return {
+        success: true,
+        slots: availabilityResults,
+        dailyDeliveryCount: dailyDeliveryCount,
+        maxDelivery: maxDelivery
+      };
+
+    } catch (error) {
+      log.error('checkTimeSlotAvailability hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Get available time slots for editing an appointment (admin panel)
+   * Excludes the current event being edited from occupancy check
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} currentEventId - Event ID being edited (to exclude from check)
+   * @param {string} appointmentType - Appointment type for delivery limit check
+   * @returns {{success: boolean, availableSlots?: Array<string>, dailyLimitReached?: boolean, occupiedSlots?: Array<string>, deliveryCount?: number, maxDaily?: number, error?: string}}
+   */
+  getAvailableSlotsForEdit: function(date, currentEventId, appointmentType) {
+    try {
+      // Parametreleri valide et
+      if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+      }
+
+      const calendar = CalendarService.getCalendar();
+      const data = StorageService.getData();
+      const settings = data.settings || {};
+      const interval = parseInt(settings.interval) || 60;
+
+      // O günün başlangıç ve bitiş zamanları
+      const dayStart = new Date(date + 'T00:00:00');
+      const dayEnd = new Date(date + 'T23:59:59');
+
+      // O gündeki tüm randevuları çek
+      const dayEvents = calendar.getEvents(dayStart, dayEnd);
+
+      // Dolu slotları bul (currentEventId hariç)
+      const occupiedSlots = [];
+      let deliveryCount = 0;
+
+      dayEvents.forEach(event => {
+        const eventId = event.getId();
+
+        // Düzenlenmekte olan randevuyu hariç tut
+        if (eventId === currentEventId) return;
+
+        // Slot'u kaydet
+        const startTime = event.getStartTime();
+        const hours = String(startTime.getHours()).padStart(2, '0');
+        const minutes = String(startTime.getMinutes()).padStart(2, '0');
+        occupiedSlots.push(`${hours}:${minutes}`);
+
+        // Teslim randevularını say
+        const type = event.getTag('appointmentType');
+        if (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+          deliveryCount++;
+        }
+      });
+
+      // Teslim randevuları için günlük limit kontrolü
+      let dailyLimitReached = false;
+      if (appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+        const maxDaily = parseInt(settings.maxDaily) || 4;
+        if (deliveryCount >= maxDaily) {
+          dailyLimitReached = true;
+        }
+      }
+
+      // Tüm olası slotları oluştur (11:00 - 20:00 arası)
+      const allSlots = [];
+      const startHour = 11;
+      const endHour = 20;
+
+      for (let hour = startHour; hour <= endHour; hour++) {
+        for (let minute = 0; minute < 60; minute += interval) {
+          const timeStr = String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0');
+          allSlots.push(timeStr);
+        }
+      }
+
+      // Boş slotları filtrele
+      const availableSlots = allSlots.filter(slot => !occupiedSlots.includes(slot));
+
+      return {
+        success: true,
+        availableSlots: availableSlots,
+        dailyLimitReached: dailyLimitReached,
+        occupiedSlots: occupiedSlots,
+        deliveryCount: deliveryCount,
+        maxDaily: parseInt(settings.maxDaily) || 4
+      };
+
+    } catch (error) {
+      log.error('getAvailableSlotsForEdit hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Get available staff for a specific time slot
+   * Checks shift assignments and existing appointments
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} time - Time in HH:MM format
+   * @returns {{success: boolean, availableStaff?: Array<{id: number, name: string, shift: string}>, error?: string}}
+   */
+  getAvailableStaffForSlot: function(date, time) {
+    try {
+      const data = StorageService.getData();
+      const calendar = CalendarService.getCalendar();
+
+      // Saat bilgisini parse et
+      const [hourStr, minuteStr] = time.split(':');
+      const targetHour = parseInt(hourStr);
+
+      // O günün vardiya bilgilerini al
+      const dayShifts = data.shifts[date] || {};
+
+      // Tüm aktif personelleri al
+      const activeStaff = data.staff.filter(s => s.active);
+
+      // O saat için müsait personelleri filtrele
+      const availableStaff = activeStaff.filter(staff => {
+        const shift = dayShifts[staff.id];
+
+        // Vardiya yoksa müsait değil
+        if (!shift) return false;
+
+        // Vardiya saatlerini kontrol et
+        const shiftHours = CONFIG.SHIFT_HOURS[shift];
+        if (!shiftHours) return false;
+
+        const shiftStart = parseInt(shiftHours.start.split(':')[0]);
+        const shiftEnd = parseInt(shiftHours.end.split(':')[0]);
+
+        // Hedef saat vardiya içinde mi?
+        if (targetHour < shiftStart || targetHour >= shiftEnd) {
+          return false;
+        }
+
+        // O saatte başka randevusu var mı kontrol et
+        const slotStart = new Date(date + `T${time}:00`);
+        const slotEnd = new Date(slotStart.getTime() + (60 * 60 * 1000)); // +1 saat
+
+        const staffEvents = calendar.getEvents(slotStart, slotEnd);
+        const hasConflict = staffEvents.some(event => {
+          const eventStaffId = parseInt(event.getTag('staffId'));
+          return eventStaffId === staff.id;
+        });
+
+        return !hasConflict;
+      });
+
+      // Sonuç döndür
+      return {
+        success: true,
+        availableStaff: availableStaff.map(staff => ({
+          id: staff.id,
+          name: staff.name,
+          shift: dayShifts[staff.id]
+        }))
+      };
+
+    } catch (error) {
+      log.error('getAvailableStaffForSlot hatası:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
   }
 };
 
@@ -2516,7 +2868,8 @@ const NotificationService = {
  * @param {string} appointmentType - Randevu tipi ('delivery', 'meeting', 'management')
  * @returns {object} - { success, availableSlots: ['09:00', '10:00', ...], dailyLimitReached: boolean }
  */
-function getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
+// getAvailableSlotsForEdit - AvailabilityService namespace'ine taşındı (line 2476)
+function OLD_getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
   try {
     // Parametreleri valide et
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -3367,7 +3720,8 @@ function createManualAppointment(params) {
  * @param {number} interval - Randevu süresi (dakika)
  * @returns {Object} { success: true, slots: [{time: 'HH:MM', available: boolean, reason: string}] }
  */
-function checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, interval) {
+// checkTimeSlotAvailability - AvailabilityService namespace'ine taşındı (line 2288)
+function OLD_checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, interval) {
   try {
     // Parametreleri valide et
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -4474,7 +4828,8 @@ function getManagementSlotAvailability(date, managementLevel) {
  * @param {string} time - HH:MM formatında saat (örn: "14:00")
  * @returns {object} - { success, availableStaff: [{ id, name, shift }] }
  */
-function getAvailableStaffForSlot(date, time) {
+// getAvailableStaffForSlot - AvailabilityService namespace'ine taşındı (line 2564)
+function OLD_getAvailableStaffForSlot(date, time) {
   try {
     const data = StorageService.getData();
     const calendar = CalendarService.getCalendar();
