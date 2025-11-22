@@ -71,6 +71,7 @@ export default [
         Utilities: 'readonly',
         Session: 'readonly',
         HtmlService: 'readonly',
+        MailApp: 'readonly',
 
         // JavaScript built-ins
         console: 'readonly',
@@ -106,13 +107,19 @@ export default [
         CalendarService: 'writable',
         NotificationService: 'writable',
         WhatsAppService: 'writable',
-        SlackService: 'writable'
+        SlackService: 'writable',
+
+        // Helper functions
+        loadExternalConfigs: 'writable',
+        loadWhatsAppConfig: 'writable',
+        createManualAppointment: 'writable',
+        getManagementSlotAvailability: 'writable'
       }
     },
     rules: {
       'no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
-        varsIgnorePattern: '^(doGet|doPost|sendDailyWhatsAppReminders|sendDailySlackReminders|testSlackIntegration|testWhatsAppMessage)$'
+        varsIgnorePattern: '^(doGet|doPost|sendDailyWhatsAppReminders|sendDailySlackReminders|testSlackIntegration|testWhatsAppMessage|OLD_.*)$'
       }],
       'no-undef': 'error',
       'prefer-const': 'warn',

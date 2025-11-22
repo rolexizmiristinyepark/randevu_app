@@ -930,6 +930,7 @@ const CalendarService = {
 
 // Generic email template builder - DRY prensibi
 // generateEmailTemplate - NotificationService namespace'ine taşındı (line 2419)
+ 
 function OLD_generateEmailTemplate(type, data) {
   const config = CONFIG.EMAIL_TEMPLATES[type.toUpperCase()];
   if (!config) throw new Error(`Geçersiz email template tipi: ${type}`);
@@ -1018,6 +1019,7 @@ function OLD_generateEmailTemplate(type, data) {
 }
 
 // getCustomerEmailTemplate - NotificationService namespace'ine taşındı (line 2377)
+ 
 function OLD_getCustomerEmailTemplate(data) {
   // Generic template builder kullan - DİNAMİK İÇERİK İÇİN appointmentType eklendi
   return NotificationService.generateEmailTemplate('customer', {
@@ -1130,6 +1132,7 @@ function generateCustomerICS(data) {
 }
 
 // getStaffEmailTemplate - NotificationService namespace'ine taşındı (line 2398)
+ 
 function OLD_getStaffEmailTemplate(data) {
   // Generic template builder kullan
   return NotificationService.generateEmailTemplate('staff', {
@@ -1237,17 +1240,17 @@ const ACTION_HANDLERS = {
   ),
 
   // YENİ: WhatsApp ve Manuel Randevu
-  'getTodayWhatsAppReminders': (e) => getTodayWhatsAppReminders(e.parameter.date),
+  'getTodayWhatsAppReminders': (e) => WhatsAppService.getTodayWhatsAppReminders(e.parameter.date),
   'createManualAppointment': (e) => createManualAppointment(e.parameter),
 
   // WhatsApp Business Cloud API
-  'sendWhatsAppReminders': (e) => sendWhatsAppReminders(e.parameter.date, e.parameter.apiKey),
-  'updateWhatsAppSettings': (e) => updateWhatsAppSettings(JSON.parse(e.parameter.settings), e.parameter.apiKey),
-  'getWhatsAppSettings': (e) => getWhatsAppSettings(e.parameter.apiKey),
+  'sendWhatsAppReminders': (e) => WhatsAppService.sendWhatsAppReminders(e.parameter.date, e.parameter.apiKey),
+  'updateWhatsAppSettings': (e) => WhatsAppService.updateWhatsAppSettings(JSON.parse(e.parameter.settings), e.parameter.apiKey),
+  'getWhatsAppSettings': (e) => WhatsAppService.getWhatsAppSettings(e.parameter.apiKey),
 
   // Slack Webhook
-  'updateSlackSettings': (e) => updateSlackSettings(e.parameter.webhookUrl, e.parameter.apiKey),
-  'getSlackSettings': (e) => getSlackSettings(e.parameter.apiKey),
+  'updateSlackSettings': (e) => SlackService.updateSlackSettings(e.parameter.webhookUrl, e.parameter.apiKey),
+  'getSlackSettings': (e) => SlackService.getSlackSettings(e.parameter.apiKey),
 
   // Config management (public - no auth required)
   'getConfig': () => ConfigService.getConfig(),
@@ -3858,6 +3861,7 @@ const SlackService = {
  * @returns {object} - { success, availableSlots: ['09:00', '10:00', ...], dailyLimitReached: boolean }
  */
 // getAvailableSlotsForEdit - AvailabilityService namespace'ine taşındı (line 2476)
+ 
 function OLD_getAvailableSlotsForEdit(date, currentEventId, appointmentType) {
   try {
     // Parametreleri valide et
@@ -4477,6 +4481,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
  * @returns {Object} { success: true, data: [{ customerName, startTime, link }] }
  */
 // getTodayWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 2873)
+/* eslint-disable no-undef */
 function OLD_getTodayWhatsAppReminders(date) {
   try {
     const targetDate = date ? new Date(date + 'T00:00:00') : new Date();
@@ -4711,6 +4716,7 @@ function createManualAppointment(params) {
  * @returns {Object} { success: true, slots: [{time: 'HH:MM', available: boolean, reason: string}] }
  */
 // checkTimeSlotAvailability - AvailabilityService namespace'ine taşındı (line 2288)
+ 
 function OLD_checkTimeSlotAvailability(date, staffId, shiftType, appointmentType, interval) {
   try {
     // Parametreleri valide et
@@ -4904,6 +4910,7 @@ function OLD_checkTimeSlotAvailability(date, staffId, shiftType, appointmentType
  * @returns {Object} - {success: boolean, messageId?: string, error?: string}
  */
 // sendWhatsAppMessage - WhatsAppService namespace'ine taşındı (line 2968)
+ 
 function OLD_sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime, staffName, appointmentType, staffPhone) {
   try {
     // Config kontrolü
@@ -5025,6 +5032,7 @@ function OLD_sendWhatsAppMessage(phoneNumber, customerName, appointmentDateTime,
  * @returns {Object} - {success: boolean, sent: number, failed: number, details: []}
  */
 // sendWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 3080)
+/* eslint-disable no-undef */
 function OLD_sendWhatsAppReminders(date, apiKey) {
   try {
     // API key kontrolü
@@ -5137,6 +5145,7 @@ function OLD_sendWhatsAppReminders(date, apiKey) {
  * 6. Save
  */
 // sendDailyWhatsAppReminders - WhatsAppService namespace'ine taşındı (line 3182)
+/* eslint-disable no-undef */
 function OLD_sendDailyWhatsAppReminders() {
   try {
     // WhatsApp config yükle
@@ -5262,6 +5271,7 @@ function OLD_sendDailyWhatsAppReminders() {
  * (Opsiyonel - sadece hata varsa gönderir)
  */
 // sendAdminNotification - WhatsAppService namespace'ine taşındı (line 3307)
+ 
 function OLD_sendAdminNotification(summary) {
   try {
     const subject = `WhatsApp Hatırlatıcıları - ${summary.failed} Başarısız`;
@@ -5298,6 +5308,7 @@ function OLD_sendAdminNotification(summary) {
  * @returns {Object} - {success: boolean}
  */
 // updateWhatsAppSettings - WhatsAppService namespace'ine taşındı (line 3342)
+ 
 function OLD_updateWhatsAppSettings(settings, apiKey) {
   try {
     // API key kontrolü
@@ -5338,6 +5349,7 @@ function OLD_updateWhatsAppSettings(settings, apiKey) {
  * @returns {Object} - {success: boolean, configured: boolean}
  */
 // getWhatsAppSettings - WhatsAppService namespace'ine taşındı (line 3382)
+ 
 function OLD_getWhatsAppSettings(apiKey) {
   try {
     // API key kontrolü
@@ -5374,6 +5386,7 @@ function OLD_getWhatsAppSettings(apiKey) {
  * @returns {Object} - {success: boolean}
  */
 // updateSlackSettings - SlackService namespace'ine taşındı (line 3518)
+ 
 function OLD_updateSlackSettings(webhookUrl, apiKey) {
   try {
     // API key kontrolü
@@ -5413,6 +5426,7 @@ function OLD_updateSlackSettings(webhookUrl, apiKey) {
  * @returns {Object} - {success: boolean, configured: boolean}
  */
 // getSlackSettings - SlackService namespace'ine taşındı (line 3557)
+ 
 function OLD_getSlackSettings(apiKey) {
   try {
     // API key kontrolü
@@ -5481,6 +5495,7 @@ loadExternalConfigs();
  * 6. Save
  */
 // sendDailySlackReminders - SlackService namespace'ine taşındı (line 3587)
+/* eslint-disable no-undef */
 function OLD_sendDailySlackReminders() {
   try {
     // Bugünün tarihini hesapla
@@ -5542,6 +5557,7 @@ function OLD_sendDailySlackReminders() {
  * Sitedeki tasarıma benzer, modern ve okunabilir format
  */
 // formatSlackMessage - SlackService namespace'ine taşındı (line 3650)
+ 
 function OLD_formatSlackMessage(appointments, dateFormatted) {
   const appointmentTypeEmojis = {
     'delivery': '📦',
@@ -5652,6 +5668,7 @@ function OLD_formatSlackMessage(appointments, dateFormatted) {
  * Apps Script editöründe bu fonksiyonu çalıştırın ve console output'u kontrol edin
  */
 // testSlackIntegration - SlackService namespace'ine taşındı (line 3759)
+/* eslint-disable no-undef */
 function OLD_testSlackIntegration() {
   console.log('===== SLACK ENTEGRASYON TESTİ BAŞLADI =====');
 
@@ -5830,6 +5847,7 @@ function getManagementSlotAvailability(date, managementLevel) {
  * @returns {object} - { success, availableStaff: [{ id, name, shift }] }
  */
 // getAvailableStaffForSlot - AvailabilityService namespace'ine taşındı (line 2564)
+ 
 function OLD_getAvailableStaffForSlot(date, time) {
   try {
     const data = StorageService.getData();
@@ -5910,6 +5928,7 @@ function OLD_getAvailableStaffForSlot(date, time) {
  * 5. Telefonunuzu kontrol edin - mesaj geldi mi?
  */
 // testWhatsAppMessage - WhatsAppService namespace'ine taşındı (line 3415)
+/* eslint-disable no-undef */
 function OLD_testWhatsAppMessage() {
   console.log('===== WHATSAPP TEST BAŞLADI =====\n');
 
