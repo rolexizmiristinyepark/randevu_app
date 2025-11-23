@@ -1,0 +1,393 @@
+/**
+ * STAFF MANAGER - Personel Yönetimi Modülü
+ * Sorumluluklar: Personel CRUD, aktif/pasif yapma, personel linkleri
+ */
+
+import { apiCall } from '../api-service';
+import { ValidationUtils } from '../validation-utils';
+import { ErrorUtils } from '../error-utils';
+import type { DataStore } from './data-store';
+
+// Module-scoped variables
+let dataStore: DataStore;
+let currentEditId: number | null = null;
+
+// Global references (accessed via window)
+declare const window: Window & {
+    CONFIG: any;
+    UI: any;
+    createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
+};
+
+const { CONFIG, UI, createElement } = window;
+
+/**
+ * Initialize Staff Manager module
+ */
+export async function initStaffManager(store: DataStore): Promise<void> {
+    dataStore = store;
+    await loadStaff();
+    setupEventListeners();
+}
+
+/**
+ * Load staff data and render
+ */
+async function loadStaff(): Promise<void> {
+    await dataStore.loadStaff();
+    render();
+}
+
+/**
+ * Setup event listeners for staff management
+ */
+function setupEventListeners(): void {
+    // Add staff button
+    const addBtn = document.getElementById('addStaffBtn');
+    addBtn?.addEventListener('click', () => add());
+
+    // Event delegation for staff list actions (edit, toggle, remove)
+    const staffList = document.getElementById('staffList');
+    staffList?.addEventListener('click', (e) => {
+        const target = e.target as HTMLElement;
+        const action = target.getAttribute('data-action');
+        const staffId = parseInt(target.getAttribute('data-staff-id') || '0');
+
+        if (!action || !staffId) return;
+
+        switch (action) {
+            case 'edit':
+                openEditModal(staffId);
+                break;
+            case 'toggle':
+                toggle(staffId);
+                break;
+            case 'remove':
+                remove(staffId);
+                break;
+        }
+    });
+
+    // Edit modal buttons
+    const cancelEditBtn = document.getElementById('cancelEditStaffBtn');
+    cancelEditBtn?.addEventListener('click', () => closeEditModal());
+
+    const saveEditBtn = document.getElementById('saveEditStaffBtn');
+    saveEditBtn?.addEventListener('click', () => saveEdit());
+}
+
+/**
+ * Add new staff member
+ */
+async function add(): Promise<void> {
+    const inputName = document.getElementById('newStaffName') as HTMLInputElement;
+    const inputPhone = document.getElementById('newStaffPhone') as HTMLInputElement;
+    const inputEmail = document.getElementById('newStaffEmail') as HTMLInputElement;
+    const name = inputName.value.trim();
+    const phone = inputPhone.value.trim();
+    const email = inputEmail.value.trim();
+
+    // Validate
+    const validation = ValidationUtils.validateStaffForm(name, phone, email);
+    if (!validation.valid) {
+        UI.showAlert(validation.message, 'error');
+        return;
+    }
+
+    try {
+        const response = await apiCall('addStaff', { name, phone, email });
+
+        if (response.success) {
+            dataStore.staff = response.data;
+            inputName.value = '';
+            inputPhone.value = '';
+            inputEmail.value = '';
+            render();
+            UI.showAlert('✅ ' + name + ' eklendi!', 'success');
+        } else {
+            ErrorUtils.handleApiError(response, 'addStaff', UI.showAlert.bind(UI));
+        }
+    } catch (error) {
+        ErrorUtils.handleException(error, 'Ekleme', UI.showAlert.bind(UI));
+    }
+}
+
+/**
+ * Toggle staff active/inactive status
+ */
+async function toggle(id: number): Promise<void> {
+    try {
+        const response = await apiCall('toggleStaff', { id });
+
+        if (response.success) {
+            dataStore.staff = response.data;
+            render();
+            UI.showAlert('✅ Durum değişti!', 'success');
+        } else {
+            ErrorUtils.handleApiError(response, 'toggleStaff', UI.showAlert.bind(UI));
+        }
+    } catch (error) {
+        ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));
+    }
+}
+
+/**
+ * Remove staff member
+ */
+async function remove(id: number): Promise<void> {
+    const staff = dataStore.staff.find(s => s.id === id);
+    if (!staff) return;
+
+    if (!confirm('"' + staff.name + '" silinsin mi?')) return;
+
+    try {
+        const response = await apiCall('removeStaff', { id });
+
+        if (response.success) {
+            dataStore.staff = response.data;
+            render();
+            UI.showAlert('✅ ' + staff.name + ' silindi!', 'success');
+        } else {
+            ErrorUtils.handleApiError(response, 'removeStaff', UI.showAlert.bind(UI));
+        }
+    } catch (error) {
+        ErrorUtils.handleException(error, 'Silme', UI.showAlert.bind(UI));
+    }
+}
+
+/**
+ * Render staff list
+ */
+function render(): void {
+    const list = document.getElementById('staffList');
+    const countElement = document.getElementById('staffCount');
+
+    if (!list || !countElement) return;
+
+    countElement.textContent = dataStore.staff.filter(s => s.active).length.toString();
+
+    // Clear
+    list.textContent = '';
+
+    if (dataStore.staff.length === 0) {
+        const emptyMsg = createElement('p', {
+            style: { textAlign: 'center', color: '#999', padding: '20px' }
+        }, 'Henüz personel yok');
+        list.appendChild(emptyMsg);
+        return;
+    }
+
+    // Use DocumentFragment for performance
+    const fragment = document.createDocumentFragment();
+
+    dataStore.staff.forEach(s => {
+        // Staff item container
+        const staffItem = createElement('div', { className: 'staff-item' });
+
+        // Staff info section
+        const staffInfo = createElement('div', { className: 'staff-info' });
+
+        const infoDiv = createElement('div');
+        const nameDiv = createElement('div', { className: 'staff-name' }, s.name);
+        const detailsDiv = createElement('div', {
+            style: { fontSize: '12px', color: '#666', marginTop: '4px' }
+        }, `${s.phone || 'Telefon yok'} • ${s.email || 'E-posta yok'}`);
+
+        infoDiv.appendChild(nameDiv);
+        infoDiv.appendChild(detailsDiv);
+        staffInfo.appendChild(infoDiv);
+
+        // Staff actions section
+        const staffActions = createElement('div', { className: 'staff-actions' });
+
+        // Status span
+        const statusSpan = createElement('span', {
+            className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
+        }, s.active ? 'Aktif' : 'Pasif');
+
+        // Edit button (with data attributes for event delegation)
+        const editBtn = createElement('button', {
+            className: 'btn btn-small btn-secondary',
+            'data-action': 'edit',
+            'data-staff-id': s.id
+        }, 'Düzenle');
+
+        // Toggle button
+        const toggleBtn = createElement('button', {
+            className: `btn btn-small btn-secondary`,
+            'data-action': 'toggle',
+            'data-staff-id': s.id
+        }, s.active ? 'Pasif' : 'Aktif');
+
+        // Remove button
+        const removeBtn = createElement('button', {
+            className: 'btn btn-small btn-secondary',
+            'data-action': 'remove',
+            'data-staff-id': s.id
+        }, 'Sil');
+
+        staffActions.appendChild(statusSpan);
+        staffActions.appendChild(editBtn);
+        staffActions.appendChild(toggleBtn);
+        staffActions.appendChild(removeBtn);
+
+        staffItem.appendChild(staffInfo);
+        staffItem.appendChild(staffActions);
+        fragment.appendChild(staffItem);
+    });
+
+    list.appendChild(fragment);
+
+    // Update staff links
+    renderLinks();
+}
+
+/**
+ * Render staff links (customer page links for each staff member)
+ */
+function renderLinks(): void {
+    const container = document.getElementById('staffLinks');
+    if (!container) return;
+
+    // Clear
+    container.textContent = '';
+
+    const activeStaff = dataStore.staff.filter(s => s.active);
+
+    if (activeStaff.length === 0) {
+        const emptyMsg = createElement('p', {
+            style: { textAlign: 'center', color: '#999', padding: '20px' }
+        }, 'Henüz personel yok');
+        container.appendChild(emptyMsg);
+        return;
+    }
+
+    // Grid layout
+    const gridContainer = createElement('div', { className: 'link-grid' });
+
+    activeStaff.forEach(s => {
+        const staffLink = `${CONFIG.BASE_URL}?staff=${s.id}`;
+
+        // Link card
+        const linkCard = createElement('div', { className: 'link-card' });
+
+        // Header
+        const header = createElement('div', { className: 'link-card-header' }, s.name);
+
+        // Body
+        const body = createElement('div', { className: 'link-card-body' });
+
+        // Link input
+        const linkInput = createElement('input', {
+            type: 'text',
+            value: staffLink,
+            readonly: true,
+            id: `staffLink_${s.id}`,
+            className: 'link-input'
+        }) as HTMLInputElement;
+
+        // Actions
+        const actions = createElement('div', { className: 'link-actions' });
+
+        const copyBtn = createElement('button', {
+            className: 'btn btn-small btn-secondary'
+        }, 'Kopyala');
+        copyBtn.addEventListener('click', () => copyLink(s.id));
+
+        const openBtn = createElement('button', {
+            className: 'btn btn-small'
+        }, 'Aç');
+        openBtn.addEventListener('click', () => openLink(s.id));
+
+        actions.appendChild(copyBtn);
+        actions.appendChild(openBtn);
+
+        body.appendChild(linkInput);
+        body.appendChild(actions);
+
+        linkCard.appendChild(header);
+        linkCard.appendChild(body);
+        gridContainer.appendChild(linkCard);
+    });
+
+    container.appendChild(gridContainer);
+}
+
+/**
+ * Copy staff link to clipboard
+ */
+function copyLink(staffId: number): void {
+    const input = document.getElementById('staffLink_' + staffId) as HTMLInputElement;
+    input.select();
+    document.execCommand('copy');
+    UI.showAlert('✅ Link kopyalandı!', 'success');
+}
+
+/**
+ * Open staff link in new tab
+ */
+function openLink(staffId: number): void {
+    const input = document.getElementById('staffLink_' + staffId) as HTMLInputElement;
+    window.open(input.value, '_blank');
+}
+
+/**
+ * Open edit modal for staff member
+ */
+function openEditModal(staffId: number): void {
+    const staff = dataStore.staff.find(s => s.id === staffId);
+    if (!staff) return;
+
+    currentEditId = staffId;
+    (document.getElementById('editStaffName') as HTMLInputElement).value = staff.name;
+    (document.getElementById('editStaffPhone') as HTMLInputElement).value = staff.phone || '';
+    (document.getElementById('editStaffEmail') as HTMLInputElement).value = staff.email || '';
+    document.getElementById('editStaffModal')?.classList.add('active');
+}
+
+/**
+ * Close edit modal
+ */
+function closeEditModal(): void {
+    currentEditId = null;
+    document.getElementById('editStaffModal')?.classList.remove('active');
+}
+
+/**
+ * Save staff edits
+ */
+async function saveEdit(): Promise<void> {
+    const name = (document.getElementById('editStaffName') as HTMLInputElement).value.trim();
+    const phone = (document.getElementById('editStaffPhone') as HTMLInputElement).value.trim();
+    const email = (document.getElementById('editStaffEmail') as HTMLInputElement).value.trim();
+
+    // Validate
+    const validation = ValidationUtils.validateStaffForm(name, phone, email);
+    if (!validation.valid) {
+        UI.showAlert(validation.message, 'error');
+        return;
+    }
+
+    try {
+        const response = await apiCall('updateStaff', {
+            id: currentEditId,
+            name: name,
+            phone: phone,
+            email: email
+        });
+
+        if (response.success) {
+            dataStore.staff = response.data;
+            render();
+            closeEditModal();
+            UI.showAlert('✅ Personel güncellendi!', 'success');
+        } else {
+            ErrorUtils.handleApiError(response, 'updateStaff', UI.showAlert.bind(UI));
+        }
+    } catch (error) {
+        ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));
+    }
+}
+
+// Export for potential future use
+export { render as renderStaffList };
