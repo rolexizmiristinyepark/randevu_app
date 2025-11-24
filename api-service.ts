@@ -2,6 +2,8 @@
 // Unified API call handler for both authenticated and unauthenticated requests
 // Eliminates code duplication between admin.html and admin-auth.js
 
+import { Schemas, validateApiResponse } from './validation';
+
 /** Generic API response structure */
 interface ApiResponse<T = unknown> {
     success: boolean;
@@ -52,6 +54,20 @@ const ApiService = {
         'updateSlackSettings',          // YENİ: Slack Webhook
         'getSlackSettings'              // YENİ: Slack Webhook
     ] as const,
+
+    // Validation map for actions that support Zod validation
+    VALIDATION_MAP: {
+        'getStaff': Schemas.GetStaff,
+        'getSettings': Schemas.GetSettings,
+        'getMonthShifts': Schemas.GetMonthShifts,
+        'getMonthAppointments': Schemas.GetMonthAppointments,
+        'getGoogleCalendarEvents': Schemas.GetGoogleCalendarEvents,
+        'getDayStatus': Schemas.GetDayStatus,
+        'getDailySlots': Schemas.GetDailySlots,
+        'getManagementSlotAvailability': Schemas.GetManagementSlotAvailability,
+        'getDataVersion': Schemas.GetDataVersion,
+        'createAppointment': Schemas.CreateAppointment,
+    } as const,
 
     call<T = unknown>(
         action: ApiAction,
@@ -141,7 +157,25 @@ const ApiService = {
                 // JSON response'u parse et
                 const data = await response.json() as ApiResponse<T>;
 
-                // Başarılı response kontrolü
+                // Zod validation (gradual adoption - warn but don't fail)
+                const validationSchema = ApiService.VALIDATION_MAP[action as keyof typeof ApiService.VALIDATION_MAP];
+                if (validationSchema) {
+                    try {
+                        const validatedData = validateApiResponse(
+                            validationSchema as any,
+                            data,
+                            action
+                        );
+                        resolve(validatedData as ApiResponse<T>);
+                        return;
+                    } catch (validationError) {
+                        // Log validation error but continue with unvalidated data (backward compatibility)
+                        console.warn(`[Validation Warning] ${action} validation failed:`, validationError);
+                        console.warn('Continuing with unvalidated data for backward compatibility');
+                    }
+                }
+
+                // Başarılı response kontrolü (fallback for non-validated or failed validation)
                 if (data && typeof data === 'object') {
                     resolve(data);
                 } else {
