@@ -3,6 +3,8 @@
 
 // Import shared utilities
 import { StringUtils } from './string-utils';
+import { ButtonUtils } from './button-utils';
+import { showAlertSafe } from './security-helpers';
 import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
 import { initConfig, Config } from './config-loader';
