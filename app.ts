@@ -1470,3 +1470,16 @@ async function handleCalendarAction(event) {
 function addToCalendar() {
     ModalUtils.open('calendarModal');
 }
+
+/**
+ * Cloudflare Turnstile callback - Bot protection başarılı olduğunda çağrılır
+ * HTML'de data-callback="onTurnstileSuccess" ile tanımlı
+ */
+(window as any).onTurnstileSuccess = function(token: string) {
+    console.log('Turnstile başarılı, token alındı');
+    // Submit butonunu göster
+    const submitBtn = document.getElementById('submitBtn');
+    if (submitBtn) {
+        submitBtn.style.display = 'block';
+    }
+};
