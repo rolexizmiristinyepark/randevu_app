@@ -1,0 +1,225 @@
+/**
+ * StateManager.ts
+ *
+ * Centralized state management with type-safe getters/setters and pub/sub pattern.
+ * Replaces global variables scattered throughout app.ts
+ */
+
+// ==================== TYPES ====================
+
+export interface Staff {
+  id: number;
+  name: string;
+  active: boolean;
+  phone?: string;
+  email?: string;
+}
+
+export interface Shift {
+  [staffId: number]: string; // 'morning' | 'evening' | 'full'
+}
+
+export interface Appointment {
+  id: string;
+  date: string;
+  time: string;
+  staffId: number;
+  type: string;
+  customerName: string;
+}
+
+export interface CalendarEvent {
+  id: string;
+  summary: string;
+  start: { dateTime: string };
+  end: { dateTime: string };
+}
+
+export interface AppointmentData {
+  date: string;
+  time: string;
+  staffName: string;
+  customerNote?: string;
+  appointmentType: string;
+}
+
+// ==================== STATE INTERFACE ====================
+
+export interface AppState {
+  // Calendar state
+  currentMonth: Date;
+  selectedDate: string | null;
+
+  // Selection state
+  selectedStaff: number | null;
+  selectedTime: string | null;
+  selectedShiftType: string | null;
+  selectedAppointmentType: string | null;
+
+  // Data cache
+  staffMembers: Staff[];
+  dayShifts: Record<string, Shift>;
+  allAppointments: Record<string, Appointment[]>;
+  googleCalendarEvents: Record<string, CalendarEvent[]>;
+
+  // URL state
+  specificStaffId: string | null;
+  managementLevel: number | null; // 1, 2, 3 for HK, OK, HMK
+  isManagementLink: boolean;
+
+  // Last action
+  lastAppointmentData: AppointmentData | null;
+
+  // Management
+  managementContactPerson: string | null;
+}
+
+type StateKey = keyof AppState;
+type StateListener<K extends StateKey> = (value: AppState[K], oldValue: AppState[K]) => void;
+
+// ==================== STATE MANAGER ====================
+
+class StateManager {
+  private state: AppState;
+  private listeners: Map<StateKey, Set<StateListener<any>>> = new Map();
+
+  constructor() {
+    // Initialize with default values
+    this.state = {
+      currentMonth: new Date(),
+      selectedDate: null,
+      selectedStaff: null,
+      selectedTime: null,
+      selectedShiftType: null,
+      selectedAppointmentType: null,
+      staffMembers: [],
+      dayShifts: {},
+      allAppointments: {},
+      googleCalendarEvents: {},
+      specificStaffId: null,
+      managementLevel: null,
+      isManagementLink: false,
+      lastAppointmentData: null,
+      managementContactPerson: null,
+    };
+  }
+
+  /**
+   * Get state value by key
+   */
+  get<K extends StateKey>(key: K): AppState[K] {
+    return this.state[key];
+  }
+
+  /**
+   * Set state value by key and notify listeners
+   */
+  set<K extends StateKey>(key: K, value: AppState[K]): void {
+    const oldValue = this.state[key];
+
+    // Only update if value changed
+    if (oldValue === value) return;
+
+    this.state[key] = value;
+
+    // Notify listeners
+    this.notify(key, value, oldValue);
+  }
+
+  /**
+   * Update multiple state values at once
+   */
+  update(updates: Partial<AppState>): void {
+    Object.entries(updates).forEach(([key, value]) => {
+      this.set(key as StateKey, value as any);
+    });
+  }
+
+  /**
+   * Subscribe to state changes
+   */
+  subscribe<K extends StateKey>(
+    key: K,
+    listener: StateListener<K>
+  ): () => void {
+    if (!this.listeners.has(key)) {
+      this.listeners.set(key, new Set());
+    }
+
+    this.listeners.get(key)!.add(listener);
+
+    // Return unsubscribe function
+    return () => {
+      this.listeners.get(key)?.delete(listener);
+    };
+  }
+
+  /**
+   * Notify all listeners for a specific key
+   */
+  private notify<K extends StateKey>(
+    key: K,
+    value: AppState[K],
+    oldValue: AppState[K]
+  ): void {
+    const keyListeners = this.listeners.get(key);
+    if (keyListeners) {
+      keyListeners.forEach(listener => {
+        try {
+          listener(value, oldValue);
+        } catch (error) {
+          console.error(`Error in state listener for "${key}":`, error);
+        }
+      });
+    }
+  }
+
+  /**
+   * Reset specific state keys
+   */
+  reset(keys: StateKey[]): void {
+    const defaults: Partial<AppState> = {
+      selectedDate: null,
+      selectedStaff: null,
+      selectedTime: null,
+      selectedShiftType: null,
+      selectedAppointmentType: null,
+      lastAppointmentData: null,
+    };
+
+    keys.forEach(key => {
+      if (key in defaults) {
+        this.set(key, defaults[key] as any);
+      }
+    });
+  }
+
+  /**
+   * Reset all selection state
+   */
+  resetSelection(): void {
+    this.reset([
+      'selectedDate',
+      'selectedStaff',
+      'selectedTime',
+      'selectedShiftType',
+      'selectedAppointmentType',
+    ]);
+  }
+
+  /**
+   * Get entire state (for debugging)
+   */
+  getState(): Readonly<AppState> {
+    return { ...this.state };
+  }
+}
+
+// ==================== SINGLETON EXPORT ====================
+
+export const state = new StateManager();
+
+// Export for window/global access (backward compatibility)
+if (typeof window !== 'undefined') {
+  (window as any).appState = state;
+}

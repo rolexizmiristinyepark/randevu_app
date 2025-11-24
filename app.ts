@@ -1,6 +1,11 @@
 // Calendar integration will be lazy loaded when needed
 // Removed direct import for bundle size optimization (~15kb saved)
 
+// Import base layer components
+import { state } from './StateManager';
+import { cache } from './CacheManager';
+import { UIManager, revealSection, hideSection, showAlert, hideAlert, showLoading, showLoadingError, ModalUtils } from './UIManager';
+
 // Import shared utilities
 import { StringUtils } from './string-utils';
 import { ButtonUtils } from './button-utils';
@@ -38,166 +43,36 @@ const log = {
 };
 
 // ==================== SMOOTH SCROLL & REVEAL ANIMATIONS ====================
-
-/**
- * Bölümü göster ve smooth scroll yap
- * @param {string} sectionId - Section ID
- * @param {boolean} scroll - Scroll yapılsın mı?
- */
-function revealSection(sectionId, scroll = true) {
-    const section = document.getElementById(sectionId);
-    if (!section) return;
-
-    // Display'i göster
-    section.style.display = 'block';
-
-    // Animasyon için visible class ekle
-    setTimeout(() => {
-        section.classList.add('visible');
-
-        // Smooth scroll
-        if (scroll) {
-            setTimeout(() => {
-                section.scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'start',
-                    inline: 'nearest'
-                });
-            }, 100);
-        }
-    }, 50);
-}
-
-/**
- * Bölümü gizle
- * @param {string} sectionId - Section ID
- */
-function hideSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    if (!section) return;
-
-    section.classList.remove('visible');
-    setTimeout(() => {
-        section.style.display = 'none';
-    }, 500);
-}
-
-// Modal utility - Generic modal açma/kapama
-const ModalUtils = {
-    open(modalId) {
-        document.getElementById(modalId)?.classList.add('active');
-    },
-    close(modalId) {
-        document.getElementById(modalId)?.classList.remove('active');
-    },
-    toggle(modalId) {
-        document.getElementById(modalId)?.classList.toggle('active');
-    }
-};
+// ⭐ REMOVED: UI functions moved to UIManager.ts
+// - revealSection, hideSection: imported from UIManager
+// - ModalUtils: imported from UIManager
+// - showAlert, hideAlert, showLoading, showLoadingError: imported from UIManager
 
 // ButtonUtils imported from button-utils.ts (duplicate removed)
 
 // ==================== STATE MANAGEMENT ====================
 
-// Application State - Basit ve performanslı global state
-// StateManager over-engineering olduğu için kaldırıldı (231 satır → 15 satır)
-// Proje ölçeği (tek sayfa, 10-15 state variable) için basit global obje yeterli
+// ⭐ NEW: StateManager for centralized state management
+// Global variables replaced with state.get/set pattern
+// State is initialized in StateManager.ts with default values
 
-// Calendar state
-let currentMonth = new Date();
+// Initialize state with URL parameters and other startup values
+state.set('currentMonth', new Date());
 
-// Selection state
-let selectedDate = null;
-let selectedStaff = null;
-let selectedTime = null;
-let selectedShiftType = null;
-let selectedAppointmentType = null;
-
-// Data cache
-let staffMembers = [];
-let dayShifts = {};
-let allAppointments = {}; // Tüm ayın randevuları {date: [appointments]}
-let googleCalendarEvents = {}; // Google Calendar'dan gelen etkinlikler {date: [events]}
-
-// URL state
-let specificStaffId = null; // URL parametresinden gelen staff ID
-
-// Last action
-let lastAppointmentData = null; // Son oluşturulan randevu bilgileri
-
-// Management link state
-let managementLevel = null; // Yönetim linki seviyesi (1, 2, 3)
-let isManagementLink = false; // Yönetim linki mi?
-
-// Export to window for calendar-integration.js module access
+// Export state to window for backward compatibility (calendar-integration.js)
 if (typeof window !== 'undefined') {
-    window.lastAppointmentData = null;
+    (window as any).appState = state;
+    // For calendar-integration.js: getter/setter for lastAppointmentData
+    Object.defineProperty(window, 'lastAppointmentData', {
+        get: () => state.get('lastAppointmentData'),
+        set: (value) => state.set('lastAppointmentData', value)
+    });
 }
 
-// SessionStorage tabanlı cache mekanizması - API çağrılarını optimize eder
-// Sayfa yenilemelerinde de çalışır, tarayıcı kapatılınca temizlenir
-const CACHE_DURATION = 1800000; // 30 dakika (milisaniye) - Otomatik expire
-const CACHE_PREFIX = 'rolex_cache_'; // sessionStorage key prefix
-
-// SessionStorage cache helper - Map API ile aynı interface + auto-expiration
-const sessionStorageCache = {
-    get(key) {
-        try {
-            const item = sessionStorage.getItem(CACHE_PREFIX + key);
-            if (!item) return undefined;
-
-            const cached = JSON.parse(item);
-
-            // Timestamp kontrolü - Expire olmuş mu?
-            if (cached.timestamp && (Date.now() - cached.timestamp > CACHE_DURATION)) {
-                log.info(`Cache expired for key: ${key} (${Math.floor((Date.now() - cached.timestamp) / 60000)} dakika önce)`);
-                this.delete(key);
-                return undefined;
-            }
-
-            return cached.value;
-        } catch (e) {
-            log.warn('SessionStorage okuma hatası:', e);
-            return undefined;
-        }
-    },
-
-    set(key, value) {
-        try {
-            // Timestamp ile birlikte sakla
-            const cacheObject = {
-                value: value,
-                timestamp: Date.now()
-            };
-            sessionStorage.setItem(CACHE_PREFIX + key, JSON.stringify(cacheObject));
-        } catch (e) {
-            log.warn('SessionStorage yazma hatası (quota aşımı olabilir):', e);
-            // Quota aşımı durumunda eski cache'leri temizle
-            this.clear();
-        }
-    },
-
-    has(key) {
-        // Sadece varlık değil, expire kontrolü de yap
-        const item = this.get(key);
-        return item !== undefined;
-    },
-
-    delete(key) {
-        sessionStorage.removeItem(CACHE_PREFIX + key);
-    },
-
-    clear() {
-        // Sadece kendi prefix'imizle başlayanları temizle
-        Object.keys(sessionStorage).forEach(key => {
-            if (key.startsWith(CACHE_PREFIX)) {
-                sessionStorage.removeItem(key);
-            }
-        });
-    }
-};
-
-const monthCache = sessionStorageCache;
+// ⭐ REMOVED: sessionStorageCache replaced by CacheManager.ts
+// Cache is now imported from CacheManager at the top of the file
+// All cache.get/set/has/delete/clear operations use the CacheManager instance
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes - kept for backward compatibility
 
 // ==================== CONFIG LOADING (Backend Single Source of Truth) ====================
 
@@ -236,7 +111,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // URL parametrelerini hemen kontrol et (API beklemeden)
     const urlParams = new URLSearchParams(window.location.search);
-    specificStaffId = urlParams.get('staff');
+    const specificStaffIdParam = urlParams.get('staff');
+    state.set('specificStaffId', specificStaffIdParam);
 
     // YENİ: URL pathname veya hash'den yönetim linkini kontrol et
     const pathname = window.location.pathname;
@@ -248,17 +124,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const route = hash || relativePath;
 
     if (route === 'hk') {
-        managementLevel = 1;
-        isManagementLink = true;
+        state.set('managementLevel', 1);
+        state.set('isManagementLink', true);
     } else if (route === 'ok') {
-        managementLevel = 2;
-        isManagementLink = true;
+        state.set('managementLevel', 2);
+        state.set('isManagementLink', true);
     } else if (route === 'hmk') {
-        managementLevel = 3;
-        isManagementLink = true;
+        state.set('managementLevel', 3);
+        state.set('isManagementLink', true);
     }
 
     // Yönetim linki ise UI'yi ayarla
+    const isManagementLink = state.get('isManagementLink');
     if (isManagementLink) {
         const header = document.getElementById('staffHeader');
         header.textContent = 'Randevu Sistemi';
@@ -277,7 +154,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         hideSection('staffSection');
     }
     // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
-    else if (specificStaffId === '0') {
+    const specificStaffId = state.get('specificStaffId');
+    if (specificStaffId === '0') {
         const header = document.getElementById('staffHeader');
         header.textContent = 'Randevu Sistemi';
         header.style.visibility = 'visible';
@@ -305,12 +183,13 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // Normal staff link için header'ı güncelle
         if (specificStaffId !== '0') {
+            const staffMembers = state.get('staffMembers');
             const staff = staffMembers.find(s => s.id == specificStaffId);
             if (staff) {
                 const header = document.getElementById('staffHeader');
                 header.textContent = staff.name;
                 header.style.visibility = 'visible';
-                selectedStaff = parseInt(specificStaffId);
+                state.set('selectedStaff', parseInt(specificStaffId));
             }
         }
     } else {
@@ -360,9 +239,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 // HK/OK yönetim kişisi seçimi (altın butonlardan)
 function selectManagementContact(contactId, contactName) {
     // Yönetim tipini ayarla
-    selectedAppointmentType = 'management';
-    selectedStaff = 0;
-    window.managementContactPerson = contactId; // HK veya OK
+    state.set('selectedAppointmentType', 'management');
+    state.set('selectedStaff', 0);
+    state.set('managementContactPerson', contactId); // HK veya OK
+    window.managementContactPerson = contactId; // Backward compatibility
 
     // Tüm yönetim butonlarından selected class'ını kaldır
     document.querySelectorAll('.management-sub-btn').forEach(btn => {
@@ -403,7 +283,7 @@ function selectAppointmentType(type) {
             subOptions.classList.remove('show');
             managementCard.classList.remove('management-expanded');
             managementCard.classList.remove('selected');
-            selectedAppointmentType = null;
+            state.set('selectedAppointmentType', null);
         } else {
             // Diğer kartların seçimini kaldır
             const prev = document.querySelector('.type-card.selected');
@@ -427,7 +307,7 @@ function selectAppointmentType(type) {
     }
 
     // Diğer tipler için normal akış
-    selectedAppointmentType = type;
+    state.set('selectedAppointmentType', type);
 
     // ⚡ PERFORMANS: Sadece önceki seçili elementi güncelle (reflow azaltma)
     const prev = document.querySelector('.type-card.selected');
@@ -450,19 +330,22 @@ function selectAppointmentType(type) {
 
 // Ay değiştir - Smart loading ile optimize edilmiş
 async function changeMonth(direction) {
+    const currentMonth = state.get('currentMonth');
     currentMonth.setMonth(currentMonth.getMonth() + direction);
+    state.set('currentMonth', currentMonth);
 
     // Önce cache'den render et (hızlı UX)
     const monthStr = currentMonth.toISOString().slice(0, 7);
+    const specificStaffId = state.get('specificStaffId');
     const cacheKey = `${monthStr}_${specificStaffId || 'all'}`;
 
-    if (monthCache.has(cacheKey)) {
-        const cached = monthCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+    if (cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
             // Cache varsa direkt render (API çağrısı yok)
-            dayShifts = cached.data.dayShifts || {};
-            allAppointments = cached.data.allAppointments || {};
-            googleCalendarEvents = cached.data.googleCalendarEvents || {};
+            state.set('dayShifts', cached.data.dayShifts || {});
+            state.set('allAppointments', cached.data.allAppointments || {});
+            state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
             renderCalendar();
             return; // Hemen dön
         }
@@ -475,6 +358,7 @@ async function changeMonth(direction) {
 
 // Takvimi render et (DocumentFragment ile optimize edilmiş)
 function renderCalendar() {
+    const currentMonth = state.get('currentMonth');
     const grid = document.getElementById('calendarGrid');
     const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
         'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
@@ -513,6 +397,9 @@ function renderCalendar() {
     const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const specificStaffId = state.get('specificStaffId');
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const isManagementLink = state.get('isManagementLink');
 
     for (let day = 1; day <= daysInMonth; day++) {
         const dayEl = document.createElement('div');
@@ -551,6 +438,11 @@ function renderCalendar() {
 
 // Günün müsaitliğini kontrol et
 function checkDayAvailability(dateStr) {
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const specificStaffId = state.get('specificStaffId');
+    const dayShifts = state.get('dayShifts');
+    const googleCalendarEvents = state.get('googleCalendarEvents');
+
     // YENİ: Yönetim randevusu için tüm günler müsait
     if (selectedAppointmentType === 'management') {
         return { available: true };
@@ -612,7 +504,11 @@ function checkDayAvailability(dateStr) {
 
 // Gün seç
 function selectDay(dateStr) {
-    selectedDate = dateStr;
+    state.set('selectedDate', dateStr);
+    const specificStaffId = state.get('specificStaffId');
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const isManagementLink = state.get('isManagementLink');
+    const dayShifts = state.get('dayShifts');
 
     // ⚡ PERFORMANS: Sadece önceki ve yeni seçili elementleri güncelle (reflow azaltma)
     const prev = document.querySelector('.calendar-day.selected');
@@ -624,8 +520,8 @@ function selectDay(dateStr) {
     // YENİ: staff=0 ve management randevusu için direkt saat seçimine geç
     if (specificStaffId === '0' && selectedAppointmentType === 'management') {
         // Yönetim randevusu için vardiya sınırı yok - tüm saatler müsait
-        selectedStaff = 0;
-        selectedShiftType = 'management';
+        state.set('selectedStaff', 0);
+        state.set('selectedShiftType', 'management');
         displayAvailableTimeSlots();
         revealSection('timeSection');
         hideSection('staffSection');
@@ -650,7 +546,7 @@ function selectDay(dateStr) {
     }
     // Yönetim linki ise direkt saat seçimine geç
     else if (isManagementLink) {
-        selectedShiftType = 'management'; // VIP linkler için placeholder shift type
+        state.set('selectedShiftType', 'management'); // VIP linkler için placeholder shift type
         displayAvailableTimeSlots();
         hideSection('staffSection');
         revealSection('timeSection');
@@ -658,10 +554,10 @@ function selectDay(dateStr) {
         document.getElementById('submitBtn').style.display = 'none';
     } else {
         // Normal staff link (staff=1, staff=2, vb.) - direkt saat seçimine geç
-        selectedStaff = parseInt(specificStaffId);
+        state.set('selectedStaff', parseInt(specificStaffId));
         const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId)];
         if (shiftType) {
-            selectedShiftType = shiftType;
+            state.set('selectedShiftType', shiftType);
             displayAvailableTimeSlots();
             revealSection('timeSection');
             hideSection('detailsSection');
@@ -673,6 +569,8 @@ function selectDay(dateStr) {
 // YENİ: Yönetim randevuları için HK ve OK seçenekleri
 // Ayın verilerini yükle (Cache destekli)
 async function loadMonthData() {
+    const currentMonth = state.get('currentMonth');
+    const specificStaffId = state.get('specificStaffId');
     const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const monthStr = currentMonth.toISOString().slice(0, 7); // YYYY-MM
@@ -688,7 +586,7 @@ async function loadMonthData() {
 
             // Version değişmişse cache'i temizle
             if (cachedVersion && cachedVersion !== serverVersion) {
-                monthCache.clear();
+                cache.clear();
                 log.info('Cache invalidated: version changed', { old: cachedVersion, new: serverVersion });
             }
 
@@ -702,13 +600,13 @@ async function loadMonthData() {
 
     // Cache kontrolü
     const cacheKey = `${monthStr}_${specificStaffId || 'all'}`;
-    if (monthCache.has(cacheKey)) {
-        const cached = monthCache.get(cacheKey);
-        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+    if (cache.has(cacheKey)) {
+        const cached = cache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
             // Cache hala geçerli, önbelleği kullan
-            dayShifts = cached.data.dayShifts || {};
-            allAppointments = cached.data.allAppointments || {};
-            googleCalendarEvents = cached.data.googleCalendarEvents || {};
+            state.set('dayShifts', cached.data.dayShifts || {});
+            state.set('allAppointments', cached.data.allAppointments || {});
+            state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
             renderCalendar();
             return;
         }
@@ -729,19 +627,23 @@ async function loadMonthData() {
         ]);
 
         if (shiftsResult.success) {
-            dayShifts = shiftsResult.data || {};
+            state.set('dayShifts', shiftsResult.data || {});
         }
 
         if (appointmentsResult.success) {
-            allAppointments = appointmentsResult.data || {};
+            state.set('allAppointments', appointmentsResult.data || {});
         }
 
         if (calendarResult.success) {
-            googleCalendarEvents = calendarResult.data || {};
+            state.set('googleCalendarEvents', calendarResult.data || {});
         }
 
         // Veriyi cache'e kaydet
-        monthCache.set(cacheKey, {
+        const dayShifts = state.get('dayShifts');
+        const allAppointments = state.get('allAppointments');
+        const googleCalendarEvents = state.get('googleCalendarEvents');
+
+        cache.set(cacheKey, {
             timestamp: Date.now(),
             data: {
                 dayShifts: { ...dayShifts },
@@ -805,7 +707,7 @@ async function loadStaffMembers() {
     try {
         const response = await apiCall('getStaff');
         if (response.success) {
-            staffMembers = response.data;
+            state.set('staffMembers', response.data);
         } else {
             log.error('Calisanlar yuklenemedi:', response.error);
         }
@@ -834,6 +736,9 @@ async function loadSettings() {
 function displayAvailableStaff() {
     const staffList = document.getElementById('staffList');
     staffList.innerHTML = '';
+    const staffMembers = state.get('staffMembers');
+    const selectedDate = state.get('selectedDate');
+    const dayShifts = state.get('dayShifts');
 
     if (staffMembers.length === 0) {
         // Güvenli DOM manipülasyonu
@@ -883,8 +788,9 @@ function displayAvailableStaff() {
 }
 
 function selectStaff(staffId, shiftType, event) {
-    selectedStaff = parseInt(staffId);
-    selectedShiftType = shiftType;
+    state.set('selectedStaff', parseInt(staffId));
+    state.set('selectedShiftType', shiftType);
+    const staffMembers = state.get('staffMembers');
 
     // Header'da ilgili adını göster
     const staff = staffMembers.find(s => s.id === parseInt(staffId));
@@ -916,6 +822,12 @@ function selectStaff(staffId, shiftType, event) {
 async function displayAvailableTimeSlots() {
     const container = document.getElementById('timeSlots');
     container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div></div>';
+
+    const selectedDate = state.get('selectedDate');
+    const selectedShiftType = state.get('selectedShiftType');
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const isManagementLink = state.get('isManagementLink');
+    const managementLevel = state.get('managementLevel');
 
     // Gerekli parametreleri kontrol et
     // VIP linkler için vardiya kontrolü yapma (personel sonradan atanacak)
@@ -1094,6 +1006,7 @@ async function displayAvailableTimeSlots() {
         const isToday = selectedDate === todayStr;
         const currentHour = today.getHours();
         const currentMinute = today.getMinutes();
+        const specificStaffId = state.get('specificStaffId');
         const isStaff0 = specificStaffId === '0';
 
         // Hiç müsait saat yoksa bilgi
@@ -1143,7 +1056,10 @@ async function displayAvailableTimeSlots() {
 }
 
 function selectTimeSlot(timeStr, element) {
-    selectedTime = timeStr;
+    state.set('selectedTime', timeStr);
+    const isManagementLink = state.get('isManagementLink');
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const selectedStaff = state.get('selectedStaff');
 
     // ⚡ PERFORMANS: Sadece önceki seçili elementi güncelle (reflow azaltma)
     const prev = document.querySelector('.slot-btn.selected');
@@ -1153,7 +1069,7 @@ function selectTimeSlot(timeStr, element) {
     // Yönetim linki ise (hk, ok, hmk) direkt form'a geç
     if (isManagementLink) {
         // Personel seçimi yok, backend'de random atama yapılacak
-        selectedStaff = -1; // Placeholder: Backend random atayacak
+        state.set('selectedStaff', -1); // Placeholder: Backend random atayacak
 
         // Direkt form göster
         revealSection('detailsSection');
@@ -1182,6 +1098,16 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     const phone = document.getElementById('customerPhone').value.trim();
     const email = document.getElementById('customerEmail').value.trim();
     const note = document.getElementById('customerNote').value.trim();
+
+    // Get state values
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    const selectedDate = state.get('selectedDate');
+    const selectedStaff = state.get('selectedStaff');
+    const selectedTime = state.get('selectedTime');
+    const selectedShiftType = state.get('selectedShiftType');
+    const isManagementLink = state.get('isManagementLink');
+    const managementLevel = state.get('managementLevel');
+    const staffMembers = state.get('staffMembers');
 
     // Cloudflare Turnstile token kontrolü
     const turnstileToken = window.turnstile?.getResponse();
@@ -1258,7 +1184,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
 
         if (result.success) {
             // Son randevu bilgilerini kaydet
-            lastAppointmentData = {
+            const appointmentData = {
                 customerName: name,
                 customerPhone: phone,
                 customerEmail: email,
@@ -1271,9 +1197,10 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
                 appointmentType: selectedAppointmentType,
                 duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30
             };
+            state.set('lastAppointmentData', appointmentData);
 
             // Export to window for calendar-integration.js module access
-            window.lastAppointmentData = lastAppointmentData;
+            // (window.lastAppointmentData is already configured as getter/setter at line 118)
 
             showSuccessPage(selectedDate, selectedTime, staffName, note);
         } else {
@@ -1287,81 +1214,9 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
     }
 });
 
-function showAlert(message, type) {
-    // Güvenli DOM manipülasyonu kullan
-    showAlertSafe(message, type, 'alertContainer');
-}
-
-function hideAlert() {
-    const container = document.getElementById('alertContainer');
-    if (container) container.textContent = '';
-}
-
-function showLoading() {
-    const container = document.getElementById('alertContainer');
-    if (!container) return;
-    container.textContent = '';
-    const loadingDiv = createElement('div', { className: 'loading' });
-    const spinnerDiv = createElement('div', { className: 'spinner' });
-    loadingDiv.appendChild(spinnerDiv);
-    container.appendChild(loadingDiv);
-}
-
-function showLoadingError() {
-    const container = document.querySelector('.container');
-    container.textContent = ''; // Önce temizle
-
-    // Header oluştur (güvenli DOM manipülasyonu)
-    const header = createElement('div', { className: 'header' });
-
-    // Logo'yu direkt oluştur (imported URL kullan)
-    const logo = createElement('img', {
-        src: rolexLogoUrl,
-        className: 'rolex-logo',
-        alt: 'Rolex Logo'
-    });
-    header.appendChild(logo);
-
-    const title = createElement('h2', {
-        style: {
-            margin: '20px 0 2px',
-            fontSize: '14px',
-            fontWeight: 'normal',
-            letterSpacing: '1px',
-            textAlign: 'center',
-            color: '#757575',
-            fontFamily: "'Montserrat', sans-serif"
-        }
-    }, 'Rolex İzmir İstinyepark');
-    header.appendChild(title);
-
-    // Loading error container oluştur
-    const errorContainer = createElement('div', { className: 'loading-error-container' });
-    const spinner = createElement('div', { className: 'spinner' });
-    const reloadBtn = createElement('button', {
-        className: 'btn',
-        id: 'reloadBtn',
-        style: {
-            marginTop: '40px',
-            padding: '12px 30px'
-        }
-    }, 'Yeniden Dene');
-
-    errorContainer.appendChild(spinner);
-    errorContainer.appendChild(reloadBtn);
-
-    // Container'a ekle
-    container.appendChild(header);
-    container.appendChild(errorContainer);
-
-    // Event listener'ı ekle (dinamik olarak oluşturulan element için)
-    setTimeout(() => {
-        const btn = document.getElementById('reloadBtn');
-        if (btn) {
-            btn.addEventListener('click', () => location.reload());
-        }
-    }, 0);
-}
+// ⭐ REMOVED: Alert and loading functions moved to UIManager.ts
+// - showAlert, hideAlert, showLoading, showLoadingError: imported from UIManager
+// These functions are now imported at the top of the file
 
 function showSuccessPage(dateStr, timeStr, staffName, customerNote) {
     const container = document.querySelector('.container');
