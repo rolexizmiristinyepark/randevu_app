@@ -7,7 +7,6 @@ import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
 import { TimeUtils } from '../time-utils';
 import { ButtonUtils } from '../button-utils';
-import { ErrorUtils } from '../error-utils';
 import { escapeHtml } from '../security-helpers';
 import type { DataStore } from './data-store';
 
@@ -78,8 +77,8 @@ async function load(): Promise<void> {
 
     if (filterWeek) {
         const [year, week] = filterWeek.split('-W');
-        const firstDayOfYear = new Date(parseInt(year), 0, 1);
-        const daysOffset = (parseInt(week) - 1) * 7;
+        const firstDayOfYear = new Date(parseInt(year || '0'), 0, 1);
+        const daysOffset = (parseInt(week || '0') - 1) * 7;
         startDate = new Date(firstDayOfYear.getTime());
         startDate.setDate(firstDayOfYear.getDate() + daysOffset);
 
@@ -113,7 +112,7 @@ async function load(): Promise<void> {
             }, '❌ Hata: ' + result.error);
             container.appendChild(errorMsg);
         } else {
-            render(result.items || []);
+            render((result as any).items || []);
         }
     } catch (error) {
         container.textContent = '';
@@ -289,7 +288,7 @@ async function saveAssignedStaff(): Promise<void> {
         });
 
         if (result.success) {
-            UI.showAlert('✅ ' + result.staffName + ' atandı', 'success');
+            UI.showAlert('✅ ' + (result as any).staffName + ' atandı', 'success');
             closeAssignStaffModal();
             load();
         } else {
@@ -348,11 +347,11 @@ function render(appointments: any[]): void {
         }, date.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' }));
         fragment.appendChild(dateHeader);
 
-        byDate[dateKey].forEach(apt => {
+        (byDate[dateKey] || []).forEach(apt => {
             const start = new Date(apt.start.dateTime || apt.start.date);
             const end = new Date(apt.end.dateTime || apt.end.date);
             const staffId = apt.extendedProperties?.private?.staffId;
-            const staff = dataStore.staff.find(s => s.id === parseInt(staffId));
+            const staff = dataStore.staff.find(s => s.id === parseInt(staffId || '0'));
             const phone = apt.extendedProperties?.private?.customerPhone || '-';
             const customerName = apt.summary?.replace('Randevu: ', '') || 'İsimsiz';
             const customerNote = apt.extendedProperties?.private?.customerNote || '';
@@ -477,6 +476,7 @@ function render(appointments: any[]): void {
 /**
  * Send WhatsApp message
  */
+// @ts-ignore - Future WhatsApp integration
 function sendWhatsApp(phone: string, customerName: string, dateTime: string): void {
     // Clean phone number (digits only)
     const cleanPhone = phone.replace(/\D/g, '');

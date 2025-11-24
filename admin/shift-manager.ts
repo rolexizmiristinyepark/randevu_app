@@ -14,10 +14,12 @@ let dataStore: DataStore;
 let currentWeek: string | null = null;
 
 // Global references (accessed via window)
-declare const window: Window & {
-    UI: any;
-    createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
-};
+declare global {
+    interface Window {
+        UI: any;
+        createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
+    }
+}
 
 const { UI, createElement } = window;
 
@@ -83,8 +85,8 @@ async function load(): Promise<void> {
 
     // Calculate date range from week value
     const [year, week] = weekValue.split('-W');
-    const firstDayOfYear = new Date(parseInt(year), 0, 1);
-    const daysOffset = (parseInt(week) - 1) * 7;
+    const firstDayOfYear = new Date(parseInt(year || '0'), 0, 1);
+    const daysOffset = (parseInt(week || '0') - 1) * 7;
     const weekStart = new Date(firstDayOfYear.getTime());
     weekStart.setDate(firstDayOfYear.getDate() + daysOffset);
 
@@ -102,7 +104,7 @@ async function load(): Promise<void> {
     try {
         const response = await apiCall('getMonthShifts', { month: monthStr });
         if (response.success) {
-            dataStore.shifts = response.data || {};
+            dataStore.shifts = (response.data as any) || {};
         }
     } catch (error) {
         console.error('Vardiyalar yüklenemedi:', error);
@@ -122,10 +124,10 @@ function nextWeek(): void {
     if (!weekValue) return;
 
     const [year, week] = weekValue.split('-W');
-    const nextWeekNum = parseInt(week) + 1;
+    const nextWeekNum = parseInt(week || '0') + 1;
 
     if (nextWeekNum > 52) {
-        weekInput.value = `${parseInt(year) + 1}-W01`;
+        weekInput.value = `${parseInt(year || '0') + 1}-W01`;
     } else {
         weekInput.value = `${year}-W${String(nextWeekNum).padStart(2, '0')}`;
     }
@@ -171,7 +173,7 @@ async function save(): Promise<void> {
             renderSaved();
             UI.showAlert('✅ Vardiyalar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'saveShifts', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveShifts', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Kaydetme', UI.showAlert.bind(UI));
@@ -191,7 +193,10 @@ function render(): void {
     container.textContent = '';
 
     // Parse week start date
-    const [year, month, day] = currentWeek.split('-').map(Number);
+    const parts = currentWeek.split('-').map(Number);
+    const year = parts[0] || 0;
+    const month = parts[1] || 0;
+    const day = parts[2] || 0;
     const weekStart = new Date(year, month - 1, day);
     const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
@@ -213,9 +218,9 @@ function render(): void {
         const dateStr = d.getDate() + ' ' + (d.getMonth() + 1);
 
         const dayHeader = createElement('th');
-        dayHeader.appendChild(document.createTextNode(days[i]));
+        dayHeader.appendChild(document.createTextNode(days[i] || ''));
         dayHeader.appendChild(createElement('br'));
-        const small = createElement('small', {}, dateStr);
+        const small = createElement('small', {}, String(dateStr));
         dayHeader.appendChild(small);
         headerRow.appendChild(dayHeader);
     }
@@ -339,7 +344,10 @@ function renderSaved(): void {
     const weeks: Record<string, string[]> = {};
     dates.forEach(dateStr => {
         // Create Date in local timezone
-        const [year, month, day] = dateStr.split('-').map(Number);
+        const parts = dateStr.split('-').map(Number);
+        const year = parts[0] || 0;
+        const month = parts[1] || 0;
+        const day = parts[2] || 0;
         const d = new Date(year, month - 1, day);
         const dayOfWeek = d.getDay();
         const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
@@ -357,7 +365,10 @@ function renderSaved(): void {
     const fragment = document.createDocumentFragment();
 
     Object.keys(weeks).sort().reverse().forEach(weekStart => {
-        const [year, month, day] = weekStart.split('-').map(Number);
+        const parts = weekStart.split('-').map(Number);
+        const year = parts[0] || 0;
+        const month = parts[1] || 0;
+        const day = parts[2] || 0;
         const weekStartDate = new Date(year, month - 1, day);
         const weekEnd = new Date(weekStartDate);
         weekEnd.setDate(weekStartDate.getDate() + 6);
@@ -420,7 +431,10 @@ function renderSaved(): void {
  */
 function loadWeek(weekStart: string): void {
     // Convert date string (YYYY-MM-DD) to week format (YYYY-Www)
-    const [year, month, day] = weekStart.split('-').map(Number);
+    const parts = weekStart.split('-').map(Number);
+    const year = parts[0] || 0;
+    const month = parts[1] || 0;
+    const day = parts[2] || 0;
     const date = new Date(year, month - 1, day);
 
     // Calculate ISO week number

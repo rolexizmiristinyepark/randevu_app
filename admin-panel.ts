@@ -5,7 +5,7 @@
 
 //#region Imports
 import { initMonitoring, logError } from './monitoring';
-import { initConfig, Config } from './config-loader';
+import { initConfig } from './config-loader';
 import { showAlertSafe } from './security-helpers';
 import { initDataStore } from './admin/data-store';
 import { initStaffManager } from './admin/staff-manager';
@@ -13,12 +13,12 @@ import { initShiftManager } from './admin/shift-manager';
 import { initAppointmentManager } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
 
-// Global type declarations
-declare const window: Window & {
-    CONFIG: Config;
-    AdminAuth: any;
-    __monitoringInitialized?: boolean;
-};
+// Extend Window interface for admin panel specific properties
+declare global {
+    interface Window {
+        __monitoringInitialized?: boolean;
+    }
+}
 //#endregion
 
 //#region Configuration
@@ -28,12 +28,10 @@ declare const window: Window & {
 // - Business config (shifts, hours, limits): Fetched from API
 // - Cache: localStorage with 1-hour TTL
 
-let CONFIG: Config;
-
 // Initialize config asynchronously
 (async () => {
-    CONFIG = await initConfig();
-    window.CONFIG = CONFIG;
+    const config = await initConfig();
+    (window as any).CONFIG = config;
 })();
 //#endregion
 
@@ -231,21 +229,21 @@ function setupTabs(): void {
 function setupLinks(): void {
     // Customer link setup
     const linkInput = document.getElementById('customerLink') as HTMLInputElement;
-    if (linkInput) linkInput.value = CONFIG.BASE_URL;
+    if (linkInput) linkInput.value = (window as any).CONFIG.BASE_URL;
 
     // Manuel randevu link setup (staff=0 parametreli)
     const manualLinkInput = document.getElementById('manualLink') as HTMLInputElement;
-    if (manualLinkInput) manualLinkInput.value = CONFIG.BASE_URL + '?staff=0';
+    if (manualLinkInput) manualLinkInput.value = (window as any).CONFIG.BASE_URL + '?staff=0';
 
     // Yönetim linkleri setup (VIP linkler - hash routing for GitHub Pages)
     const management1LinkInput = document.getElementById('management1Link') as HTMLInputElement;
-    if (management1LinkInput) management1LinkInput.value = CONFIG.BASE_URL + '#hk';
+    if (management1LinkInput) management1LinkInput.value = (window as any).CONFIG.BASE_URL + '#hk';
 
     const management2LinkInput = document.getElementById('management2Link') as HTMLInputElement;
-    if (management2LinkInput) management2LinkInput.value = CONFIG.BASE_URL + '#ok';
+    if (management2LinkInput) management2LinkInput.value = (window as any).CONFIG.BASE_URL + '#ok';
 
     const management3LinkInput = document.getElementById('management3Link') as HTMLInputElement;
-    if (management3LinkInput) management3LinkInput.value = CONFIG.BASE_URL + '#hmk';
+    if (management3LinkInput) management3LinkInput.value = (window as any).CONFIG.BASE_URL + '#hmk';
 }
 
 /**

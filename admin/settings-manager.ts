@@ -83,10 +83,10 @@ async function save(): Promise<void> {
         });
 
         if (response.success) {
-            dataStore.settings = response.data;
+            dataStore.settings = response.data as any;
             UI.showAlert('✅ Ayarlar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'saveSettings', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveSettings', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Kaydetme', UI.showAlert.bind(UI));
@@ -105,7 +105,7 @@ async function loadWhatsAppSettings(): Promise<void> {
             const statusEl = document.getElementById('whatsappApiStatus');
             if (!statusEl) return;
 
-            if (response.configured) {
+            if ((response as any).configured) {
                 statusEl.innerHTML = `
                     <div style="padding: 12px; background: #F0F9F5; border: 1px solid #E8E8E8; border-radius: 2px;">
                         <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
@@ -174,7 +174,7 @@ async function loadSlackSettings(): Promise<void> {
             const statusEl = document.getElementById('slackStatus');
             if (!statusEl) return;
 
-            if (response.configured) {
+            if ((response as any).configured) {
                 statusEl.innerHTML = `
                     <div style="padding: 12px; background: #F0F9F5; border: 1px solid #E8E8E8; border-radius: 2px;">
                         <div style="font-size: 13px; color: #2E7D32; letter-spacing: 0.5px;">
