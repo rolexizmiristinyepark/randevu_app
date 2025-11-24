@@ -8,9 +8,6 @@
 import { z } from 'zod';
 import type {
     Staff,
-    AppointmentType,
-    ShiftType,
-    AppointmentData,
     DayStatus,
     TimeSlot,
     Settings,

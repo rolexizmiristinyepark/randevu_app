@@ -9,8 +9,8 @@ const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',
     INACTIVITY_TIMEOUT: 15 * 60 * 1000, // 15 dakika inaktivite
     _lastActivityTime: Date.now(),
-    _activityCheckInterval: null,
-    _activityHandler: null,
+    _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
+    _activityHandler: null as (() => void) | null,
 
     // API key kontrolü
     isAuthenticated() {
@@ -30,7 +30,7 @@ const AdminAuth = {
     },
 
     // API key kaydet
-    saveApiKey(apiKey) {
+    saveApiKey(apiKey: string): void {
         sessionStorage.setItem(this.API_KEY_STORAGE, apiKey);
         sessionStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
         this._lastActivityTime = Date.now();
@@ -112,10 +112,11 @@ const AdminAuth = {
     },
 
     // Giriş yap
-    async login() {
-        const apiKey = document.getElementById('apiKeyInput')?.value.trim();
+    async login(): Promise<void> {
+        const apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement | null;
+        const apiKey = apiKeyInput?.value.trim();
         const errorDiv = document.getElementById('authError');
-        const button = document.getElementById('adminLoginBtn');
+        const button = document.getElementById('adminLoginBtn') as HTMLButtonElement | null;
 
         if (!button) return;
 
@@ -141,7 +142,7 @@ const AdminAuth = {
                 this.saveApiKey(apiKey);
                 document.getElementById('authModal')?.remove();
                 location.reload();
-            } else if (response.requiresAuth) {
+            } else if ((response as any).requiresAuth) {
                 if (errorDiv) {
                     errorDiv.textContent = '❌ Geçersiz API key';
                     errorDiv.classList.add('show');
@@ -158,17 +159,20 @@ const AdminAuth = {
             }
         } catch (error) {
             if (errorDiv) {
-                errorDiv.textContent = '❌ Bağlantı hatası: ' + error.message;
+                const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+                errorDiv.textContent = '❌ Bağlantı hatası: ' + errorMessage;
                 errorDiv.classList.add('show');
             }
-            button.textContent = originalText;
-            button.disabled = false;
+            if (button) {
+                button.textContent = originalText;
+                button.disabled = false;
+            }
         }
     },
 
     // API key iste
-    async requestApiKey() {
-        const button = document.getElementById('adminRequestKeyBtn');
+    async requestApiKey(): Promise<void> {
+        const button = document.getElementById('adminRequestKeyBtn') as HTMLButtonElement | null;
         if (!button) return;
 
         const originalText = button.innerHTML;
@@ -192,8 +196,8 @@ const AdminAuth = {
     },
 
     // Çıkış butonu ekle
-    addLogoutButton() {
-        const header = document.querySelector('.header');
+    addLogoutButton(): void {
+        const header = document.querySelector('.header') as HTMLElement | null;
         if (!header) return;
 
         const logoutBtn = document.createElement('button');
@@ -256,6 +260,13 @@ const AdminAuth = {
 
 // Export for ES6 modules
 export { AdminAuth };
+
+// Extend Window interface for TypeScript
+declare global {
+    interface Window {
+        AdminAuth: typeof AdminAuth;
+    }
+}
 
 // Also expose globally for backward compatibility
 if (typeof window !== 'undefined') {
