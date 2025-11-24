@@ -108,20 +108,28 @@ const ApiService = {
                     return;
                 }
 
-                // ⭐ GÜVENLİK: POST + JSON body (API key artık URL'de değil)
+                // ⭐ CORS FIX: GET kullan (POST preflight CORS sorunu yaratıyor)
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
 
-                const response = await fetch(config.APPS_SCRIPT_URL, {
-                    method: 'POST',  // ✅ GET → POST
+                // Query string oluştur
+                const queryParams = new URLSearchParams();
+                for (const [key, value] of Object.entries(allParams)) {
+                    if (value !== undefined && value !== null) {
+                        queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+                    }
+                }
+
+                const url = `${config.APPS_SCRIPT_URL}?${queryParams.toString()}`;
+
+                const response = await fetch(url, {
+                    method: 'GET',
                     mode: 'cors',
                     credentials: 'omit',
                     signal: controller.signal,
                     headers: {
-                        'Accept': 'application/json',
-                        'Content-Type': 'application/json'  // ✅ JSON header
-                    },
-                    body: JSON.stringify(allParams)  // ✅ Body'de gönder
+                        'Accept': 'application/json'
+                    }
                 });
 
                 clearTimeout(timeoutId);
