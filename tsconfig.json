@@ -49,11 +49,16 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+
+    /* Type Definitions */
+    "types": ["vite/client"]
   },
   "include": [
     "*.ts",
     "*.js",
+    "*.d.ts",
+    "env.d.ts",
     "tests/**/*.ts",
     "tests/**/*.js"
   ],

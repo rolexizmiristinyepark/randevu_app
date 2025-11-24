@@ -43,3 +43,10 @@ secrets.txt
 *.backup
 *.bak
 *.old
+
+# ==================== BACKEND & ARCHIVE ====================
+# Backend managed in Google Apps Script (not in git)
+scripts/apps-script-backend.js
+
+# Archived old files and development logs
+.archive/
