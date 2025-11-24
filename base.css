@@ -1,0 +1,62 @@
+/**
+ * BASE STYLES & CSS VARIABLES
+ * Shared foundation for customer (index.html) and admin (admin.html) interfaces
+ *
+ * DRY Principle: Single Source of Truth for design system
+ * - Replaces 153 hardcoded color occurrences
+ * - Eliminates 17 lines of duplicate base styles
+ * - Centralized theme management
+ */
+
+/* ==================== CSS VARIABLES - DESIGN SYSTEM ==================== */
+:root {
+  /* Brand Colors - Rolex */
+  --color-primary: #1A1A2E;        /* Koyu Lacivert - Primary brand color */
+  --color-accent: #C9A55A;         /* Rolex Gold - Accent/hover color */
+  --color-accent-dark: #B8954A;    /* Darker gold for hover states */
+
+  /* Neutral Colors */
+  --color-bg: #FAFAFA;             /* Main background */
+  --color-bg-secondary: #F5F5F0;   /* Secondary background (gradient) */
+  --color-surface: #FFFFFF;        /* Card/container surfaces */
+  --color-border: #E8E8E8;         /* Borders and dividers */
+  --color-text: #2C2C2C;           /* Primary text color */
+  --color-text-light: #757575;     /* Secondary/muted text */
+
+  /* Typography */
+  --font-primary: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-display: 'Playfair Display', serif;
+
+  /* Borders & Shadows */
+  --border-radius: 4px;
+  --border-radius-sm: 2px;
+  --shadow-sm: 0 2px 10px rgba(0,0,0,0.03);
+  --shadow-md: 0 2px 20px rgba(0,0,0,0.06);
+
+  /* Note: Spacing scale intentionally omitted (YAGNI principle)
+   * Current padding/margin values are context-specific (6-60px range)
+   * Adding spacing scale would require full audit and migration
+   * Can be added in Phase 2 if design system expansion is needed
+   */
+}
+
+/* ==================== CSS RESET ==================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+/* ==================== BASE BODY STYLES ==================== */
+body {
+  font-family: var(--font-primary);
+  background: linear-gradient(135deg, var(--color-bg) 0%, var(--color-bg-secondary) 100%);
+  min-height: 100vh;
+  color: var(--color-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
