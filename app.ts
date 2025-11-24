@@ -11,6 +11,9 @@ import { selectAppointmentType, selectManagementContact } from './TypeSelectorCo
 import { renderCalendar, changeMonth, loadMonthData } from './CalendarComponent';
 import { loadStaffMembers, loadSettings, displayAvailableStaff, selectStaff } from './StaffSelectorComponent';
 import { displayAvailableTimeSlots, selectTimeSlot } from './TimeSelectorComponent';
+import { initAppointmentForm } from './AppointmentFormComponent';
+import { handleCalendarAction } from './SuccessPageComponent';
+import './SuccessPageComponent'; // For side effects (window exports)
 
 // Import shared utilities
 import { StringUtils } from './string-utils';
@@ -183,6 +186,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load settings first
     await loadSettings();
 
+    // Initialize appointment form
+    initAppointmentForm();
+
     // Staff verilerini yükle
     if (specificStaffId) {
         await loadStaffMembers();
@@ -290,209 +296,6 @@ async function safeApiCall(action, params = {}, options = {}) {
 
 // ⭐ TimeSelector functions moved to TimeSelectorComponent.ts (displayAvailableTimeSlots, selectTimeSlot)
 
-document.getElementById('submitBtn')?.addEventListener('click', async () => {
-    const name = StringUtils.toTitleCase(document.getElementById('customerName').value.trim());
-    const phone = document.getElementById('customerPhone').value.trim();
-    const email = document.getElementById('customerEmail').value.trim();
-    const note = document.getElementById('customerNote').value.trim();
+// ⭐ Form submission moved to AppointmentFormComponent.ts (initAppointmentForm)
 
-    // Get state values
-    const selectedAppointmentType = state.get('selectedAppointmentType');
-    const selectedDate = state.get('selectedDate');
-    const selectedStaff = state.get('selectedStaff');
-    const selectedTime = state.get('selectedTime');
-    const selectedShiftType = state.get('selectedShiftType');
-    const isManagementLink = state.get('isManagementLink');
-    const managementLevel = state.get('managementLevel');
-    const staffMembers = state.get('staffMembers');
-
-    // Cloudflare Turnstile token kontrolü
-    const turnstileToken = window.turnstile?.getResponse();
-    if (!turnstileToken) {
-        showAlert('Lütfen robot kontrolünü tamamlayın.', 'error');
-        return;
-    }
-
-    if (!selectedAppointmentType) {
-        showAlert('Lutfen randevu tipi secin.', 'error');
-        return;
-    }
-
-    // YENİ: selectedStaff için -1 (yönetim linki random), 0 (normal yönetim), pozitif sayı (personel) geçerli
-    if (!selectedDate || selectedStaff === null || selectedStaff === undefined || !selectedTime) {
-        showAlert('Lutfen tarih, calisan ve saat secin.', 'error');
-        return;
-    }
-
-    if (!name || !phone) {
-        showAlert('Lutfen ad ve telefon bilgilerinizi girin.', 'error');
-        return;
-    }
-
-    if (!email) {
-        showAlert('Lutfen e-posta adresinizi girin.', 'error');
-        return;
-    }
-
-    const btn = document.getElementById('submitBtn');
-    ButtonUtils.setLoading(btn, 'Randevu oluşturuluyor');
-
-    // YENİ: staff=0 için staffName yerine managementContactPerson kullan
-    let staffName;
-    let staff = null;
-    let assignedStaffId = selectedStaff;
-
-    // Yönetim linki ise (hk, ok, hmk) - personel ataması yapma, admin atayacak
-    if (isManagementLink) {
-        // Personel atanmamış randevu olarak oluştur
-        assignedStaffId = null;
-        staffName = 'Atanmadı'; // Placeholder
-    } else if (selectedStaff === 0) {
-        staffName = window.managementContactPerson || 'Yönetim';
-        assignedStaffId = 0;
-    } else {
-        staff = staffMembers.find(s => s.id == selectedStaff);
-        if (!staff) {
-            showAlert('Çalışan bilgisi bulunamadı. Lütfen sayfayı yenileyin.', 'error');
-            btn.disabled = false;
-            btn.textContent = 'Randevuyu Onayla';
-            return;
-        }
-        staffName = staff.name;
-    }
-
-    try {
-        const result = await apiCall('createAppointment', {
-            date: selectedDate,
-            time: selectedTime,
-            staffId: assignedStaffId,
-            staffName: staffName,
-            customerName: name,
-            customerPhone: phone,
-            customerEmail: email,
-            customerNote: note,
-            shiftType: selectedShiftType,
-            appointmentType: selectedAppointmentType,
-            duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30,
-            turnstileToken: turnstileToken,  // Bot protection token
-            managementLevel: managementLevel,  // Yönetim linki seviyesi (1, 2, 3 veya null)
-            isVipLink: isManagementLink  // VIP link flag (#hk, #ok, #hmk)
-        });
-
-        if (result.success) {
-            // Son randevu bilgilerini kaydet
-            const appointmentData = {
-                customerName: name,
-                customerPhone: phone,
-                customerEmail: email,
-                customerNote: note,
-                staffName: staffName,
-                staffPhone: staff?.phone || '',
-                staffEmail: staff?.email || '',
-                date: selectedDate,
-                time: selectedTime,
-                appointmentType: selectedAppointmentType,
-                duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30
-            };
-            state.set('lastAppointmentData', appointmentData);
-
-            // Export to window for calendar-integration.js module access
-            // (window.lastAppointmentData is already configured as getter/setter at line 118)
-
-            showSuccessPage(selectedDate, selectedTime, staffName, note);
-        } else {
-            showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
-            ButtonUtils.reset(btn);
-        }
-    } catch (error) {
-        logError(error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
-        showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
-        ButtonUtils.reset(btn);
-    }
-});
-
-// ⭐ REMOVED: Alert and loading functions moved to UIManager.ts
-// - showAlert, hideAlert, showLoading, showLoadingError: imported from UIManager
-// These functions are now imported at the top of the file
-
-function showSuccessPage(dateStr, timeStr, staffName, customerNote) {
-    const container = document.querySelector('.container');
-    container.textContent = ''; // Önce temizle
-
-    // Güvenli DOM manipülasyonu ile içerik oluştur
-    const safeContent = createSuccessPageSafe(dateStr, timeStr, staffName, customerNote);
-    container.appendChild(safeContent);
-
-    // Event listener'ı HTML eklendikten SONRA ekle
-    setTimeout(() => {
-        const calendarBtn = document.getElementById('addToCalendarBtn');
-        if (calendarBtn) {
-            calendarBtn.addEventListener('click', addToCalendar);
-        } else {
-            log.error('Takvime Ekle butonu bulunamadı!');
-        }
-    }, 100);
-}
-
-// ==================== CALENDAR INTEGRATION (Lazy Loading) ====================
-
-/**
- * Calendar buton tıklamalarını handle et
- * Lazy loading ile calendar modülünü dinamik yükler (bundle size optimization)
- * İlk tıklamada modül yüklenir, sonraki tıklamalarda cache'den kullanılır
- * @param {Event} event - Click event
- */
-async function handleCalendarAction(event) {
-    const buttonId = event.target.id;
-
-    try {
-        // Lazy load calendar integration (first click only)
-        if (!window.CalendarIntegration) {
-            log.info('Lazy loading calendar-integration...');
-            const module = await import('./calendar-integration');
-            window.CalendarIntegration = module;
-            log.info('Calendar integration loaded successfully');
-        }
-
-        // Buton ID'sine göre doğru fonksiyonu çağır
-        // Not: Her fonksiyon kendi hata yönetimini yapar
-        switch (buttonId) {
-            case 'calendarAppleBtn':
-                window.CalendarIntegration.addToCalendarApple();
-                break;
-            case 'calendarGoogleBtn':
-                window.CalendarIntegration.addToCalendarGoogle();
-                break;
-            case 'calendarOutlookBtn':
-                window.CalendarIntegration.addToCalendarOutlook();
-                break;
-            case 'calendarICSBtn':
-                window.CalendarIntegration.downloadICSUniversal();
-                break;
-        }
-    } catch (error) {
-        log.error('Calendar integration yükleme hatası:', error);
-        logError(error, { context: 'handleCalendarAction', buttonId: event.target.id });
-        alert('Takvim entegrasyonu yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
-    }
-}
-
-/**
- * Takvime ekleme modal'ını aç
- */
-function addToCalendar() {
-    ModalUtils.open('calendarModal');
-}
-
-/**
- * Cloudflare Turnstile callback - Bot protection başarılı olduğunda çağrılır
- * HTML'de data-callback="onTurnstileSuccess" ile tanımlı
- */
-(window as any).onTurnstileSuccess = function(token: string) {
-    console.log('Turnstile başarılı, token alındı');
-    // Submit butonunu göster
-    const submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) {
-        submitBtn.style.display = 'block';
-    }
-};
+// ⭐ Success page and calendar functions moved to SuccessPageComponent.ts (showSuccessPage, handleCalendarAction, addToCalendar, onTurnstileSuccess)

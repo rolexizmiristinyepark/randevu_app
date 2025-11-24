@@ -46,6 +46,11 @@ export default defineConfig(({ mode }) => ({
             './CalendarComponent.ts',
             './StaffSelectorComponent.ts',
             './TimeSelectorComponent.ts'
+          ],
+          // Form and success components
+          'form-success': [
+            './AppointmentFormComponent.ts',
+            './SuccessPageComponent.ts'
           ]
           // Note: calendar-integration is already lazy loaded via dynamic import
         }
