@@ -12,6 +12,36 @@ export default defineConfig(({ mode }) => ({
       input: {
         main: resolve(__dirname, 'index.html'),
         admin: resolve(__dirname, 'admin.html')
+      },
+      output: {
+        // Manual chunk splitting for better caching
+        manualChunks: {
+          // Base layer - shared infrastructure (tree-shakeable)
+          'base-layer': [
+            './StateManager.ts',
+            './CacheManager.ts',
+            './UIManager.ts'
+          ],
+          // Utilities - small, frequently changing
+          'utils': [
+            './date-utils.ts',
+            './time-utils.ts',
+            './string-utils.ts',
+            './validation-utils.ts',
+            './error-utils.ts',
+            './button-utils.ts'
+          ],
+          // Security - critical, rarely changing
+          'security': [
+            './security-helpers.ts'
+          ],
+          // API - shared between main and admin
+          'api': [
+            './api-service.ts',
+            './config-loader.ts'
+          ]
+          // Note: calendar-integration is already lazy loaded via dynamic import
+        }
       }
     },
 
