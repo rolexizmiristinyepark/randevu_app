@@ -95,53 +95,7 @@ const ModalUtils = {
     }
 };
 
-// Button loading state utility
-const ButtonUtils = {
-    /**
-     * Set button to loading state
-     * @param {HTMLElement|string} button - Button element or ID
-     * @param {string} loadingText - Optional loading text
-     */
-    setLoading(button, loadingText = null) {
-        const btn = typeof button === 'string' ? document.getElementById(button) : button;
-        if (!btn) return;
-
-        // Store original content
-        if (!btn.dataset.originalText) {
-            btn.dataset.originalText = btn.textContent;
-        }
-
-        // Set loading state
-        btn.classList.add('loading');
-        btn.disabled = true;
-
-        // Update text if provided
-        if (loadingText) {
-            btn.textContent = loadingText;
-        }
-    },
-
-    /**
-     * Reset button from loading state
-     * @param {HTMLElement|string} button - Button element or ID
-     * @param {string} newText - Optional new text
-     */
-    reset(button, newText = null) {
-        const btn = typeof button === 'string' ? document.getElementById(button) : button;
-        if (!btn) return;
-
-        // Reset loading state
-        btn.classList.remove('loading');
-        btn.disabled = false;
-
-        // Restore text
-        if (newText) {
-            btn.textContent = newText;
-        } else if (btn.dataset.originalText) {
-            btn.textContent = btn.dataset.originalText;
-        }
-    }
-};
+// ButtonUtils imported from button-utils.ts (duplicate removed)
 
 // ==================== STATE MANAGEMENT ====================
 
@@ -647,8 +601,9 @@ function checkDayAvailability(dateStr) {
 
     // Teslim/Gönderi randevusu için max 3 kontrolü (toplamda)
     if (selectedAppointmentType === 'delivery' || selectedAppointmentType === 'shipping') {
-        if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
-            return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})` };
+        const maxDaily = (window as any).CONFIG?.MAX_DAILY_DELIVERY_APPOINTMENTS || 4;
+        if (deliveryCount >= maxDaily) {
+            return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${maxDaily})` };
         }
     }
 
@@ -863,9 +818,13 @@ async function loadSettings() {
     try {
         const response = await apiCall('getSettings');
         if (response.success) {
-            // Update CONFIG with server settings
-            CONFIG.APPOINTMENT_HOURS.interval = response.data.interval || 60;
-            CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS = response.data.maxDaily || 4;
+            // Update CONFIG with server settings (use window.CONFIG for safety)
+            const config = (window as any).CONFIG;
+            if (config) {
+                config.APPOINTMENT_HOURS = config.APPOINTMENT_HOURS || {};
+                config.APPOINTMENT_HOURS.interval = response.data.interval || 60;
+                config.MAX_DAILY_DELIVERY_APPOINTMENTS = response.data.maxDaily || 4;
+            }
         }
     } catch (error) {
         log.error('Ayarlar yuklenemedi:', error);
@@ -1291,7 +1250,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
             customerNote: note,
             shiftType: selectedShiftType,
             appointmentType: selectedAppointmentType,
-            duration: CONFIG.APPOINTMENT_HOURS.interval,
+            duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30,
             turnstileToken: turnstileToken,  // Bot protection token
             managementLevel: managementLevel,  // Yönetim linki seviyesi (1, 2, 3 veya null)
             isVipLink: isManagementLink  // VIP link flag (#hk, #ok, #hmk)
@@ -1310,7 +1269,7 @@ document.getElementById('submitBtn')?.addEventListener('click', async () => {
                 date: selectedDate,
                 time: selectedTime,
                 appointmentType: selectedAppointmentType,
-                duration: CONFIG.APPOINTMENT_HOURS.interval
+                duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30
             };
 
             // Export to window for calendar-integration.js module access
