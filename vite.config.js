@@ -39,6 +39,13 @@ export default defineConfig(({ mode }) => ({
           'api': [
             './api-service.ts',
             './config-loader.ts'
+          ],
+          // Flow components - appointment booking flow
+          'flow-components': [
+            './TypeSelectorComponent.ts',
+            './CalendarComponent.ts',
+            './StaffSelectorComponent.ts',
+            './TimeSelectorComponent.ts'
           ]
           // Note: calendar-integration is already lazy loaded via dynamic import
         }
