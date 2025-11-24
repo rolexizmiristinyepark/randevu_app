@@ -23,6 +23,7 @@ import { apiCall } from './api-service';
 import { initMonitoring, logError, measureAsync } from './monitoring';
 import { initConfig, Config } from './config-loader';
 import rolexLogoUrl from './assets/rolex-logo.svg';
+import { debounce } from './performance-utils';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
 // ⭐ NEW: Config loaded dynamically from backend API
@@ -226,26 +227,28 @@ document.addEventListener('DOMContentLoaded', async () => {
         }, 100);
     }
 
-    // Appointment type cards event listeners
-    document.getElementById('typeDelivery')?.addEventListener('click', () => selectAppointmentType('delivery'));
-    document.getElementById('typeService')?.addEventListener('click', () => selectAppointmentType('service'));
-    document.getElementById('typeMeeting')?.addEventListener('click', () => selectAppointmentType('meeting'));
-    document.getElementById('typeShipping')?.addEventListener('click', () => selectAppointmentType('shipping'));
-    document.getElementById('typeManagement')?.addEventListener('click', () => selectAppointmentType('management'));
+    // Appointment type cards event listeners (async due to dynamic imports)
+    document.getElementById('typeDelivery')?.addEventListener('click', () => void selectAppointmentType('delivery'));
+    document.getElementById('typeService')?.addEventListener('click', () => void selectAppointmentType('service'));
+    document.getElementById('typeMeeting')?.addEventListener('click', () => void selectAppointmentType('meeting'));
+    document.getElementById('typeShipping')?.addEventListener('click', () => void selectAppointmentType('shipping'));
+    document.getElementById('typeManagement')?.addEventListener('click', () => void selectAppointmentType('management'));
 
-    // HK/OK sub-buton event listeners
+    // HK/OK sub-buton event listeners (async due to dynamic imports)
     document.getElementById('selectHK')?.addEventListener('click', (e) => {
         e.stopPropagation(); // Yönetim kartının tıklanmasını engelle
-        selectManagementContact('HK', 'Haluk Külahçıoğlu');
+        void selectManagementContact('HK', 'Haluk Külahçıoğlu');
     });
     document.getElementById('selectOK')?.addEventListener('click', (e) => {
         e.stopPropagation(); // Yönetim kartının tıklanmasını engelle
-        selectManagementContact('OK', 'Onur Külahçıoğlu');
+        void selectManagementContact('OK', 'Onur Külahçıoğlu');
     });
 
     // Calendar navigation buttons
-    document.getElementById('prevMonthBtn')?.addEventListener('click', () => changeMonth(-1));
-    document.getElementById('nextMonthBtn')?.addEventListener('click', () => changeMonth(1));
+    // ⚡ PERFORMANCE: Debounce to prevent rapid API spam from fast clicking
+    const debouncedChangeMonth = debounce(changeMonth, 300);
+    document.getElementById('prevMonthBtn')?.addEventListener('click', () => debouncedChangeMonth(-1));
+    document.getElementById('nextMonthBtn')?.addEventListener('click', () => debouncedChangeMonth(1));
 });
 
 // ⭐ TypeSelector functions moved to TypeSelectorComponent.ts

@@ -18,9 +18,9 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           // Base layer - shared infrastructure (tree-shakeable)
           'base-layer': [
-            './StateManager.ts',
             './CacheManager.ts',
-            './UIManager.ts'
+            './UIManager.ts',
+            './StateManager.ts'
           ],
           // Utilities - small, frequently changing
           'utils': [

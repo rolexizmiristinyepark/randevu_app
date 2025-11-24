@@ -11,6 +11,7 @@ import { revealSection, hideSection, showLoading, hideAlert, showLoadingError } 
 import { DateUtils } from './date-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
+import { memoize } from './performance-utils';
 
 // ==================== CONSTANTS ====================
 
@@ -37,7 +38,9 @@ export async function changeMonth(direction: 1 | -1): Promise<void> {
     // First render from cache (fast UX)
     const monthStr = currentMonth.toISOString().slice(0, 7);
     const specificStaffId = state.get('specificStaffId');
-    const cacheKey = `${monthStr}_${specificStaffId || 'all'}`;
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    // ⚡ PERFORMANCE FIX: Include appointmentType in cache key to prevent stale data
+    const cacheKey = `${monthStr}_${specificStaffId || 'all'}_${selectedAppointmentType || 'general'}`;
 
     if (cache.has(cacheKey)) {
         const cached = cache.get<any>(cacheKey);
@@ -130,7 +133,8 @@ export function renderCalendar(): void {
             const availability = checkDayAvailability(dateStr);
             if (availability.available) {
                 dayEl.classList.add('available');
-                dayEl.onclick = () => selectDay(dateStr);
+                // ⚡ PERFORMANCE: Async handler for dynamic imports
+                dayEl.onclick = () => void selectDay(dateStr);
             } else {
                 dayEl.classList.add('unavailable');
                 dayEl.title = availability.reason || 'Müsait değil';
@@ -147,9 +151,10 @@ export function renderCalendar(): void {
 // ==================== DAY AVAILABILITY ====================
 
 /**
- * Check day availability
+ * Check day availability (base implementation)
+ * ⚠️ This is the raw function - use checkDayAvailabilityMemoized for performance
  */
-export function checkDayAvailability(dateStr: string): { available: boolean; reason?: string } {
+function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason?: string } {
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const specificStaffId = state.get('specificStaffId');
     const dayShifts = state.get('dayShifts');
@@ -214,12 +219,27 @@ export function checkDayAvailability(dateStr: string): { available: boolean; rea
     return { available: true };
 }
 
+/**
+ * Memoized version of checkDayAvailability
+ * ⚡ PERFORMANCE: Caches results per dateStr to avoid repeated calculations (28-31 calls per render)
+ * Cache is automatically cleared when state changes by clearAvailabilityCache()
+ */
+export const checkDayAvailability = memoize(checkDayAvailabilityBase);
+
+/**
+ * Clear availability cache - Call when data changes (after loadMonthData, type change, etc.)
+ */
+export function clearAvailabilityCache(): void {
+    checkDayAvailability.clearCache();
+}
+
 // ==================== DAY SELECTION ====================
 
 /**
  * Select a day
+ * ⚡ PERFORMANCE: Async to support dynamic imports (better tree-shaking)
  */
-export function selectDay(dateStr: string): void {
+export async function selectDay(dateStr: string): Promise<void> {
     state.set('selectedDate', dateStr);
     const specificStaffId = state.get('specificStaffId');
     const selectedAppointmentType = state.get('selectedAppointmentType');
@@ -238,7 +258,8 @@ export function selectDay(dateStr: string): void {
         // No shift limit for management appointments - all hours available
         state.set('selectedStaff', 0);
         state.set('selectedShiftType', 'management');
-        const { displayAvailableTimeSlots } = require('./TimeSelectorComponent');
+        // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
+        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
         displayAvailableTimeSlots();
         revealSection('timeSection');
         hideSection('staffSection');
@@ -248,7 +269,8 @@ export function selectDay(dateStr: string): void {
     }
     // staff=0 but other types (delivery, service, meeting) - show staff selection
     else if (specificStaffId === '0' && selectedAppointmentType !== 'management') {
-        const { displayAvailableStaff } = require('./StaffSelectorComponent');
+        // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
+        const { displayAvailableStaff } = await import('./StaffSelectorComponent');
         displayAvailableStaff();
         revealSection('staffSection');
         hideSection('timeSection');
@@ -258,7 +280,8 @@ export function selectDay(dateStr: string): void {
     }
     // Show staff selection (general link) - NOT for management links
     else if (!specificStaffId && !isManagementLink) {
-        const { displayAvailableStaff } = require('./StaffSelectorComponent');
+        // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
+        const { displayAvailableStaff } = await import('./StaffSelectorComponent');
         displayAvailableStaff();
         revealSection('staffSection');
         hideSection('timeSection');
@@ -269,7 +292,8 @@ export function selectDay(dateStr: string): void {
     // Management link - go directly to time selection
     else if (isManagementLink) {
         state.set('selectedShiftType', 'management'); // Placeholder shift type for VIP links
-        const { displayAvailableTimeSlots } = require('./TimeSelectorComponent');
+        // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
+        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
         displayAvailableTimeSlots();
         hideSection('staffSection');
         revealSection('timeSection');
@@ -282,7 +306,8 @@ export function selectDay(dateStr: string): void {
         const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId!)];
         if (shiftType) {
             state.set('selectedShiftType', shiftType);
-            const { displayAvailableTimeSlots } = require('./TimeSelectorComponent');
+            // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
+            const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
             displayAvailableTimeSlots();
             revealSection('timeSection');
             hideSection('detailsSection');
@@ -328,7 +353,9 @@ export async function loadMonthData(): Promise<void> {
     }
 
     // Cache check
-    const cacheKey = `${monthStr}_${specificStaffId || 'all'}`;
+    const selectedAppointmentType = state.get('selectedAppointmentType');
+    // ⚡ PERFORMANCE FIX: Include appointmentType in cache key to prevent stale data
+    const cacheKey = `${monthStr}_${specificStaffId || 'all'}_${selectedAppointmentType || 'general'}`;
     if (cache.has(cacheKey)) {
         const cached = cache.get<any>(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
@@ -380,6 +407,9 @@ export async function loadMonthData(): Promise<void> {
                 googleCalendarEvents: { ...googleCalendarEvents }
             }
         });
+
+        // ⚡ PERFORMANCE: Clear memoization cache after new data loaded
+        clearAvailabilityCache();
 
         renderCalendar(); // Re-render calendar
         hideAlert();

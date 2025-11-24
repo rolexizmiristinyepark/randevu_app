@@ -16,8 +16,9 @@ export type AppointmentType = 'delivery' | 'service' | 'meeting' | 'shipping' | 
 
 /**
  * Select management contact person (HK or OK) for management appointments
+ * ⚡ PERFORMANCE: Async for dynamic imports
  */
-export function selectManagementContact(contactId: string, contactName: string): void {
+export async function selectManagementContact(contactId: string, contactName: string): Promise<void> {
     // Set management type
     state.set('selectedAppointmentType', 'management');
     state.set('selectedStaff', 0);
@@ -46,19 +47,21 @@ export function selectManagementContact(contactId: string, contactName: string):
     // Keep buttons open so user can see their selection
 
     // Reveal calendar section
-    const { renderCalendar, loadMonthData } = require('./CalendarComponent');
+    // ⚡ PERFORMANCE: Dynamic import for better tree-shaking
+    const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
     revealSection('calendarSection');
     renderCalendar();
-    loadMonthData();
+    await loadMonthData();
 }
 
 // ==================== APPOINTMENT TYPE SELECTION ====================
 
 /**
  * Handle appointment type selection
+ * ⚡ PERFORMANCE: Async for dynamic imports
  * @param type - The appointment type (delivery, service, meeting, shipping, management)
  */
-export function selectAppointmentType(type: AppointmentType): void {
+export async function selectAppointmentType(type: AppointmentType): Promise<void> {
     // If management type is selected, show HK/OK buttons first
     if (type === 'management') {
         const managementCard = document.getElementById('typeManagement');
@@ -117,10 +120,11 @@ export function selectAppointmentType(type: AppointmentType): void {
     }
 
     // Reveal calendar and load data (animated + smooth scroll)
-    const { renderCalendar, loadMonthData } = require('./CalendarComponent');
+    // ⚡ PERFORMANCE: Dynamic import for better tree-shaking
+    const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
     revealSection('calendarSection');
     renderCalendar();
-    loadMonthData();
+    await loadMonthData();
 }
 
 // ==================== EXPORT ====================

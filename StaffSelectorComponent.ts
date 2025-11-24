@@ -110,7 +110,8 @@ export function displayAvailableStaff(): void {
         card.appendChild(nameDiv);
 
         if (isWorking) {
-            card.addEventListener('click', (e) => selectStaff(staff.id, shiftType, e));
+            // ⚡ PERFORMANCE: Async handler for dynamic imports
+            card.addEventListener('click', (e) => void selectStaff(staff.id, shiftType, e));
         } else {
             card.style.opacity = '0.5';
             card.style.cursor = 'not-allowed';
@@ -125,7 +126,10 @@ export function displayAvailableStaff(): void {
 /**
  * Select a staff member
  */
-export function selectStaff(staffId: number, shiftType: string, event?: MouseEvent): void {
+/**
+ * ⚡ PERFORMANCE: Async for dynamic imports
+ */
+export async function selectStaff(staffId: number, shiftType: string, event?: MouseEvent): Promise<void> {
     state.set('selectedStaff', parseInt(String(staffId)));
     state.set('selectedShiftType', shiftType);
     const staffMembers = state.get('staffMembers');
@@ -148,7 +152,8 @@ export function selectStaff(staffId: number, shiftType: string, event?: MouseEve
     }
 
     // Show time slots section
-    const { displayAvailableTimeSlots } = require('./TimeSelectorComponent');
+    // ⚡ PERFORMANCE: Dynamic import for better tree-shaking
+    const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
     displayAvailableTimeSlots();
     revealSection('timeSection');
     hideSection('detailsSection');
