@@ -164,6 +164,7 @@ export function hideAlert(): void {
 
 /**
  * Show loading spinner in container
+ * ⚠️ WARNING: This clears the entire page - use showCalendarLoading for calendar only
  */
 export function showLoading(): void {
   const container = document.querySelector('.container') as HTMLElement;
@@ -190,6 +191,50 @@ export function showLoading(): void {
   loadingDiv.appendChild(spinner);
   loadingDiv.appendChild(text);
   container.appendChild(loadingDiv);
+}
+
+/**
+ * Show loading spinner in calendar grid only (preserves page structure)
+ * ⚡ PERFORMANCE FIX: Doesn't destroy entire page, only calendar grid
+ */
+export function showCalendarLoading(): void {
+  const grid = document.getElementById('calendarGrid');
+  if (!grid) return;
+
+  // Store original content in case we need to restore
+  grid.dataset.originalContent = grid.innerHTML;
+
+  // Create loading content
+  const loadingDiv = createElement('div', {
+    style: 'text-align: center; padding: 40px 20px; grid-column: 1 / -1;'
+  });
+
+  const spinner = createElement('div', {
+    className: 'spinner',
+    style: 'margin: 0 auto 15px;'
+  });
+
+  const text = createElement('p', {
+    style: "color: #757575; font-size: 14px; font-family: 'Montserrat', sans-serif;"
+  });
+  text.textContent = 'Takvim yükleniyor...';
+
+  loadingDiv.appendChild(spinner);
+  loadingDiv.appendChild(text);
+
+  grid.innerHTML = '';
+  grid.appendChild(loadingDiv);
+}
+
+/**
+ * Hide calendar loading (called automatically by renderCalendar)
+ */
+export function hideCalendarLoading(): void {
+  const grid = document.getElementById('calendarGrid');
+  if (!grid) return;
+
+  // Clear loading indicator (renderCalendar will add actual content)
+  delete grid.dataset.originalContent;
 }
 
 /**
@@ -333,6 +378,8 @@ export const UIManager = {
   showAlert,
   hideAlert,
   showLoading,
+  showCalendarLoading,
+  hideCalendarLoading,
   showLoadingError,
   scrollToElement,
   isInViewport,

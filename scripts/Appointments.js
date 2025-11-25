@@ -731,64 +731,393 @@ const AvailabilityService = {
 /**
  * Main appointment creation function
  * Handles validation, security checks, calendar creation, and notifications
- * Full implementation in original Kod.js lines 4251-4642
- *
- * NOTE: This is a complex 400+ line function. Only structure shown here.
- * For complete implementation including:
- * - Cloudflare Turnstile verification
- * - Rate limiting
- * - Full validation
- * - Race condition protection
- * - Email notifications
- * - ICS calendar file generation
- *
- * See original Kod.js lines 4251-4642
+ * FULL IMPLEMENTATION - Restored from Kod.js.backup
  */
 function createAppointment(params) {
   try {
     const {
-      date, time, staffId, staffName, customerName, customerPhone,
-      customerEmail, customerNote, shiftType, appointmentType,
-      duration, turnstileToken, managementLevel, isVipLink
+      date,
+      time,
+      staffId,
+      staffName,
+      customerName,
+      customerPhone,
+      customerEmail,
+      customerNote,
+      shiftType,
+      appointmentType,
+      duration,
+      turnstileToken,
+      managementLevel,
+      isVipLink
     } = params;
 
-    // SECURITY CHECKS (Turnstile, Rate Limiting)
+    // ===== SECURITY CHECKS =====
+    // 1. Cloudflare Turnstile bot kontrolü
     const turnstileResult = SecurityService.verifyTurnstileToken(turnstileToken);
     if (!turnstileResult.success) {
+      log.warn('Turnstile doğrulama başarısız:', turnstileResult.error);
       return {
         success: false,
-        error: turnstileResult.error || 'Robot kontrolü başarısız oldu.'
+        error: turnstileResult.error || 'Robot kontrolü başarısız oldu. Lütfen sayfayı yenileyin.'
       };
     }
 
-    // VALIDATION (Date, Time, Customer info, etc.)
-    // ... full validation code omitted for brevity
+    // 2. Rate limiting - IP veya fingerprint bazlı
+    const identifier = customerPhone + '_' + customerEmail; // Basit bir identifier
+    const rateLimit = SecurityService.checkRateLimit(identifier);
 
-    // MASTER VALIDATION (Business Rules)
+    if (!rateLimit.allowed) {
+      const waitMinutes = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
+      log.warn('Rate limit aşıldı:', identifier, rateLimit);
+      return {
+        success: false,
+        error: `Çok fazla istek gönderdiniz. Lütfen ${waitMinutes} dakika sonra tekrar deneyin.`
+      };
+    }
+
+    log.info('Rate limit OK - Kalan istek:', rateLimit.remaining);
+
+    // ===== VALIDATION =====
+    // Date validation (YYYY-MM-DD format)
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+    }
+
+    // Time validation (HH:MM format)
+    if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_TIME_FORMAT };
+    }
+
+    // Customer name validation
+    if (!customerName || typeof customerName !== 'string' || customerName.trim().length === 0) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_NAME_REQUIRED };
+    }
+
+    // Customer phone validation
+    if (!customerPhone || typeof customerPhone !== 'string' || customerPhone.trim().length === 0) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_PHONE_REQUIRED };
+    }
+
+    // Email validation (optional but if provided must be valid)
+    if (customerEmail && !Utils.isValidEmail(customerEmail)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
+    }
+
+    // Appointment type validation
+    const validTypes = Object.values(CONFIG.APPOINTMENT_TYPES);
+    if (!appointmentType || !validTypes.includes(appointmentType)) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_APPOINTMENT_TYPE };
+    }
+
+    // Duration validation
+    const durationNum = parseInt(duration);
+    if (isNaN(durationNum) || durationNum < VALIDATION.INTERVAL_MIN || durationNum > VALIDATION.INTERVAL_MAX) {
+      return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
+    }
+
+    // Staff ID validation
+    if (!staffId) {
+      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
+    }
+
+    // Sanitize inputs
+    const sanitizedCustomerName = Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
+    const sanitizedCustomerPhone = Utils.sanitizePhone(customerPhone);
+    const sanitizedCustomerEmail = customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
+    const sanitizedCustomerNote = customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
+    const sanitizedStaffName = staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '';
+
+    // StorageService.getData() - tek seferlik çağrı (DRY prensibi)
+    const data = StorageService.getData();
+
+    // ⭐⭐⭐⭐⭐ CRITICAL: Master Validation (Race Condition Protection)
+    // Tüm business rules'ları bir arada kontrol et
     const hour = parseInt(time.split(':')[0]);
     const validation = ValidationService.validateReservation({
-      date, hour, appointmentType, staffId, isVipLink
+      date,
+      hour,
+      appointmentType,
+      staffId,
+      isVipLink
     });
 
     if (!validation.valid) {
+      log.warn('Reservation validation failed:', validation.error);
       return {
         success: false,
-        error: validation.error
+        error: validation.error,
+        suggestAlternatives: validation.suggestAlternatives,
+        isDayMaxed: validation.isDayMaxed
       };
     }
 
-    // RACE CONDITION PROTECTION + CALENDAR EVENT CREATION
-    // ... full implementation with LockServiceWrapper
+    log.info('Validation passed - creating appointment');
 
-    // EMAIL NOTIFICATIONS (Customer, Staff, Admin)
-    // ... email sending code
+    // ===== RACE CONDITION PROTECTION =====
+    // withLock() ile critical section'ı koru (Calendar check + create atomik olmalı)
+    // Bu sayede aynı anda 2 kişi aynı saate randevu alamaz
+    let event;
+    try {
+      event = LockServiceWrapper.withLock(() => {
+        log.info('Lock acquired - starting critical section (Calendar check + create)');
 
-    // CACHE INVALIDATION
+        // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
+        // Not: validateReservation zaten kontrol ediyor ama backward compatibility için tutuldu
+        // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
+        // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
+        // STANDART: [start, end) interval (start dahil, end hariç)
+
+        const calendar = CalendarService.getCalendar();
+
+        // Yeni randevunun epoch-minute aralığı
+        const newStart = DateUtils.dateTimeToEpochMinute(date, time);
+        const newEnd = newStart + durationNum; // duration dakika cinsinden
+
+        // O günün tüm randevularını al (kesin çakışma kontrolü için)
+        const { startDate, endDate } = DateUtils.getDateRange(date);
+        const allEventsToday = calendar.getEvents(startDate, endDate);
+
+        // Çakışan randevuları filtrele (epoch-minute ile)
+        const overlappingEvents = allEventsToday.filter(event => {
+          const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
+          const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
+
+          // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
+          return DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
+        });
+
+        const overlappingCount = overlappingEvents.length;
+
+        // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları her zaman çakışabilir
+        if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+          // OK, yönetim randevusu için çakışma kontrolünü bypass et
+          log.info('Yönetim randevusu - çakışma kontrolü bypass edildi');
+        }
+        // 1a. Çakışan randevu yok → Devam et
+        else if (overlappingCount === 0) {
+          // OK, devam et
+        }
+        // 1b. 1 çakışan randevu var
+        else if (overlappingCount === 1) {
+          // Mevcut randevu bilgilerini al
+          const existingType = overlappingEvents[0].getTag('appointmentType');
+          const existingIsVipTag = overlappingEvents[0].getTag('isVipLink');
+          const existingTitle = overlappingEvents[0].getTitle();
+
+          // VIP link kontrolü (yeni tag veya eski başlık kontrolü)
+          const existingIsVip = existingIsVipTag === 'true' ||
+                               existingTitle.includes('(HK)') ||
+                               existingTitle.includes('(OK)') ||
+                               existingTitle.includes('(HMK)');
+
+          // Yeni randevu VIP mi? (string/boolean karşılaştırması)
+          const newIsVip = isVipLink === true || isVipLink === 'true';
+
+          // VIP LINK → HER ZAMAN 2. RANDEVU EKLENEBİLİR (mevcut randevu ne olursa olsun)
+          if (newIsVip) {
+            // OK, devam et
+          }
+          // Yönetim randevusu üzerine → OK
+          else if (existingType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
+            // OK, yönetim randevusu üzerine normal randevu eklenebilir
+          }
+          // Diğer durumlar → BLOKE
+          else {
+            // Normal randevu üzerine normal randevu eklenemez → BLOKE
+            return {
+              success: false,
+              error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+            };
+          }
+        }
+        // 1c. 2 veya daha fazla çakışan randevu var → BLOKE
+        else if (overlappingCount >= 2) {
+          return {
+            success: false,
+            error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+          };
+        }
+
+        // Event oluşturma için Date objelerine ihtiyacımız var
+        const startDateTime = new Date(date + 'T' + time + ':00');
+        const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
+
+        // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
+        if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
+          const maxDelivery = data.settings?.maxDaily || 3;
+
+          // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
+          const countResult = AppointmentService.getAppointments(date, {
+            countOnly: true,
+            appointmentType: CONFIG.APPOINTMENT_TYPES.DELIVERY
+          });
+
+          if (countResult.success && countResult.count >= maxDelivery) {
+            return {
+              success: false,
+              error: CONFIG.ERROR_MESSAGES.MAX_DELIVERY_REACHED.replace('{max}', maxDelivery)
+            };
+          }
+        }
+
+        // Event başlığı - sanitized değerleri kullan
+        const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
+
+        // Yönetim linki bilgisini ekle (HK, OK, HMK)
+        let managementSuffix = '';
+        if (managementLevel === 1) {
+          managementSuffix = ' (HK)';
+        } else if (managementLevel === 2) {
+          managementSuffix = ' (OK)';
+        } else if (managementLevel === 3) {
+          managementSuffix = ' (HMK)';
+        }
+
+        const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})${managementSuffix}`;
+
+        // Event açıklaması - sanitized değerleri kullan
+        const description = `
+Randevu Detayları:
+─────────────────
+Müşteri: ${sanitizedCustomerName}
+Telefon: ${sanitizedCustomerPhone}
+E-posta: ${sanitizedCustomerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
+İlgili: ${sanitizedStaffName}
+Konu: ${appointmentTypeLabel}
+
+${sanitizedCustomerNote ? 'Not: ' + sanitizedCustomerNote : ''}
+
+Bu randevu otomatik olarak oluşturulmuştur.
+        `.trim();
+
+        // Event oluştur
+        const calEvent = calendar.createEvent(title, startDateTime, endDateTime, {
+          description: description,
+          location: ''
+        });
+
+        // Ek bilgileri tag olarak ekle (extendedProperties yerine) - sanitized değerleri kullan
+        calEvent.setTag('staffId', String(staffId));
+        calEvent.setTag('customerPhone', sanitizedCustomerPhone);
+        calEvent.setTag('customerEmail', sanitizedCustomerEmail);
+        calEvent.setTag('customerNote', sanitizedCustomerNote || '');
+        calEvent.setTag('shiftType', shiftType);
+        calEvent.setTag('appointmentType', appointmentType);
+        calEvent.setTag('isVipLink', isVipLink ? 'true' : 'false');
+
+        log.info('Calendar event created successfully - releasing lock');
+        return calEvent; // Event'i return et, lock serbest bırakılacak
+      }); // withLock() sonu
+    } catch (lockError) {
+      log.error('Lock acquisition failed:', lockError.message);
+      return {
+        success: false,
+        error: 'Randevu oluşturma sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+      };
+    }
+
+    // Lock işlemi tamamlandı - Event veya error object döndü
+    // Eğer çakışma tespit edildiyse, error object return edilmiştir
+    if (event && event.success === false) {
+      log.info('Calendar conflict detected during lock - returning error');
+      return event; // Error object'i hemen return et, email gönderme
+    }
+
+    // Lock serbest bırakıldı - Email gönderme ve diğer işlemler lock dışında devam edebilir
+
+    // Tarih formatla (7 Ekim 2025, Salı) - DateUtils kullan
+    const formattedDate = DateUtils.toTurkishDate(date);
+    const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
+
+    // Staff bilgisini çek (data zaten yukarıda çekildi)
+    const staff = data.staff.find(s => s.id === parseInt(staffId));
+    const staffPhone = staff?.phone ?? '';
+    const staffEmail = staff?.email ?? '';
+
+    // E-posta bildirimi - Müşteriye (sanitized değerleri kullan)
+    if (sanitizedCustomerEmail) {
+      try {
+        // ICS dosyası oluştur
+        const icsContent = generateCustomerICS({
+          staffName: sanitizedStaffName,
+          staffPhone,
+          staffEmail,
+          date,
+          time,
+          duration: durationNum,
+          appointmentType,
+          customerNote: sanitizedCustomerNote,
+          formattedDate
+        });
+
+        // ICS dosyasını blob olarak oluştur
+        const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+
+        MailApp.sendEmail({
+          to: sanitizedCustomerEmail,
+          subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
+          name: CONFIG.COMPANY_NAME,
+          replyTo: staffEmail || CONFIG.ADMIN_EMAIL,
+          htmlBody: NotificationService.getCustomerEmailTemplate({
+            customerName: sanitizedCustomerName,
+            formattedDate,
+            time,
+            serviceName,
+            staffName: sanitizedStaffName,
+            customerNote: sanitizedCustomerNote,
+            staffPhone,
+            staffEmail,
+            appointmentType    // YENİ: Dinamik içerik için
+          }),
+          attachments: [icsBlob]
+        });
+      } catch (emailError) {
+        log.error('Müşteri e-postası gönderilemedi:', emailError);
+      }
+    }
+
+    // E-posta bildirimi - Çalışana ve Admin (sanitized değerleri kullan)
+    try {
+      const staffEmailBody = NotificationService.getStaffEmailTemplate({
+        staffName: sanitizedStaffName,
+        customerName: sanitizedCustomerName,
+        customerPhone: sanitizedCustomerPhone,
+        customerEmail: sanitizedCustomerEmail,
+        formattedDate,
+        time,
+        serviceName,
+        customerNote: sanitizedCustomerNote
+      });
+
+      // Çalışana gönder
+      if (staff && staff.email) {
+        MailApp.sendEmail({
+          to: staff.email,
+          subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${sanitizedCustomerName}`,
+          name: CONFIG.COMPANY_NAME,
+          htmlBody: staffEmailBody
+        });
+      }
+
+      // Admin'e gönder
+      MailApp.sendEmail({
+        to: CONFIG.ADMIN_EMAIL,
+        subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${sanitizedCustomerName}`,
+        name: CONFIG.COMPANY_NAME,
+        htmlBody: staffEmailBody
+      });
+
+    } catch (staffEmailError) {
+      log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
+    }
+
+    // ⭐ Cache invalidation: Version increment
     VersionService.incrementDataVersion();
 
     return {
       success: true,
-      eventId: 'event-id',
+      eventId: event.getId(),
       message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_CREATED
     };
 

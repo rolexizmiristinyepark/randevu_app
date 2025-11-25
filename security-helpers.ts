@@ -4,6 +4,7 @@
  */
 
 import { DateUtils } from './date-utils';
+import rolexLogoUrl from './assets/rolex-logo.svg';
 
 // HTML karakterlerini güvenli hale getir
 function escapeHtml(unsafe: any): string {
@@ -147,9 +148,9 @@ function createSuccessPageSafe(dateStr: string, timeStr: string, staffName: stri
     // Header
     const header = createElement('div', { className: 'header' });
 
-    // SVG Logo - Direkt img oluştur
+    // SVG Logo - Vite import ile doğru path
     const logo = createElement('img', {
-        src: 'assets/rolex-logo.svg',
+        src: rolexLogoUrl,
         className: 'rolex-logo',
         alt: 'Rolex Logo'
     });

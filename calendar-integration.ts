@@ -1,112 +1,82 @@
 /**
- * TAKVIM ENTEGRASYON MODÜLÜ
+ * TAKVIM ENTEGRASYON MODÜLÜ - v2.0
  *
- * Bu modül, randevu başarıyla oluşturulduktan sonra kullanıcının
- * randevuyu kendi takvimine eklemesi için gerekli fonksiyonları içerir.
+ * Akıllı Fallback Zinciri:
+ * 1. Direkt App Yönlendirme (URL scheme)
+ * 2. Varsayılan Takvim App (ICS auto-open)
+ * 3. Web URL Yönlendirme (Google/Outlook)
+ * 4. ICS Download (son çare)
  *
- * Lazy Loading ile yüklenir - sadece "Takvime Ekle" butonuna tıklandığında
- * dinamik olarak import edilir. Bu sayede ana app.js dosyasının boyutu küçülür
- * ve ilk yükleme hızlanır.
- *
- * Dependencies (Global Scope):
- * - CONFIG (app.js)
- * - DateUtils (date-utils.js)
- * - ModalUtils (app.js)
- * - lastAppointmentData (app.js)
+ * Platform Desteği:
+ * - iOS (Safari, Chrome)
+ * - macOS (Safari, Chrome)
+ * - Android (Chrome, diğer)
+ * - Windows (Edge, Chrome)
  */
 
-// Shared utilities import et
 import { DateUtils } from './date-utils';
 import { StringUtils } from './string-utils';
 import { APPOINTMENT_TYPE_NAMES } from './calendar-config';
 
-// Global scope'tan değişkenleri al
-const CONFIG = (window as any).CONFIG;
-const ModalUtils = (window as any).ModalUtils;
+// Global scope'tan değişkenleri al (fonksiyon olarak - lazy evaluation)
+const getConfig = () => (window as any).CONFIG || {};
+const getModalUtils = () => (window as any).ModalUtils || { open: () => {}, close: () => {} };
 const lastAppointmentData = () => (window as any).lastAppointmentData;
 
-// ==================== TAKVİME EKLEME FONKSİYONLARI ====================
+// ==================== PLATFORM TESPİTİ ====================
 
-/**
- * Takvime ekleme modal'ını aç
- * Kullanıcı takvim seçeneğini seçebilir (Google, Apple, Outlook, ICS)
- */
-export function openCalendarModal() {
-    ModalUtils.open('calendarModal');
+interface PlatformInfo {
+    ios: boolean;
+    android: boolean;
+    macos: boolean;
+    windows: boolean;
+    safari: boolean;
+    chrome: boolean;
+    firefox: boolean;
+    edge: boolean;
+    mobile: boolean;
 }
 
-/**
- * Apple Calendar için akıllı yönlendirme
- * Platform ve tarayıcıya göre en iyi yöntem seçilir
- */
-export function addToCalendarApple() {
-    const appointment = lastAppointmentData();
-    if (!appointment) {
-        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
-        ModalUtils.close('calendarModal');
-        return;
-    }
+function detectPlatform(): PlatformInfo {
+    const ua = navigator.userAgent;
+    const platform = navigator.platform || '';
 
-    const platform = detectPlatform();
-    const date = new Date(appointment.date + 'T' + appointment.time);
-    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
-    const endDate = new Date(date.getTime() + duration * 60000);
-    const icsContent = generateICS(date, endDate);
-
-    // iOS cihazlar için
-    if (platform.ios) {
-        if (platform.safari) {
-            // iOS Safari: data URL ile direkt Calendar app aç
-            const base64 = btoa(unescape(encodeURIComponent(icsContent)));
-            const dataUrl = `data:text/calendar;base64,${base64}`;
-            window.location.href = dataUrl;
-            ModalUtils.close('calendarModal');
-            showToast('Apple Calendar açılıyor...', 'success');
-        } else {
-            // iOS Chrome/diğer: ICS indir, kullanıcı kendisi açacak
-            downloadICSFile(icsContent, 'rolex-randevu.ics');
-            ModalUtils.close('calendarModal');
-            showToast('İndirilen dosyayı açarak takvime ekleyebilirsiniz', 'info');
-        }
-    }
-    // macOS cihazlar için
-    else if (platform.macos) {
-        // macOS tüm tarayıcılar: ICS indir, otomatik Apple Calendar açılır
-        downloadICSFile(icsContent, 'rolex-randevu.ics');
-        ModalUtils.close('calendarModal');
-        showToast('Apple Calendar açılıyor...', 'success');
-    }
-    // Diğer platformlar
-    else {
-        downloadICSFile(icsContent, 'rolex-randevu.ics');
-        ModalUtils.close('calendarModal');
-        showToast('ICS dosyası indirildi', 'success');
-    }
+    return {
+        ios: /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream,
+        android: /Android/.test(ua),
+        macos: /Mac/.test(platform) && !/iPhone|iPad|iPod/.test(ua),
+        windows: /Win/.test(platform),
+        safari: /Safari/.test(ua) && !/Chrome|CriOS/.test(ua),
+        chrome: /Chrome|CriOS/.test(ua) && !/Edg/.test(ua),
+        firefox: /Firefox|FxiOS/.test(ua),
+        edge: /Edg/.test(ua),
+        mobile: /iPhone|iPad|iPod|Android/.test(ua)
+    };
 }
 
+// ==================== YARDIMCI FONKSİYONLAR ====================
+
 /**
- * Google Calendar için akıllı yönlendirme
- * Android'de app, diğer platformlarda web açılır
+ * Randevu verilerini hazırla
  */
-export function addToCalendarGoogle() {
+function prepareAppointmentData() {
     const appointment = lastAppointmentData();
-    if (!appointment) {
-        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
-        return;
-    }
+    if (!appointment) return null;
+
+    const CONFIG = getConfig();
 
     // İsim formatlaması
     appointment.staffName = StringUtils.toTitleCase(appointment.staffName || '');
 
     const date = new Date(appointment.date + 'T' + appointment.time);
-    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
+    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS?.interval || 60;
     const endDate = new Date(date.getTime() + duration * 60000);
 
-    // Müşteri takvimi için başlık (shared config kullan)
     const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
         CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-    // Detaylı randevu bilgileri
+    const title = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
+
     let details = 'RANDEVU BİLGİLERİ\n\n';
     details += `İlgili: ${appointment.staffName}\n`;
     details += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\n`;
@@ -119,77 +89,364 @@ export function addToCalendarGoogle() {
     }
     details += '\nRandevunuza zamanında gelmenizi rica ederiz.\nLütfen kimlik belgenizi yanınızda bulundurun.';
 
-    // Google Calendar için ICS dosyası kullan (alarmlar doğru çalışır)
-    // URL parametreleri ile alarm kontrolü sınırlı olduğu için ICS standart çözüm
-    const icsContent = generateICS(date, endDate);
-    downloadICSFile(icsContent, 'rolex-randevu.ics');
-    ModalUtils.close('calendarModal');
-    showToast('Takvim dosyası indirildi. Google Calendar ile açın.', 'success');
+    return { appointment, date, endDate, title, details, appointmentTypeName };
 }
 
 /**
- * Outlook Calendar web URL'ini oluştur ve yeni sekmede aç
+ * URL scheme ile app açmayı dene
+ * @returns Promise<boolean> - Başarılı olursa true
  */
-export function addToCalendarOutlook() {
-    const appointment = lastAppointmentData();
-    if (!appointment) {
-        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
+function tryOpenApp(scheme: string, timeout: number = 2000): Promise<boolean> {
+    return new Promise((resolve) => {
+        const startTime = Date.now();
+        let resolved = false;
+
+        // Visibility change listener
+        const handleVisibilityChange = () => {
+            if (document.hidden && !resolved) {
+                resolved = true;
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                resolve(true);
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        // Blur event (app opened)
+        const handleBlur = () => {
+            if (!resolved) {
+                resolved = true;
+                window.removeEventListener('blur', handleBlur);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                resolve(true);
+            }
+        };
+
+        window.addEventListener('blur', handleBlur);
+
+        // Try to open the app
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        iframe.src = scheme;
+        document.body.appendChild(iframe);
+
+        // Fallback: window.location
+        setTimeout(() => {
+            if (!resolved) {
+                window.location.href = scheme;
+            }
+        }, 100);
+
+        // Timeout - app didn't open
+        setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                window.removeEventListener('blur', handleBlur);
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                if (iframe.parentNode) {
+                    document.body.removeChild(iframe);
+                }
+                resolve(false);
+            }
+        }, timeout);
+    });
+}
+
+/**
+ * ICS dosyası oluştur ve indir
+ * NOT: MIME type 'text/calendar' olmalı, charset=utf-8 OLMAMALI (iOS uyumluluğu)
+ * Ref: https://stackoverflow.com/questions/51231882
+ */
+function downloadICS(autoOpen: boolean = true): void {
+    const data = prepareAppointmentData();
+    if (!data) return;
+
+    const icsContent = generateICS(data.date, data.endDate);
+    const platform = detectPlatform();
+
+    // iOS Safari - data URL ile direkt Calendar app aç (EN İYİ YÖNTEM)
+    if (platform.ios && platform.safari) {
+        const base64 = btoa(unescape(encodeURIComponent(icsContent)));
+        const dataUrl = `data:text/calendar;base64,${base64}`;
+        window.location.href = dataUrl;
         return;
     }
 
-    // İsim formatlaması
-    appointment.staffName = StringUtils.toTitleCase(appointment.staffName || '');
+    // iOS Chrome - data URL dene (blob çalışmıyor)
+    if (platform.ios && !platform.safari) {
+        const base64 = btoa(unescape(encodeURIComponent(icsContent)));
+        const dataUrl = `data:text/calendar;base64,${base64}`;
 
-    const date = new Date(appointment.date + 'T' + appointment.time);
-    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
-    const endDate = new Date(date.getTime() + duration * 60000);
-
-    // Müşteri takvimi için başlık (shared config kullan)
-    const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
-        CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
-
-    // Detaylı randevu bilgileri
-    let details = 'RANDEVU BİLGİLERİ<br><br>';
-    details += `İlgili: ${appointment.staffName}<br>`;
-    details += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}<br>`;
-    details += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}<br>`;
-    details += `Tarih: ${new Date(appointment.date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}<br>`;
-    details += `Saat: ${appointment.time}<br>`;
-    details += `Konu: ${appointmentTypeName}<br>`;
-    if (appointment.customerNote) {
-        details += `Ek Bilgi: ${appointment.customerNote}<br>`;
+        // Yeni pencerede aç
+        const newWindow = window.open(dataUrl, '_blank');
+        if (!newWindow) {
+            // Popup engellendi, kullanıcıya bilgi ver
+            showToast('Dosya indirilemiyor. Popup izni verin veya Safari kullanın.', 'info');
+        }
+        return;
     }
-    details += '<br>Randevunuza zamanında gelmenizi rica ederiz.<br>Lütfen kimlik belgenizi yanınızda bulundurun.';
 
-    // Outlook için ICS dosyası kullan (alarmlar doğru çalışır)
-    // Web URL parametreleri ile alarm kontrolü sınırlı olduğu için ICS standart çözüm
-    const icsContent = generateICS(date, endDate);
-    downloadICSFile(icsContent, 'rolex-randevu.ics');
-    ModalUtils.close('calendarModal');
-    showToast('Takvim dosyası indirildi. Outlook Calendar ile açın.', 'success');
+    // macOS, Windows, Android - blob download
+    // NOT: charset=utf-8 KULLANMA - iOS uyumsuzluğu
+    const blob = new Blob([icsContent], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'rolex-randevu.ics';
+    link.style.display = 'none';
+
+    document.body.appendChild(link);
+    link.click();
+
+    // Cleanup
+    setTimeout(() => {
+        if (link.parentNode) {
+            document.body.removeChild(link);
+        }
+        URL.revokeObjectURL(url);
+    }, 100);
+}
+
+/**
+ * Toast bildirim göster
+ */
+function showToast(message: string, type: string = 'success'): void {
+    const existing = document.querySelector('.toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+        color: white;
+        padding: 12px 24px;
+        border-radius: 4px;
+        font-size: 14px;
+        z-index: 10001;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        animation: slideUp 0.3s ease;
+    `;
+
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ==================== GOOGLE CALENDAR URL ====================
+
+function getGoogleCalendarUrl(): string {
+    const data = prepareAppointmentData();
+    if (!data) return '';
+
+    const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+    const url = new URL('https://calendar.google.com/calendar/render');
+    url.searchParams.set('action', 'TEMPLATE');
+    url.searchParams.set('text', data.title);
+    url.searchParams.set('dates', `${formatDate(data.date)}/${formatDate(data.endDate)}`);
+    url.searchParams.set('details', data.details);
+    url.searchParams.set('location', 'Rolex İzmir İstinyepark');
+    url.searchParams.set('ctz', 'Europe/Istanbul');
+
+    return url.toString();
+}
+
+// ==================== OUTLOOK CALENDAR URL ====================
+
+function getOutlookCalendarUrl(): string {
+    const data = prepareAppointmentData();
+    if (!data) return '';
+
+    const url = new URL('https://outlook.live.com/calendar/0/deeplink/compose');
+    url.searchParams.set('path', '/calendar/action/compose');
+    url.searchParams.set('rru', 'addevent');
+    url.searchParams.set('subject', data.title);
+    url.searchParams.set('startdt', data.date.toISOString());
+    url.searchParams.set('enddt', data.endDate.toISOString());
+    url.searchParams.set('body', data.details);
+    url.searchParams.set('location', 'Rolex İzmir İstinyepark');
+
+    return url.toString();
+}
+
+// ==================== ANA TAKVİM FONKSİYONLARI ====================
+
+/**
+ * Takvime ekleme modal'ını aç
+ */
+export function openCalendarModal() {
+    getModalUtils().open('calendarModal');
+}
+
+/**
+ * Apple Calendar - Akıllı Fallback
+ * 1. calshow:// scheme (iOS/macOS Safari)
+ * 2. ICS data URL (iOS Safari)
+ * 3. ICS download (diğer)
+ */
+export async function addToCalendarApple() {
+    const data = prepareAppointmentData();
+    if (!data) {
+        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
+        getModalUtils().close('calendarModal');
+        return;
+    }
+
+    const platform = detectPlatform();
+    getModalUtils().close('calendarModal');
+
+    // iOS + Safari: data URL ile direkt Calendar app
+    if (platform.ios && platform.safari) {
+        const icsContent = generateICS(data.date, data.endDate);
+        const base64 = btoa(unescape(encodeURIComponent(icsContent)));
+        const dataUrl = `data:text/calendar;base64,${base64}`;
+        window.location.href = dataUrl;
+        showToast('Apple Calendar açılıyor...', 'success');
+        return;
+    }
+
+    // macOS + Safari: ICS indir (otomatik Calendar ile açılır)
+    if (platform.macos && platform.safari) {
+        downloadICS(true);
+        showToast('Apple Calendar açılıyor...', 'success');
+        return;
+    }
+
+    // iOS/macOS + Chrome veya diğer: ICS indir
+    if (platform.ios || platform.macos) {
+        downloadICS(true);
+        showToast('Takvim dosyası indirildi. Açarak takvime ekleyin.', 'info');
+        return;
+    }
+
+    // Diğer platformlar (Windows/Android): ICS indir
+    downloadICS(true);
+    showToast('Takvim dosyası indirildi', 'success');
+}
+
+/**
+ * Google Calendar - Akıllı Fallback
+ * 1. Android: intent:// scheme ile Google Calendar app
+ * 2. Tüm platformlar: Web URL
+ * 3. Fallback: ICS download
+ */
+export async function addToCalendarGoogle() {
+    const data = prepareAppointmentData();
+    if (!data) {
+        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
+        getModalUtils().close('calendarModal');
+        return;
+    }
+
+    const platform = detectPlatform();
+    getModalUtils().close('calendarModal');
+
+    // Android: Google Calendar app deneyerek aç
+    if (platform.android) {
+        // Önce intent URL ile dene
+        const formatDate = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+        const intentUrl = `intent://calendar.google.com/calendar/r/eventedit?text=${encodeURIComponent(data.title)}&dates=${formatDate(data.date)}/${formatDate(data.endDate)}&location=${encodeURIComponent('Rolex İzmir İstinyepark')}&details=${encodeURIComponent(data.details)}#Intent;scheme=https;package=com.google.android.calendar;end`;
+
+        try {
+            const opened = await tryOpenApp(intentUrl, 1500);
+            if (opened) {
+                showToast('Google Calendar açıldı', 'success');
+                return;
+            }
+        } catch (e) {
+            // Intent failed, try web URL
+        }
+    }
+
+    // Web URL ile aç (tüm platformlar)
+    const googleUrl = getGoogleCalendarUrl();
+    const newWindow = window.open(googleUrl, '_blank');
+
+    if (newWindow) {
+        showToast('Google Calendar açılıyor...', 'success');
+    } else {
+        // Popup engellendi, ICS fallback
+        downloadICS(true);
+        showToast('Popup engellendi. Takvim dosyası indirildi.', 'info');
+    }
+}
+
+/**
+ * Outlook Calendar - Akıllı Fallback
+ * 1. Windows: ms-outlook:// scheme ile Outlook app
+ * 2. Tüm platformlar: Web URL
+ * 3. Fallback: ICS download
+ */
+export async function addToCalendarOutlook() {
+    const data = prepareAppointmentData();
+    if (!data) {
+        alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
+        getModalUtils().close('calendarModal');
+        return;
+    }
+
+    const platform = detectPlatform();
+    getModalUtils().close('calendarModal');
+
+    // Windows: Outlook app deneyerek aç
+    if (platform.windows) {
+        // Önce ms-outlook scheme ile dene (Outlook masaüstü app)
+        const formatDate = (d: Date) => d.toISOString();
+        const outlookScheme = `ms-outlook://calendar/create?subject=${encodeURIComponent(data.title)}&startdt=${encodeURIComponent(formatDate(data.date))}&enddt=${encodeURIComponent(formatDate(data.endDate))}&location=${encodeURIComponent('Rolex İzmir İstinyepark')}&body=${encodeURIComponent(data.details)}`;
+
+        try {
+            const opened = await tryOpenApp(outlookScheme, 1500);
+            if (opened) {
+                showToast('Outlook açıldı', 'success');
+                return;
+            }
+        } catch (e) {
+            // Scheme failed, try web URL
+        }
+    }
+
+    // Web URL ile aç (tüm platformlar)
+    const outlookUrl = getOutlookCalendarUrl();
+    const newWindow = window.open(outlookUrl, '_blank');
+
+    if (newWindow) {
+        showToast('Outlook Calendar açılıyor...', 'success');
+    } else {
+        // Popup engellendi, ICS fallback
+        downloadICS(true);
+        showToast('Popup engellendi. Takvim dosyası indirildi.', 'info');
+    }
 }
 
 /**
  * Universal ICS Dosya İndirme
- * Herhangi bir takvim uygulaması için kullanılabilir (.ics dosyası)
+ * Herhangi bir takvim uygulaması için kullanılabilir
  */
 export function downloadICSUniversal() {
-    const appointment = lastAppointmentData();
-    if (!appointment) {
+    const data = prepareAppointmentData();
+    if (!data) {
         alert('Randevu bilgileri bulunamadı. Lütfen tekrar deneyin.');
-        ModalUtils.close('calendarModal');
+        getModalUtils().close('calendarModal');
         return;
     }
 
-    const date = new Date(appointment.date + 'T' + appointment.time);
-    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
-    const endDate = new Date(date.getTime() + duration * 60000);
-    const icsContent = generateICS(date, endDate);
-
-    downloadICSFile(icsContent, 'rolex-randevu.ics');
-    ModalUtils.close('calendarModal');
-    showToast('Takvim dosyası (.ics) indirildi', 'success');
+    getModalUtils().close('calendarModal');
+    downloadICS(true);
+    showToast('Takvim dosyası indirildi', 'success');
 }
+
+// ==================== ICS OLUŞTURMA ====================
 
 /**
  * ICS (iCalendar) dosya içeriği oluştur
@@ -197,55 +454,27 @@ export function downloadICSUniversal() {
  */
 export function generateICS(startDate: Date, endDate: Date): string {
     const appointment = lastAppointmentData();
+    const CONFIG = getConfig();
 
-    // Detaylı randevu bilgileri oluştur
     let description = 'RANDEVU BİLGİLERİ\\n\\n';
     let summary = 'Rolex Randevu';
-    const alarmTrigger = '-PT30M'; // Default
-    let alarms = null; // Müşteri takvimi için birden fazla alarm
+    let alarms: Array<{ trigger: string; description: string }> = [];
 
     if (appointment) {
-        // İsim formatlaması
         appointment.staffName = StringUtils.toTitleCase(appointment.staffName || '');
 
-        // Müşteri takvimi için randevu türü adı (shared config kullan)
         const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
             CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-        // Müşteri takvimi için başlık: İzmir İstinyepark Rolex - İlgili (Görüşme Türü)
         summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
 
-        // Tarih objesi oluştur
         const appointmentDate = new Date(appointment.date);
-
-        // 3 ayrı alarm: 1 gün önce, randevu günü sabah 10:00, 1 saat önce
-        alarms = [
-            { trigger: '-P1D', description: 'Yarın randevunuz var. Lütfen kimlik belgenizi yanınızda bulundurun.' },
-            { trigger: '-PT1H', description: '1 saat sonra randevunuz var. Lütfen zamanında gelin.' }
-        ];
-
-        // Randevu günü sabah 10:00 için dinamik hesaplama
-        // Örnek: Randevu 13:00 ise, 3 saat önce (10:00'da alarm)
-        const appointmentHour = parseInt((appointment.time || '12:00').split(':')[0]);
-        const hoursUntilMorning = appointmentHour - 10; // 13 - 10 = 3 saat önce
-
-        // Sadece randevu saat 10:00'dan sonraysa sabah alarmı ekle
-        if (hoursUntilMorning > 0) {
-            alarms.splice(1, 0, {
-                trigger: `-PT${hoursUntilMorning}H`,
-                description: 'Bugün randevunuz var. Rolex İzmir İstinyepark.'
-            });
-        }
-
-        // Yeni sıralama: İlgili, İletişim, E-posta, Tarih, Saat, Konu, Ek Bilgi
-        description += `İlgili: ${appointment.staffName}\\n`;
-        description += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\\n`;
-        description += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\\n`;
-
-        // Tarih formatla
         const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
         const formattedDate = appointmentDate.toLocaleDateString('tr-TR', options);
 
+        description += `İlgili: ${appointment.staffName}\\n`;
+        description += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\\n`;
+        description += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\\n`;
         description += `Tarih: ${formattedDate}\\n`;
         description += `Saat: ${appointment.time}\\n`;
         description += `Konu: ${appointmentTypeName}\\n`;
@@ -255,11 +484,23 @@ export function generateICS(startDate: Date, endDate: Date): string {
         }
 
         description += `\\nRandevunuza zamanında gelmenizi rica ederiz.\\nLütfen kimlik belgenizi yanınızda bulundurun.`;
-    } else {
-        description = 'Randevunuz onaylandı';
+
+        // 3 ayrı alarm: 1 gün önce, sabah, 1 saat önce
+        alarms = [
+            { trigger: '-P1D', description: 'Yarın randevunuz var. Lütfen kimlik belgenizi yanınızda bulundurun.' },
+            { trigger: '-PT1H', description: '1 saat sonra randevunuz var. Lütfen zamanında gelin.' }
+        ];
+
+        const appointmentHour = parseInt((appointment.time || '12:00').split(':')[0]);
+        const hoursUntilMorning = appointmentHour - 10;
+        if (hoursUntilMorning > 0) {
+            alarms.splice(1, 0, {
+                trigger: `-PT${hoursUntilMorning}H`,
+                description: 'Bugün randevunuz var. Rolex İzmir İstinyepark.'
+            });
+        }
     }
 
-    // ICS içeriği - VTIMEZONE tanımı ile
     const icsContent = [
         'BEGIN:VCALENDAR',
         'VERSION:2.0',
@@ -288,36 +529,16 @@ export function generateICS(startDate: Date, endDate: Date): string {
         'ORGANIZER;CN=Rolex İzmir İstinyepark:mailto:istinyeparkrolex35@gmail.com'
     ];
 
-    // Alarm dizisi varsa (müşteri takvimi), her biri için VALARM bloğu ekle
-    if (alarms && alarms.length > 0) {
-        alarms.forEach((alarm: any) => {
-            // TRIGGER formatı: VALUE=DATE-TIME için ; kullan, relative için : kullan
-            const triggerLine = alarm.trigger.startsWith('VALUE=')
-                ? `TRIGGER;${alarm.trigger}`
-                : `TRIGGER:${alarm.trigger}`;
-
-            icsContent.push(
-                'BEGIN:VALARM',
-                triggerLine,
-                'ACTION:DISPLAY',
-                `DESCRIPTION:${alarm.description}`,
-                'END:VALARM'
-            );
-        });
-    } else {
-        // Alarm dizisi yoksa (eski format), tek alarm ekle
-        const triggerLine = alarmTrigger.startsWith('VALUE=')
-            ? `TRIGGER;${alarmTrigger}`
-            : `TRIGGER:${alarmTrigger}`;
-
+    // Alarmlar ekle
+    alarms.forEach((alarm) => {
         icsContent.push(
             'BEGIN:VALARM',
-            triggerLine,
+            `TRIGGER:${alarm.trigger}`,
             'ACTION:DISPLAY',
-            'DESCRIPTION:Randevunuza zamanında gelmenizi rica ederiz. Lütfen kimlik belgenizi yanınızda bulundurun.',
+            `DESCRIPTION:${alarm.description}`,
             'END:VALARM'
         );
-    }
+    });
 
     icsContent.push(
         'END:VEVENT',
@@ -325,140 +546,4 @@ export function generateICS(startDate: Date, endDate: Date): string {
     );
 
     return icsContent.join('\r\n');
-}
-
-// ==================== YARDIMCI FONKSİYONLAR ====================
-
-/**
- * Gelişmiş Platform ve Tarayıcı Tespiti
- * iOS, Android, macOS, Windows, Safari, Chrome, Firefox, Edge tespiti
- */
-function detectPlatform() {
-    const ua = navigator.userAgent;
-    const platform = navigator.platform || '';
-
-    const detection = {
-        // Operating System
-        ios: /iPhone|iPad|iPod/.test(ua) && !(window as any).MSStream,
-        android: /Android/.test(ua),
-        macos: /Mac/.test(platform) && !/iPhone|iPad|iPod/.test(ua),
-        windows: /Win/.test(platform),
-
-        // Browser
-        safari: /Safari/.test(ua) && !/Chrome|CriOS/.test(ua),
-        chrome: /Chrome|CriOS/.test(ua),
-        firefox: /Firefox|FxiOS/.test(ua),
-        edge: /Edg/.test(ua),
-
-        // Mobile
-        mobile: /iPhone|iPad|iPod|Android/.test(ua)
-    };
-
-    return detection;
-}
-
-/**
- * ICS dosyasını indir
- * Blob kullanarak güvenli download
- */
-function downloadICSFile(icsContent: string, filename: string): void {
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-
-    // Cleanup
-    setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }, 100);
-}
-
-/**
- * Toast bildirim göster
- * Kullanıcıya kısa süreli bilgi mesajı gösterir (3 saniye)
- */
-function showToast(message: string, type: string = 'success'): void {
-    const existing = document.querySelector('.toast');
-    if (existing) existing.remove();
-
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.textContent = message;
-
-    // Stil ekle
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-        color: white;
-        padding: 12px 24px;
-        border-radius: 4px;
-        font-size: 14px;
-        z-index: 10001;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        animation: slideUp 0.3s ease;
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity 0.3s';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-/**
- * iOS Rehber Modalı
- * iOS kullanıcılarına ICS dosyasını nasıl açacaklarını gösterir
- */
-function showIOSGuide() {
-    ModalUtils.open('guideModal');
-}
-
-/**
- * Apple cihazlar için ICS İndirme (fallback)
- * detectPlatform sonucuna göre iOS veya macOS için özel işlem
- */
-// @ts-ignore - Intentionally unused fallback function, kept for future use
-function _downloadICSForApple(platformType: string): void {
-    const appointment = lastAppointmentData();
-    const date = new Date(appointment.date + 'T' + appointment.time);
-    const duration = appointment.duration || CONFIG.APPOINTMENT_HOURS.interval || 60;
-    const endDate = new Date(date.getTime() + duration * 60000);
-
-    const icsContent = generateICS(date, endDate);
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = 'rolex-randevu.ics';
-    link.style.display = 'none';
-
-    if (platformType === 'ios') {
-        link.setAttribute('target', '_blank');
-        link.setAttribute('rel', 'noopener');
-    }
-
-    document.body.appendChild(link);
-    link.click();
-
-    if (platformType === 'ios') {
-        setTimeout(() => showIOSGuide(), 1500);
-    } else {
-        showToast('ICS dosyası indirildi', 'success');
-    }
-
-    setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-    }, 100);
 }

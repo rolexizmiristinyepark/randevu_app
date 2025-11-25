@@ -132,3 +132,28 @@ const AuthService = {
     }
   }
 };
+
+// ==================== STANDALONE FUNCTIONS ====================
+// These can be run directly from the Apps Script editor
+
+/**
+ * Send API Key to admin email
+ * Run this function manually to grant MailApp permissions
+ * @function
+ */
+function sendApiKeyToAdmin() {
+  const result = AuthService.initializeApiKey();
+  Logger.log('API Key: ' + result.apiKey);
+  Logger.log('Result: ' + JSON.stringify(result));
+  return result;
+}
+
+/**
+ * Get current API Key (logs to console)
+ * @function
+ */
+function showCurrentApiKey() {
+  const key = AuthService.getApiKey();
+  Logger.log('Current API Key: ' + key);
+  return key;
+}
