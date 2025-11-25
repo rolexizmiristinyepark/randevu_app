@@ -51,9 +51,11 @@ describe('ApiService', () => {
 
     it('should require authentication for protected actions', async () => {
       // No AdminAuth, no API key → should trigger showLoginModal
-      (global as any).window.AdminAuth = {
-        isAuthenticated: () => null, // Not authenticated
-        showLoginModal: vi.fn()
+      (global as any).window = {
+        AdminAuth: {
+          isAuthenticated: () => null, // Not authenticated
+          showLoginModal: vi.fn()
+        }
       };
 
       await expect(
@@ -83,8 +85,10 @@ describe('ApiService', () => {
 
     it('should accept protected action with AdminAuth', async () => {
       // Mock AdminAuth
-      (global as any).window.AdminAuth = {
-        isAuthenticated: () => 'admin-key-from-auth'
+      (global as any).window = {
+        AdminAuth: {
+          isAuthenticated: () => 'admin-key-from-auth'
+        }
       };
 
       fetchMock.mockResolvedValueOnce({

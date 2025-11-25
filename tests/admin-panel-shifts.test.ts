@@ -23,9 +23,6 @@ import {
   mockFetchSuccess,
   mockFetchError,
   getElement,
-  getInputValue,
-  setInputValue,
-  clickButton,
   nextTick,
   // Shift helpers
   getCurrentWeek,
@@ -39,21 +36,11 @@ import {
   createEmptyWeekShifts,
   createDayShift,
   mergeShiftData,
-  getShiftTable,
-  getShiftSelects,
-  getShiftSelect,
-  setShiftValue,
-  getShiftValue,
   getWeekInputValue,
   setWeekInputValue,
   getSavedShiftsContainer,
-  isShiftTableRendered,
-  getShiftTableRowCount,
-  getShiftTableHeaders,
   isValidWeekString,
-  isValidShiftType,
-  createMockShiftResponse,
-  createMockMonthShifts
+  isValidShiftType
 } from './helpers/test-utils';
 
 describe('Admin Panel - Shift Management', () => {
@@ -425,7 +412,7 @@ describe('Admin Panel - Shift Management', () => {
       const options = ['Off', 'Sabah', 'Akşam', 'Full'];
       const values = ['', 'morning', 'evening', 'full'];
 
-      options.forEach((option, index) => {
+      options.forEach((_option, index) => {
         expect(values[index]).toBeDefined();
       });
     });
@@ -618,7 +605,7 @@ describe('Admin Panel - Shift Management', () => {
         weeks[weekKey].push(date);
       });
 
-      expect(weeks['2024-01-15'].length).toBe(3);
+      expect(weeks['2024-01-15']?.length).toBe(3);
     });
 
     it('should show week date range (Monday - Sunday)', () => {
@@ -705,8 +692,7 @@ describe('Admin Panel - Shift Management', () => {
       const initialShifts = createDayShift('2024-01-15', 'staff-1', 'morning');
 
       mockFetch(mockFetchSuccess(initialShifts));
-      const response1 = await fetch('/api/saveShifts');
-      const result1 = await response1.json();
+      await fetch('/api/saveShifts');
 
       const newShifts = createDayShift('2024-01-15', 'staff-1', 'evening');
 
@@ -725,7 +711,7 @@ describe('Admin Panel - Shift Management', () => {
         createDayShift('2024-01-15', 'staff-3', 'full')
       );
 
-      expect(Object.keys(shiftsData['2024-01-15'])).toHaveLength(3);
+      expect(Object.keys(shiftsData['2024-01-15'] || {})).toHaveLength(3);
     });
 
     it('should handle week navigation and reload', async () => {

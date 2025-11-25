@@ -17,11 +17,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   setupAdminPanelTest,
   cleanupAdminPanelTest,
-  getElement,
-  getInputValue,
-  setInputValue,
-  hideLoading,
-  isLoading
+  getElement
 } from './helpers/test-utils';
 
 describe('Admin Panel - Initialization', () => {
@@ -54,25 +50,25 @@ describe('Admin Panel - Initialization', () => {
 
     it('should check if AdminAuth module is loaded', () => {
       // Module not loaded
-      window.AdminAuth = undefined;
-      expect(typeof window.AdminAuth).toBe('undefined');
+      (window as any).AdminAuth = undefined;
+      expect(typeof (window as any).AdminAuth).toBe('undefined');
 
       // Module loaded
-      window.AdminAuth = {
+      (window as any).AdminAuth = {
         isAuthenticated: vi.fn(() => true),
         showLoginModal: vi.fn()
       };
-      expect(typeof window.AdminAuth).not.toBe('undefined');
+      expect(typeof (window as any).AdminAuth).not.toBe('undefined');
     });
 
     it('should retry if AdminAuth not loaded', () => {
       // Simulate module not loaded
-      window.AdminAuth = undefined;
+      (window as any).AdminAuth = undefined;
 
       let retryCalled = false;
 
       // This simulates the retry logic
-      if (typeof window.AdminAuth === 'undefined') {
+      if (typeof (window as any).AdminAuth === 'undefined') {
         // Would call setTimeout(() => initAdmin(), 50) in real code
         retryCalled = true;
       }
@@ -81,26 +77,26 @@ describe('Admin Panel - Initialization', () => {
     });
 
     it('should show login modal if not authenticated', () => {
-      window.AdminAuth = {
+      (window as any).AdminAuth = {
         isAuthenticated: vi.fn(() => false),
         showLoginModal: vi.fn()
       };
 
-      if (!window.AdminAuth.isAuthenticated()) {
-        window.AdminAuth.showLoginModal();
+      if (!(window as any).AdminAuth.isAuthenticated()) {
+        (window as any).AdminAuth.showLoginModal();
       }
 
-      expect(window.AdminAuth.showLoginModal).toHaveBeenCalled();
+      expect((window as any).AdminAuth.showLoginModal).toHaveBeenCalled();
     });
 
     it('should proceed to startApp if authenticated', () => {
-      window.AdminAuth = {
+      (window as any).AdminAuth = {
         isAuthenticated: vi.fn(() => true)
       };
 
       let appStarted = false;
 
-      if (window.AdminAuth.isAuthenticated()) {
+      if ((window as any).AdminAuth.isAuthenticated()) {
         appStarted = true;
       }
 
@@ -112,23 +108,23 @@ describe('Admin Panel - Initialization', () => {
   //#region startApp Tests
   describe('startApp', () => {
     it('should call AdminAuth.addLogoutButton', () => {
-      window.AdminAuth = {
+      (window as any).AdminAuth = {
         addLogoutButton: vi.fn()
       };
 
-      window.AdminAuth.addLogoutButton();
+      (window as any).AdminAuth.addLogoutButton();
 
-      expect(window.AdminAuth.addLogoutButton).toHaveBeenCalled();
+      expect((window as any).AdminAuth.addLogoutButton).toHaveBeenCalled();
     });
 
     it('should start activity tracking', () => {
-      window.AdminAuth = {
+      (window as any).AdminAuth = {
         _startActivityTracking: vi.fn()
       };
 
-      window.AdminAuth._startActivityTracking();
+      (window as any).AdminAuth._startActivityTracking();
 
-      expect(window.AdminAuth._startActivityTracking).toHaveBeenCalled();
+      expect((window as any).AdminAuth._startActivityTracking).toHaveBeenCalled();
     });
 
     it('should have loading overlay visible initially', () => {
@@ -298,8 +294,6 @@ describe('Admin Panel - Initialization', () => {
     });
 
     it('should handle click event delegation', () => {
-      const staffList = getElement('staffList');
-
       // Create mock event
       const mockEvent = {
         target: {
@@ -316,7 +310,7 @@ describe('Admin Panel - Initialization', () => {
 
       const button = mockEvent.target.closest('[data-action]');
       expect(button).toBeDefined();
-      expect(button.dataset.action).toBe('edit');
+      expect(button?.dataset.action).toBe('edit');
     });
   });
   //#endregion
@@ -595,13 +589,13 @@ describe('Admin Panel - Initialization', () => {
     });
 
     it('should check if ShiftManager exists before calling', () => {
-      window.ShiftManager = undefined;
+      (window as any).ShiftManager = undefined;
 
-      expect(typeof window.ShiftManager).toBe('undefined');
+      expect(typeof (window as any).ShiftManager).toBe('undefined');
 
       // Should not call updateShiftLabels
-      if (typeof window.ShiftManager !== 'undefined' && window.ShiftManager.updateShiftLabels) {
-        window.ShiftManager.updateShiftLabels();
+      if (typeof (window as any).ShiftManager !== 'undefined' && (window as any).ShiftManager.updateShiftLabels) {
+        (window as any).ShiftManager.updateShiftLabels();
       }
 
       // No error thrown
@@ -609,15 +603,15 @@ describe('Admin Panel - Initialization', () => {
     });
 
     it('should call updateShiftLabels if ShiftManager exists', () => {
-      window.ShiftManager = {
+      (window as any).ShiftManager = {
         updateShiftLabels: vi.fn()
       };
 
-      if (typeof window.ShiftManager !== 'undefined' && window.ShiftManager.updateShiftLabels) {
-        window.ShiftManager.updateShiftLabels();
+      if (typeof (window as any).ShiftManager !== 'undefined' && (window as any).ShiftManager.updateShiftLabels) {
+        (window as any).ShiftManager.updateShiftLabels();
       }
 
-      expect(window.ShiftManager.updateShiftLabels).toHaveBeenCalled();
+      expect((window as any).ShiftManager.updateShiftLabels).toHaveBeenCalled();
     });
   });
   //#endregion
