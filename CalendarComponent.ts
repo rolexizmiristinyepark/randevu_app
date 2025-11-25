@@ -331,6 +331,9 @@ export async function loadMonthData(): Promise<void> {
     const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
     const monthStr = currentMonth.toISOString().slice(0, 7); // YYYY-MM
 
+    // ⚡ UX: Show loading overlay immediately (before any checks)
+    showCalendarLoading();
+
     // ⭐ VERSION-BASED CACHE INVALIDATION
     // When admin deletes/edits appointment, backend increments version → cache invalidate
     try {
@@ -368,12 +371,10 @@ export async function loadMonthData(): Promise<void> {
             // ⚡ BUG FIX: Clear memoization cache before re-render to prevent stale availability data
             clearAvailabilityCache();
             renderCalendar();
+            hideCalendarLoading(); // Hide overlay after cache hit
             return;
         }
     }
-
-    // ⚡ PERFORMANCE FIX: Show loading in calendar grid only, don't destroy page
-    showCalendarLoading();
 
     try {
         // Load shifts and appointments in parallel
