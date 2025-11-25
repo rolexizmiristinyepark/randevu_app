@@ -13,6 +13,27 @@ import { ButtonUtils } from './button-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
 
+// ==================== TURNSTILE RESET ====================
+
+/**
+ * Reset Cloudflare Turnstile widget
+ * Called after failed submission to get a new token
+ */
+function resetTurnstile(): void {
+    try {
+        const turnstile = (window as any).turnstile;
+        if (turnstile) {
+            // Get the widget ID from the container
+            const widgetContainer = document.getElementById('turnstileWidget');
+            if (widgetContainer) {
+                turnstile.reset(widgetContainer);
+            }
+        }
+    } catch (error) {
+        console.warn('Turnstile reset failed:', error);
+    }
+}
+
 // ==================== FORM SUBMISSION ====================
 
 /**
@@ -141,11 +162,15 @@ async function handleFormSubmit(): Promise<void> {
         } else {
             showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
             ButtonUtils.reset(btn);
+            // ⚡ FIX: Reset Turnstile widget after error (token is single-use)
+            resetTurnstile();
         }
     } catch (error) {
         logError(error as Error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
         showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
         ButtonUtils.reset(btn);
+        // ⚡ FIX: Reset Turnstile widget after error (token is single-use)
+        resetTurnstile();
     }
 }
 
