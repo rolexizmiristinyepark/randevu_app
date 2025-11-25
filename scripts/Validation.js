@@ -79,17 +79,8 @@ const ValidationService = {
           };
         }
 
-        // KURAL 4: Teslim/Gönderi ise - Personel limiti kontrolü (max 2/gün/personel)
-        if (staffId) {
-          const staffDeliveryCount = AvailabilityService.getDeliveryCountByStaff(date, staffId);
-
-          if (staffDeliveryCount >= 2) {
-            return {
-              valid: false,
-              error: 'Bu personel için günlük teslim/gönderi randevu limiti doldu (max 2). Lütfen başka bir personel veya gün seçin.'
-            };
-          }
-        }
+        // KURAL 4: KALDIRILDI - Personel bazlı teslim limiti artık yok
+        // Sadece global günlük limit (max 3) geçerli
       }
 
       // Tüm kontroller geçildi
