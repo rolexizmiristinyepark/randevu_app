@@ -219,6 +219,12 @@ document.addEventListener('DOMContentLoaded', async () => {
         mainSpinner.style.display = 'none';
     }
 
+    // ⚡ FIX: Submit butonu ve Turnstile'ı kesinlikle gizle (slot seçilene kadar görünmemeli)
+    const submitBtn = document.getElementById('submitBtn');
+    const turnstileContainer = document.getElementById('turnstileContainer');
+    if (submitBtn) submitBtn.style.display = 'none';
+    if (turnstileContainer) turnstileContainer.style.display = 'none';
+
     // Buton section'ını göster ve animate et
     if (typesContainer) {
         typesContainer.style.display = 'grid';
