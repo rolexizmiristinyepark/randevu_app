@@ -200,8 +200,11 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             return;
         }
 
-        const { availableHours } = dayStatusResult.data as any;
-        const { slots } = slotsResult.data as any;
+        // Handle both response formats: { data: { availableHours } } or { availableHours }
+        const dayStatusData = (dayStatusResult as any).data || dayStatusResult;
+        const slotsData = (slotsResult as any).data || slotsResult;
+        const { availableHours } = dayStatusData as any;
+        const { slots } = slotsData as any;
 
         container.innerHTML = '';
 
