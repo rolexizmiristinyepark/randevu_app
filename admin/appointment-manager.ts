@@ -21,7 +21,9 @@ declare const window: Window & {
     createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
 };
 
-const { UI, createElement } = window;
+// Lazy accessors to avoid module load order issues
+const getUI = () => window.UI;
+const getCreateElement = () => window.createElement;
 
 /**
  * Initialize Appointment Manager module
@@ -66,7 +68,7 @@ async function load(): Promise<void> {
 
     // Clear and show loading
     container.textContent = '';
-    const loadingMsg = createElement('p', {
+    const loadingMsg = getCreateElement()('p', {
         style: { textAlign: 'center', padding: '20px' }
     }, 'Yükleniyor...');
     container.appendChild(loadingMsg);
@@ -107,7 +109,7 @@ async function load(): Promise<void> {
 
         if (result.error) {
             container.textContent = '';
-            const errorMsg = createElement('p', {
+            const errorMsg = getCreateElement()('p', {
                 style: { textAlign: 'center', color: '#dc3545', padding: '20px' }
             }, '❌ Hata: ' + result.error);
             container.appendChild(errorMsg);
@@ -116,7 +118,7 @@ async function load(): Promise<void> {
         }
     } catch (error) {
         container.textContent = '';
-        const errorMsg = createElement('p', {
+        const errorMsg = getCreateElement()('p', {
             style: { textAlign: 'center', color: '#dc3545', padding: '20px' }
         }, '❌ Yükleme hatası');
         container.appendChild(errorMsg);
@@ -132,13 +134,13 @@ async function deleteAppointment(eventId: string): Promise<void> {
     try {
         const result = await ApiService.call('deleteAppointment', { eventId });
         if (result.success) {
-            UI.showAlert('✅ Randevu silindi', 'success');
+            getUI().showAlert('✅ Randevu silindi', 'success');
             load();
         } else {
-            UI.showAlert('❌ Silme hatası: ' + result.error, 'error');
+            getUI().showAlert('❌ Silme hatası: ' + result.error, 'error');
         }
     } catch (error) {
-        UI.showAlert('❌ Silme hatası', 'error');
+        getUI().showAlert('❌ Silme hatası', 'error');
     }
 }
 
@@ -172,7 +174,7 @@ function openEditModal(appointment: any): void {
         document.getElementById('editAppointmentModal')?.classList.add('active');
     } catch (error) {
         console.error('Modal açma hatası:', error, appointment);
-        UI.showAlert('❌ Randevu tarihi okunamadı', 'error');
+        getUI().showAlert('❌ Randevu tarihi okunamadı', 'error');
     }
 }
 
@@ -194,7 +196,7 @@ async function saveEditedAppointment(): Promise<void> {
     const newTime = (document.getElementById('editAppointmentTime') as HTMLInputElement).value;
 
     if (!newDate || !newTime) {
-        UI.showAlert('❌ Lütfen tarih ve saat seçin', 'error');
+        getUI().showAlert('❌ Lütfen tarih ve saat seçin', 'error');
         return;
     }
 
@@ -206,14 +208,14 @@ async function saveEditedAppointment(): Promise<void> {
         });
 
         if (result.success) {
-            UI.showAlert('✅ Randevu güncellendi', 'success');
+            getUI().showAlert('✅ Randevu güncellendi', 'success');
             closeEditModal();
             load();
         } else {
-            UI.showAlert('❌ Güncelleme hatası: ' + result.error, 'error');
+            getUI().showAlert('❌ Güncelleme hatası: ' + result.error, 'error');
         }
     } catch (error) {
-        UI.showAlert('❌ Güncelleme hatası', 'error');
+        getUI().showAlert('❌ Güncelleme hatası', 'error');
     }
 }
 
@@ -248,7 +250,7 @@ function openAssignStaffModal(appointment: any): void {
 
         const activeStaff = dataStore.staff.filter(s => s.active);
         activeStaff.forEach(staff => {
-            const option = createElement('option', { value: staff.id }, staff.name) as HTMLOptionElement;
+            const option = getCreateElement()('option', { value: staff.id }, staff.name) as HTMLOptionElement;
             select.appendChild(option);
         });
     }
@@ -275,7 +277,7 @@ async function saveAssignedStaff(): Promise<void> {
     const btn = document.getElementById('saveAssignStaffBtn') as HTMLButtonElement;
 
     if (!staffId) {
-        UI.showAlert('❌ Lütfen personel seçin', 'error');
+        getUI().showAlert('❌ Lütfen personel seçin', 'error');
         return;
     }
 
@@ -288,14 +290,14 @@ async function saveAssignedStaff(): Promise<void> {
         });
 
         if (result.success) {
-            UI.showAlert('✅ ' + (result as any).staffName + ' atandı', 'success');
+            getUI().showAlert('✅ ' + (result as any).staffName + ' atandı', 'success');
             closeAssignStaffModal();
             load();
         } else {
-            UI.showAlert('❌ Atama hatası: ' + result.error, 'error');
+            getUI().showAlert('❌ Atama hatası: ' + result.error, 'error');
         }
     } catch (error) {
-        UI.showAlert('❌ Atama hatası', 'error');
+        getUI().showAlert('❌ Atama hatası', 'error');
     } finally {
         ButtonUtils.reset(btn);
     }
@@ -312,7 +314,7 @@ function render(appointments: any[]): void {
     container.textContent = '';
 
     if (appointments.length === 0) {
-        const emptyMsg = createElement('p', {
+        const emptyMsg = getCreateElement()('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Randevu bulunamadı');
         container.appendChild(emptyMsg);
@@ -335,7 +337,7 @@ function render(appointments: any[]): void {
         const date = new Date(dateKey + 'T12:00:00');
 
         // Date header
-        const dateHeader = createElement('h3', {
+        const dateHeader = getCreateElement()('h3', {
             style: {
                 margin: '20px 0 12px 0',
                 color: '#1A1A2E',
@@ -358,7 +360,7 @@ function render(appointments: any[]): void {
             const isVipLink = apt.extendedProperties?.private?.isVipLink === 'true';
 
             // Appointment card container
-            const aptCard = createElement('div', {
+            const aptCard = getCreateElement()('div', {
                 style: {
                     background: 'white',
                     padding: '18px',
@@ -369,19 +371,19 @@ function render(appointments: any[]): void {
             });
 
             // Main flex container
-            const flexContainer = createElement('div', {
+            const flexContainer = getCreateElement()('div', {
                 style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start' }
             });
 
             // Left side - appointment details
-            const detailsDiv = createElement('div', {
+            const detailsDiv = getCreateElement()('div', {
                 style: { flex: '1' }
             });
 
             // Time range
             const startTime = start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             const endTime = end.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            const timeDiv = createElement('div', {
+            const timeDiv = getCreateElement()('div', {
                 style: {
                     fontWeight: '400',
                     color: '#1A1A2E',
@@ -392,27 +394,27 @@ function render(appointments: any[]): void {
             }, `${startTime} - ${endTime}`);
 
             // Details text
-            const infoDiv = createElement('div', {
+            const infoDiv = getCreateElement()('div', {
                 style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' }
             });
 
-            const customerLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Müşteri: ');
+            const customerLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Müşteri: ');
             infoDiv.appendChild(customerLabel);
             infoDiv.appendChild(document.createTextNode(customerName));
-            infoDiv.appendChild(createElement('br'));
+            infoDiv.appendChild(getCreateElement()('br'));
 
-            const phoneLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Telefon: ');
+            const phoneLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Telefon: ');
             infoDiv.appendChild(phoneLabel);
             infoDiv.appendChild(document.createTextNode(phone));
-            infoDiv.appendChild(createElement('br'));
+            infoDiv.appendChild(getCreateElement()('br'));
 
-            const staffLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'İlgili: ');
+            const staffLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'İlgili: ');
             infoDiv.appendChild(staffLabel);
             infoDiv.appendChild(document.createTextNode(staff?.name || '-'));
 
             if (customerNote) {
-                infoDiv.appendChild(createElement('br'));
-                const noteLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Not: ');
+                infoDiv.appendChild(getCreateElement()('br'));
+                const noteLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Not: ');
                 infoDiv.appendChild(noteLabel);
                 infoDiv.appendChild(document.createTextNode(customerNote));
             }
@@ -421,12 +423,12 @@ function render(appointments: any[]): void {
             detailsDiv.appendChild(infoDiv);
 
             // Right side - action buttons
-            const buttonsDiv = createElement('div', {
+            const buttonsDiv = getCreateElement()('div', {
                 style: { display: 'flex', flexDirection: 'column', gap: '8px' }
             });
 
             // Edit button
-            const editBtn = createElement('button', {
+            const editBtn = getCreateElement()('button', {
                 className: 'btn btn-small btn-secondary'
             }, 'Düzenle');
             editBtn.addEventListener('click', () => {
@@ -434,7 +436,7 @@ function render(appointments: any[]): void {
             });
 
             // Cancel button
-            const cancelBtn = createElement('button', {
+            const cancelBtn = getCreateElement()('button', {
                 className: 'btn btn-small btn-secondary'
             }, 'İptal Et');
             cancelBtn.addEventListener('click', () => {
@@ -449,7 +451,7 @@ function render(appointments: any[]): void {
             const hasNoStaff = !staffId || !staff || staffName === 'Atanmadı' || staffName === '-';
 
             if (isVipLink && hasNoStaff) {
-                const assignBtn = createElement('button', {
+                const assignBtn = getCreateElement()('button', {
                     className: 'btn btn-small',
                     style: {
                         background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)',

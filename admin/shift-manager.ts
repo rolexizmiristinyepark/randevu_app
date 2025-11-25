@@ -21,7 +21,9 @@ declare global {
     }
 }
 
-const { UI, createElement } = window;
+// Lazy accessors to avoid module load order issues
+const getUI = () => window.UI;
+const getCreateElement = () => window.createElement;
 
 /**
  * Initialize Shift Manager module
@@ -79,7 +81,7 @@ async function load(): Promise<void> {
     const weekValue = weekInput?.value;
 
     if (!weekValue) {
-        UI.showAlert('❌ Hafta seçin!', 'error');
+        getUI().showAlert('❌ Hafta seçin!', 'error');
         return;
     }
 
@@ -140,7 +142,7 @@ function nextWeek(): void {
  */
 async function save(): Promise<void> {
     if (!currentWeek) {
-        UI.showAlert('❌ Önce hafta yükleyin!', 'error');
+        getUI().showAlert('❌ Önce hafta yükleyin!', 'error');
         return;
     }
 
@@ -171,12 +173,12 @@ async function save(): Promise<void> {
             // Merge with local data
             Object.assign(dataStore.shifts, shiftsData);
             renderSaved();
-            UI.showAlert('✅ Vardiyalar kaydedildi!', 'success');
+            getUI().showAlert('✅ Vardiyalar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'saveShifts', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveShifts', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Kaydetme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(UI));
     } finally {
         ButtonUtils.reset(btn);
     }
@@ -201,14 +203,14 @@ function render(): void {
     const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 
     // Create table with createElement
-    const table = createElement('table', { className: 'shift-table' });
+    const table = getCreateElement()('table', { className: 'shift-table' });
 
     // Table head
-    const thead = createElement('thead');
-    const headerRow = createElement('tr');
+    const thead = getCreateElement()('thead');
+    const headerRow = getCreateElement()('tr');
 
     // First header cell - "İlgili"
-    const staffHeader = createElement('th', {}, 'İlgili');
+    const staffHeader = getCreateElement()('th', {}, 'İlgili');
     headerRow.appendChild(staffHeader);
 
     // Day headers
@@ -217,10 +219,10 @@ function render(): void {
         d.setDate(weekStart.getDate() + i);
         const dateStr = d.getDate() + ' ' + (d.getMonth() + 1);
 
-        const dayHeader = createElement('th');
+        const dayHeader = getCreateElement()('th');
         dayHeader.appendChild(document.createTextNode(days[i] || ''));
-        dayHeader.appendChild(createElement('br'));
-        const small = createElement('small', {}, String(dateStr));
+        dayHeader.appendChild(getCreateElement()('br'));
+        const small = getCreateElement()('small', {}, String(dateStr));
         dayHeader.appendChild(small);
         headerRow.appendChild(dayHeader);
     }
@@ -229,13 +231,13 @@ function render(): void {
     table.appendChild(thead);
 
     // Table body
-    const tbody = createElement('tbody');
+    const tbody = getCreateElement()('tbody');
 
     dataStore.staff.filter(s => s.active).forEach(staff => {
-        const staffRow = createElement('tr');
+        const staffRow = getCreateElement()('tr');
 
         // Staff name cell
-        const nameCell = createElement('td', {
+        const nameCell = getCreateElement()('td', {
             style: { textAlign: 'left', fontWeight: '400' }
         }, staff.name);
         staffRow.appendChild(nameCell);
@@ -248,8 +250,8 @@ function render(): void {
             const dateKey = DateUtils.toLocalDate(d);
             const current = dataStore.shifts[dateKey]?.[staff.id] || '';
 
-            const dayCell = createElement('td');
-            const select = createElement('select', {
+            const dayCell = getCreateElement()('td');
+            const select = getCreateElement()('select', {
                 className: 'shift-select',
                 'data-staff': staff.id,
                 'data-date': dateKey,
@@ -257,16 +259,16 @@ function render(): void {
             }) as HTMLSelectElement;
 
             // Options - full words
-            const opt1 = createElement('option', { value: '' }) as HTMLOptionElement;
+            const opt1 = getCreateElement()('option', { value: '' }) as HTMLOptionElement;
             opt1.textContent = 'Off';
 
-            const opt2 = createElement('option', { value: 'morning' }) as HTMLOptionElement;
+            const opt2 = getCreateElement()('option', { value: 'morning' }) as HTMLOptionElement;
             opt2.textContent = 'Sabah';
 
-            const opt3 = createElement('option', { value: 'evening' }) as HTMLOptionElement;
+            const opt3 = getCreateElement()('option', { value: 'evening' }) as HTMLOptionElement;
             opt3.textContent = 'Akşam';
 
-            const opt4 = createElement('option', { value: 'full' }) as HTMLOptionElement;
+            const opt4 = getCreateElement()('option', { value: 'full' }) as HTMLOptionElement;
             opt4.textContent = 'Full';
 
             // Set selected option
@@ -334,7 +336,7 @@ function renderSaved(): void {
     container.textContent = '';
 
     if (dates.length === 0) {
-        const emptyMsg = createElement('p', {
+        const emptyMsg = getCreateElement()('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Kayıtlı plan yok');
         container.appendChild(emptyMsg);
@@ -374,7 +376,7 @@ function renderSaved(): void {
         weekEnd.setDate(weekStartDate.getDate() + 6);
 
         // Week container
-        const weekDiv = createElement('div', {
+        const weekDiv = getCreateElement()('div', {
             style: {
                 background: 'white',
                 padding: '18px',
@@ -385,12 +387,12 @@ function renderSaved(): void {
         });
 
         // Container for title and button
-        const headerDiv = createElement('div', {
+        const headerDiv = getCreateElement()('div', {
             style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' }
         });
 
         // Week title - clickable
-        const titleDiv = createElement('div', {
+        const titleDiv = getCreateElement()('div', {
             style: {
                 fontWeight: '400',
                 fontSize: '13px',
@@ -408,7 +410,7 @@ function renderSaved(): void {
         });
 
         // Edit button
-        const editBtn = createElement('button', {
+        const editBtn = getCreateElement()('button', {
             className: 'btn btn-small btn-secondary'
         }, 'Düzenle');
         editBtn.addEventListener('click', () => {

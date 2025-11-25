@@ -16,7 +16,8 @@ declare const window: Window & {
     UI: any;
 };
 
-const { UI } = window;
+// Lazy accessor to avoid module load order issues
+const getUI = () => window.UI;
 
 /**
  * Initialize Settings Manager module
@@ -84,12 +85,12 @@ async function save(): Promise<void> {
 
         if (response.success) {
             dataStore.settings = response.data as any;
-            UI.showAlert('✅ Ayarlar kaydedildi!', 'success');
+            getUI().showAlert('✅ Ayarlar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'saveSettings', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveSettings', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Kaydetme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(UI));
     } finally {
         ButtonUtils.reset(btn);
     }
@@ -139,7 +140,7 @@ async function saveWhatsAppSettings(): Promise<void> {
     const accessToken = accessTokenInput?.value.trim();
 
     if (!phoneNumberId || !accessToken) {
-        UI.showAlert('❌ Lütfen tüm alanları doldurun', 'error');
+        getUI().showAlert('❌ Lütfen tüm alanları doldurun', 'error');
         return;
     }
 
@@ -152,15 +153,15 @@ async function saveWhatsAppSettings(): Promise<void> {
         });
 
         if (response.success) {
-            UI.showAlert('✅ WhatsApp ayarları kaydedildi', 'success');
+            getUI().showAlert('✅ WhatsApp ayarları kaydedildi', 'success');
             phoneNumberIdInput.value = '';
             accessTokenInput.value = '';
             loadWhatsAppSettings();
         } else {
-            UI.showAlert('❌ Hata: ' + response.error, 'error');
+            getUI().showAlert('❌ Hata: ' + response.error, 'error');
         }
     } catch (error: any) {
-        UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+        getUI().showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
     }
 }
 
@@ -205,12 +206,12 @@ async function saveSlackSettings(): Promise<void> {
     const webhookUrl = webhookUrlInput?.value.trim();
 
     if (!webhookUrl) {
-        UI.showAlert('❌ Lütfen Slack Webhook URL girin', 'error');
+        getUI().showAlert('❌ Lütfen Slack Webhook URL girin', 'error');
         return;
     }
 
     if (!webhookUrl.startsWith('https://hooks.slack.com/')) {
-        UI.showAlert('❌ Geçerli bir Slack Webhook URL girin', 'error');
+        getUI().showAlert('❌ Geçerli bir Slack Webhook URL girin', 'error');
         return;
     }
 
@@ -220,14 +221,14 @@ async function saveSlackSettings(): Promise<void> {
         });
 
         if (response.success) {
-            UI.showAlert('✅ Slack ayarları kaydedildi', 'success');
+            getUI().showAlert('✅ Slack ayarları kaydedildi', 'success');
             webhookUrlInput.value = '';
             loadSlackSettings();
         } else {
-            UI.showAlert('❌ Hata: ' + response.error, 'error');
+            getUI().showAlert('❌ Hata: ' + response.error, 'error');
         }
     } catch (error: any) {
-        UI.showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+        getUI().showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
     }
 }
 

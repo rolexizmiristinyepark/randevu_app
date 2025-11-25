@@ -19,7 +19,10 @@ declare const window: Window & {
     createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
 };
 
-const { CONFIG, UI, createElement } = window;
+// Lazy accessors to avoid module load order issues
+const getUI = () => window.UI;
+const getConfig = () => window.CONFIG;
+const getCreateElement = () => window.createElement;
 
 /**
  * Initialize Staff Manager module
@@ -90,7 +93,7 @@ async function add(): Promise<void> {
     // Validate
     const validation = ValidationUtils.validateStaffForm(name, phone, email);
     if (!validation.valid) {
-        UI.showAlert(validation.message, 'error');
+        getUI().showAlert(validation.message, 'error');
         return;
     }
 
@@ -103,12 +106,12 @@ async function add(): Promise<void> {
             inputPhone.value = '';
             inputEmail.value = '';
             render();
-            UI.showAlert('✅ ' + name + ' eklendi!', 'success');
+            getUI().showAlert('✅ ' + name + ' eklendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'addStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'addStaff', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Ekleme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Ekleme', getUI().showAlert.bind(UI));
     }
 }
 
@@ -122,12 +125,12 @@ async function toggle(id: number): Promise<void> {
         if (response.success) {
             dataStore.staff = response.data as StaffMember[];
             render();
-            UI.showAlert('✅ Durum değişti!', 'success');
+            getUI().showAlert('✅ Durum değişti!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'toggleStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'toggleStaff', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(UI));
     }
 }
 
@@ -146,12 +149,12 @@ async function remove(id: number): Promise<void> {
         if (response.success) {
             dataStore.staff = response.data as StaffMember[];
             render();
-            UI.showAlert('✅ ' + staff.name + ' silindi!', 'success');
+            getUI().showAlert('✅ ' + staff.name + ' silindi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'removeStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'removeStaff', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Silme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Silme', getUI().showAlert.bind(UI));
     }
 }
 
@@ -170,7 +173,7 @@ function render(): void {
     list.textContent = '';
 
     if (dataStore.staff.length === 0) {
-        const emptyMsg = createElement('p', {
+        const emptyMsg = getCreateElement()('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         list.appendChild(emptyMsg);
@@ -182,14 +185,14 @@ function render(): void {
 
     dataStore.staff.forEach(s => {
         // Staff item container
-        const staffItem = createElement('div', { className: 'staff-item' });
+        const staffItem = getCreateElement()('div', { className: 'staff-item' });
 
         // Staff info section
-        const staffInfo = createElement('div', { className: 'staff-info' });
+        const staffInfo = getCreateElement()('div', { className: 'staff-info' });
 
-        const infoDiv = createElement('div');
-        const nameDiv = createElement('div', { className: 'staff-name' }, s.name);
-        const detailsDiv = createElement('div', {
+        const infoDiv = getCreateElement()('div');
+        const nameDiv = getCreateElement()('div', { className: 'staff-name' }, s.name);
+        const detailsDiv = getCreateElement()('div', {
             style: { fontSize: '12px', color: '#666', marginTop: '4px' }
         }, `${s.phone || 'Telefon yok'} • ${s.email || 'E-posta yok'}`);
 
@@ -198,29 +201,29 @@ function render(): void {
         staffInfo.appendChild(infoDiv);
 
         // Staff actions section
-        const staffActions = createElement('div', { className: 'staff-actions' });
+        const staffActions = getCreateElement()('div', { className: 'staff-actions' });
 
         // Status span
-        const statusSpan = createElement('span', {
+        const statusSpan = getCreateElement()('span', {
             className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
         }, s.active ? 'Aktif' : 'Pasif');
 
         // Edit button (with data attributes for event delegation)
-        const editBtn = createElement('button', {
+        const editBtn = getCreateElement()('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'edit',
             'data-staff-id': s.id
         }, 'Düzenle');
 
         // Toggle button
-        const toggleBtn = createElement('button', {
+        const toggleBtn = getCreateElement()('button', {
             className: `btn btn-small btn-secondary`,
             'data-action': 'toggle',
             'data-staff-id': s.id
         }, s.active ? 'Pasif' : 'Aktif');
 
         // Remove button
-        const removeBtn = createElement('button', {
+        const removeBtn = getCreateElement()('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'remove',
             'data-staff-id': s.id
@@ -255,7 +258,7 @@ function renderLinks(): void {
     const activeStaff = dataStore.staff.filter(s => s.active);
 
     if (activeStaff.length === 0) {
-        const emptyMsg = createElement('p', {
+        const emptyMsg = getCreateElement()('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         container.appendChild(emptyMsg);
@@ -263,22 +266,22 @@ function renderLinks(): void {
     }
 
     // Grid layout
-    const gridContainer = createElement('div', { className: 'link-grid' });
+    const gridContainer = getCreateElement()('div', { className: 'link-grid' });
 
     activeStaff.forEach(s => {
-        const staffLink = `${CONFIG.BASE_URL}?staff=${s.id}`;
+        const staffLink = `${getConfig().BASE_URL}?staff=${s.id}`;
 
         // Link card
-        const linkCard = createElement('div', { className: 'link-card' });
+        const linkCard = getCreateElement()('div', { className: 'link-card' });
 
         // Header
-        const header = createElement('div', { className: 'link-card-header' }, s.name);
+        const header = getCreateElement()('div', { className: 'link-card-header' }, s.name);
 
         // Body
-        const body = createElement('div', { className: 'link-card-body' });
+        const body = getCreateElement()('div', { className: 'link-card-body' });
 
         // Link input
-        const linkInput = createElement('input', {
+        const linkInput = getCreateElement()('input', {
             type: 'text',
             value: staffLink,
             readonly: true,
@@ -287,14 +290,14 @@ function renderLinks(): void {
         }) as HTMLInputElement;
 
         // Actions
-        const actions = createElement('div', { className: 'link-actions' });
+        const actions = getCreateElement()('div', { className: 'link-actions' });
 
-        const copyBtn = createElement('button', {
+        const copyBtn = getCreateElement()('button', {
             className: 'btn btn-small btn-secondary'
         }, 'Kopyala');
         copyBtn.addEventListener('click', () => copyLink(s.id));
 
-        const openBtn = createElement('button', {
+        const openBtn = getCreateElement()('button', {
             className: 'btn btn-small'
         }, 'Aç');
         openBtn.addEventListener('click', () => openLink(s.id));
@@ -320,7 +323,7 @@ function copyLink(staffId: number): void {
     const input = document.getElementById('staffLink_' + staffId) as HTMLInputElement;
     input.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Link kopyalandı!', 'success');
+    getUI().showAlert('✅ Link kopyalandı!', 'success');
 }
 
 /**
@@ -364,7 +367,7 @@ async function saveEdit(): Promise<void> {
     // Validate
     const validation = ValidationUtils.validateStaffForm(name, phone, email);
     if (!validation.valid) {
-        UI.showAlert(validation.message, 'error');
+        getUI().showAlert(validation.message, 'error');
         return;
     }
 
@@ -380,12 +383,12 @@ async function saveEdit(): Promise<void> {
             dataStore.staff = response.data as StaffMember[];
             render();
             closeEditModal();
-            UI.showAlert('✅ Personel güncellendi!', 'success');
+            getUI().showAlert('✅ Personel güncellendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'updateStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'updateStaff', getUI().showAlert.bind(UI));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(UI));
     }
 }
 
