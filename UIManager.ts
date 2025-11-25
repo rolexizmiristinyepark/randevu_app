@@ -194,47 +194,61 @@ export function showLoading(): void {
 }
 
 /**
- * Show loading spinner in calendar grid only (preserves page structure)
- * ⚡ PERFORMANCE FIX: Doesn't destroy entire page, only calendar grid
+ * Show loading overlay on calendar (preserves calendar content, shows overlay spinner)
+ * ⚡ UX FIX: Semi-transparent overlay instead of replacing content
  */
 export function showCalendarLoading(): void {
-  const grid = document.getElementById('calendarGrid');
-  if (!grid) return;
+  const calendarContainer = document.querySelector('.calendar-container') as HTMLElement;
+  if (!calendarContainer) return;
 
-  // Store original content in case we need to restore
-  grid.dataset.originalContent = grid.innerHTML;
+  // Remove existing overlay if any
+  hideCalendarLoading();
 
-  // Create loading content
-  const loadingDiv = createElement('div', {
-    style: 'text-align: center; padding: 40px 20px; grid-column: 1 / -1;'
+  // Create overlay
+  const overlay = createElement('div', {
+    id: 'calendarLoadingOverlay',
+    style: `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255, 255, 255, 0.85);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      border-radius: 8px;
+    `
   });
 
   const spinner = createElement('div', {
     className: 'spinner',
-    style: 'margin: 0 auto 15px;'
+    style: 'margin-bottom: 12px;'
   });
 
   const text = createElement('p', {
-    style: "color: #757575; font-size: 14px; font-family: 'Montserrat', sans-serif;"
+    style: "color: #757575; font-size: 13px; font-family: 'Montserrat', sans-serif; margin: 0;"
   });
   text.textContent = 'Takvim yükleniyor...';
 
-  loadingDiv.appendChild(spinner);
-  loadingDiv.appendChild(text);
+  overlay.appendChild(spinner);
+  overlay.appendChild(text);
 
-  grid.innerHTML = '';
-  grid.appendChild(loadingDiv);
+  // Ensure container has relative positioning for overlay
+  calendarContainer.style.position = 'relative';
+  calendarContainer.appendChild(overlay);
 }
 
 /**
- * Hide calendar loading (called automatically by renderCalendar)
+ * Hide calendar loading overlay
  */
 export function hideCalendarLoading(): void {
-  const grid = document.getElementById('calendarGrid');
-  if (!grid) return;
-
-  // Clear loading indicator (renderCalendar will add actual content)
-  delete grid.dataset.originalContent;
+  const overlay = document.getElementById('calendarLoadingOverlay');
+  if (overlay) {
+    overlay.remove();
+  }
 }
 
 /**

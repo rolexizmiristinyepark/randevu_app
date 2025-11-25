@@ -7,7 +7,7 @@
 
 import { state, type Shift, type Appointment, type CalendarEvent } from './StateManager';
 import { cache } from './CacheManager';
-import { revealSection, hideSection, showCalendarLoading, hideAlert, showLoadingError, showAlert } from './UIManager';
+import { revealSection, hideSection, showCalendarLoading, hideCalendarLoading, hideAlert, showAlert } from './UIManager';
 import { DateUtils } from './date-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
@@ -416,15 +416,16 @@ export async function loadMonthData(): Promise<void> {
         // ⚡ PERFORMANCE: Clear memoization cache after new data loaded
         clearAvailabilityCache();
 
-        renderCalendar(); // Re-render calendar (replaces loading spinner with actual content)
+        renderCalendar(); // Re-render calendar with new data
+        hideCalendarLoading(); // Remove overlay
         hideAlert();
     } catch (error) {
         log.error('Data loading error:', error);
         logError(error, { context: 'loadAllData' });
         // Show error in alert instead of replacing entire page
         showAlert('Takvim verileri yüklenemedi. Lütfen sayfayı yenileyin.', 'error');
-        // Re-render calendar to clear loading spinner
-        renderCalendar();
+        hideCalendarLoading(); // Remove overlay even on error
+        renderCalendar(); // Re-render calendar with existing data
     }
 }
 
