@@ -213,9 +213,8 @@ export function showCalendarLoading(): void {
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(255, 255, 255, 0.8);
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 10;
@@ -223,18 +222,13 @@ export function showCalendarLoading(): void {
     `
   });
 
+  // Smaller spinner - only spinner, no text
   const spinner = createElement('div', {
     className: 'spinner',
-    style: 'margin-bottom: 12px;'
+    style: 'width: 28px; height: 28px; border-width: 3px;'
   });
-
-  const text = createElement('p', {
-    style: "color: #757575; font-size: 13px; font-family: 'Montserrat', sans-serif; margin: 0;"
-  });
-  text.textContent = 'Takvim yükleniyor...';
 
   overlay.appendChild(spinner);
-  overlay.appendChild(text);
 
   // Ensure container has relative positioning for overlay
   calendarContainer.style.position = 'relative';
