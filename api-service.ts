@@ -112,17 +112,29 @@ const ApiService = {
                     allParams.apiKey = apiKey;
                 }
 
-                // Get CONFIG from global scope
-                const config = typeof window !== 'undefined' && (window as any).CONFIG
-                    ? (window as any).CONFIG as Config
-                    : typeof (globalThis as any).CONFIG !== 'undefined'
-                        ? (globalThis as any).CONFIG as Config
-                        : null;
+                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
+                let appsScriptUrl: string | null = null;
 
-                if (!config || !config.APPS_SCRIPT_URL) {
-                    reject(new Error('CONFIG not defined'));
+                // 1. Try global CONFIG (set after initConfig)
+                if (typeof window !== 'undefined' && (window as any).CONFIG?.APPS_SCRIPT_URL) {
+                    appsScriptUrl = (window as any).CONFIG.APPS_SCRIPT_URL;
+                }
+                // 2. Try globalThis CONFIG
+                else if (typeof (globalThis as any).CONFIG?.APPS_SCRIPT_URL !== 'undefined') {
+                    appsScriptUrl = (globalThis as any).CONFIG.APPS_SCRIPT_URL;
+                }
+                // 3. Fallback to environment variable (for initial config load)
+                else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL) {
+                    appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+                }
+
+                if (!appsScriptUrl) {
+                    reject(new Error('APPS_SCRIPT_URL not configured - check .env file'));
                     return;
                 }
+
+                // Create config object for compatibility
+                const config = { APPS_SCRIPT_URL: appsScriptUrl } as Config;
 
                 // ⭐ CORS FIX: GET kullan (POST preflight CORS sorunu yaratıyor)
                 const controller = new AbortController();

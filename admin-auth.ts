@@ -2,8 +2,42 @@
 // API Key yönetimi ve yetkilendirme sistemi
 // ✅ GÜVENLİK: Inline stil ve event handler'lar kaldırıldı
 // ✅ GÜVENLİK: sessionStorage + 15 dk inaktivite timeout
+// ✅ GÜVENLİK: AES-256 encryption ile API key şifreleme
 
 import { ApiService } from './api-service';
+import CryptoJS from 'crypto-js';
+
+// Encryption key - browser fingerprint + static salt
+// NOT: Bu tam güvenlik sağlamaz ama casual snooping'e karşı korur
+const getEncryptionKey = (): string => {
+    const staticSalt = 'RLX_ADMIN_2024_SECURE';
+    const browserInfo = [
+        navigator.userAgent,
+        navigator.language,
+        screen.width,
+        screen.height,
+        new Date().getTimezoneOffset()
+    ].join('|');
+    return CryptoJS.SHA256(staticSalt + browserInfo).toString().substring(0, 32);
+};
+
+// Encrypt helper
+const encryptData = (data: string): string => {
+    const key = getEncryptionKey();
+    return CryptoJS.AES.encrypt(data, key).toString();
+};
+
+// Decrypt helper
+const decryptData = (encryptedData: string): string | null => {
+    try {
+        const key = getEncryptionKey();
+        const bytes = CryptoJS.AES.decrypt(encryptedData, key);
+        const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+        return decrypted || null;
+    } catch {
+        return null;
+    }
+};
 
 const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',
@@ -12,12 +46,12 @@ const AdminAuth = {
     _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
     _activityHandler: null as (() => void) | null,
 
-    // API key kontrolü
+    // API key kontrolü - şifrelenmiş veriyi çöz
     isAuthenticated() {
-        const savedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
+        const encryptedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
         const savedTime = sessionStorage.getItem(this.API_KEY_STORAGE + '_time');
 
-        if (!savedKey || !savedTime) return false;
+        if (!encryptedKey || !savedTime) return false;
 
         // İnaktivite timeout kontrolü
         const elapsed = Date.now() - this._lastActivityTime;
@@ -26,12 +60,21 @@ const AdminAuth = {
             return false;
         }
 
-        return savedKey;
+        // Şifreyi çöz
+        const decryptedKey = decryptData(encryptedKey);
+        if (!decryptedKey) {
+            // Şifre çözülemedi (browser değişmiş olabilir)
+            this.logout();
+            return false;
+        }
+
+        return decryptedKey;
     },
 
-    // API key kaydet
+    // API key kaydet - şifreleyerek sakla
     saveApiKey(apiKey: string): void {
-        sessionStorage.setItem(this.API_KEY_STORAGE, apiKey);
+        const encryptedKey = encryptData(apiKey);
+        sessionStorage.setItem(this.API_KEY_STORAGE, encryptedKey);
         sessionStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
         this._lastActivityTime = Date.now();
 

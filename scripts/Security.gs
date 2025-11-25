@@ -98,8 +98,15 @@ const SecurityService = {
 
     } catch (error) {
       log.error('Rate limit kontrolü hatası:', error);
-      // Hata durumunda izin ver (fail-open)
-      return { allowed: true, remaining: -1, resetTime: 0 };
+      // 🔒 SECURITY: Fail-closed - hata durumunda güvenlik öncelikli
+      // Rate limit kontrol edilemiyorsa isteği reddet
+      // Bu, potansiyel DDoS veya abuse durumlarında koruma sağlar
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime: Date.now() + 60000, // 1 dakika sonra tekrar dene
+        error: 'Rate limit service error - please try again later'
+      };
     }
   },
 

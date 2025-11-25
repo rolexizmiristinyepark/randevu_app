@@ -143,6 +143,158 @@ const StorageService = {
   }
 };
 
+// --- Backup Service ---
+// ⭐ Otomatik ve manuel yedekleme işlemleri
+const BACKUP_KEY_PREFIX = 'BACKUP_';
+const MAX_BACKUPS = 7; // Son 7 yedekleme saklanır
+
+/**
+ * Backup service for data protection
+ * @namespace BackupService
+ */
+const BackupService = {
+  /**
+   * Manuel veya otomatik yedekleme oluştur
+   * @param {string} trigger - 'manual' veya 'auto'
+   * @returns {{success: boolean, backupId?: string, error?: string}} Yedekleme sonucu
+   */
+  createBackup: function(trigger = 'manual') {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const data = StorageService.getData();
+
+      const backupId = new Date().toISOString().replace(/[:.]/g, '-');
+      const backupKey = BACKUP_KEY_PREFIX + backupId;
+
+      const backupData = {
+        id: backupId,
+        trigger: trigger,
+        timestamp: new Date().toISOString(),
+        data: data
+      };
+
+      props.setProperty(backupKey, JSON.stringify(backupData));
+
+      // Eski yedeklemeleri temizle
+      this._cleanupOldBackups();
+
+      log.info('Backup created:', backupId, trigger);
+      return { success: true, backupId: backupId };
+
+    } catch (error) {
+      log.error('createBackup error:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Yedeklemeleri listele
+   * @returns {{success: boolean, backups?: Array, error?: string}} Yedekleme listesi
+   */
+  listBackups: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const allProps = props.getProperties();
+
+      const backups = [];
+      for (const key in allProps) {
+        if (key.startsWith(BACKUP_KEY_PREFIX)) {
+          try {
+            const backup = JSON.parse(allProps[key]);
+            backups.push({
+              id: backup.id,
+              trigger: backup.trigger,
+              timestamp: backup.timestamp
+            });
+          } catch (e) {
+            // Geçersiz backup, atla
+          }
+        }
+      }
+
+      // Tarihe göre sırala (en yeni önce)
+      backups.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+      return { success: true, backups: backups };
+
+    } catch (error) {
+      log.error('listBackups error:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Yedekten geri yükle
+   * @param {string} backupId - Yedekleme ID'si
+   * @returns {{success: boolean, message?: string, error?: string}} Geri yükleme sonucu
+   */
+  restoreBackup: function(backupId) {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const backupKey = BACKUP_KEY_PREFIX + backupId;
+      const backupStr = props.getProperty(backupKey);
+
+      if (!backupStr) {
+        return { success: false, error: 'Yedekleme bulunamadı: ' + backupId };
+      }
+
+      const backup = JSON.parse(backupStr);
+
+      // Mevcut veriyi yedekle (geri alma için)
+      this.createBackup('pre-restore');
+
+      // Yedekten geri yükle
+      StorageService.saveData(backup.data);
+
+      // Cache'i invalidate et
+      VersionService.incrementDataVersion();
+
+      log.info('Backup restored:', backupId);
+      return { success: true, message: 'Yedekleme başarıyla geri yüklendi: ' + backupId };
+
+    } catch (error) {
+      log.error('restoreBackup error:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Eski yedeklemeleri temizle (MAX_BACKUPS aşılırsa)
+   * @private
+   */
+  _cleanupOldBackups: function() {
+    try {
+      const result = this.listBackups();
+      if (!result.success || !result.backups) return;
+
+      const backups = result.backups;
+      if (backups.length <= MAX_BACKUPS) return;
+
+      // En eski yedeklemeleri sil
+      const props = PropertiesService.getScriptProperties();
+      const toDelete = backups.slice(MAX_BACKUPS);
+
+      toDelete.forEach(backup => {
+        const backupKey = BACKUP_KEY_PREFIX + backup.id;
+        props.deleteProperty(backupKey);
+        log.info('Old backup deleted:', backup.id);
+      });
+
+    } catch (error) {
+      log.error('_cleanupOldBackups error:', error);
+    }
+  }
+};
+
+/**
+ * Trigger: Günlük otomatik yedekleme
+ * Google Apps Script Time-driven trigger olarak ayarlanmalı
+ * Kurulum: Edit > Triggers > Add Trigger > dailyBackup > Time-driven > Day timer
+ */
+function dailyBackup() {
+  BackupService.createBackup('auto');
+}
+
 // --- Data Version Management ---
 // ⭐ Cache invalidation için version tracking
 // Frontend cache'i invalidate etmek için kullanılır

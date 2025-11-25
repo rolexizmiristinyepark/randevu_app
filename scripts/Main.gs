@@ -26,13 +26,58 @@ const ADMIN_ACTIONS = [
   'updateWhatsAppSettings',
   'getWhatsAppSettings',
   'updateSlackSettings',
-  'getSlackSettings'
+  'getSlackSettings',
+  // Backup management
+  'createBackup', 'listBackups', 'restoreBackup'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
 const ACTION_HANDLERS = {
-  // Test
+  // Test & Health Check
   'test': () => ({ status: 'ok', message: 'Apps Script çalışıyor!' }),
+
+  // Health Check Endpoint - Sistem durumunu kontrol eder
+  'healthCheck': () => {
+    const startTime = Date.now();
+    const checks = {
+      calendar: false,
+      storage: false,
+      cache: false
+    };
+
+    try {
+      // 1. Calendar bağlantısı kontrol
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      checks.calendar = !!calendar;
+
+      // 2. Storage (PropertiesService) kontrol
+      const props = PropertiesService.getScriptProperties();
+      const testKey = props.getProperty(CONFIG.PROPERTIES_KEY);
+      checks.storage = testKey !== undefined; // null olabilir ama undefined olmamalı
+
+      // 3. Cache (CacheService) kontrol
+      const cache = CacheService.getScriptCache();
+      cache.put('health_check_test', 'ok', 10);
+      const cacheTest = cache.get('health_check_test');
+      checks.cache = cacheTest === 'ok';
+      cache.remove('health_check_test');
+
+    } catch (error) {
+      log.error('Health check error:', error);
+    }
+
+    const allHealthy = checks.calendar && checks.storage && checks.cache;
+    const responseTime = Date.now() - startTime;
+
+    return {
+      success: true,
+      status: allHealthy ? 'healthy' : 'degraded',
+      checks: checks,
+      responseTime: responseTime + 'ms',
+      timestamp: new Date().toISOString(),
+      version: CONFIG.VERSION || '2.0.0'
+    };
+  },
 
   // API Key management
   'initializeApiKey': () => AuthService.initializeApiKey(),
@@ -90,6 +135,11 @@ const ACTION_HANDLERS = {
   // Slack Webhook
   'updateSlackSettings': (e) => SlackService.updateSlackSettings(e.parameter.webhookUrl, e.parameter.apiKey),
   'getSlackSettings': (e) => SlackService.getSlackSettings(e.parameter.apiKey),
+
+  // Backup Management (admin only)
+  'createBackup': () => BackupService.createBackup('manual'),
+  'listBackups': () => BackupService.listBackups(),
+  'restoreBackup': (e) => BackupService.restoreBackup(e.parameter.backupId),
 
   // Config management (public - no auth required)
   'getConfig': () => ConfigService.getConfig(),
