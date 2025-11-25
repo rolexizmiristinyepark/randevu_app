@@ -71,7 +71,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 return;
             }
 
-            const { slots } = appointmentsResult;
+            const { slots } = appointmentsResult.data as any;
 
             // Clear spinner, render slots
             container.innerHTML = '';
@@ -164,7 +164,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 // If today and past time, skip
                 if (isToday) {
                     const [slotHour, slotMinute] = slot.time.split(':').map(Number);
-                    if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
+                    if (slotHour !== undefined && slotMinute !== undefined &&
+                        (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute))) {
                         return; // Past slot, don't show
                     }
                 }
@@ -199,8 +200,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             return;
         }
 
-        const { isDeliveryMaxed, availableHours, unavailableHours, deliveryCount } = dayStatusResult;
-        const { slots } = slotsResult;
+        const { availableHours } = dayStatusResult.data as any;
+        const { slots } = slotsResult.data as any;
 
         container.innerHTML = '';
 

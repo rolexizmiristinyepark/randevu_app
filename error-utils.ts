@@ -30,7 +30,7 @@ function getLogError(): (error: any, context?: any) => void {
             };
         }
     }
-    return logError;
+    return logError!;
 }
 
 interface ApiErrorResponse {

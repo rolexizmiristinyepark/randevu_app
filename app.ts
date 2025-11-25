@@ -3,26 +3,21 @@
 
 // Import base layer components
 import { state } from './StateManager';
-import { cache } from './CacheManager';
-import { UIManager, revealSection, hideSection, showAlert, hideAlert, showLoading, showLoadingError, ModalUtils } from './UIManager';
+import { revealSection, hideSection, showAlert, hideAlert, showLoading, ModalUtils } from './UIManager';
 
 // Import flow components
 import { selectAppointmentType, selectManagementContact } from './TypeSelectorComponent';
-import { renderCalendar, changeMonth, loadMonthData } from './CalendarComponent';
-import { loadStaffMembers, loadSettings, displayAvailableStaff, selectStaff } from './StaffSelectorComponent';
-import { displayAvailableTimeSlots, selectTimeSlot } from './TimeSelectorComponent';
+import { changeMonth } from './CalendarComponent';
+import { loadStaffMembers, loadSettings } from './StaffSelectorComponent';
+// TimeSelectorComponent functions exported to window for calendar-integration.js
 import { initAppointmentForm } from './AppointmentFormComponent';
 import { handleCalendarAction } from './SuccessPageComponent';
 import './SuccessPageComponent'; // For side effects (window exports)
 
 // Import shared utilities
-import { StringUtils } from './string-utils';
-import { ButtonUtils } from './button-utils';
-import { showAlertSafe } from './security-helpers';
 import { apiCall } from './api-service';
-import { initMonitoring, logError, measureAsync } from './monitoring';
-import { initConfig, Config } from './config-loader';
-import rolexLogoUrl from './assets/rolex-logo.svg';
+import { initMonitoring } from './monitoring';
+import { initConfig } from './config-loader';
 import { debounce } from './performance-utils';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
@@ -32,12 +27,10 @@ import { debounce } from './performance-utils';
 // - Cache: localStorage with 1-hour TTL
 // - Fallback: Default values if API fails
 
-let CONFIG: Config;
-
 // Initialize config asynchronously
 (async () => {
-    CONFIG = await initConfig();
-    // CONFIG now available globally via window.CONFIG
+    const config = await initConfig();
+    (window as any).CONFIG = config;
 })();
 
 // ==================== UTILITY FONKSİYONLARI ====================
@@ -45,11 +38,13 @@ let CONFIG: Config;
 
 // Debug logger - Production'da log'ları devre dışı bırakır
 // ⚠️ Uses window.CONFIG because CONFIG is loaded asynchronously
-const log = {
-    error: (...args) => (window as any).CONFIG?.DEBUG && console.error(...args),
-    warn: (...args) => (window as any).CONFIG?.DEBUG && console.warn(...args),
-    info: (...args) => (window as any).CONFIG?.DEBUG && console.info(...args),
-    log: (...args) => (window as any).CONFIG?.DEBUG && console.log(...args)
+// Kept for backward compatibility and debugging
+// @ts-ignore - Intentionally unused, kept for future use
+const _log = {
+    error: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.error(...args),
+    warn: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.warn(...args),
+    info: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.info(...args),
+    log: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.log(...args)
 };
 
 // ==================== SMOOTH SCROLL & REVEAL ANIMATIONS ====================
@@ -82,7 +77,8 @@ if (typeof window !== 'undefined') {
 // ⭐ REMOVED: sessionStorageCache replaced by CacheManager.ts
 // Cache is now imported from CacheManager at the top of the file
 // All cache.get/set/has/delete/clear operations use the CacheManager instance
-const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes - kept for backward compatibility
+// @ts-ignore - Intentionally unused, kept for backward compatibility
+const _CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // ==================== CONFIG LOADING (Backend Single Source of Truth) ====================
 
@@ -148,8 +144,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     const isManagementLink = state.get('isManagementLink');
     if (isManagementLink) {
         const header = document.getElementById('staffHeader');
-        header.textContent = 'Randevu Sistemi';
-        header.style.visibility = 'visible';
+        if (header) {
+            header.textContent = 'Randevu Sistemi';
+            header.style.visibility = 'visible';
+        }
 
         // Randevu türü seçimi göster (Teslim, Teknik Servis, Görüşme, vs.)
         // selectedAppointmentType henüz seçilmedi - kullanıcı seçecek
@@ -167,18 +165,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     const specificStaffId = state.get('specificStaffId');
     if (specificStaffId === '0') {
         const header = document.getElementById('staffHeader');
-        header.textContent = 'Randevu Sistemi';
-        header.style.visibility = 'visible';
+        if (header) {
+            header.textContent = 'Randevu Sistemi';
+            header.style.visibility = 'visible';
+        }
 
         // Gönderi ve Yönetim butonlarını göster ve grid'i ayarla
-        document.getElementById('typeShipping').style.display = 'block';
-        document.getElementById('typeManagement').style.display = 'block';
+        const typeShipping = document.getElementById('typeShipping');
+        const typeManagement = document.getElementById('typeManagement');
+        if (typeShipping) typeShipping.style.display = 'block';
+        if (typeManagement) typeManagement.style.display = 'block';
         const typesContainer = document.getElementById('appointmentTypesContainer');
-        typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
+        if (typesContainer) typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
     } else if (!specificStaffId) {
         // Normal link için butonları ortala
         const typesContainer = document.getElementById('appointmentTypesContainer');
-        typesContainer.style.justifyContent = 'center';
+        if (typesContainer) typesContainer.style.justifyContent = 'center';
     }
 
     // Ana spinner zaten gösteriliyor, sadece verilerini yükle
@@ -197,11 +199,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Normal staff link için header'ı güncelle
         if (specificStaffId !== '0') {
             const staffMembers = state.get('staffMembers');
-            const staff = staffMembers.find(s => s.id == specificStaffId);
+            const staff = staffMembers.find((s: any) => s.id == specificStaffId);
             if (staff) {
                 const header = document.getElementById('staffHeader');
-                header.textContent = staff.name;
-                header.style.visibility = 'visible';
+                if (header) {
+                    header.textContent = staff.name;
+                    header.style.visibility = 'visible';
+                }
                 state.set('selectedStaff', parseInt(specificStaffId));
             }
         }
@@ -216,7 +220,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // Buton section'ını göster ve animate et
-    typesContainer.style.display = 'grid';
+    if (typesContainer) {
+        typesContainer.style.display = 'grid';
+    }
     revealSection('appointmentTypesSection', false);
 
     // İlk yükleme animasyonu: Randevu tipi seçimini göster
@@ -258,7 +264,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 // JSONP yerine modern Fetch API kullanımı - XSS ve CSRF koruması
 
 // API çağrısı için wrapper - Tutarlı hata yönetimi
-async function safeApiCall(action, params = {}, options = {}) {
+// Kept for backward compatibility - currently unused but may be needed
+// @ts-ignore - Intentionally unused, kept for future use
+async function _safeApiCall(action: string, params: any = {}, options: {
+    successMessage?: string;
+    errorPrefix?: string;
+    onSuccess?: (response: any) => void;
+    onError?: (error: any) => void;
+    showLoading?: boolean;
+} = {}) {
     const {
         successMessage,
         errorPrefix = 'Hata',
@@ -282,8 +296,8 @@ async function safeApiCall(action, params = {}, options = {}) {
             if (onError) onError(response);
             return response;
         }
-    } catch (error) {
-        const msg = `❌ ${errorPrefix}: ${error.message}`;
+    } catch (error: any) {
+        const msg = `❌ ${errorPrefix}: ${error?.message || 'Bilinmeyen hata'}`;
         showAlert(msg, 'error');
         if (onError) onError(error);
         throw error;

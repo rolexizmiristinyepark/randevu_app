@@ -60,11 +60,12 @@ export function throttle<T extends (...args: any[]) => any>(
     limit: number = 100
 ): (...args: Parameters<T>) => void {
     let inThrottle: boolean = false;
-    let lastResult: ReturnType<T>;
+    // @ts-ignore - Result stored but not returned (throttle pattern)
+    let _lastResult: ReturnType<T>;
 
     return function throttled(...args: Parameters<T>): void {
         if (!inThrottle) {
-            lastResult = func(...args);
+            _lastResult = func(...args);
             inThrottle = true;
 
             setTimeout(() => {

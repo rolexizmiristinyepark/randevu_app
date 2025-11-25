@@ -28,7 +28,7 @@ export async function loadStaffMembers(): Promise<void> {
     try {
         const response = await apiCall('getStaff');
         if (response.success) {
-            state.set('staffMembers', response.data);
+            state.set('staffMembers', response.data as any[]);
         } else {
             log.error('Staff members could not be loaded:', response.error);
         }
@@ -46,10 +46,11 @@ export async function loadSettings(): Promise<void> {
         if (response.success) {
             // Update CONFIG with server settings (use window.CONFIG for safety)
             const config = (window as any).CONFIG;
+            const data = response.data as any;
             if (config) {
                 config.APPOINTMENT_HOURS = config.APPOINTMENT_HOURS || {};
-                config.APPOINTMENT_HOURS.interval = response.data.interval || 60;
-                config.MAX_DAILY_DELIVERY_APPOINTMENTS = response.data.maxDaily || 4;
+                config.APPOINTMENT_HOURS.interval = data.interval || 60;
+                config.MAX_DAILY_DELIVERY_APPOINTMENTS = data.maxDaily || 4;
             }
         }
     } catch (error) {

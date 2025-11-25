@@ -3,10 +3,12 @@
  * XSS saldırılarına karşı güvenli DOM manipülasyonu
  */
 
+import { DateUtils } from './date-utils';
+
 // HTML karakterlerini güvenli hale getir
-function escapeHtml(unsafe) {
+function escapeHtml(unsafe: any): string {
     if (unsafe === null || unsafe === undefined) return '';
-    const map = {
+    const map: Record<string, string> = {
         '&': '&amp;',
         '<': '&lt;',
         '>': '&gt;',
@@ -14,19 +16,19 @@ function escapeHtml(unsafe) {
         "'": '&#x27;',
         '/': '&#x2F;'
     };
-    return String(unsafe).replace(/[&<>"'\/]/g, char => map[char]);
+    return String(unsafe).replace(/[&<>"'\/]/g, char => map[char] || char);
 }
 
 // Güvenli element oluşturma
-function createElement(tag, attributes = {}, textContent = '') {
+function createElement(tag: string, attributes: any = {}, textContent: string = ''): HTMLElement {
     const element = document.createElement(tag);
 
     // Güvenli attribute ataması
     for (const [key, value] of Object.entries(attributes)) {
         if (key === 'className') {
-            element.className = value;
+            element.className = value as string;
         } else if (key.startsWith('data-')) {
-            element.setAttribute(key, value);
+            element.setAttribute(key, String(value));
         } else if (key === 'style' && typeof value === 'object') {
             Object.assign(element.style, value);
         } else {
@@ -43,7 +45,7 @@ function createElement(tag, attributes = {}, textContent = '') {
 }
 
 // Güvenli alert gösterimi
-function showAlertSafe(message, type = 'info', containerId = 'alertContainer') {
+function showAlertSafe(message: string, type: string = 'info', containerId: string = 'alertContainer'): void {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -64,7 +66,7 @@ function showAlertSafe(message, type = 'info', containerId = 'alertContainer') {
 }
 
 // Güvenli liste render
-function renderListSafe(container, items, itemRenderer) {
+function renderListSafe(container: HTMLElement | null, items: any[], itemRenderer: (item: any) => HTMLElement | null): void {
     if (!container) return;
 
     // Container'ı temizle
@@ -80,7 +82,7 @@ function renderListSafe(container, items, itemRenderer) {
 }
 
 // Güvenli HTML fragment oluşturma (sadece güvenilir içerik için)
-function createSafeFragment(trustedHtml) {
+function createSafeFragment(trustedHtml: string): DocumentFragment {
     const template = document.createElement('template');
     template.innerHTML = trustedHtml;
     return template.content;
@@ -102,8 +104,8 @@ function createLoadingElement(message = 'Yükleniyor...') {
 }
 
 // Güvenli tablo satırı oluştur
-function createTableRow(cells, isHeader = false) {
-    const row = createElement('tr');
+function createTableRow(cells: any[], isHeader: boolean = false): HTMLTableRowElement {
+    const row = createElement('tr') as HTMLTableRowElement;
     const cellTag = isHeader ? 'th' : 'td';
 
     cells.forEach(cellContent => {
@@ -118,7 +120,7 @@ function createTableRow(cells, isHeader = false) {
             const { text, html, element, ...attrs } = cellContent;
 
             Object.entries(attrs).forEach(([key, value]) => {
-                cell.setAttribute(key, value);
+                cell.setAttribute(key, String(value));
             });
 
             if (text) {
@@ -135,7 +137,7 @@ function createTableRow(cells, isHeader = false) {
 }
 
 // Güvenli başarı sayfası oluştur
-function createSuccessPageSafe(dateStr, timeStr, staffName, customerNote) {
+function createSuccessPageSafe(dateStr: string, timeStr: string, staffName: string, customerNote: string): HTMLDivElement {
     // Tarihi formatla (12 Ekim 2025, Salı) - DateUtils kullan
     const date = new Date(dateStr);
     const formattedDate = DateUtils.toTurkishDate(date);
@@ -245,7 +247,7 @@ function createSuccessPageSafe(dateStr, timeStr, staffName, customerNote) {
  * maskEmail('a@b.co') → 'a@b.co' (çok kısa ise maskelenmez)
  * maskEmail(null) → '[email hidden]'
  */
-function maskEmail(email) {
+function maskEmail(email: any): string {
     if (!email || typeof email !== 'string') return '[email hidden]';
 
     const [local, domain] = email.split('@');
@@ -261,7 +263,7 @@ function maskEmail(email) {
 
     // Domain: ilk harf, ortası ***, extension
     const [domainName, ...ext] = domain.split('.');
-    if (domainName.length <= 2) {
+    if (!domainName || domainName.length <= 2) {
         return `${maskedLocal}@${domain}`;
     }
 
@@ -282,7 +284,7 @@ function maskEmail(email) {
  * maskPhone('05551234567') → '0555***67'
  * maskPhone(null) → '[phone hidden]'
  */
-function maskPhone(phone) {
+function maskPhone(phone: any): string {
     if (!phone || typeof phone !== 'string') return '[phone hidden]';
 
     // Sadece rakamları al
@@ -315,7 +317,7 @@ function maskPhone(phone) {
  * maskName('Serdar Benli') → 'S*** B***'
  * maskName('Ali') → 'A***'
  */
-function maskName(name) {
+function maskName(name: any): string {
     if (!name || typeof name !== 'string') return '[name hidden]';
 
     return name.split(' ')
@@ -340,15 +342,15 @@ export {
 
 // Also expose globally for backward compatibility
 if (typeof window !== 'undefined') {
-    window.escapeHtml = escapeHtml;
-    window.createElement = createElement;
-    window.showAlertSafe = showAlertSafe;
-    window.renderListSafe = renderListSafe;
-    window.createSafeFragment = createSafeFragment;
-    window.createLoadingElement = createLoadingElement;
-    window.createTableRow = createTableRow;
-    window.createSuccessPageSafe = createSuccessPageSafe;
-    window.maskEmail = maskEmail;
-    window.maskPhone = maskPhone;
-    window.maskName = maskName;
+    (window as any).escapeHtml = escapeHtml;
+    (window as any).createElement = createElement;
+    (window as any).showAlertSafe = showAlertSafe;
+    (window as any).renderListSafe = renderListSafe;
+    (window as any).createSafeFragment = createSafeFragment;
+    (window as any).createLoadingElement = createLoadingElement;
+    (window as any).createTableRow = createTableRow;
+    (window as any).createSuccessPageSafe = createSuccessPageSafe;
+    (window as any).maskEmail = maskEmail;
+    (window as any).maskPhone = maskPhone;
+    (window as any).maskName = maskName;
 }

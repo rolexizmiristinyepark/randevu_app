@@ -6,7 +6,7 @@
 import { apiCall } from '../api-service';
 import { ValidationUtils } from '../validation-utils';
 import { ErrorUtils } from '../error-utils';
-import type { DataStore } from './data-store';
+import type { DataStore, StaffMember } from './data-store';
 
 // Module-scoped variables
 let dataStore: DataStore;
@@ -98,14 +98,14 @@ async function add(): Promise<void> {
         const response = await apiCall('addStaff', { name, phone, email });
 
         if (response.success) {
-            dataStore.staff = response.data;
+            dataStore.staff = response.data as StaffMember[];
             inputName.value = '';
             inputPhone.value = '';
             inputEmail.value = '';
             render();
             UI.showAlert('✅ ' + name + ' eklendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'addStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'addStaff', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Ekleme', UI.showAlert.bind(UI));
@@ -120,11 +120,11 @@ async function toggle(id: number): Promise<void> {
         const response = await apiCall('toggleStaff', { id });
 
         if (response.success) {
-            dataStore.staff = response.data;
+            dataStore.staff = response.data as StaffMember[];
             render();
             UI.showAlert('✅ Durum değişti!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'toggleStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'toggleStaff', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));
@@ -144,11 +144,11 @@ async function remove(id: number): Promise<void> {
         const response = await apiCall('removeStaff', { id });
 
         if (response.success) {
-            dataStore.staff = response.data;
+            dataStore.staff = response.data as StaffMember[];
             render();
             UI.showAlert('✅ ' + staff.name + ' silindi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'removeStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'removeStaff', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Silme', UI.showAlert.bind(UI));
@@ -377,12 +377,12 @@ async function saveEdit(): Promise<void> {
         });
 
         if (response.success) {
-            dataStore.staff = response.data;
+            dataStore.staff = response.data as StaffMember[];
             render();
             closeEditModal();
             UI.showAlert('✅ Personel güncellendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response, 'updateStaff', UI.showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'updateStaff', UI.showAlert.bind(UI));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Güncelleme', UI.showAlert.bind(UI));

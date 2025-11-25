@@ -5,7 +5,7 @@
  * Extracted from app.ts (lines 332-567)
  */
 
-import { state } from './StateManager';
+import { state, type Shift, type Appointment, type CalendarEvent } from './StateManager';
 import { cache } from './CacheManager';
 import { revealSection, hideSection, showLoading, hideAlert, showLoadingError } from './UIManager';
 import { DateUtils } from './date-utils';
@@ -168,7 +168,7 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
     // Shift check
     if (specificStaffId && specificStaffId !== '0') {
         // Normal staff link - check only that staff's shift
-        const staffHasShift = dayShifts[dateStr] && dayShifts[dateStr][specificStaffId];
+        const staffHasShift = dayShifts[dateStr] && dayShifts[dateStr][parseInt(specificStaffId)];
         if (!staffHasShift) {
             return { available: false, reason: 'İlgili çalışan bu gün müsait değil' };
         }
@@ -336,7 +336,7 @@ export async function loadMonthData(): Promise<void> {
         const versionResult = await apiCall('getDataVersion');
 
         if (versionResult.success && versionResult.data) {
-            const serverVersion = versionResult.data;
+            const serverVersion = String(versionResult.data);
 
             // If version changed, clear cache
             if (cachedVersion && cachedVersion !== serverVersion) {
@@ -383,15 +383,15 @@ export async function loadMonthData(): Promise<void> {
         ]);
 
         if (shiftsResult.success) {
-            state.set('dayShifts', shiftsResult.data || {});
+            state.set('dayShifts', (shiftsResult.data || {}) as Record<string, Shift>);
         }
 
         if (appointmentsResult.success) {
-            state.set('allAppointments', appointmentsResult.data || {});
+            state.set('allAppointments', (appointmentsResult.data || {}) as Record<string, Appointment[]>);
         }
 
         if (calendarResult.success) {
-            state.set('googleCalendarEvents', calendarResult.data || {});
+            state.set('googleCalendarEvents', (calendarResult.data || {}) as Record<string, CalendarEvent[]>);
         }
 
         // Save data to cache

@@ -99,7 +99,7 @@ export function addToCalendar(): void {
  * Cloudflare Turnstile callback - Called when bot protection succeeds
  * Defined in HTML as data-callback="onTurnstileSuccess"
  */
-export function onTurnstileSuccess(token: string): void {
+export function onTurnstileSuccess(_token: string): void {
     console.log('Turnstile successful, token received');
     // Show submit button
     const submitBtn = document.getElementById('submitBtn');
