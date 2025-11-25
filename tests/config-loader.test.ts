@@ -6,7 +6,6 @@ import type { Config, DynamicConfig } from '../config-loader';
 
 describe('Config Loader Logic', () => {
   let localStorage: Storage;
-  let mockApiCall: any;
 
   const CACHE_KEY = 'randevu_config_cache';
   const CACHE_TTL = 60 * 60 * 1000; // 1 hour
@@ -15,9 +14,6 @@ describe('Config Loader Logic', () => {
     // Use global localStorage mock from setup.ts
     localStorage = global.localStorage;
     localStorage.clear();
-
-    // Mock apiCall
-    mockApiCall = vi.fn();
   });
 
   afterEach(() => {
@@ -160,10 +156,10 @@ describe('Config Loader Logic', () => {
         ])
       );
 
-      expect(frontendShifts.morning.start).toBe(11);
-      expect(frontendShifts.morning.end).toBe(18);
-      expect(frontendShifts.evening.start).toBe(14);
-      expect(frontendShifts.evening.end).toBe(21);
+      expect(frontendShifts.morning?.start).toBe(11);
+      expect(frontendShifts.morning?.end).toBe(18);
+      expect(frontendShifts.evening?.start).toBe(14);
+      expect(frontendShifts.evening?.end).toBe(21);
     });
 
     it('should use default appointment hours if missing', () => {
@@ -245,7 +241,8 @@ describe('Config Loader Logic', () => {
 
       const fullConfig: Config = {
         ...ENV_CONFIG,
-        ...dynamicConfig
+        ...dynamicConfig,
+        VERSION: '1.0'
       };
 
       expect(fullConfig.APPS_SCRIPT_URL).toBe(ENV_CONFIG.APPS_SCRIPT_URL);
@@ -260,6 +257,7 @@ describe('Config Loader Logic', () => {
         APPS_SCRIPT_URL: 'https://script.google.com/test',
         BASE_URL: 'https://example.com',
         DEBUG: false,
+        VERSION: '1.0',
         shifts: {
           'morning': { start: 11, end: 18, label: 'Sabah (11:00-18:00)' },
           'evening': { start: 14, end: 21, label: 'Akşam (14:00-21:00)' },
@@ -276,7 +274,7 @@ describe('Config Loader Logic', () => {
         }
       };
 
-      expect(fallbackConfig.shifts.morning.start).toBe(11);
+      expect(fallbackConfig.shifts.morning?.start).toBe(11);
       expect(fallbackConfig.appointmentHours.earliest).toBe(11);
       expect(fallbackConfig.maxDailyDeliveryAppointments).toBe(3);
       expect(Object.keys(fallbackConfig.appointmentTypes)).toHaveLength(5);

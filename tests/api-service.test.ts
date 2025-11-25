@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { ApiService } from '../api-service';
-import type { ApiResponse } from '../api-service';
 
 describe('ApiService', () => {
   let fetchMock: any;

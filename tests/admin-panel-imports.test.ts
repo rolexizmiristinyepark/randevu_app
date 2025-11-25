@@ -9,7 +9,7 @@
  * - Module function availability
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 // Import all modules that admin-panel.ts imports
 import { initMonitoring, logError } from '../monitoring';

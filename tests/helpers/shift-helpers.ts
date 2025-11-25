@@ -3,8 +3,6 @@
  * Helper functions for testing shift management functionality
  */
 
-import { vi } from 'vitest';
-
 // ==================== TYPES ====================
 
 export interface ShiftData {
@@ -68,8 +66,8 @@ export function getWeekStartDate(year: number, week: number): Date {
  */
 export function parseWeekString(weekString: string): WeekData {
   const [yearStr, weekStr] = weekString.split('-W');
-  const year = parseInt(yearStr);
-  const week = parseInt(weekStr);
+  const year = parseInt(yearStr || '0');
+  const week = parseInt(weekStr || '0');
 
   const weekStart = getWeekStartDate(year, week);
   const weekEnd = new Date(weekStart);
@@ -89,8 +87,8 @@ export function parseWeekString(weekString: string): WeekData {
  */
 export function getNextWeek(weekString: string): string {
   const [yearStr, weekStr] = weekString.split('-W');
-  const year = parseInt(yearStr);
-  const week = parseInt(weekStr);
+  const year = parseInt(yearStr || '0');
+  const week = parseInt(weekStr || '0');
 
   if (week >= 52) {
     return `${year + 1}-W01`;
@@ -104,8 +102,8 @@ export function getNextWeek(weekString: string): string {
  */
 export function getPreviousWeek(weekString: string): string {
   const [yearStr, weekStr] = weekString.split('-W');
-  const year = parseInt(yearStr);
-  const week = parseInt(weekStr);
+  const year = parseInt(yearStr || '0');
+  const week = parseInt(weekStr || '0');
 
   if (week <= 1) {
     return `${year - 1}-W52`;
@@ -152,7 +150,7 @@ export function createMockWeekShifts(weekStart: Date, staffIds: string[]): Shift
     staffIds.forEach((staffId, staffIndex) => {
       // Distribute shifts among staff
       const shiftType = shiftTypes[(dayIndex + staffIndex) % shiftTypes.length];
-      if (shiftType) {
+      if (shiftType && shifts[date]) {
         shifts[date][staffId] = shiftType;
       }
     });
@@ -369,9 +367,11 @@ export function createMockMonthShifts(year: number, month: number, staffIds: str
       }
 
       // Distribute shifts
-      if (index % 3 === 0) shifts[date][staffId] = 'morning';
-      else if (index % 3 === 1) shifts[date][staffId] = 'evening';
-      else shifts[date][staffId] = 'full';
+      if (shifts[date]) {
+        if (index % 3 === 0) shifts[date][staffId] = 'morning';
+        else if (index % 3 === 1) shifts[date][staffId] = 'evening';
+        else shifts[date][staffId] = 'full';
+      }
     });
   }
 

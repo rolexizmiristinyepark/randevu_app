@@ -21,12 +21,8 @@ import {
   mockFetch,
   mockFetchSuccess,
   mockFetchError,
-  mockNetworkError,
-  createSuccessResponse,
   createErrorResponse,
-  getFetchCallCount,
-  verifyFetchCalledWith,
-  nextTick
+  getFetchCallCount
 } from './helpers/test-utils';
 
 // Mock Data object structure (matches admin-panel.ts Data object)
@@ -625,7 +621,7 @@ describe('Admin Panel - Data Management', () => {
         json: async () => {
           throw new Error('JSON parse error');
         }
-      } as Response);
+      } as unknown as Response);
 
       try {
         const response = await fetch('/api/getStaff');
@@ -672,7 +668,7 @@ describe('Admin Panel - Data Management', () => {
       } as Response);
 
       const response = await fetch('/api/getStaff');
-      const result = await response.json();
+      await response.json(); // Result not tested, just verifying no throw
 
       expect(response.ok).toBe(false);
       expect(response.status).toBe(404);

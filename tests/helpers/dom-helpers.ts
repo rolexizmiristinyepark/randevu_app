@@ -3,8 +3,6 @@
  * Advanced DOM mocking and utilities for testing admin panel UI interactions
  */
 
-import { vi } from 'vitest';
-
 // ==================== DOM SETUP ====================
 
 /**

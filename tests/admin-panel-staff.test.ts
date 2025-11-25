@@ -25,16 +25,8 @@ import {
   getInputValue,
   setInputValue,
   clickButton,
-  hasAlert,
-  getAlerts,
-  getStaffItems,
-  getStaffCount,
-  findStaffItem,
-  isModalOpen,
   nextTick,
-  waitFor,
-  getFetchCallCount,
-  verifyFetchCalledWith
+  getFetchCallCount
 } from './helpers/test-utils';
 
 // Import admin-panel module (will need to be adapted based on how it's exported)
@@ -355,7 +347,6 @@ describe('Admin Panel - Staff Management', () => {
 
     it('should update staff count after deleting', async () => {
       const confirmSpy = vi.spyOn(global, 'confirm').mockReturnValue(true);
-      const remainingStaff = createMockStaffList(2); // After deleting 1 from 3
       mockFetch(mockStaffAPI.deleteStaff('staff-1'));
 
       // Staff count would be updated in actual implementation
@@ -370,7 +361,6 @@ describe('Admin Panel - Staff Management', () => {
   //#region Toggle Staff Tests
   describe('Toggling Staff Active State', () => {
     it('should toggle staff from active to inactive', async () => {
-      const staff = createMockStaff({ id: 'staff-1', active: true });
       mockFetch(mockStaffAPI.toggleStaff('staff-1', false));
 
       // Toggle action would be performed
@@ -378,7 +368,6 @@ describe('Admin Panel - Staff Management', () => {
     });
 
     it('should toggle staff from inactive to active', async () => {
-      const staff = createMockStaff({ id: 'staff-1', active: false });
       mockFetch(mockStaffAPI.toggleStaff('staff-1', true));
 
       // Toggle action would be performed
@@ -428,11 +417,6 @@ describe('Admin Panel - Staff Management', () => {
 
     it('should render staff items correctly', () => {
       const staffList = getElement('staffList');
-
-      // Simulate rendering 3 staff members
-      const staff1 = createMockStaff({ name: 'Staff 1' });
-      const staff2 = createMockStaff({ name: 'Staff 2' });
-      const staff3 = createMockStaff({ name: 'Staff 3' });
 
       // In actual implementation, staff would be rendered
       // We're testing the DOM structure exists

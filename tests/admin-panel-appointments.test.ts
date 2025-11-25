@@ -28,8 +28,6 @@ import {
   getSelectValue,
   setSelectValue,
   clickButton,
-  isModalOpen,
-  nextTick,
   getCurrentWeek,
   parseWeekString,
   toLocalDate
@@ -627,7 +625,6 @@ describe('Admin Panel - Appointment Management', () => {
     });
 
     it('should format WhatsApp message', () => {
-      const phone = '905551234567';
       const customerName = 'John Doe';
       const dateTime = '15 Ocak 2024, 14:00';
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { APPOINTMENT_TYPE_NAMES } from '../calendar-config';
 
 // Test calendar integration logic without module imports
@@ -87,7 +87,7 @@ describe('Calendar Integration Logic', () => {
 
       testCases.forEach(({ time, expectedHours }) => {
         const [hour] = time.split(':').map(Number);
-        const offset = calculateMorningAlarmOffset(hour);
+        const offset = calculateMorningAlarmOffset(hour || 0);
 
         expect(offset).toBe(expectedHours);
       });
@@ -236,7 +236,7 @@ describe('Calendar Integration Logic', () => {
   }
 
   function generateEventTitle(staffName: string, appointmentType: string): string {
-    const typeName = APPOINTMENT_TYPE_NAMES[appointmentType] || 'Genel';
+    const typeName = (APPOINTMENT_TYPE_NAMES as any)[appointmentType] || 'Genel';
     return `İzmir İstinyepark Rolex - ${staffName} (${typeName})`;
   }
 
@@ -249,7 +249,7 @@ describe('Calendar Integration Logic', () => {
     appointmentType: string;
     customerNote: string;
   }): string {
-    const appointmentTypeName = APPOINTMENT_TYPE_NAMES[data.appointmentType] || 'Genel';
+    const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[data.appointmentType] || 'Genel';
     const appointmentDate = new Date(data.date);
     const formattedDate = appointmentDate.toLocaleDateString('tr-TR', {
       year: 'numeric',

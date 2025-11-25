@@ -397,15 +397,15 @@ describe('Security Helpers', () => {
 
       expect(row.tagName).toBe('TR');
       expect(row.children.length).toBe(3);
-      expect(row.children[0].tagName).toBe('TD');
+      expect(row.children[0]?.tagName).toBe('TD');
       expect(row.textContent).toContain('Cell 1');
     });
 
     it('should create header row with th elements', () => {
       const row = createTableRow(['Header 1', 'Header 2'], true);
 
-      expect(row.children[0].tagName).toBe('TH');
-      expect(row.children[1].tagName).toBe('TH');
+      expect(row.children[0]?.tagName).toBe('TH');
+      expect(row.children[1]?.tagName).toBe('TH');
       expect(row.textContent).toContain('Header 1');
     });
 
@@ -455,9 +455,9 @@ describe('Security Helpers', () => {
       ]);
 
       expect(row.children.length).toBe(3);
-      expect(row.children[0].textContent).toBe('String cell');
-      expect(row.children[1].querySelector('button')).toBeTruthy();
-      expect(row.children[2].textContent).toBe('Object cell');
+      expect(row.children[0]?.textContent).toBe('String cell');
+      expect(row.children[1]?.querySelector('button')).toBeTruthy();
+      expect(row.children[2]?.textContent).toBe('Object cell');
     });
 
     it('should escape XSS in string cells', () => {

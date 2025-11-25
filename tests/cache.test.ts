@@ -178,7 +178,7 @@ describe('SessionStorage Cache System', () => {
 
       sessionStorageCache.set('test', 'value');
 
-      const stored = JSON.parse(mockStorage['rolex_cache_test']);
+      const stored = JSON.parse(mockStorage['rolex_cache_test'] || '{}');
       expect(stored.timestamp).toBe(testTime.getTime());
       expect(stored.value).toBe('value');
     });

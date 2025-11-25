@@ -178,7 +178,7 @@ export function mockBlobURL(content: string): string {
 
 // Mock URL.createObjectURL and revokeObjectURL
 if (!global.URL.createObjectURL) {
-  global.URL.createObjectURL = vi.fn((blob: Blob) => {
+  global.URL.createObjectURL = vi.fn((_blob: Blob) => {
     return `blob:http://localhost:3000/${Math.random().toString(36).substring(7)}`;
   });
 }

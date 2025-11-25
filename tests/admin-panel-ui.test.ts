@@ -15,8 +15,6 @@ import {
   setupAdminPanelTest,
   cleanupAdminPanelTest,
   getElement,
-  getInputValue,
-  setInputValue,
   hasAlert,
   clearAlerts
 } from './helpers/test-utils';

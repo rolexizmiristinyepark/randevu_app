@@ -23,8 +23,6 @@ import {
   getElement,
   getInputValue,
   setInputValue,
-  clickButton,
-  hasAlert,
   nextTick
 } from './helpers/test-utils';
 
