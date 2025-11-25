@@ -108,10 +108,10 @@ async function add(): Promise<void> {
             render();
             getUI().showAlert('✅ ' + name + ' eklendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'addStaff', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'addStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Ekleme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Ekleme', getUI().showAlert.bind(getUI()));
     }
 }
 
@@ -127,10 +127,10 @@ async function toggle(id: number): Promise<void> {
             render();
             getUI().showAlert('✅ Durum değişti!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'toggleStaff', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'toggleStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(getUI()));
     }
 }
 
@@ -151,10 +151,10 @@ async function remove(id: number): Promise<void> {
             render();
             getUI().showAlert('✅ ' + staff.name + ' silindi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'removeStaff', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'removeStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Silme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Silme', getUI().showAlert.bind(getUI()));
     }
 }
 
@@ -385,10 +385,10 @@ async function saveEdit(): Promise<void> {
             closeEditModal();
             getUI().showAlert('✅ Personel güncellendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'updateStaff', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'updateStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(getUI()));
     }
 }
 

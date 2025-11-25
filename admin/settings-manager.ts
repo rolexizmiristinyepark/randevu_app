@@ -87,10 +87,10 @@ async function save(): Promise<void> {
             dataStore.settings = response.data as any;
             getUI().showAlert('✅ Ayarlar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'saveSettings', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveSettings', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(getUI()));
     } finally {
         ButtonUtils.reset(btn);
     }
@@ -102,10 +102,10 @@ async function save(): Promise<void> {
 async function loadWhatsAppSettings(): Promise<void> {
     try {
         const response = await ApiService.call('getWhatsAppSettings', {});
-        if (response.success) {
-            const statusEl = document.getElementById('whatsappApiStatus');
-            if (!statusEl) return;
+        const statusEl = document.getElementById('whatsappApiStatus');
+        if (!statusEl) return;
 
+        if (response.success) {
             if ((response as any).configured) {
                 statusEl.innerHTML = `
                     <div style="padding: 12px; background: #F0F9F5; border: 1px solid #E8E8E8; border-radius: 2px;">
@@ -123,9 +123,19 @@ async function loadWhatsAppSettings(): Promise<void> {
                     </div>
                 `;
             }
+        } else {
+            // Auth error or other error - show as not configured (don't show alert)
+            statusEl.innerHTML = `
+                <div style="padding: 12px; background: #FFF8E1; border: 1px solid #E8E8E8; border-radius: 2px;">
+                    <div style="font-size: 13px; color: #F57F17; letter-spacing: 0.5px;">
+                        WhatsApp API durumu bilinmiyor
+                    </div>
+                </div>
+            `;
         }
     } catch (error) {
-        console.error('WhatsApp ayarları yüklenemedi:', error);
+        // Silent fail for optional feature
+        console.warn('WhatsApp ayarları yüklenemedi:', error);
     }
 }
 

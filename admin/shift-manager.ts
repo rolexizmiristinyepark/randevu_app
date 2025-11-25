@@ -175,10 +175,10 @@ async function save(): Promise<void> {
             renderSaved();
             getUI().showAlert('✅ Vardiyalar kaydedildi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'saveShifts', getUI().showAlert.bind(UI));
+            ErrorUtils.handleApiError(response as any, 'saveShifts', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
-        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(UI));
+        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(getUI()));
     } finally {
         ButtonUtils.reset(btn);
     }
@@ -281,6 +281,11 @@ function render(): void {
             select.appendChild(opt2);
             select.appendChild(opt3);
             select.appendChild(opt4);
+
+            // Update data-shift attribute on change for CSS coloring
+            select.addEventListener('change', function(this: HTMLSelectElement) {
+                this.setAttribute('data-shift', this.value);
+            });
 
             dayCell.appendChild(select);
             staffRow.appendChild(dayCell);
