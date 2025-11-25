@@ -49,6 +49,8 @@ export async function changeMonth(direction: 1 | -1): Promise<void> {
             state.set('dayShifts', cached.data.dayShifts || {});
             state.set('allAppointments', cached.data.allAppointments || {});
             state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
+            // ⚡ BUG FIX: Clear memoization cache before re-render to prevent stale availability data
+            clearAvailabilityCache();
             renderCalendar();
             return; // Return immediately
         }
@@ -363,6 +365,8 @@ export async function loadMonthData(): Promise<void> {
             state.set('dayShifts', cached.data.dayShifts || {});
             state.set('allAppointments', cached.data.allAppointments || {});
             state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
+            // ⚡ BUG FIX: Clear memoization cache before re-render to prevent stale availability data
+            clearAvailabilityCache();
             renderCalendar();
             return;
         }
