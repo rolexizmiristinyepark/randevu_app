@@ -376,8 +376,8 @@ const CONFIG = {
 
   // Security & Abuse Prevention
   // 🔒 SECURITY: TURNSTILE_SECRET_KEY Script Properties'den yüklenir (loadExternalConfigs)
-  // Production key varsayılan olarak ayarlandı (Script Properties yoksa fallback)
-  TURNSTILE_SECRET_KEY: '0x4AAAAAACCXZ9dfNEJxoB2t4Rkx7qvSO6Y', // Production secret - Script Properties'de de aynı değer olmalı
+  // Hardcoded fallback KALDIRILDI - Script Properties ZORUNLU
+  TURNSTILE_SECRET_KEY: '', // 🔒 Script Properties'den yüklenecek, fallback YOK
   RATE_LIMIT_MAX_REQUESTS: 10,      // 10 istek
   RATE_LIMIT_WINDOW_SECONDS: 600,   // 10 dakika (600 saniye)
 
@@ -1171,38 +1171,31 @@ const ACTION_HANDLERS = {
 function doGet(e) {
   try {
     const action = e.parameter.action;
-    const apiKey = e.parameter.apiKey; // API key parametresi
     // ✅ GÜVENLİK GÜNCELLEMESİ: JSONP desteği kaldırıldı - sadece JSON döndürülür
 
     let response = {};
 
     try {
-      // Admin action kontrolü - API key gerekli mi?
+      // 🔒 GÜVENLİK: Admin actions için GET YASAK - POST zorunlu
+      // API key URL'de görünmemeli (browser history, server logs güvenliği)
       if (ADMIN_ACTIONS.includes(action)) {
-        if (!AuthService.validateApiKey(apiKey)) {
-          response = {
+        log.warn('Admin action attempted via GET:', action);
+        return ContentService
+          .createTextOutput(JSON.stringify({
             success: false,
-            error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
-            requiresAuth: true
-          };
-        } else {
-          // API key geçerli, handler'ı çalıştır
-          const handler = ACTION_HANDLERS[action];
-          if (!handler) {
-            response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
-          } else {
-            response = handler(e);
-          }
-        }
-      } else {
-        // Normal action (API key gerekmez)
-        const handler = ACTION_HANDLERS[action];
+            error: 'Güvenlik: Admin işlemleri için POST kullanın. GET ile admin işlemi yapılamaz.',
+            requiresPost: true
+          }))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
 
-        if (!handler) {
-          response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
-        } else {
-          response = handler(e);
-        }
+      // Public action - GET ile devam et
+      const handler = ACTION_HANDLERS[action];
+
+      if (!handler) {
+        response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
+      } else {
+        response = handler(e);
       }
     } catch (error) {
       // Detaylı hata bilgisini sadece sunucu tarafında logla (güvenlik)
@@ -4538,11 +4531,12 @@ function loadExternalConfigs() {
     CONFIG.CALENDAR_ID = calendarId;
   }
 
-  // 🔒 SECURITY: Cloudflare Turnstile Secret (production key)
+  // 🔒 SECURITY: Cloudflare Turnstile Secret - ZORUNLU
   const turnstileSecret = scriptProperties.getProperty('TURNSTILE_SECRET_KEY');
-  if (turnstileSecret) {
-    CONFIG.TURNSTILE_SECRET_KEY = turnstileSecret;
+  if (!turnstileSecret || turnstileSecret.trim() === '') {
+    throw new Error('KRİTİK: TURNSTILE_SECRET_KEY Script Properties\'de tanımlı değil! Google Apps Script > Project Settings > Script Properties\'e ekleyin.');
   }
+  CONFIG.TURNSTILE_SECRET_KEY = turnstileSecret;
 
   // 🔒 SECURITY: WhatsApp Business API Credentials
   CONFIG.WHATSAPP_PHONE_NUMBER_ID = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID') || '';

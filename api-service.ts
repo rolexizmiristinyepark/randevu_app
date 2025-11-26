@@ -96,7 +96,8 @@ const ApiService = {
 
     /**
      * Internal method to make the actual Fetch API request
-     * ✅ GÜVENLİK GÜNCELLEMESİ: POST + Body kullanımı (API key URL'de görünmez)
+     * ✅ GÜVENLİK: Protected actions POST + JSON body kullanır (API key URL'de ASLA görünmez)
+     * ✅ Public actions GET kullanır (performans)
      * @private
      */
     _makeRequest<T = unknown>(
@@ -106,12 +107,6 @@ const ApiService = {
     ): Promise<ApiResponse<T>> {
         return new Promise(async (resolve, reject) => {
             try {
-                // Build request parameters
-                const allParams: Record<string, unknown> = { ...params, action };
-                if (apiKey) {
-                    allParams.apiKey = apiKey;
-                }
-
                 // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
                 let appsScriptUrl: string | null = null;
 
@@ -133,32 +128,57 @@ const ApiService = {
                     return;
                 }
 
-                // Create config object for compatibility
-                const config = { APPS_SCRIPT_URL: appsScriptUrl } as Config;
-
-                // ⭐ CORS FIX: GET kullan (POST preflight CORS sorunu yaratıyor)
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
 
-                // Query string oluştur
-                const queryParams = new URLSearchParams();
-                for (const [key, value] of Object.entries(allParams)) {
-                    if (value !== undefined && value !== null) {
-                        queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+                let response: Response;
+
+                // 🔒 GÜVENLİK: Protected actions için POST + JSON body kullan
+                // API key URL'de ASLA görünmez (browser history, server logs güvenli)
+                const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
+
+                if (isProtectedAction && apiKey) {
+                    // ✅ POST + JSON Body - API key güvenli
+                    const requestBody = {
+                        action,
+                        apiKey,
+                        ...params
+                    };
+
+                    response = await fetch(appsScriptUrl, {
+                        method: 'POST',
+                        mode: 'cors',
+                        credentials: 'omit',
+                        signal: controller.signal,
+                        headers: {
+                            'Content-Type': 'text/plain', // Google Apps Script CORS için
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+                } else {
+                    // ✅ GET - Public actions (API key yok)
+                    const queryParams = new URLSearchParams();
+                    queryParams.append('action', action);
+
+                    for (const [key, value] of Object.entries(params)) {
+                        if (value !== undefined && value !== null) {
+                            queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
+                        }
                     }
+
+                    const url = `${appsScriptUrl}?${queryParams.toString()}`;
+
+                    response = await fetch(url, {
+                        method: 'GET',
+                        mode: 'cors',
+                        credentials: 'omit',
+                        signal: controller.signal,
+                        headers: {
+                            'Accept': 'application/json'
+                        }
+                    });
                 }
-
-                const url = `${config.APPS_SCRIPT_URL}?${queryParams.toString()}`;
-
-                const response = await fetch(url, {
-                    method: 'GET',
-                    mode: 'cors',
-                    credentials: 'omit',
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
 
                 clearTimeout(timeoutId);
 

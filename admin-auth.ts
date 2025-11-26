@@ -46,7 +46,7 @@ const AdminAuth = {
     _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
     _activityHandler: null as (() => void) | null,
 
-    // API key kontrolü - TEMPORARILY: şifreleme devre dışı
+    // API key kontrolü - AES-256 şifreleme AKTİF
     isAuthenticated() {
         const storedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
         const savedTime = sessionStorage.getItem(this.API_KEY_STORAGE + '_time');
@@ -60,14 +60,7 @@ const AdminAuth = {
             return false;
         }
 
-        // DEBUG: Şifreleme geçici olarak devre dışı
-        // Eğer şifreli ise çözmeyi dene, değilse direkt kullan
-        if (storedKey.startsWith('RLX_')) {
-            // Şifrelenmemiş key
-            return storedKey;
-        }
-
-        // Şifreli key - çözmeyi dene
+        // Şifreli key - AES-256 ile çöz
         const decryptedKey = decryptData(storedKey);
         if (!decryptedKey) {
             this.logout();
@@ -77,10 +70,11 @@ const AdminAuth = {
         return decryptedKey;
     },
 
-    // API key kaydet - TEMPORARILY: şifreleme devre dışı
+    // API key kaydet - ŞİFRELEME AKTİF
     saveApiKey(apiKey: string): void {
-        // DEBUG: Şifreleme geçici olarak devre dışı - direkt kaydet
-        sessionStorage.setItem(this.API_KEY_STORAGE, apiKey);
+        // API key'i AES-256 ile şifrele ve kaydet
+        const encryptedKey = encryptData(apiKey);
+        sessionStorage.setItem(this.API_KEY_STORAGE, encryptedKey);
         sessionStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
         this._lastActivityTime = Date.now();
 

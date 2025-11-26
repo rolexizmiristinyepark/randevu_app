@@ -50,3 +50,4 @@ scripts/apps-script-backend.js
 
 # Archived old files and development logs
 .archive/
+*.bfg-report*
