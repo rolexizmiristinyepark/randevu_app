@@ -12,6 +12,7 @@ import { StringUtils } from './string-utils';
 import { ButtonUtils } from './button-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
+import { sanitizeName, sanitizePhone, sanitizeEmail, sanitizeInput } from './security-helpers';
 
 // ==================== TURNSTILE RESET ====================
 
@@ -50,10 +51,16 @@ export function initAppointmentForm(): void {
  * Handle form submission
  */
 async function handleFormSubmit(): Promise<void> {
-    const name = StringUtils.toTitleCase((document.getElementById('customerName') as HTMLInputElement).value.trim());
-    const phone = (document.getElementById('customerPhone') as HTMLInputElement).value.trim();
-    const email = (document.getElementById('customerEmail') as HTMLInputElement).value.trim();
-    const note = (document.getElementById('customerNote') as HTMLTextAreaElement).value.trim();
+    // Input sanitization - XSS ve injection koruması
+    const rawName = (document.getElementById('customerName') as HTMLInputElement).value;
+    const rawPhone = (document.getElementById('customerPhone') as HTMLInputElement).value;
+    const rawEmail = (document.getElementById('customerEmail') as HTMLInputElement).value;
+    const rawNote = (document.getElementById('customerNote') as HTMLTextAreaElement).value;
+
+    const name = StringUtils.toTitleCase(sanitizeName(rawName));
+    const phone = sanitizePhone(rawPhone);
+    const email = sanitizeEmail(rawEmail);
+    const note = sanitizeInput(rawNote, { maxLength: 500 });
 
     // Get state values
     const selectedAppointmentType = state.get('selectedAppointmentType');

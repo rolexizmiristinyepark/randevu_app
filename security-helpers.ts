@@ -6,6 +6,111 @@
 import { DateUtils } from './date-utils';
 import rolexLogoUrl from './assets/rolex-logo.svg';
 
+// ==================== INPUT SANITIZATION PIPELINE ====================
+
+interface SanitizeOptions {
+    maxLength?: number;
+    allowedPattern?: RegExp;
+    stripHtml?: boolean;
+    trimWhitespace?: boolean;
+}
+
+/**
+ * Kapsamlı input sanitization
+ * XSS, SQL injection ve diğer saldırılara karşı koruma
+ */
+function sanitizeInput(input: string, options: SanitizeOptions = {}): string {
+    if (!input || typeof input !== 'string') return '';
+
+    let sanitized = input;
+
+    // 1. Null bytes temizle
+    sanitized = sanitized.replace(/\0/g, '');
+
+    // 2. HTML entities escape (varsayılan)
+    if (options.stripHtml !== false) {
+        sanitized = sanitized
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#x27;');
+    }
+
+    // 3. SQL injection patterns (Google Sheets için de geçerli)
+    const sqlPatterns = [
+        /(\b)(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|ALTER|CREATE|TRUNCATE)(\b)/gi,
+        /(--)|(\/\*)|(\*\/)/g,  // SQL comments
+        /(\bOR\b|\bAND\b)\s*\d+\s*=\s*\d+/gi  // OR 1=1 patterns
+    ];
+    sqlPatterns.forEach(pattern => {
+        sanitized = sanitized.replace(pattern, '');
+    });
+
+    // 4. Script injection
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');  // onclick=, onerror=, etc.
+    sanitized = sanitized.replace(/data:/gi, '');  // data: URIs
+    sanitized = sanitized.replace(/vbscript:/gi, '');
+
+    // 5. Control characters temizle (tab ve newline hariç)
+    sanitized = sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+
+    // 6. Maximum uzunluk
+    if (options.maxLength && options.maxLength > 0) {
+        sanitized = sanitized.substring(0, options.maxLength);
+    }
+
+    // 7. İzin verilen pattern kontrolü (whitelist)
+    if (options.allowedPattern) {
+        const matches = sanitized.match(options.allowedPattern);
+        sanitized = matches ? matches.join('') : '';
+    }
+
+    // 8. Whitespace trim (varsayılan)
+    if (options.trimWhitespace !== false) {
+        sanitized = sanitized.trim();
+    }
+
+    return sanitized;
+}
+
+/**
+ * Telefon numarası sanitization
+ */
+function sanitizePhone(phone: string): string {
+    if (!phone) return '';
+    // Sadece rakam, +, boşluk ve tire izin ver
+    return phone.replace(/[^\d\s\-+()]/g, '').substring(0, 20);
+}
+
+/**
+ * E-posta sanitization
+ */
+function sanitizeEmail(email: string): string {
+    if (!email) return '';
+    // Basit email karakterleri
+    const sanitized = email.replace(/[^\w.@+-]/g, '').substring(0, 100);
+    // Email format kontrolü
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(sanitized) ? sanitized : '';
+}
+
+/**
+ * İsim sanitization (Türkçe karakterler dahil)
+ */
+function sanitizeName(name: string): string {
+    if (!name) return '';
+    // Sadece harf, boşluk ve tire izin ver (Türkçe dahil)
+    return name
+        .replace(/[^a-zA-ZğüşöçıİĞÜŞÖÇ\s\-']/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .substring(0, 100);
+}
+
+// ==================== DOM GÜVENLİK FONKSİYONLARI ====================
+
 // HTML karakterlerini güvenli hale getir
 function escapeHtml(unsafe: any): string {
     if (unsafe === null || unsafe === undefined) return '';
@@ -328,6 +433,12 @@ function maskName(name: any): string {
 
 // Export for ES6 modules
 export {
+    // Input Sanitization
+    sanitizeInput,
+    sanitizePhone,
+    sanitizeEmail,
+    sanitizeName,
+    // DOM Security
     escapeHtml,
     createElement,
     showAlertSafe,
@@ -336,13 +447,23 @@ export {
     createLoadingElement,
     createTableRow,
     createSuccessPageSafe,
+    // PII Masking
     maskEmail,
     maskPhone,
     maskName
 };
 
+// Type exports
+export type { SanitizeOptions };
+
 // Also expose globally for backward compatibility
 if (typeof window !== 'undefined') {
+    // Input Sanitization
+    (window as any).sanitizeInput = sanitizeInput;
+    (window as any).sanitizePhone = sanitizePhone;
+    (window as any).sanitizeEmail = sanitizeEmail;
+    (window as any).sanitizeName = sanitizeName;
+    // DOM Security
     (window as any).escapeHtml = escapeHtml;
     (window as any).createElement = createElement;
     (window as any).showAlertSafe = showAlertSafe;
@@ -351,6 +472,7 @@ if (typeof window !== 'undefined') {
     (window as any).createLoadingElement = createLoadingElement;
     (window as any).createTableRow = createTableRow;
     (window as any).createSuccessPageSafe = createSuccessPageSafe;
+    // PII Masking
     (window as any).maskEmail = maskEmail;
     (window as any).maskPhone = maskPhone;
     (window as any).maskName = maskName;
