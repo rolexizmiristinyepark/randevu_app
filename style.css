@@ -681,15 +681,16 @@ label {
 }
 
 .calendar-modal-header {
-    font-family: 'Playfair Display', serif;
-    font-size: 24px;
-    font-weight: 300;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 20px;
+    font-weight: 400;
     color: #1A1A2E;
     margin-bottom: 12px;
-    letter-spacing: 1px;
+    letter-spacing: 2px;
 }
 
 .calendar-modal-subtitle {
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
     font-size: 13px;
     color: #757575;
     margin-bottom: 30px;
