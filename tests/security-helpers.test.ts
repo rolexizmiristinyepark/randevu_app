@@ -1,8 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
+  // Input Sanitization
+  sanitizeInput,
+  sanitizePhone,
+  sanitizeEmail,
+  sanitizeName,
+  // PII Masking
   maskEmail,
   maskPhone,
   maskName,
+  // DOM Security
   escapeHtml,
   createElement,
   showAlertSafe,
@@ -14,6 +21,119 @@ import {
 import { cleanupDOM } from './setup';
 
 describe('Security Helpers', () => {
+  // ==================== INPUT SANITIZATION TESTS ====================
+
+  describe('sanitizeInput', () => {
+    it('removes null bytes', () => {
+      expect(sanitizeInput('hello\x00world')).toBe('helloworld');
+    });
+
+    it('escapes HTML entities', () => {
+      const result = sanitizeInput('<script>alert("XSS")</script>');
+      expect(result).not.toContain('<script>');
+      expect(result).toContain('&lt;');
+    });
+
+    it('removes SQL injection patterns', () => {
+      const result = sanitizeInput('SELECT * FROM users; DROP TABLE users;');
+      expect(result.toLowerCase()).not.toContain('select');
+      expect(result.toLowerCase()).not.toContain('drop');
+    });
+
+    it('removes javascript: protocol', () => {
+      const result = sanitizeInput('javascript:alert(1)');
+      expect(result.toLowerCase()).not.toContain('javascript:');
+    });
+
+    it('removes event handlers', () => {
+      const result = sanitizeInput('onclick=alert(1)');
+      expect(result.toLowerCase()).not.toContain('onclick=');
+    });
+
+    it('respects maxLength option', () => {
+      const result = sanitizeInput('very long text here', { maxLength: 10 });
+      expect(result.length).toBeLessThanOrEqual(10);
+    });
+
+    it('trims whitespace by default', () => {
+      const result = sanitizeInput('  hello  ');
+      expect(result).toBe('hello');
+    });
+
+    it('handles empty input', () => {
+      expect(sanitizeInput('')).toBe('');
+      expect(sanitizeInput(null as any)).toBe('');
+      expect(sanitizeInput(undefined as any)).toBe('');
+    });
+  });
+
+  describe('sanitizePhone', () => {
+    it('keeps only valid phone characters', () => {
+      expect(sanitizePhone('0555-123-4567')).toBe('0555-123-4567');
+      expect(sanitizePhone('+90 555 123 4567')).toBe('+90 555 123 4567');
+    });
+
+    it('removes invalid characters', () => {
+      expect(sanitizePhone('0555<script>123')).toBe('0555123');
+    });
+
+    it('limits length to 20', () => {
+      const result = sanitizePhone('1234567890123456789012345');
+      expect(result.length).toBeLessThanOrEqual(20);
+    });
+
+    it('handles empty input', () => {
+      expect(sanitizePhone('')).toBe('');
+    });
+  });
+
+  describe('sanitizeEmail', () => {
+    it('keeps valid email format', () => {
+      expect(sanitizeEmail('test@example.com')).toBe('test@example.com');
+    });
+
+    it('removes invalid characters', () => {
+      const result = sanitizeEmail('test<script>@example.com');
+      expect(result).not.toContain('<');
+    });
+
+    it('returns empty for invalid email', () => {
+      expect(sanitizeEmail('not-an-email')).toBe('');
+      expect(sanitizeEmail('missing@')).toBe('');
+    });
+
+    it('handles empty input', () => {
+      expect(sanitizeEmail('')).toBe('');
+    });
+  });
+
+  describe('sanitizeName', () => {
+    it('keeps Turkish characters', () => {
+      expect(sanitizeName('Şerif Öztürk')).toBe('Şerif Öztürk');
+      expect(sanitizeName('İsmail Çelik')).toBe('İsmail Çelik');
+    });
+
+    it('removes numbers and special chars', () => {
+      expect(sanitizeName('Ali123')).toBe('Ali');
+      expect(sanitizeName('Test<script>')).toBe('Testscript');
+    });
+
+    it('normalizes whitespace', () => {
+      expect(sanitizeName('Ali   Veli')).toBe('Ali Veli');
+    });
+
+    it('limits length to 100', () => {
+      const longName = 'A'.repeat(150);
+      expect(sanitizeName(longName).length).toBeLessThanOrEqual(100);
+    });
+
+    it('handles empty input', () => {
+      expect(sanitizeName('')).toBe('');
+    });
+  });
+
+  // ==================== PII MASKING TESTS ====================
+
   describe('maskEmail', () => {
     it('masks standard email', () => {
       const result = maskEmail('test@example.com');
