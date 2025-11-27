@@ -50,6 +50,21 @@ const SecurityService = {
   },
 
   /**
+   * PII verilerini SHA-256 hash'e çevirir (KVKK uyumu için)
+   * Log'larda kişisel bilgi görünmez, ama rate limiting çalışır
+   * @param {string} phone - Telefon numarası
+   * @param {string} email - E-posta adresi
+   * @returns {string} SHA-256 hash
+   */
+  hashIdentifier: function(phone, email) {
+    const raw = (phone || '') + '_' + (email || '');
+    const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, raw);
+    return bytes.map(function(b) {
+      return ((b + 256) % 256).toString(16).padStart(2, '0');
+    }).join('');
+  },
+
+  /**
    * Rate limiting kontrolü - CacheService ile IP bazlı
    * 10 dakika içinde max 10 istek
    * @param {string} identifier - IP veya fingerprint
@@ -3886,7 +3901,8 @@ function createAppointment(params) {
       duration,
       turnstileToken,
       managementLevel,
-      isVipLink
+      isVipLink,
+      kvkkConsent  // KVKK onayı
     } = params;
 
     // ===== SECURITY CHECKS =====
@@ -3900,8 +3916,8 @@ function createAppointment(params) {
       };
     }
 
-    // 2. Rate limiting - IP veya fingerprint bazlı
-    const identifier = customerPhone + '_' + customerEmail; // Basit bir identifier
+    // 2. Rate limiting - Hash bazlı (KVKK uyumu - PII log'larda görünmez)
+    const identifier = SecurityService.hashIdentifier(customerPhone, customerEmail);
     const rateLimit = SecurityService.checkRateLimit(identifier);
 
     if (!rateLimit.allowed) {
@@ -3916,6 +3932,15 @@ function createAppointment(params) {
     log.info('Rate limit OK - Kalan istek:', rateLimit.remaining);
 
     // ===== VALIDATION =====
+    // KVKK consent validation
+    if (!kvkkConsent) {
+      log.warn('KVKK onayı verilmedi');
+      return {
+        success: false,
+        error: 'KVKK aydınlatma metnini onaylamanız gerekmektedir.'
+      };
+    }
+
     // Date validation (YYYY-MM-DD format)
     if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
@@ -4513,7 +4538,129 @@ function createManualAppointment(params) {
  * @returns {Object} - {success: boolean, configured: boolean}
  */
 // getSlackSettings - SlackService namespace'ine taşındı (line 3557)
- 
+
+
+// ==================== DATA RETENTION SERVICE (KVKK) ====================
+/**
+ * KVKK Madde 7 uyumu için veri saklama ve temizleme servisi
+ * Eski randevuları otomatik olarak anonimleştirir veya siler
+ * @namespace DataRetentionService
+ */
+const DataRetentionService = {
+  // 1 ay (30 gün) saklama süresi
+  RETENTION_DAYS: 30,
+
+  /**
+   * Eski randevuları temizle (anonimleştir)
+   * Haftalık trigger ile otomatik çalıştırılır
+   * @returns {{success: boolean, anonymizedCount: number, error?: string}}
+   */
+  cleanupOldAppointments: function() {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - this.RETENTION_DAYS);
+
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      if (!calendar) {
+        log.error('DataRetention: Takvim bulunamadı');
+        return { success: false, error: 'Takvim bulunamadı' };
+      }
+
+      // 2020'den cutoff tarihine kadar olan etkinlikleri al
+      const startDate = new Date(2020, 0, 1);
+      const oldEvents = calendar.getEvents(startDate, cutoffDate);
+
+      let anonymizedCount = 0;
+
+      oldEvents.forEach(function(event) {
+        const title = event.getTitle();
+        // Randevu event'lerini tanımla (zaten anonimleştirilmişleri atla)
+        if ((title.includes('Teslim') || title.includes('Servis') ||
+             title.includes('Görüşme') || title.includes('Gönderi') ||
+             title.includes('Yönetim')) && !title.includes('[Arşiv]')) {
+
+          // Anonimleştir (tamamen silmek yerine istatistik için sakla)
+          event.setTitle('[Arşiv] Randevu - ' + event.getStartTime().toISOString().split('T')[0]);
+          event.setDescription('Müşteri bilgileri KVKK gereği silindi. Tarih: ' + new Date().toISOString());
+
+          anonymizedCount++;
+        }
+      });
+
+      log.info('DataRetention: ' + anonymizedCount + ' randevu anonimleştirildi');
+
+      return {
+        success: true,
+        anonymizedCount: anonymizedCount,
+        cutoffDate: cutoffDate.toISOString()
+      };
+
+    } catch (error) {
+      log.error('DataRetention hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Saklama politikası bilgisini döndür
+   * @returns {{retentionDays: number, description: string}}
+   */
+  getRetentionPolicy: function() {
+    return {
+      retentionDays: this.RETENTION_DAYS,
+      description: 'Kişisel veriler ' + this.RETENTION_DAYS + ' gün sonra anonimleştirilir (KVKK Madde 7)'
+    };
+  }
+};
+
+/**
+ * Haftalık veri temizleme trigger fonksiyonu
+ * Apps Script Triggers ile çalıştırılır:
+ * 1. Apps Script editörde: Triggers (⏰) → Add Trigger
+ * 2. Function: runDataRetention
+ * 3. Event source: Time-driven
+ * 4. Type: Week timer
+ * 5. Day: Sunday, Time: 03:00-04:00
+ */
+function runDataRetention() {
+  log.info('DataRetention: Haftalık temizlik başlıyor...');
+  const result = DataRetentionService.cleanupOldAppointments();
+  log.info('DataRetention: Sonuç:', result);
+  return result;
+}
+
+/**
+ * Manuel test için - DataRetention'ı test et (DRY RUN)
+ * Gerçekte silmez, sadece kaç kayıt etkileneceğini gösterir
+ */
+function testDataRetention() {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - DataRetentionService.RETENTION_DAYS);
+
+  const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+  if (!calendar) {
+    console.log('Takvim bulunamadı');
+    return;
+  }
+
+  const startDate = new Date(2020, 0, 1);
+  const oldEvents = calendar.getEvents(startDate, cutoffDate);
+
+  let count = 0;
+  oldEvents.forEach(function(event) {
+    const title = event.getTitle();
+    if ((title.includes('Teslim') || title.includes('Servis') ||
+         title.includes('Görüşme') || title.includes('Gönderi') ||
+         title.includes('Yönetim')) && !title.includes('[Arşiv]')) {
+      count++;
+      console.log('Anonimleştirilecek: ' + title + ' - ' + event.getStartTime());
+    }
+  });
+
+  console.log('Toplam anonimleştirilecek: ' + count + ' randevu');
+  console.log('Cutoff tarihi: ' + cutoffDate);
+  return { wouldAnonymize: count, cutoffDate: cutoffDate };
+}
 
 // ==================== EXTERNAL CONFIG HELPER ====================
 

@@ -36,10 +36,10 @@ const CacheServiceWrapper = {
 
 // --- Data Storage ---
 /**
- * Data storage service using PropertiesService + CacheService
- * @namespace StorageService
+ * PropertiesService tabanlı storage (legacy)
+ * @namespace PropertiesStorageService
  */
-const StorageService = {
+const PropertiesStorageService = {
   /**
    * Veriyi getir (Cache + PropertiesService)
    * @returns {Object} Data object
@@ -345,5 +345,86 @@ const VersionService = {
       // Version increment başarısız olsa bile devam et (critical değil)
       return { success: false, error: error.toString() };
     }
+  }
+};
+
+// ==================== UNIFIED STORAGE SERVICE ====================
+/**
+ * Feature flag kontrolü
+ * USE_SHEETS_STORAGE = 'true' ise Google Sheets kullanılır
+ */
+const STORAGE_FEATURE_FLAG = {
+  isSheetStorageEnabled: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      return props.getProperty('USE_SHEETS_STORAGE') === 'true';
+    } catch (e) {
+      return false;
+    }
+  },
+
+  enableSheetStorage: function() {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty('USE_SHEETS_STORAGE', 'true');
+    return { success: true, message: 'Sheet storage aktifleştirildi' };
+  },
+
+  disableSheetStorage: function() {
+    const props = PropertiesService.getScriptProperties();
+    props.setProperty('USE_SHEETS_STORAGE', 'false');
+    return { success: true, message: 'Sheet storage devre dışı bırakıldı' };
+  }
+};
+
+/**
+ * Unified Storage Service - Feature flag'e göre backend seçer
+ * @namespace StorageService
+ */
+const StorageService = {
+  /**
+   * Aktif backend'i seç
+   * @returns {Object} PropertiesStorageService veya SheetStorageService
+   * @private
+   */
+  _getBackend: function() {
+    if (STORAGE_FEATURE_FLAG.isSheetStorageEnabled() && typeof SheetStorageService !== 'undefined') {
+      return SheetStorageService;
+    }
+    return PropertiesStorageService;
+  },
+
+  /**
+   * Veriyi getir
+   * @returns {Object} { staff, shifts, settings }
+   */
+  getData: function() {
+    return this._getBackend().getData();
+  },
+
+  /**
+   * Veriyi kaydet
+   * @param {Object} data - { staff, shifts, settings }
+   */
+  saveData: function(data) {
+    return this._getBackend().saveData(data);
+  },
+
+  /**
+   * Veriyi sıfırla
+   * @returns {{success: boolean, message: string}}
+   */
+  resetData: function() {
+    return this._getBackend().resetData();
+  },
+
+  /**
+   * Hangi backend aktif
+   * @returns {string} 'sheets' veya 'properties'
+   */
+  getActiveBackend: function() {
+    if (STORAGE_FEATURE_FLAG.isSheetStorageEnabled() && typeof SheetStorageService !== 'undefined') {
+      return 'sheets';
+    }
+    return 'properties';
   }
 };

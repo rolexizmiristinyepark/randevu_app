@@ -1000,3 +1000,54 @@ label {
 .type-card.management-expanded h3 {
     margin-bottom: 10px;
 }
+
+/* ==================== KVKK Consent Checkbox ==================== */
+.kvkk-consent {
+    margin: 20px 0;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.kvkk-consent .checkbox-container {
+    display: flex;
+    align-items: flex-start;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1.5;
+    gap: 12px;
+}
+
+.kvkk-consent .checkbox-container input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    cursor: pointer;
+    accent-color: #006039;
+    flex-shrink: 0;
+}
+
+.kvkk-consent .consent-text {
+    color: #495057;
+}
+
+.kvkk-consent .consent-text a {
+    color: #006039;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.kvkk-consent .consent-text a:hover {
+    color: #004d2e;
+}
+
+/* Checkbox validation error state */
+.kvkk-consent.error {
+    border-color: #dc3545;
+    background: #fff5f5;
+}
+
+.kvkk-consent.error .consent-text {
+    color: #dc3545;
+}

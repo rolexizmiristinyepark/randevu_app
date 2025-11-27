@@ -109,11 +109,25 @@
             </div>
         </div>
 
+        <!-- KVKK Onay Checkbox -->
+        <div id="kvkkContainer" class="kvkk-consent" style="display: none;">
+            <label class="checkbox-container">
+                <input type="checkbox" id="kvkkConsent" required>
+                <span class="checkmark"></span>
+                <span class="consent-text">
+                    Kişisel verilerimin işlenmesini kabul ediyorum.
+                    <a href="/randevu_app/kvkk-aydinlatma.html" target="_blank" rel="noopener">
+                        KVKK Aydınlatma Metni
+                    </a>
+                </span>
+            </label>
+        </div>
+
         <!-- Cloudflare Turnstile Widget (Bot Protection) -->
         <div id="turnstileContainer" style="display: none; margin: 20px auto; text-align: center;">
             <div class="cf-turnstile"
                  id="turnstileWidget"
-                 data-sitekey="0x4AAAAAACCkYbGGD-5Kt3lj"
+                 data-sitekey="0x4AAAAAACDJXoobV68BNCME"
                  data-callback="onTurnstileSuccess"
                  data-theme="light"
                  data-size="normal">

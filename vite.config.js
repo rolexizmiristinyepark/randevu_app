@@ -11,7 +11,8 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
-        admin: resolve(__dirname, 'admin.html')
+        admin: resolve(__dirname, 'admin.html'),
+        kvkk: resolve(__dirname, 'kvkk-aydinlatma.html')
       },
       output: {
         // Manual chunk splitting for better caching

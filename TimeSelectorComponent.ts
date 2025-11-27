@@ -291,6 +291,8 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
 
         // Show form directly
         revealSection('detailsSection');
+        const kvkkContainer1 = document.getElementById('kvkkContainer');
+        if (kvkkContainer1) kvkkContainer1.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
         const submitBtn = document.getElementById('submitBtn');
@@ -304,12 +306,16 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
         // HK/OK already selected (from inline buttons), show form directly
         hideSection('staffSection');
         revealSection('detailsSection');
+        const kvkkContainer2 = document.getElementById('kvkkContainer');
+        if (kvkkContainer2) kvkkContainer2.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'block';
     } else {
         revealSection('detailsSection');
+        const kvkkContainer3 = document.getElementById('kvkkContainer');
+        if (kvkkContainer3) kvkkContainer3.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
         const submitBtn = document.getElementById('submitBtn');

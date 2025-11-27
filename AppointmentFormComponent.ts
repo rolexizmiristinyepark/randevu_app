@@ -65,6 +65,18 @@ async function handleFormSubmit(): Promise<void> {
     const managementLevel = state.get('managementLevel');
     const staffMembers = state.get('staffMembers');
 
+    // KVKK consent check
+    const kvkkConsent = document.getElementById('kvkkConsent') as HTMLInputElement;
+    if (!kvkkConsent?.checked) {
+        showAlert('Lütfen KVKK aydınlatma metnini okuyup onay veriniz.', 'error');
+        const kvkkContainer = document.getElementById('kvkkContainer');
+        if (kvkkContainer) kvkkContainer.classList.add('error');
+        return;
+    }
+    // Remove error state if checked
+    const kvkkContainer = document.getElementById('kvkkContainer');
+    if (kvkkContainer) kvkkContainer.classList.remove('error');
+
     // Cloudflare Turnstile token check
     const turnstileToken = (window as any).turnstile?.getResponse();
     if (!turnstileToken) {
@@ -135,7 +147,8 @@ async function handleFormSubmit(): Promise<void> {
             duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30,
             turnstileToken: turnstileToken,  // Bot protection token
             managementLevel: managementLevel,  // Management link level (1, 2, 3 or null)
-            isVipLink: isManagementLink  // VIP link flag (#hk, #ok, #hmk)
+            isVipLink: isManagementLink,  // VIP link flag (#hk, #ok, #hmk)
+            kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
         });
 
         if (result.success) {
