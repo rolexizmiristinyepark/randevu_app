@@ -51,11 +51,15 @@ const AdminAuth = {
         const storedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
         const savedTime = sessionStorage.getItem(this.API_KEY_STORAGE + '_time');
 
-        if (!storedKey || !savedTime) return false;
+        if (!storedKey || !savedTime) {
+            console.debug('[AdminAuth] No stored key or time found');
+            return false;
+        }
 
         // İnaktivite timeout kontrolü
         const elapsed = Date.now() - this._lastActivityTime;
         if (elapsed > this.INACTIVITY_TIMEOUT) {
+            console.warn('[AdminAuth] Session timeout - logging out');
             this.logout();
             return false;
         }
@@ -63,6 +67,14 @@ const AdminAuth = {
         // Şifreli key - AES-256 ile çöz
         const decryptedKey = decryptData(storedKey);
         if (!decryptedKey) {
+            console.warn('[AdminAuth] Failed to decrypt API key - session corrupted');
+            this.logout();
+            return false;
+        }
+
+        // Debug: API key format kontrolü
+        if (!decryptedKey.startsWith('RLX_')) {
+            console.warn('[AdminAuth] Invalid API key format - expected RLX_ prefix');
             this.logout();
             return false;
         }

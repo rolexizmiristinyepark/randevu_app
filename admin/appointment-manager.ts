@@ -137,10 +137,26 @@ async function deleteAppointment(eventId: string): Promise<void> {
             getUI().showAlert('✅ Randevu silindi', 'success');
             load();
         } else {
-            getUI().showAlert('❌ Silme hatası: ' + result.error, 'error');
+            // API key hatası için özel mesaj
+            if ((result as any).requiresAuth || result.error?.includes('Yetkilendirme')) {
+                getUI().showAlert('❌ Oturum süresi dolmuş. Lütfen çıkış yapıp tekrar giriş yapın.', 'error');
+                // 3 saniye sonra logout
+                setTimeout(() => {
+                    if (confirm('Oturum süresi dolmuş. Çıkış yapılsın mı?')) {
+                        (window as any).AdminAuth?.logout();
+                    }
+                }, 500);
+            } else {
+                getUI().showAlert('❌ Silme hatası: ' + result.error, 'error');
+            }
         }
     } catch (error) {
-        getUI().showAlert('❌ Silme hatası', 'error');
+        const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
+        if (errorMessage.includes('Authentication')) {
+            getUI().showAlert('❌ Oturum gerekli. Lütfen giriş yapın.', 'error');
+        } else {
+            getUI().showAlert('❌ Silme hatası: ' + errorMessage, 'error');
+        }
     }
 }
 
