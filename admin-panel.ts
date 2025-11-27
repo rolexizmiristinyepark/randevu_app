@@ -10,7 +10,7 @@ import { showAlertSafe } from './security-helpers';
 import { initDataStore } from './admin/data-store';
 import { initStaffManager } from './admin/staff-manager';
 import { initShiftManager } from './admin/shift-manager';
-import { initAppointmentManager } from './admin/appointment-manager';
+import { initAppointmentManager, loadAppointments } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
 
 // Extend Window interface for admin panel specific properties
@@ -218,6 +218,11 @@ function setupTabs(): void {
             const tabName = this.dataset.tab;
             if (tabName) {
                 UI.switchTab(tabName);
+
+                // Randevular sekmesine geçince randevuları yükle
+                if (tabName === 'appointments') {
+                    loadAppointments();
+                }
             }
         });
     });
