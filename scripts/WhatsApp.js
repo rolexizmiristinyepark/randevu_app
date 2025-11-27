@@ -308,13 +308,56 @@ const WhatsAppService = {
  * Time-based trigger tarafından çağrılır (örn: her gün 09:00)
  * API key gerektirmez (server-side çalışır)
  */
+/**
+ * WhatsApp ayarlarını test et ve debug bilgisi döndür
+ * Apps Script Editor'de çalıştırın ve Execution Log'u kontrol edin
+ */
+function testWhatsAppSetup() {
+  const scriptProperties = PropertiesService.getScriptProperties();
+  const phoneNumberId = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+  const accessToken = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN');
+
+  Logger.log('=== WhatsApp Setup Test ===');
+  Logger.log('WHATSAPP_PHONE_NUMBER_ID: ' + (phoneNumberId ? '✅ Ayarlanmış (' + phoneNumberId.substring(0, 5) + '...)' : '❌ EKSİK'));
+  Logger.log('WHATSAPP_ACCESS_TOKEN: ' + (accessToken ? '✅ Ayarlanmış (' + accessToken.substring(0, 10) + '...)' : '❌ EKSİK'));
+
+  // YARININ randevularını kontrol et (hatırlatma bir gün önce gönderilir)
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const dateStr = Utilities.formatDate(tomorrow, 'Europe/Istanbul', 'yyyy-MM-dd');
+  Logger.log('Yarının tarihi: ' + dateStr);
+
+  try {
+    const reminders = WhatsAppService.getTodayWhatsAppReminders(dateStr);
+    Logger.log('Randevu sorgusu: ' + (reminders.success ? '✅ Başarılı' : '❌ Hata: ' + reminders.error));
+    Logger.log('Yarınki randevu sayısı: ' + (reminders.data ? reminders.data.length : 0));
+
+    if (reminders.data && reminders.data.length > 0) {
+      reminders.data.forEach(function(r, i) {
+        Logger.log('Randevu ' + (i+1) + ': ' + r.customerName + ' - ' + r.phone + ' - ' + r.time);
+      });
+    }
+  } catch (e) {
+    Logger.log('Randevu sorgusu hatası: ' + e.toString());
+  }
+
+  return {
+    phoneNumberId: !!phoneNumberId,
+    accessToken: !!accessToken,
+    date: dateStr
+  };
+}
+
 function sendDailyWhatsAppReminders() {
   try {
-    // Bugünün tarihini al
+    // YARININ tarihini al (hatırlatma bir gün önce gönderilir)
     const today = new Date();
-    const dateStr = Utilities.formatDate(today, 'Europe/Istanbul', 'yyyy-MM-dd');
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const dateStr = Utilities.formatDate(tomorrow, 'Europe/Istanbul', 'yyyy-MM-dd');
 
-    log.info('Günlük WhatsApp hatırlatmaları başlatılıyor:', dateStr);
+    Logger.log('Yarınki randevular için WhatsApp hatırlatmaları başlatılıyor: ' + dateStr);
 
     // WhatsApp ayarlarını kontrol et
     const scriptProperties = PropertiesService.getScriptProperties();
