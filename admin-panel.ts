@@ -155,6 +155,10 @@ function initAdmin(): void {
 
     // Authentication kontrolü
     if (!window.AdminAuth.isAuthenticated()) {
+        // Loading overlay'i gizle (login modal görünsün)
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        if (loadingOverlay) loadingOverlay.style.display = 'none';
+
         window.AdminAuth.showLoginModal();
         return;
     }
