@@ -1014,9 +1014,11 @@ label {
     display: flex;
     align-items: flex-start;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 13px;
     line-height: 1.5;
     gap: 12px;
+    text-transform: none;
+    letter-spacing: normal;
 }
 
 .kvkk-consent .checkbox-container input[type="checkbox"] {
@@ -1030,6 +1032,8 @@ label {
 
 .kvkk-consent .consent-text {
     color: #495057;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-weight: 400;
 }
 
 .kvkk-consent .consent-text a {
