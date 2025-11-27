@@ -258,3 +258,79 @@ const SlackService = {
     return { blocks };
   }
 };
+
+// ==================== TRIGGER FUNCTIONS ====================
+// Bu fonksiyonlar Google Apps Script trigger'ları tarafından çağrılır
+
+/**
+ * Günlük Slack hatırlatmaları gönder
+ * Time-based trigger tarafından çağrılır (örn: her gün 09:00)
+ * API key gerektirmez (server-side çalışır)
+ */
+function sendDailySlackReminders() {
+  try {
+    // Slack Webhook URL'i Script Properties'den al
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const webhookUrl = scriptProperties.getProperty('SLACK_WEBHOOK_URL');
+
+    if (!webhookUrl) {
+      log.warn('Slack Webhook URL yapılandırılmamış - bildirim gönderilmedi');
+      return {
+        success: false,
+        error: 'Slack Webhook URL yapılandırılmamış'
+      };
+    }
+
+    // Bugünün tarihini hesapla
+    const today = new Date();
+    const todayDateStr = Utilities.formatDate(today, CONFIG.TIMEZONE || 'Europe/Istanbul', 'yyyy-MM-dd');
+    const todayFormatted = Utilities.formatDate(today, CONFIG.TIMEZONE || 'Europe/Istanbul', 'd MMMM yyyy, EEEE');
+
+    log.info('Günlük Slack bildirimi gönderiliyor:', todayDateStr);
+
+    // Bugünün randevularını al
+    const reminders = WhatsAppService.getTodayWhatsAppReminders(todayDateStr);
+
+    if (!reminders.success) {
+      log.error('Randevular alınamadı:', reminders.error);
+      return { success: false, error: reminders.error };
+    }
+
+    const appointments = reminders.data || [];
+
+    // Slack mesajını formatla
+    const slackMessage = SlackService.formatSlackMessage(appointments, todayFormatted);
+
+    // Slack'e gönder
+    const response = UrlFetchApp.fetch(webhookUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(slackMessage),
+      muteHttpExceptions: true
+    });
+
+    const responseCode = response.getResponseCode();
+
+    if (responseCode === 200) {
+      log.info('Slack bildirimi başarıyla gönderildi. Randevu sayısı:', appointments.length);
+      return {
+        success: true,
+        appointmentCount: appointments.length,
+        date: todayDateStr
+      };
+    } else {
+      log.error('Slack webhook hatası:', response.getContentText());
+      return {
+        success: false,
+        error: 'Slack webhook hatası: ' + responseCode
+      };
+    }
+
+  } catch (error) {
+    log.error('sendDailySlackReminders hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}

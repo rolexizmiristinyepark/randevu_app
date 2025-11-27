@@ -299,3 +299,97 @@ const WhatsAppService = {
     }
   }
 };
+
+// ==================== TRIGGER FUNCTIONS ====================
+// Bu fonksiyonlar Google Apps Script trigger'ları tarafından çağrılır
+
+/**
+ * Günlük WhatsApp hatırlatmaları gönder
+ * Time-based trigger tarafından çağrılır (örn: her gün 09:00)
+ * API key gerektirmez (server-side çalışır)
+ */
+function sendDailyWhatsAppReminders() {
+  try {
+    // Bugünün tarihini al
+    const today = new Date();
+    const dateStr = Utilities.formatDate(today, 'Europe/Istanbul', 'yyyy-MM-dd');
+
+    log.info('Günlük WhatsApp hatırlatmaları başlatılıyor:', dateStr);
+
+    // WhatsApp ayarlarını kontrol et
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const phoneNumberId = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID');
+    const accessToken = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN');
+
+    if (!phoneNumberId || !accessToken) {
+      log.warn('WhatsApp ayarları yapılandırılmamış - hatırlatmalar gönderilmedi');
+      return {
+        success: false,
+        error: 'WhatsApp ayarları yapılandırılmamış'
+      };
+    }
+
+    // Bugünkü randevuları al
+    const reminders = WhatsAppService.getTodayWhatsAppReminders(dateStr);
+
+    if (!reminders.success || reminders.data.length === 0) {
+      log.info('Bugün gönderilecek hatırlatma yok');
+      return {
+        success: true,
+        sent: 0,
+        message: 'Gönderilecek hatırlatma yok'
+      };
+    }
+
+    log.info('Gönderilecek hatırlatma sayısı:', reminders.data.length);
+
+    let sentCount = 0;
+    let failedCount = 0;
+    const results = [];
+
+    // Her randevu için mesaj gönder
+    reminders.data.forEach(function(reminder) {
+      try {
+        const result = WhatsAppService.sendWhatsAppMessage(
+          reminder.phone,
+          reminder.customerName,
+          reminder.dateTime,
+          reminder.staffName,
+          reminder.appointmentType,
+          reminder.staffPhone
+        );
+
+        if (result.success) {
+          sentCount++;
+          results.push({ phone: reminder.phone, status: 'sent' });
+        } else {
+          failedCount++;
+          results.push({ phone: reminder.phone, status: 'failed', error: result.error });
+        }
+
+        // Rate limiting
+        Utilities.sleep(100);
+
+      } catch (e) {
+        failedCount++;
+        results.push({ phone: reminder.phone, status: 'error', error: e.toString() });
+      }
+    });
+
+    log.info('WhatsApp hatırlatmaları tamamlandı:', { sent: sentCount, failed: failedCount });
+
+    return {
+      success: true,
+      sent: sentCount,
+      failed: failedCount,
+      total: reminders.data.length
+    };
+
+  } catch (error) {
+    log.error('sendDailyWhatsAppReminders hatası:', error);
+    return {
+      success: false,
+      error: error.toString()
+    };
+  }
+}
