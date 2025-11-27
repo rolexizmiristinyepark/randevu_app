@@ -585,10 +585,10 @@ label {
 }
 
 .success-title {
-    font-family: 'Playfair Display', serif;
-    font-size: 28px;
+    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 22px;
     font-weight: 400;
-    letter-spacing: 1px;
+    letter-spacing: 3px;
     color: #1A1A2E;
     margin-bottom: 20px;
 }
