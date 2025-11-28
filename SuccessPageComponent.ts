@@ -101,9 +101,14 @@ export function addToCalendar(): void {
  */
 export function onTurnstileSuccess(_token: string): void {
     console.log('Turnstile successful, token received');
-    // Show submit button
+    // Set flag for turnstile success
+    (window as any).turnstileVerified = true;
+
+    // Only show submit button if time is already selected (detailsSection is visible)
+    const detailsSection = document.getElementById('detailsSection');
     const submitBtn = document.getElementById('submitBtn');
-    if (submitBtn) {
+
+    if (submitBtn && detailsSection && detailsSection.style.display !== 'none') {
         submitBtn.style.display = 'block';
     }
 }
