@@ -916,9 +916,9 @@ label {
 
     /* KVKK Checkbox Mobile */
     .kvkk-consent { padding: 12px; margin: 15px 0; }
-    .kvkk-consent .checkbox-container { gap: 8px; font-size: 12px; line-height: 22px; }
-    .kvkk-consent .checkmark { width: 22px; height: 22px; }
-    .kvkk-consent .checkmark::after { left: 6px; top: 2px; width: 5px; height: 11px; }
+    .kvkk-consent .checkbox-container { gap: 8px; font-size: 12px; line-height: 24px; }
+    .kvkk-consent .checkmark { width: 24px; height: 24px; }
+    .kvkk-consent .checkmark::after { left: 7px; top: 4px; width: 5px; height: 10px; }
 }
 
 /* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
@@ -1034,15 +1034,15 @@ label {
     width: 0;
 }
 
-/* Turnstile tarzı özel checkbox */
+/* Turnstile tarzı özel checkbox - Yuvarlak */
 .kvkk-consent .checkmark {
     position: relative;
     flex-shrink: 0;
-    width: 24px;
-    height: 24px;
+    width: 26px;
+    height: 26px;
     background: #fff;
     border: 2px solid #d1d5db;
-    border-radius: 4px;
+    border-radius: 50%;
     transition: all 0.2s ease;
     margin-top: 0;
 }
@@ -1057,12 +1057,12 @@ label {
     content: '';
     position: absolute;
     display: none;
-    left: 7px;
-    top: 3px;
+    left: 8px;
+    top: 4px;
     width: 6px;
-    height: 12px;
+    height: 11px;
     border: solid white;
-    border-width: 0 2.5px 2.5px 0;
+    border-width: 0 2px 2px 0;
     transform: rotate(45deg) scale(0);
     transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }
