@@ -915,10 +915,10 @@ label {
     .calendar-modal-content { padding: 30px 25px; }
 
     /* KVKK Checkbox Mobile */
-    .kvkk-consent { padding: 12px; margin: 15px 0; min-height: 50px; }
+    .kvkk-consent { padding: 0 12px; margin: 15px 0; height: 60px; }
     .kvkk-consent .checkbox-container { gap: 10px; font-size: 13px; }
-    .kvkk-consent .checkmark { width: 26px; height: 26px; }
-    .kvkk-consent .checkmark::after { left: 8px; top: 4px; width: 6px; height: 11px; border-width: 0 2.5px 2.5px 0; }
+    .kvkk-consent .checkmark { width: 28px; height: 28px; }
+    .kvkk-consent .checkmark::after { width: 7px; height: 12px; border-width: 0 2.5px 2.5px 0; }
 }
 
 /* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
@@ -1006,11 +1006,11 @@ label {
 /* ==================== KVKK Consent Checkbox (Turnstile Style) ==================== */
 .kvkk-consent {
     margin: 20px 0;
-    padding: 15px 15px;
-    background: #f8f9fa;
-    border-radius: 8px;
-    border: 1px solid #e9ecef;
-    min-height: 56px;
+    padding: 0 15px;
+    background: #FAFAFA;
+    border-radius: 4px;
+    border: 1px solid #E0E0E0;
+    height: 65px;
     display: flex;
     align-items: center;
 }
@@ -1020,13 +1020,14 @@ label {
     align-items: center;
     cursor: pointer;
     font-size: 14px;
-    line-height: 1.4;
-    gap: 10px;
+    line-height: 1;
+    gap: 12px;
     text-transform: none;
     letter-spacing: normal;
     position: relative;
     user-select: none;
     width: 100%;
+    height: 100%;
 }
 
 /* Native checkbox'ı gizle */
@@ -1042,12 +1043,15 @@ label {
 .kvkk-consent .checkmark {
     position: relative;
     flex-shrink: 0;
-    width: 28px;
-    height: 28px;
+    width: 32px;
+    height: 32px;
     background: #fff;
-    border: 2px solid #c5c5c5;
+    border: 2px solid #CBCBCB;
     border-radius: 50%;
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition: background 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* Hover durumu */
@@ -1055,25 +1059,23 @@ label {
     border-color: #999;
 }
 
-/* Tik işareti */
+/* Tik işareti - tam ortada */
 .kvkk-consent .checkmark::after {
     content: '';
     position: absolute;
     opacity: 0;
-    left: 9px;
-    top: 5px;
-    width: 7px;
-    height: 12px;
+    width: 8px;
+    height: 14px;
     border: solid white;
     border-width: 0 3px 3px 0;
-    transform: rotate(45deg);
-    transition: opacity 0.15s ease;
+    transform: rotate(45deg) translate(-1px, -1px);
+    transition: opacity 0.2s ease;
 }
 
-/* Checkbox seçildiğinde */
+/* Checkbox seçildiğinde - Turnstile yeşili */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark {
-    background: #2D9E5D;
-    border-color: #2D9E5D;
+    background: #1D9E5F;
+    border-color: #1D9E5F;
 }
 
 /* Tik işaretini göster */
@@ -1082,20 +1084,21 @@ label {
 }
 
 .kvkk-consent .consent-text {
-    color: #495057;
+    color: #333;
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 400;
-    flex: 1;
+    font-size: 14px;
+    line-height: 1.4;
 }
 
 .kvkk-consent .consent-text a {
-    color: #006039;
-    text-decoration: underline;
+    color: #0066CC;
+    text-decoration: none;
     font-weight: 500;
 }
 
 .kvkk-consent .consent-text a:hover {
-    color: #004d2e;
+    text-decoration: underline;
 }
 
 /* Checkbox validation error state */
