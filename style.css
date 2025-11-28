@@ -915,10 +915,10 @@ label {
     .calendar-modal-content { padding: 30px 25px; }
 
     /* KVKK Checkbox Mobile */
-    .kvkk-consent { padding: 12px; margin: 15px 0; }
-    .kvkk-consent .checkbox-container { gap: 8px; font-size: 12px; line-height: 24px; }
-    .kvkk-consent .checkmark { width: 24px; height: 24px; }
-    .kvkk-consent .checkmark::after { left: 7px; top: 4px; width: 5px; height: 10px; }
+    .kvkk-consent { padding: 12px; margin: 15px 0; min-height: 50px; }
+    .kvkk-consent .checkbox-container { gap: 10px; font-size: 13px; }
+    .kvkk-consent .checkmark { width: 26px; height: 26px; }
+    .kvkk-consent .checkmark::after { left: 8px; top: 4px; width: 6px; height: 11px; border-width: 0 2.5px 2.5px 0; }
 }
 
 /* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
@@ -1006,23 +1006,27 @@ label {
 /* ==================== KVKK Consent Checkbox (Turnstile Style) ==================== */
 .kvkk-consent {
     margin: 20px 0;
-    padding: 15px;
+    padding: 15px 15px;
     background: #f8f9fa;
     border-radius: 8px;
     border: 1px solid #e9ecef;
+    min-height: 56px;
+    display: flex;
+    align-items: center;
 }
 
 .kvkk-consent .checkbox-container {
     display: flex;
     align-items: center;
     cursor: pointer;
-    font-size: 13px;
-    line-height: 24px;
-    gap: 8px;
+    font-size: 14px;
+    line-height: 1.4;
+    gap: 10px;
     text-transform: none;
     letter-spacing: normal;
     position: relative;
     user-select: none;
+    width: 100%;
 }
 
 /* Native checkbox'ı gizle */
@@ -1038,70 +1042,50 @@ label {
 .kvkk-consent .checkmark {
     position: relative;
     flex-shrink: 0;
-    width: 26px;
-    height: 26px;
+    width: 28px;
+    height: 28px;
     background: #fff;
-    border: 2px solid #d1d5db;
+    border: 2px solid #c5c5c5;
     border-radius: 50%;
-    transition: all 0.2s ease;
-    margin-top: 0;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 /* Hover durumu */
 .kvkk-consent .checkbox-container:hover .checkmark {
-    border-color: #9ca3af;
+    border-color: #999;
 }
 
 /* Tik işareti */
 .kvkk-consent .checkmark::after {
     content: '';
     position: absolute;
-    display: none;
-    left: 8px;
-    top: 4px;
-    width: 6px;
-    height: 11px;
+    opacity: 0;
+    left: 9px;
+    top: 5px;
+    width: 7px;
+    height: 12px;
     border: solid white;
-    border-width: 0 2px 2px 0;
-    transform: rotate(45deg) scale(0);
-    transition: transform 0.2s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    border-width: 0 3px 3px 0;
+    transform: rotate(45deg);
+    transition: opacity 0.15s ease;
 }
 
 /* Checkbox seçildiğinde */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark {
-    background: #22c55e;
-    border-color: #22c55e;
-    animation: turnstileCheckboxPop 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    background: #2D9E5D;
+    border-color: #2D9E5D;
 }
 
-/* Tik işaretini göster ve animasyonlu büyüt */
+/* Tik işaretini göster */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark::after {
-    display: block;
-    transform: rotate(45deg) scale(1);
-}
-
-/* Checkbox pop animasyonu */
-@keyframes turnstileCheckboxPop {
-    0% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.15);
-    }
-    100% {
-        transform: scale(1);
-    }
-}
-
-/* Focus durumu (erişilebilirlik) */
-.kvkk-consent .checkbox-container input:focus ~ .checkmark {
-    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    opacity: 1;
 }
 
 .kvkk-consent .consent-text {
     color: #495057;
     font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
     font-weight: 400;
+    flex: 1;
 }
 
 .kvkk-consent .consent-text a {
@@ -1116,14 +1100,14 @@ label {
 
 /* Checkbox validation error state */
 .kvkk-consent.error {
-    border-color: #dc3545;
-    background: #fff5f5;
+    border-color: #8B0000;
+    background: #fef2f2;
 }
 
 .kvkk-consent.error .checkmark {
-    border-color: #dc3545;
+    border-color: #8B0000;
 }
 
 .kvkk-consent.error .consent-text {
-    color: #dc3545;
+    color: #7f1d1d;
 }
