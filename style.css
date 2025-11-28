@@ -1074,8 +1074,8 @@ label {
 
 /* Checkbox seçildiğinde - Turnstile yeşili */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark {
-    background: #1D9E5F;
-    border-color: #1D9E5F;
+    background: #028127;
+    border-color: #028127;
 }
 
 /* Tik işaretini göster */
