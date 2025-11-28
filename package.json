@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && gh-pages -d dist",
+    "deploy": "vite build --mode production && gh-pages -d dist",
     "build:analyze": "vite build --mode analyze",
     "test": "vitest",
     "test:ui": "vitest --ui",
