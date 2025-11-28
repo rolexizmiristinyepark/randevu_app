@@ -1,8 +1,13 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import { resolve } from 'path';
 import { visualizer } from 'rollup-plugin-visualizer';
 
-export default defineConfig(({ mode }) => ({
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  // Set the third parameter to '' to load all env regardless of the `VITE_` prefix.
+  const env = loadEnv(mode, process.cwd(), '');
+
+  return {
   // GitHub Pages base path
   base: '/randevu_app/',
 
@@ -119,5 +124,16 @@ export default defineConfig(({ mode }) => ({
         brotliSize: true
       })
     ] : [])
-  ]
-}));
+  ],
+
+  // Define environment variables for production build
+  // This ensures env vars are properly injected even when .env.production isn't auto-loaded
+  define: {
+    'import.meta.env.VITE_APPS_SCRIPT_URL': JSON.stringify(env.VITE_APPS_SCRIPT_URL),
+    'import.meta.env.VITE_BASE_URL': JSON.stringify(env.VITE_BASE_URL),
+    'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(env.VITE_TURNSTILE_SITE_KEY),
+    'import.meta.env.VITE_DEBUG': JSON.stringify(env.VITE_DEBUG),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(env.VITE_APP_VERSION || '1.0.0')
+  }
+};
+});
