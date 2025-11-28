@@ -1043,8 +1043,8 @@ label {
 .kvkk-consent .checkmark {
     position: relative;
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: 26px;
+    height: 26px;
     background: #fff;
     border: 2px solid #CBCBCB;
     border-radius: 50%;
@@ -1064,10 +1064,10 @@ label {
     content: '';
     position: absolute;
     opacity: 0;
-    width: 8px;
-    height: 14px;
+    width: 6px;
+    height: 11px;
     border: solid white;
-    border-width: 0 3px 3px 0;
+    border-width: 0 2.5px 2.5px 0;
     transform: rotate(45deg) translate(-1px, -1px);
     transition: opacity 0.2s ease;
 }
