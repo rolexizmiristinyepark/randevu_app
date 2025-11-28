@@ -114,10 +114,12 @@ const AdminAuth = {
 
                     <div id="authError" class="admin-auth-error"></div>
 
-                    <div class="admin-auth-input-group">
-                        <label for="apiKeyInput" class="admin-auth-label">API Key</label>
-                        <input type="password" id="apiKeyInput" placeholder="RLX_..." class="admin-auth-input" autocomplete="off">
-                    </div>
+                    <form autocomplete="off" onsubmit="return false;">
+                        <div class="admin-auth-input-group">
+                            <label for="apiKeyInput" class="admin-auth-label">API Key</label>
+                            <input type="password" id="apiKeyInput" placeholder="RLX_..." class="admin-auth-input" autocomplete="new-password">
+                        </div>
+                    </form>
 
                     <button id="adminLoginBtn" class="admin-auth-btn">Giriş Yap</button>
 

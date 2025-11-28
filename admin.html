@@ -181,10 +181,12 @@
                     <label for="whatsappPhoneNumberId">Phone Number ID</label>
                     <input type="text" id="whatsappPhoneNumberId" placeholder="123456789012345">
                 </div>
-                <div class="input-group">
-                    <label for="whatsappAccessToken">Access Token (Permanent)</label>
-                    <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx">
-                </div>
+                <form autocomplete="off" onsubmit="return false;">
+                    <div class="input-group">
+                        <label for="whatsappAccessToken">Access Token (Permanent)</label>
+                        <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx" autocomplete="new-password">
+                    </div>
+                </form>
                 <button class="btn" id="saveWhatsAppSettingsBtn">Ayarları Kaydet</button>
             </div>
 
