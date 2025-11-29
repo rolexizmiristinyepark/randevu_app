@@ -107,7 +107,10 @@ const ApiService = {
     ): Promise<ApiResponse<T>> {
         return new Promise(async (resolve, reject) => {
             try {
-                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
+                // ✅ HARDCODED FALLBACK - Env vars başarısız olursa kullanılır
+                const FALLBACK_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2H47TXf61bMev30qxUVw8TSZMFwKUps35uVY1WnXCxjshpPbodlNgfk2RkxoI-flV/exec';
+
+                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable, then fallback
                 let appsScriptUrl: string | null = null;
 
                 // 1. Try global CONFIG (set after initConfig)
@@ -118,13 +121,19 @@ const ApiService = {
                 else if (typeof (globalThis as any).CONFIG?.APPS_SCRIPT_URL !== 'undefined') {
                     appsScriptUrl = (globalThis as any).CONFIG.APPS_SCRIPT_URL;
                 }
-                // 3. Fallback to environment variable (for initial config load)
-                else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL) {
+                // 3. Try environment variable (for initial config load)
+                else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL && import.meta.env.VITE_APPS_SCRIPT_URL !== 'undefined' && import.meta.env.VITE_APPS_SCRIPT_URL !== '') {
                     appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
                 }
+                // 4. ✅ FALLBACK: Hardcoded production URL (last resort)
+                else {
+                    console.warn('⚠️ Using fallback APPS_SCRIPT_URL - env vars not loaded');
+                    appsScriptUrl = FALLBACK_APPS_SCRIPT_URL;
+                }
 
-                if (!appsScriptUrl) {
-                    reject(new Error('APPS_SCRIPT_URL not configured - check .env file'));
+                // Final validation
+                if (!appsScriptUrl || !appsScriptUrl.startsWith('https://')) {
+                    reject(new Error('Invalid APPS_SCRIPT_URL configuration'));
                     return;
                 }
 

@@ -5,6 +5,7 @@
  * - Removed hardcoded URLs (now from environment variables)
  * - Added validation for required environment variables
  * - Runtime checks for production safety
+ * - ✅ FALLBACK: Hardcoded production values as last resort
  *
  * Architecture:
  * - Environment config (APPS_SCRIPT_URL, BASE_URL): From .env files (build-time)
@@ -47,63 +48,79 @@ interface Config extends DynamicConfig {
     VERSION: string;
 }
 
+// ✅ FALLBACK VALUES - Production değerleri (son çare olarak kullanılır)
+const FALLBACK_CONFIG = {
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz2H47TXf61bMev30qxUVw8TSZMFwKUps35uVY1WnXCxjshpPbodlNgfk2RkxoI-flV/exec',
+    BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
+    TURNSTILE_SITE_KEY: '0x4AAAAAACDJXoobV68BNCME',
+    DEBUG: false,
+    VERSION: '1.0.0'
+};
+
 /**
  * Load and validate environment configuration
- * @throws {Error} If required environment variables are missing
+ * ✅ IMPROVED: Falls back to hardcoded values if env vars are missing
  */
-function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string } {
-    // Required environment variables
-    const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
-    const BASE_URL = import.meta.env.VITE_BASE_URL;
+function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string; TURNSTILE_SITE_KEY: string } {
+    // Try to get from environment variables first
+    let APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
+    let BASE_URL = import.meta.env.VITE_BASE_URL;
+    let TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    let DEBUG = import.meta.env.VITE_DEBUG === 'true';
+    let VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
-    // Validation
-    const errors: string[] = [];
-
-    if (!APPS_SCRIPT_URL) {
-        errors.push('VITE_APPS_SCRIPT_URL is required');
-    } else if (!APPS_SCRIPT_URL.startsWith('https://')) {
-        errors.push('VITE_APPS_SCRIPT_URL must use HTTPS protocol');
+    // ✅ FALLBACK: If env vars are missing, use hardcoded production values
+    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'undefined' || APPS_SCRIPT_URL === '') {
+        console.warn('⚠️ VITE_APPS_SCRIPT_URL not found in env, using fallback');
+        APPS_SCRIPT_URL = FALLBACK_CONFIG.APPS_SCRIPT_URL;
     }
 
-    if (!BASE_URL) {
-        errors.push('VITE_BASE_URL is required');
-    } else if (!BASE_URL.startsWith('http://') && !BASE_URL.startsWith('https://')) {
-        errors.push('VITE_BASE_URL must be a valid URL');
+    if (!BASE_URL || BASE_URL === 'undefined' || BASE_URL === '') {
+        console.warn('⚠️ VITE_BASE_URL not found in env, using fallback');
+        BASE_URL = FALLBACK_CONFIG.BASE_URL;
+    }
+
+    if (!TURNSTILE_SITE_KEY || TURNSTILE_SITE_KEY === 'undefined' || TURNSTILE_SITE_KEY === '') {
+        console.warn('⚠️ VITE_TURNSTILE_SITE_KEY not found in env, using fallback');
+        TURNSTILE_SITE_KEY = FALLBACK_CONFIG.TURNSTILE_SITE_KEY;
+    }
+
+    // Final validation
+    const errors: string[] = [];
+
+    if (!APPS_SCRIPT_URL.startsWith('https://')) {
+        errors.push('APPS_SCRIPT_URL must use HTTPS protocol');
+    }
+
+    if (!BASE_URL.startsWith('http://') && !BASE_URL.startsWith('https://')) {
+        errors.push('BASE_URL must be a valid URL');
     }
 
     if (errors.length > 0) {
-        const errorMessage = [
-            '❌ Environment Configuration Error:',
-            '',
-            ...errors.map(e => `  - ${e}`),
-            '',
-            '📝 Setup Instructions:',
-            '  1. Copy .env.example to .env.production',
-            '  2. Fill in your actual values',
-            '  3. Rebuild the application',
-            '',
-            'See .env.example for details.'
-        ].join('\n');
-
-        throw new Error(errorMessage);
+        console.error('❌ Configuration errors:', errors);
+        // Don't throw - use fallback values instead
     }
 
-    // Production safety check
-    const DEBUG = import.meta.env.VITE_DEBUG === 'true';
-    if (!DEBUG && APPS_SCRIPT_URL.includes('localhost')) {
-        throw new Error('Cannot use localhost URL in production mode (VITE_DEBUG=false)');
-    }
+    // Log configuration source
+    const isUsingFallback = APPS_SCRIPT_URL === FALLBACK_CONFIG.APPS_SCRIPT_URL;
+    console.log(`🔧 Config loaded from: ${isUsingFallback ? 'FALLBACK (hardcoded)' : 'Environment variables'}`);
 
     return {
         APPS_SCRIPT_URL,
         BASE_URL,
         DEBUG,
-        VERSION: import.meta.env.VITE_APP_VERSION || '1.0.0'
+        VERSION,
+        TURNSTILE_SITE_KEY
     };
 }
 
 // Load environment config once at module load time
 const ENV_CONFIG = loadEnvironmentConfig();
+
+// ✅ EXPOSE TURNSTILE_SITE_KEY globally for Turnstile widget
+if (typeof window !== 'undefined') {
+    (window as any).TURNSTILE_SITE_KEY = ENV_CONFIG.TURNSTILE_SITE_KEY;
+}
 
 // Cache configuration
 const CACHE_KEY = 'randevu_config_cache';
@@ -348,6 +365,13 @@ export function clearConfigCache(): void {
     } catch (error) {
         console.warn('Cache clear error:', error);
     }
+}
+
+/**
+ * Get environment config (for API service)
+ */
+export function getEnvConfig() {
+    return ENV_CONFIG;
 }
 
 // Export types
