@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yönlendiriliyor...</title>
+    <script>
+        // GitHub Pages 404 redirect for SPA routing
+        // Captures the path and redirects to index.html with the path preserved
+        (function() {
+            var base = '/randevu_app/';
+            var path = window.location.pathname;
+            var route = path.replace(base, '').split('/')[0];
+            
+            // ✅ YENİ: Admin path kontrolü - doğrudan admin.html'e yönlendir
+            if (route === 'admin' || path.includes('/admin')) {
+                window.location.replace(base + 'admin.html');
+                return;
+            }
+            
+            // Diğer path'ler için index.html'e yönlendir
+            if (path !== base && path !== base.slice(0, -1)) {
+                window.location.replace(base + '?route=' + encodeURIComponent(route));
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 100px 20px;">
+        <h2>Yönlendiriliyor...</h2>
+        <p>Lütfen bekleyin...</p>
+    </div>
+</body>
+</html>
