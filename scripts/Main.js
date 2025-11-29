@@ -101,6 +101,7 @@ const ACTION_HANDLERS = {
 
   // Data version (cache invalidation)
   'getDataVersion': () => VersionService.getDataVersion(),
+  'checkStorageUsage': () => PropertiesStorageService.checkStorageUsage(),
 
   // Appointments
   'getAppointments': (e) => AppointmentService.getAppointments(e.parameter.date, {
@@ -213,15 +214,23 @@ function doGet(e) {
         }
       }
     } catch (error) {
-      // Detaylı hata bilgisini sadece sunucu tarafında logla (güvenlik)
-      log.error('API Hatası:', {
+      // ✅ YENİ: Error ID oluştur (destek için referans)
+      const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
+      
+      // Detaylı log (server-side)
+      log.error(`[${errorId}] API Hatası:`, {
         message: error.message,
         stack: error.stack,
         action: action,
-        parameters: e.parameter
+        parameters: Object.keys(e.parameter || {})  // Sadece key'ler, value'lar değil
       });
-      // Kullanıcıya sadece genel hata mesajı gönder
-      response = { success: false, error: CONFIG.ERROR_MESSAGES.SERVER_ERROR };
+      
+      // ✅ YENİ: Kullanıcıya generic mesaj + error ID
+      response = { 
+        success: false, 
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId  // Destek için referans kodu
+      };
     }
 
     // Her zaman JSON döndür

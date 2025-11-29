@@ -313,13 +313,19 @@ const WhatsAppService = {
  * Apps Script Editor'de çalıştırın ve Execution Log'u kontrol edin
  */
 function testWhatsAppSetup() {
+  // 🔒 SECURITY: Test fonksiyonu sadece DEBUG modunda çalışır
+  if (!DEBUG) {
+    Logger.log('⚠️ Test fonksiyonu sadece DEBUG modunda çalışır');
+    return { error: 'Test fonksiyonu sadece DEBUG modunda çalışır' };
+  }
+  
   const scriptProperties = PropertiesService.getScriptProperties();
   const phoneNumberId = scriptProperties.getProperty('WHATSAPP_PHONE_NUMBER_ID');
   const accessToken = scriptProperties.getProperty('WHATSAPP_ACCESS_TOKEN');
 
   Logger.log('=== WhatsApp Setup Test ===');
-  Logger.log('WHATSAPP_PHONE_NUMBER_ID: ' + (phoneNumberId ? '✅ Ayarlanmış (' + phoneNumberId.substring(0, 5) + '...)' : '❌ EKSİK'));
-  Logger.log('WHATSAPP_ACCESS_TOKEN: ' + (accessToken ? '✅ Ayarlanmış (' + accessToken.substring(0, 10) + '...)' : '❌ EKSİK'));
+  Logger.log('WHATSAPP_PHONE_NUMBER_ID: ' + (phoneNumberId ? '✅ Ayarlanmış' : '❌ EKSİK'));
+  Logger.log('WHATSAPP_ACCESS_TOKEN: ' + (accessToken ? '✅ Ayarlanmış' : '❌ EKSİK'));
 
   // YARININ randevularını kontrol et (hatırlatma bir gün önce gönderilir)
   const today = new Date();

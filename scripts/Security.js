@@ -98,13 +98,15 @@ const SecurityService = {
 
     } catch (error) {
       log.error('Rate limit kontrolü hatası:', error);
-      // 🔒 SECURITY: Fail-closed - hata durumunda güvenlik öncelikli
-      // Rate limit kontrol edilemiyorsa isteği reddet
+      
+      // 🔒 SECURITY: Fail-closed pattern - hata durumunda GÜVENLİK ÖNCELİKLİ
+      // Rate limit kontrol edilemiyorsa isteği REDDET
       // Bu, potansiyel DDoS veya abuse durumlarında koruma sağlar
+      // ⚠️ BU DAVRANIŞI DEĞİŞTİRMEYİN - Güvenlik kritik!
       return {
-        allowed: false,
+        allowed: false,  // ✅ DOĞRU: Hata durumunda reddet
         remaining: 0,
-        resetTime: Date.now() + 60000, // 1 dakika sonra tekrar dene
+        resetTime: Date.now() + 60000,
         error: 'Rate limit service error - please try again later'
       };
     }
@@ -179,10 +181,19 @@ const log = {
  * @namespace LockServiceWrapper
  */
 const LockServiceWrapper = {
+  // Farklı işlemler için önerilen timeout'lar
+  TIMEOUTS: {
+    APPOINTMENT_CREATE: 10000,  // 10 saniye
+    APPOINTMENT_UPDATE: 10000,  // 10 saniye
+    STAFF_OPERATION: 5000,      // 5 saniye
+    SETTINGS_SAVE: 5000,        // 5 saniye
+    DEFAULT: 15000              // 15 saniye (eski 30'dan düşürüldü)
+  },
+
   /**
    * Critical section'ları kilitleyerek race condition'ı önler
    * @param {Function} fn - Kilitli çalıştırılacak fonksiyon
-   * @param {number} timeout - Lock timeout (ms), default 30000 (30 saniye)
+   * @param {number} timeout - Lock timeout (ms), default 15000
    * @param {number} maxRetries - Başarısız olursa kaç kere deneyeceği, default 3
    * @returns {*} Fonksiyonun return değeri
    * @throws {Error} Lock alınamazsa veya timeout olursa
@@ -193,9 +204,9 @@ const LockServiceWrapper = {
    *   data.counter++;
    *   StorageService.saveData(data);
    *   return data.counter;
-   * });
+   * }, LockServiceWrapper.TIMEOUTS.APPOINTMENT_CREATE);
    */
-  withLock: function(fn, timeout = 30000, maxRetries = 3) {
+  withLock: function(fn, timeout = this.TIMEOUTS.DEFAULT, maxRetries = 3) {
     const lock = LockService.getScriptLock();
     let lastError = null;
 

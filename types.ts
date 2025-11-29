@@ -188,7 +188,25 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
 
 declare global {
   interface Window {
-    CONFIG: Config;
+    CONFIG: {
+      APPS_SCRIPT_URL: string;
+      BASE_URL: string;
+      DEBUG: boolean;
+      VERSION: string;
+      shifts: Record<string, { start: number; end: number; label: string }>;
+      appointmentHours: { earliest: number; latest: number; interval: number };
+      maxDailyDeliveryAppointments: number;
+      appointmentTypes: Record<string, string>;
+      companyName?: string;
+      companyLocation?: string;
+    };
+    AdminAuth: typeof import('./admin-auth').AdminAuth;
+    UI: {
+      showAlert: (message: string, type?: 'success' | 'error' | 'info') => void;
+      showLoading: (show: boolean) => void;
+      updateUI: () => void;
+      // Diğer UI metodları buraya eklenebilir
+    };
     lastAppointmentData: LastAppointmentData | null;
     managementContactPerson?: string;
     CalendarIntegration?: any;

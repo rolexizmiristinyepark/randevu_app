@@ -11,6 +11,12 @@ export default defineConfig(({ mode }) => {
   // GitHub Pages base path
   base: '/randevu_app/',
 
+  // TypeScript compilation with esbuild
+  esbuild: {
+    drop: ['console', 'debugger'],
+    pure: ['console.log', 'console.info', 'console.debug', 'console.warn']
+  },
+
   // Multi-page app configuration
   build: {
     rollupOptions: {

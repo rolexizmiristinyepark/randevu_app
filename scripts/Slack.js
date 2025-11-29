@@ -48,6 +48,13 @@ const SlackService = {
       // Config'i güncelle
       CONFIG.SLACK_WEBHOOK_URL = webhookUrl;
 
+      // ✅ YENİ: Audit log
+      log.info('🔒 AUDIT: Slack settings updated', {
+        timestamp: new Date().toISOString(),
+        action: 'SLACK_SETTINGS_UPDATE',
+        configured: !!webhookUrl
+      });
+
       return {
         success: true,
         message: 'Slack ayarları güncellendi'

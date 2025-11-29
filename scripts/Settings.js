@@ -164,30 +164,36 @@ function loadExternalConfigs() {
     });
   }
 
+  // ✅ YENİ: Explicit production flag (ANALIZ_FINAL #4)
+  // IS_PRODUCTION = 'true' ise production ortamı
+  // Bu, CALENDAR_ID bazlı tespite göre daha güvenilir
+  const IS_PRODUCTION = scriptProperties.getProperty('IS_PRODUCTION') === 'true';
+  
   // 🔒 SECURITY: Cloudflare Turnstile Secret (CRITICAL)
   const turnstileSecret = scriptProperties.getProperty('TURNSTILE_SECRET_KEY');
 
   if (turnstileSecret) {
-    // ✅ PRODUCTION: Secret Properties'den yüklendi
+    // ✅ Secret Properties'den yüklendi
     CONFIG.TURNSTILE_SECRET_KEY = turnstileSecret;
     log.info('✅ Turnstile secret yüklendi (Script Properties)', {
       source: 'Script Properties',
-      env: CONFIG.IS_DEVELOPMENT ? 'development' : 'production'
+      env: IS_PRODUCTION ? 'production' : 'development'
     });
   } else {
     // ⚠️ SECRET BULUNAMADI
-    if (CONFIG.IS_DEVELOPMENT) {
+    if (!IS_PRODUCTION) {
       // DEVELOPMENT MODE: Cloudflare test key kullan
-      CONFIG.TURNSTILE_SECRET_KEY = '1x0000000000000000000000000000000';
+      CONFIG.TURNSTILE_SECRET_KEY = '1x0000000000000000000000000000000AA';
       log.warn('⚠️ DEVELOPMENT MODE: Turnstile test key kullanılıyor', {
         warning: 'Script Properties\'de TURNSTILE_SECRET_KEY tanımlı değil',
-        fallback: 'Cloudflare test key (1x0000...)',
-        action: 'Production\'da Script Properties\'i ayarlayın'
+        fallback: 'Cloudflare test key (always pass)',
+        action: 'Production\'da IS_PRODUCTION=true ve TURNSTILE_SECRET_KEY ayarlayın'
       });
     } else {
-      // PRODUCTION MODE: HATA - Secret zorunlu!
+      // 🚨 PRODUCTION MODE: HATA - Secret zorunlu!
       const errorMsg =
         '🚨 CRITICAL: TURNSTILE_SECRET_KEY Script Properties\'de tanımlı değil!\n' +
+        'Production ortamında (IS_PRODUCTION=true) Turnstile secret zorunludur.\n\n' +
         'Çözüm:\n' +
         '1. Google Apps Script Editor\'ü açın\n' +
         '2. Project Settings → Script Properties\n' +
@@ -198,6 +204,7 @@ function loadExternalConfigs() {
 
       log.error(errorMsg, {
         env: 'production',
+        IS_PRODUCTION: IS_PRODUCTION,
         calendarId: CONFIG.CALENDAR_ID
       });
 

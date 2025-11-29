@@ -17,7 +17,8 @@
  */
 
 // Cache configuration
-const CACHE_DURATION = 900; // 15 dakika (saniye cinsinden)
+// ℹ️ CONSTANTS.CACHE_DURATION_SECONDS Config.js'de tanımlı
+const CACHE_DURATION = typeof CONSTANTS !== 'undefined' ? CONSTANTS.CACHE_DURATION_SECONDS : 900; // 15 dakika (saniye cinsinden)
 const DATA_CACHE_KEY = 'app_data';
 
 /**
@@ -138,6 +139,34 @@ const PropertiesStorageService = {
       return { success: true, message: CONFIG.SUCCESS_MESSAGES.DATA_RESET };
     } catch (error) {
       log.error('Reset data error:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Storage kullanım durumunu kontrol et
+   * @returns {{success: boolean, usedBytes: number, limitBytes: number, percentage: number}}
+   */
+  checkStorageUsage: function() {
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const data = props.getProperty(CONFIG.PROPERTIES_KEY) || '';
+      const usedBytes = new Blob([data]).size;
+      const limitBytes = 9 * 1024; // 9KB per value limit
+      const percentage = Math.round((usedBytes / limitBytes) * 100);
+      
+      if (percentage > 80) {
+        log.warn('⚠️ Storage kullanımı yüksek:', percentage + '%');
+      }
+      
+      return {
+        success: true,
+        usedBytes: usedBytes,
+        limitBytes: limitBytes,
+        percentage: percentage,
+        warning: percentage > 80 ? 'Sheets migration önerilir' : null
+      };
+    } catch (error) {
       return { success: false, error: error.toString() };
     }
   }
@@ -428,3 +457,125 @@ const StorageService = {
     return 'properties';
   }
 };
+
+// ==================== DATA RETENTION SERVICE (KVKK) ====================
+/**
+ * KVKK Madde 7 uyumu için veri saklama servisi
+ * @namespace DataRetentionService
+ */
+const DataRetentionService = {
+  // ℹ️ CONSTANTS.RETENTION_DAYS Config.js'de tanımlı
+  get RETENTION_DAYS() { 
+    return typeof CONSTANTS !== 'undefined' ? CONSTANTS.RETENTION_DAYS : 30; 
+  }, // 30 gün saklama süresi (KVKK)
+
+  /**
+   * Eski randevuları anonimleştir
+   * @returns {{success: boolean, anonymizedCount: number, cutoffDate: string}}
+   */
+  cleanupOldAppointments: function() {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - this.RETENTION_DAYS);
+
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      if (!calendar) {
+        throw new Error('Calendar bulunamadı');
+      }
+
+      const startDate = new Date('2020-01-01');
+      const oldEvents = calendar.getEvents(startDate, cutoffDate);
+
+      let anonymizedCount = 0;
+
+      oldEvents.forEach(event => {
+        const title = event.getTitle();
+        
+        // Zaten anonimleştirilmiş mi kontrol et
+        if (title.startsWith('[Arşiv]')) {
+          return;
+        }
+
+        // Müşteri adının sadece ilk harfini tut
+        const customerInitial = title.split(' - ')[0].substring(0, 1);
+        
+        // Anonimleştir
+        event.setTitle('[Arşiv] ' + customerInitial + '***');
+        event.setDescription('[KVKK - Anonimleştirildi]\nTarih: ' + new Date().toISOString());
+        
+        // Tüm PII tag'leri temizle
+        event.setTag('customerPhone', '[Anonimleştirildi]');
+        event.setTag('customerEmail', '[Anonimleştirildi]');
+        event.setTag('customerNote', '');
+        
+        anonymizedCount++;
+      });
+
+      log.info('Data retention completed:', {
+        anonymizedCount: anonymizedCount,
+        cutoffDate: cutoffDate.toISOString()
+      });
+
+      return {
+        success: true,
+        anonymizedCount: anonymizedCount,
+        cutoffDate: cutoffDate.toISOString()
+      };
+
+    } catch (error) {
+      log.error('Data retention error:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Dry-run: Anonimleştirilecek randevuları say (silmeden)
+   * @returns {{success: boolean, count: number, cutoffDate: string}}
+   */
+  previewCleanup: function() {
+    try {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - this.RETENTION_DAYS);
+
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      const startDate = new Date('2020-01-01');
+      const oldEvents = calendar.getEvents(startDate, cutoffDate);
+
+      const toAnonymize = oldEvents.filter(event => {
+        return !event.getTitle().startsWith('[Arşiv]');
+      });
+
+      return {
+        success: true,
+        count: toAnonymize.length,
+        cutoffDate: cutoffDate.toISOString()
+      };
+
+    } catch (error) {
+      return { success: false, error: error.toString() };
+    }
+  }
+};
+
+/**
+ * Haftalık KVKK temizlik trigger fonksiyonu
+ * Google Apps Script Trigger: Edit > Triggers > Add Trigger
+ * - Function: runDataRetention
+ * - Event source: Time-driven
+ * - Type: Week timer
+ * - Day: Sunday
+ * - Time: 03:00-04:00
+ */
+function runDataRetention() {
+  return DataRetentionService.cleanupOldAppointments();
+}
+
+/**
+ * Dry-run: Ne kadar veri temizleneceğini gör
+ */
+function previewDataRetention() {
+  return DataRetentionService.previewCleanup();
+}

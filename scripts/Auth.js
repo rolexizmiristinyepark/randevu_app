@@ -73,6 +73,12 @@ const AuthService = {
     const newKey = this.generateApiKey();
     this.saveApiKey(newKey);
 
+    // ✅ YENİ: Audit log
+    log.info('🔒 AUDIT: API key regenerated', {
+      timestamp: new Date().toISOString(),
+      action: 'API_KEY_REGENERATE'
+    });
+
     // Admin'e e-posta gönder
     try {
       MailApp.sendEmail({

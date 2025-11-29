@@ -11,13 +11,23 @@ import CryptoJS from 'crypto-js';
 // NOT: Bu tam güvenlik sağlamaz ama casual snooping'e karşı korur
 const getEncryptionKey = (): string => {
     const staticSalt = 'RLX_ADMIN_2024_SECURE';
+    
+    // ✅ YENİ: Session-specific entropy ekle
+    let sessionId = sessionStorage.getItem('admin_session_id');
+    if (!sessionId) {
+        sessionId = crypto.randomUUID();
+        sessionStorage.setItem('admin_session_id', sessionId);
+    }
+    
     const browserInfo = [
         navigator.userAgent,
         navigator.language,
         screen.width,
         screen.height,
-        new Date().getTimezoneOffset()
+        new Date().getTimezoneOffset(),
+        sessionId  // ✅ Session-specific entropy
     ].join('|');
+    
     return CryptoJS.SHA256(staticSalt + browserInfo).toString().substring(0, 32);
 };
 
@@ -41,7 +51,7 @@ const decryptData = (encryptedData: string): string | null => {
 
 const AdminAuth = {
     API_KEY_STORAGE: 'admin_api_key',
-    INACTIVITY_TIMEOUT: 15 * 60 * 1000, // 15 dakika inaktivite
+    INACTIVITY_TIMEOUT: 10 * 60 * 1000, // 10 dakika inaktivite
     _lastActivityTime: Date.now(),
     _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
     _activityHandler: null as (() => void) | null,
@@ -115,6 +125,7 @@ const AdminAuth = {
                     <div id="authError" class="admin-auth-error"></div>
 
                     <form autocomplete="off" onsubmit="return false;">
+                        <input type="text" name="username" autocomplete="username" style="display:none" aria-hidden="true">
                         <div class="admin-auth-input-group">
                             <label for="apiKeyInput" class="admin-auth-label">API Key</label>
                             <input type="password" id="apiKeyInput" placeholder="RLX_..." class="admin-auth-input" autocomplete="new-password">
@@ -290,7 +301,7 @@ const AdminAuth = {
         this._activityCheckInterval = setInterval(() => {
             const elapsed = Date.now() - this._lastActivityTime;
             if (elapsed > this.INACTIVITY_TIMEOUT) {
-                alert('⏰ 15 dakika boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.');
+                alert('⏰ 10 dakika boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.');
                 this.logout();
             }
         }, 60 * 1000); // 60 saniye

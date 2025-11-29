@@ -316,6 +316,29 @@ export async function initConfig(): Promise<Config> {
 }
 
 /**
+ * Backend data version ile frontend cache'i senkronize et
+ */
+export async function checkAndInvalidateCache(): Promise<boolean> {
+  try {
+    const localVersion = localStorage.getItem('data_version');
+    const response = await apiCall('getDataVersion');
+    
+    if (response.success && response.data !== localVersion) {
+      // Version değişmiş, cache'i temizle
+      clearConfigCache();
+      localStorage.setItem('data_version', response.data);
+      console.debug('[Cache] Invalidated - new version:', response.data);
+      return true; // Cache temizlendi
+    }
+    
+    return false; // Cache geçerli
+  } catch (error) {
+    console.warn('[Cache] Version check failed:', error);
+    return false;
+  }
+}
+
+/**
  * Clear config cache (useful for debugging or forced refresh)
  */
 export function clearConfigCache(): void {

@@ -8,18 +8,19 @@
         // GitHub Pages 404 redirect for SPA routing
         // Captures the path and redirects to index.html with the path preserved
         (function() {
-            const path = window.location.pathname;
-            const base = '/randevu_app/';
-
-            // Get the path after base
-            const route = path.replace(base, '').replace(/^\//, '');
-
-            // Redirect to index.html, the app will handle the routing
-            if (route && route !== '404.html') {
-                window.location.replace(base + '#/' + route + window.location.search);
-            } else {
-                // No specific route, go to home
-                window.location.replace(base);
+            var base = '/randevu_app/';
+            var path = window.location.pathname;
+            var route = path.replace(base, '').split('/')[0];
+            
+            // ✅ YENİ: Admin path kontrolü - doğrudan admin.html'e yönlendir
+            if (route === 'admin' || path.includes('/admin')) {
+                window.location.replace(base + 'admin.html');
+                return;
+            }
+            
+            // Diğer path'ler için index.html'e yönlendir
+            if (path !== base && path !== base.slice(0, -1)) {
+                window.location.replace(base + '?route=' + encodeURIComponent(route));
             }
         })();
     </script>

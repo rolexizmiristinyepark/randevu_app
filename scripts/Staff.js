@@ -102,6 +102,29 @@ const Utils = {
       phone: this.sanitizePhone(phone),
       email: email ? email.trim().toLowerCase() : ''
     };
+  },
+
+  /**
+   * Spreadsheet formula injection koruması
+   * Google Sheets'e yazılacak verileri güvenli hale getirir
+   * @param {string} input - Girdi string
+   * @returns {string} Güvenli string
+   */
+  sanitizeForSpreadsheet: function(input) {
+    if (!input || typeof input !== 'string') return '';
+    
+    const sanitized = input.trim();
+    
+    // Formula başlangıç karakterleri
+    const formulaStarters = ['=', '+', '-', '@', '|', '\t', '\r', '\n'];
+    
+    // Formula karakteri ile başlıyorsa prefix ekle
+    if (formulaStarters.some(starter => sanitized.startsWith(starter))) {
+      return "'" + sanitized; // Tek tırnak prefix'i formül çalıştırmayı engeller
+    }
+    
+    // Control karakterlerini temizle
+    return sanitized.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, '');
   }
 };
 
@@ -141,9 +164,9 @@ const StaffService = {
         const newId = data.staff.length > 0 ? Math.max(...data.staff.map(s => s.id)) + 1 : 1;
         data.staff.push({
           id: newId,
-          name: validationResult.name,
-          phone: validationResult.phone,
-          email: validationResult.email,
+          name: Utils.sanitizeForSpreadsheet(validationResult.name),
+          phone: Utils.sanitizeForSpreadsheet(validationResult.phone),
+          email: Utils.sanitizeForSpreadsheet(validationResult.email),
           active: true
         });
         StorageService.saveData(data);
@@ -225,9 +248,9 @@ const StaffService = {
         const data = StorageService.getData();
         const staff = data.staff.find(s => s.id === parseInt(staffId));
         if (staff) {
-          staff.name = validationResult.name;
-          staff.phone = validationResult.phone;
-          staff.email = validationResult.email;
+          staff.name = Utils.sanitizeForSpreadsheet(validationResult.name);
+          staff.phone = Utils.sanitizeForSpreadsheet(validationResult.phone);
+          staff.email = Utils.sanitizeForSpreadsheet(validationResult.email);
           StorageService.saveData(data);
           return { success: true, data: data.staff };
         }

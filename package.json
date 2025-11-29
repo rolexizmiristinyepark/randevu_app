@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "vite build --mode production && git push origin --delete gh-pages 2>/dev/null; cd dist && git init && git add -A && git commit -m 'Deploy' && git push -f https://github.com/rolexizmiristinyepark/randevu_app.git main:gh-pages && rm -rf .git && cd ..",
+    "deploy": "rm -rf dist node_modules/.cache && vite build --mode production && cd dist && git init && git add -A && git commit -m 'Deploy' && git push -f https://github.com/rolexizmiristinyepark/randevu_app.git main:gh-pages && rm -rf .git && cd ..",
     "build:analyze": "vite build --mode analyze",
     "test": "vitest",
     "test:ui": "vitest --ui",

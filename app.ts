@@ -17,7 +17,7 @@ import './SuccessPageComponent'; // For side effects (window exports)
 // Import shared utilities
 import { apiCall } from './api-service';
 import { initMonitoring } from './monitoring';
-import { initConfig } from './config-loader';
+import { initConfig, checkAndInvalidateCache } from './config-loader';
 import { debounce } from './performance-utils';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
@@ -94,6 +94,9 @@ const _CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize monitoring (Sentry + Web Vitals)
     initMonitoring();
+
+    // Cache senkronizasyonu
+    await checkAndInvalidateCache();
 
     // ⚠️ Config is loaded via initConfig() IIFE (line 22) - no need to load here
     // CONFIG available globally via window.CONFIG after async initialization

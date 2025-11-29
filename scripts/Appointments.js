@@ -1005,6 +1005,10 @@ Bu randevu otomatik olarak oluşturulmuştur.
         calEvent.setTag('shiftType', shiftType);
         calEvent.setTag('appointmentType', appointmentType);
         calEvent.setTag('isVipLink', isVipLink ? 'true' : 'false');
+        
+        // ✅ KVKK Açık Rıza Kaydı (Yasal ispat için - ANALIZ_FINAL #2)
+        calEvent.setTag('kvkkConsentDate', new Date().toISOString());
+        calEvent.setTag('kvkkConsentVersion', 'v2025.11');
 
         log.info('Calendar event created successfully - releasing lock');
         return calEvent; // Event'i return et, lock serbest bırakılacak
@@ -1122,6 +1126,12 @@ Bu randevu otomatik olarak oluşturulmuştur.
     };
 
   } catch (error) {
-    return { success: false, error: error.toString() };
+    const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
+    log.error(`[${errorId}] createAppointment hatası:`, error);
+    return { 
+      success: false, 
+      error: 'Randevu oluşturulurken bir hata oluştu.',
+      errorId: errorId
+    };
   }
 }

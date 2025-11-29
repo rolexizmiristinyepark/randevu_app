@@ -251,3 +251,30 @@ const SHIFT_SLOT_FILTERS = {
   full: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20],  // 11:00-21:00 (en son slot 20:00-21:00)
   management: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]  // Yönetim için vardiya sınırı yok, tüm slotlar
 };
+
+/**
+ * Sistem sabitleri - Magic number'ları burada tanımla
+ */
+const CONSTANTS = {
+  // Cache süreleri
+  CACHE_DURATION_SECONDS: 900,        // 15 dakika
+  FRONTEND_CACHE_TTL_MS: 3600000,     // 1 saat
+  
+  // Timeout süreleri
+  API_TIMEOUT_MS: 30000,              // 30 saniye
+  LOCK_TIMEOUT_MS: 15000,             // 15 saniye
+  INACTIVITY_TIMEOUT_MS: 600000,      // 10 dakika
+  
+  // Rate limiting
+  RATE_LIMIT_WINDOW_SECONDS: 600,     // 10 dakika
+  RATE_LIMIT_MAX_REQUESTS: 10,        // 10 istek
+  
+  // Retry
+  MAX_RETRY_ATTEMPTS: 3,
+  RETRY_BACKOFF_BASE_MS: 1000,        // 1 saniye
+  RETRY_BACKOFF_MAX_MS: 5000,         // 5 saniye
+  
+  // Data retention
+  RETENTION_DAYS: 30,                 // KVKK saklama süresi
+  MAX_BACKUPS: 7                      // Maksimum yedek sayısı
+};
