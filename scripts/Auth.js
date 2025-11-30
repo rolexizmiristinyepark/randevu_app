@@ -8,15 +8,13 @@
 const AuthService = {
   /**
    * Generate a new random API key with 'RLX_' prefix
-   * @returns {string} Generated API key (format: RLX_[32 random chars])
+   * Uses cryptographically secure UUID instead of Math.random()
+   * @returns {string} Generated API key (format: RLX_[32 hex chars])
    */
   generateApiKey: function() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    let key = 'RLX_'; // Prefix for Rolex
-    for (let i = 0; i < 32; i++) {
-      key += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return key;
+    // Utilities.getUuid() kriptografik olarak güvenli UUID v4 üretir
+    // Math.random() tahmin edilebilir, UUID güvenli
+    return 'RLX_' + Utilities.getUuid().replace(/-/g, '');
   },
 
   /**
