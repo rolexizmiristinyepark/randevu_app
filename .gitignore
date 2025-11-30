@@ -51,3 +51,7 @@ scripts/apps-script-backend.js
 # Archived old files and development logs
 .archive/
 *.bfg-report*
+
+# Local analysis reports (keep local only)
+ANALIZ.md
+ANALIZ_*.md
