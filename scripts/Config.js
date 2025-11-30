@@ -37,10 +37,12 @@ const CONFIG = {
   SLACK_WEBHOOK_URL: '',
 
   // Company Info
+  // 🔒 SECURITY: E-posta adresleri Script Properties'den yüklenir (loadExternalConfigs)
+  // Default fallback'ler sadece development için
   COMPANY_NAME: 'Rolex İzmir İstinyepark',
   COMPANY_LOCATION: 'Rolex İzmir İstinyepark',
-  COMPANY_EMAIL: 'istinyeparkrolex35@gmail.com',
-  ADMIN_EMAIL: 'istinyeparkrolex35@gmail.com',
+  COMPANY_EMAIL: '', // Script Properties'den yüklenecek
+  ADMIN_EMAIL: '',   // Script Properties'den yüklenecek
 
   // Appointment Types
   APPOINTMENT_TYPES: {

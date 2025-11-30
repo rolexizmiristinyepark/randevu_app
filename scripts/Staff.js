@@ -105,6 +105,22 @@ const Utils = {
   },
 
   /**
+   * HTML karakterlerini escape eder (XSS koruması)
+   * Email template'leri ve HTML çıktılar için kullanılmalı
+   * @param {string} str - Escape edilecek string
+   * @returns {string} HTML-safe string
+   */
+  escapeHtml: function(str) {
+    if (!str || typeof str !== 'string') return '';
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  },
+
+  /**
    * Spreadsheet formula injection koruması
    * Google Sheets'e yazılacak verileri güvenli hale getirir
    * @param {string} input - Girdi string

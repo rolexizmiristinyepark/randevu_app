@@ -220,13 +220,37 @@ function loadExternalConfigs() {
   // 🔒 SECURITY: Slack Webhook URL
   CONFIG.SLACK_WEBHOOK_URL = scriptProperties.getProperty('SLACK_WEBHOOK_URL') || '';
 
+  // 🔒 SECURITY: Company E-mail Addresses
+  // Production'da Script Properties'den yüklenir
+  // Development'da fallback kullanılır
+  const companyEmail = scriptProperties.getProperty('COMPANY_EMAIL');
+  const adminEmail = scriptProperties.getProperty('ADMIN_EMAIL');
+
+  if (companyEmail) {
+    CONFIG.COMPANY_EMAIL = companyEmail;
+  } else if (!IS_PRODUCTION) {
+    // Development fallback
+    CONFIG.COMPANY_EMAIL = 'test@example.com';
+    log.warn('⚠️ COMPANY_EMAIL Script Properties\'de tanımlı değil, test değeri kullanılıyor');
+  }
+
+  if (adminEmail) {
+    CONFIG.ADMIN_EMAIL = adminEmail;
+  } else if (!IS_PRODUCTION) {
+    // Development fallback
+    CONFIG.ADMIN_EMAIL = 'admin@example.com';
+    log.warn('⚠️ ADMIN_EMAIL Script Properties\'de tanımlı değil, test değeri kullanılıyor');
+  }
+
   // Summary log
   log.info('📋 External configs yüklendi', {
     environment: CONFIG.IS_DEVELOPMENT ? 'development' : 'production',
     calendarId: CONFIG.CALENDAR_ID,
     hasTurnstileKey: !!CONFIG.TURNSTILE_SECRET_KEY,
     hasWhatsAppCredentials: !!(CONFIG.WHATSAPP_PHONE_NUMBER_ID && CONFIG.WHATSAPP_ACCESS_TOKEN),
-    hasSlackWebhook: !!CONFIG.SLACK_WEBHOOK_URL
+    hasSlackWebhook: !!CONFIG.SLACK_WEBHOOK_URL,
+    hasCompanyEmail: !!CONFIG.COMPANY_EMAIL,
+    hasAdminEmail: !!CONFIG.ADMIN_EMAIL
   });
 }
 

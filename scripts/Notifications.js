@@ -78,8 +78,10 @@ const NotificationService = {
     const { GREETING, SECTION_TITLE, LABELS, CLOSING } = config;
 
     // Tablo satırları - config'deki label'lara göre dinamik
+    // XSS koruması: Tüm değerler HTML escape edilir
     const tableRows = Object.entries(LABELS).map(([key, label]) => {
-      const value = data[key] || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED;
+      const rawValue = data[key] || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED;
+      const value = Utils.escapeHtml(rawValue);
       return `
       <tr>
         <td style="padding: 8px 12px 8px 0; font-weight: 400; width: 35%; vertical-align: top; color: #555;">${label}</td>
@@ -101,6 +103,11 @@ const NotificationService = {
         typeSpecificInfo = CONFIG.EMAIL_TEMPLATES.MEETING.INFO;
       }
 
+      // XSS koruması: Kullanıcı girdileri escape edilir
+      const safeName = Utils.escapeHtml(data.name);
+      const safeStaffPhone = Utils.escapeHtml(data.staffPhone);
+      const safeStaffEmail = Utils.escapeHtml(data.staffEmail);
+
       return `
       <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
         <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">
@@ -110,7 +117,7 @@ const NotificationService = {
           </table>
         </div>
 
-        <p style="line-height: 1.8; font-weight: 400;">${GREETING} ${data.name},</p>
+        <p style="line-height: 1.8; font-weight: 400;">${GREETING} ${safeName},</p>
 
         <p style="line-height: 1.8; font-weight: 400;">${config.CONFIRMATION}</p>
 
@@ -119,8 +126,8 @@ const NotificationService = {
         <p style="line-height: 1.8; font-weight: 400;">${config.CHANGE_CONTACT_INFO}</p>
 
         <p style="margin-top: 20px; line-height: 1.8; font-weight: 400;">
-          <span style="font-weight: 400;">Tel:</span> ${data.staffPhone}<br>
-          <span style="font-weight: 400;">E-posta:</span> ${data.staffEmail}
+          <span style="font-weight: 400;">Tel:</span> ${safeStaffPhone}<br>
+          <span style="font-weight: 400;">E-posta:</span> ${safeStaffEmail}
         </p>
 
         <p style="margin-top: 30px; font-weight: 400;">
@@ -135,9 +142,12 @@ const NotificationService = {
       const mainText = config.NOTIFICATION;
       const additionalContent = `<p style="font-weight: 400;">${config.PREPARATION}</p>`;
 
+      // XSS koruması: Kullanıcı girdileri escape edilir
+      const safeName = Utils.escapeHtml(data.name);
+
       return `
       <div style="font-family: 'Montserrat', Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333;">
-        <p style="font-weight: 400;">${GREETING} ${data.name},</p>
+        <p style="font-weight: 400;">${GREETING} ${safeName},</p>
         <p style="font-weight: 400;">${mainText}</p>
 
         <div style="margin: 30px 0; padding: 20px; background: #f9f9f9; border-left: 3px solid #C9A55A;">

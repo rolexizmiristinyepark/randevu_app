@@ -242,10 +242,15 @@ function doGet(e) {
     return output;
 
   } catch (mainError) {
-    // En dıştaki catch - JSON döndür
-    log.error('Ana hata:', mainError);
+    // En dıştaki catch - JSON döndür (generic mesaj, detay sızdırma)
+    const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
+    log.error(`[${errorId}] doGet ana hata:`, mainError);
 
-    const errorResponse = { success: false, error: mainError.toString() };
+    const errorResponse = {
+      success: false,
+      error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+      errorId: errorId
+    };
 
     return ContentService
       .createTextOutput(JSON.stringify(errorResponse))
@@ -309,8 +314,14 @@ function doPost(e) {
         }
       }
     } catch (handlerError) {
-      log.error('Handler error:', handlerError);
-      response = { success: false, error: handlerError.toString() };
+      // Generic mesaj, detay sızdırma
+      const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
+      log.error(`[${errorId}] doPost handler error:`, handlerError);
+      response = {
+        success: false,
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId
+      };
     }
 
     // JSON döndür
@@ -319,11 +330,14 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (mainError) {
-    log.error('doPost error:', mainError);
+    // Generic mesaj, detay sızdırma
+    const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
+    log.error(`[${errorId}] doPost ana hata:`, mainError);
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
-        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR + ': ' + mainError.toString()
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }
