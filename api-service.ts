@@ -47,7 +47,14 @@ type ProtectedAction =
     | 'deleteWhatsAppTemplate'
     | 'getWhatsAppTemplates'
     | 'getAllLinks'
-    | 'getWhatsAppVariableOptions';
+    | 'getWhatsAppVariableOptions'
+    // v3.5: Backend sync - yeni protected action'lar
+    | 'createStaff'
+    | 'updateStaffV3'
+    | 'createBackup'
+    | 'listBackups'
+    | 'restoreBackup'
+    | 'assignStaffToAppointment';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -78,7 +85,14 @@ const ApiService = {
         'deleteWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
         'getWhatsAppTemplates',         // v3.4: WhatsApp Template CRUD
         'getAllLinks',                  // v3.0: Session auth
-        'getWhatsAppVariableOptions'    // v3.4: WhatsApp Template CRUD
+        'getWhatsAppVariableOptions',   // v3.4: WhatsApp Template CRUD
+        // v3.5: Backend sync - yeni protected action'lar
+        'createStaff',                  // v3.5: Yeni personel oluştur
+        'updateStaffV3',                // v3.5: Personel güncelle (v3 format)
+        'createBackup',                 // v3.5: Manuel yedek oluştur
+        'listBackups',                  // v3.5: Yedekleri listele
+        'restoreBackup',                // v3.5: Yedek geri yükle
+        'assignStaffToAppointment'      // v3.5: Randevuya personel ata
     ] as const,
 
     // Validation map for actions that support Zod validation

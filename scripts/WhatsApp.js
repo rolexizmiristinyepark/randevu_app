@@ -1208,15 +1208,15 @@ const WHATSAPP_VARIABLES = {
     getValue: function(data) { return data.time || data.appointmentTime || ''; }
   },
   randevu_turu: {
-    label: 'Randevu Türü (Saat Takdim, Görüşme, Teknik Servis)',
+    label: 'Randevu Türü (Teslim, Görüşme, Teknik Servis)',
     getValue: function(data) {
       var type = data.appointmentType || '';
       // Randevu türü label'larını dönüştür
       var typeLabels = {
         'meeting': 'Görüşme',
         'gorisme': 'Görüşme',
-        'delivery': 'Saat Takdim',
-        'teslim': 'Saat Takdim',
+        'delivery': 'Teslim',
+        'teslim': 'Teslim',
         'technical': 'Teknik Servis',
         'teknik': 'Teknik Servis',
         'teknik_servis': 'Teknik Servis',

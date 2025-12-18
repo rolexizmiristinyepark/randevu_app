@@ -177,7 +177,7 @@ const SlackService = {
     };
 
     const appointmentTypeNames = {
-      'delivery': 'Saat Takdim',
+      'delivery': 'Teslim',
       'service': 'Teknik Servis',
       'meeting': 'Görüşme',
       'management': 'Yönetim'

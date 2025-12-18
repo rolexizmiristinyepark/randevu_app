@@ -58,7 +58,7 @@ const CONFIG = {
 
   // Appointment Type Labels
   APPOINTMENT_TYPE_LABELS: {
-    delivery: 'Saat Takdim',
+    delivery: 'Teslim',
     shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
     general: 'Görüşme',        // Alias for meeting
@@ -68,7 +68,7 @@ const CONFIG = {
 
   // Service Names (Email "Konu" alanı için)
   SERVICE_NAMES: {
-    delivery: 'Saat Takdim',
+    delivery: 'Saat Teslimi',
     shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
     service: 'Teknik Servis',
