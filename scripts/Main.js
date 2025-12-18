@@ -15,7 +15,8 @@
  *   Appointments, Validation, Notifications, WhatsApp, Slack)
  */
 
-// Admin işlemleri için API key gereken action'lar
+// Admin işlemleri için API key gereken action'lar (legacy)
+// v3.0: Session token ile admin işlemleri için SESSION_ADMIN_ACTIONS kullanılıyor
 const ADMIN_ACTIONS = [
   'addStaff', 'toggleStaff', 'removeStaff', 'updateStaff',
   'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
@@ -28,7 +29,20 @@ const ADMIN_ACTIONS = [
   'updateSlackSettings',
   'getSlackSettings',
   // Backup management
-  'createBackup', 'listBackups', 'restoreBackup'
+  'createBackup', 'listBackups', 'restoreBackup',
+  // Profil ayarları (v3.3)
+  'updateProfilAyarlari', 'resetProfilAyarlari',
+  // WhatsApp Flow System (v3.4) - getWhatsAppFlows public (read-only)
+  'addWhatsAppFlow', 'updateWhatsAppFlow', 'deleteWhatsAppFlow',
+  // WhatsApp Daily Tasks (v3.4) - getWhatsAppDailyTasks public (read-only)
+  'addWhatsAppDailyTask', 'updateWhatsAppDailyTask', 'deleteWhatsAppDailyTask'
+];
+
+// v3.0: Session bazlı admin işlemleri (SessionAuthService ile)
+const SESSION_ADMIN_ACTIONS = [
+  'createStaff', 'updateStaffV3', 'getAllLinks', 'regenerateLink',
+  // WhatsApp Template CRUD (v3.2)
+  'getWhatsAppTemplates', 'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate', 'getWhatsAppVariableOptions'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -83,12 +97,43 @@ const ACTION_HANDLERS = {
   'initializeApiKey': () => AuthService.initializeApiKey(),
   'regenerateApiKey': (e) => AuthService.regenerateApiKey(e.parameter.oldKey),
 
-  // Staff management
+  // Staff management (legacy)
   'getStaff': () => StaffService.getStaff(),
   'addStaff': (e) => StaffService.addStaff(e.parameter.name, e.parameter.phone, e.parameter.email),
   'toggleStaff': (e) => StaffService.toggleStaff(e.parameter.id),
   'removeStaff': (e) => StaffService.removeStaff(e.parameter.id),
   'updateStaff': (e) => StaffService.updateStaff(e.parameter.id, e.parameter.name, e.parameter.phone, e.parameter.email),
+
+  // Staff management v3.0 (session bazlı)
+  'getStaffByRole': (e) => ({ success: true, data: StaffService.getByRole(e.parameter.role) }),
+  'createStaff': (e) => StaffService.create({
+    name: e.parameter.name,
+    email: e.parameter.email,
+    phone: e.parameter.phone,
+    role: e.parameter.role,
+    isAdmin: e.parameter.isAdmin === 'true'
+  }),
+  'updateStaffV3': (e) => StaffService.update(e.parameter.id, {
+    name: e.parameter.name,
+    email: e.parameter.email,
+    phone: e.parameter.phone,
+    role: e.parameter.role,
+    isAdmin: e.parameter.isAdmin === 'true',
+    active: e.parameter.active === 'true'
+  }),
+
+  // Session Auth v3.0
+  'login': (e) => SessionAuthService.login(e.parameter.email, e.parameter.password),
+  'validateSession': (e) => SessionAuthService.validateSession(e.parameter.token),
+  'logout': (e) => SessionAuthService.logout(e.parameter.token),
+  'resetPassword': (e) => SessionAuthService.resetPassword(e.parameter.email),
+  'changePassword': (e) => SessionAuthService.changePassword(e.parameter.token, e.parameter.oldPassword, e.parameter.newPassword),
+
+  // Links v3.3 (basit hash format: #w, #g, #b, #m, #s/{id}, #v/{id})
+  'resolveUrl': (e) => UrlResolver.resolve(e.parameter.hash),
+  'resolveId': (e) => LegacyResolver.resolve(e.parameter.id),
+  'getAllLinks': () => LinkAggregator.getAllLinks(),
+  'buildProfileUrl': (e) => ({ success: true, url: UrlResolver.buildUrl(e.parameter.code, e.parameter.staffId) }),
 
   // Shifts management
   'getShifts': (e) => ShiftService.getShifts(e.parameter.date),
@@ -133,6 +178,29 @@ const ACTION_HANDLERS = {
   // WhatsApp Business Cloud API
   'sendWhatsAppReminders': (e) => WhatsAppService.sendWhatsAppReminders(e.parameter.date, e.parameter.apiKey),
 
+  // WhatsApp Business API Settings
+  'updateWhatsAppSettings': (e) => {
+    const props = PropertiesService.getScriptProperties();
+    if (e.parameter.phoneNumberId) {
+      props.setProperty('WHATSAPP_PHONE_NUMBER_ID', e.parameter.phoneNumberId);
+    }
+    if (e.parameter.accessToken) {
+      props.setProperty('WHATSAPP_ACCESS_TOKEN', e.parameter.accessToken);
+    }
+    log.info('[WhatsApp Settings] Updated - Phone ID: ' + (e.parameter.phoneNumberId ? 'SET' : 'unchanged'));
+    return { success: true, message: 'WhatsApp ayarları kaydedildi' };
+  },
+  'getWhatsAppSettings': () => {
+    const props = PropertiesService.getScriptProperties();
+    return {
+      success: true,
+      data: {
+        phoneNumberId: props.getProperty('WHATSAPP_PHONE_NUMBER_ID') || '',
+        hasAccessToken: !!props.getProperty('WHATSAPP_ACCESS_TOKEN')
+      }
+    };
+  },
+
   // Slack Webhook
   'updateSlackSettings': (e) => SlackService.updateSlackSettings(e.parameter.webhookUrl, e.parameter.apiKey),
   'getSlackSettings': (e) => SlackService.getSlackSettings(e.parameter.apiKey),
@@ -145,12 +213,35 @@ const ACTION_HANDLERS = {
   // Config management (public - no auth required)
   'getConfig': () => ConfigService.getConfig(),
 
+  // Profil ayarları (v3.3 - dinamik)
+  'getProfilAyarlari': (e) => ({
+    success: true,
+    data: ProfilAyarlariService.get(e.parameter.profil),
+    profil: e.parameter.profil || 'genel'
+  }),
+  'getAllProfilAyarlari': () => ({ success: true, data: ProfilAyarlariService.getAll() }),
+  'updateProfilAyarlari': (e) => {
+    var updates = e.parameter.updates ? JSON.parse(e.parameter.updates) : {};
+    return ProfilAyarlariService.update(e.parameter.profil, updates);
+  },
+  'resetProfilAyarlari': () => ProfilAyarlariService.reset(),
+
   // Slot Universe & Business Rules
   'getDayStatus': (e) => AvailabilityService.getDayStatus(e.parameter.date, e.parameter.appointmentType),
-  'getDailySlots': (e) => ({
-    success: true,
-    slots: SlotService.getDailySlots(e.parameter.date, e.parameter.shiftType || 'full')
-  }),
+  'getDailySlots': (e) => {
+    // linkType varsa profil ayarlarından slotGrid'i al
+    let slotGrid = 60;
+    if (e.parameter.linkType) {
+      const profilAyarlari = getProfilAyarlariByLinkType(e.parameter.linkType);
+      slotGrid = profilAyarlari?.slotGrid || 60;
+    } else if (e.parameter.slotGrid) {
+      slotGrid = parseInt(e.parameter.slotGrid) || 60;
+    }
+    return {
+      success: true,
+      slots: SlotService.getDailySlots(e.parameter.date, e.parameter.shiftType || 'full', slotGrid)
+    };
+  },
   'validateReservation': (e) => ValidationService.validateReservation({
     date: e.parameter.date,
     hour: parseInt(e.parameter.hour),
@@ -169,7 +260,51 @@ const ACTION_HANDLERS = {
   ),
 
   // Data management
-  'resetData': () => StorageService.resetData()
+  'resetData': () => StorageService.resetData(),
+
+  // WhatsApp Template CRUD (v3.4 - Sheets-based system with targetType)
+  'getWhatsAppTemplates': () => getWhatsAppTemplates(),
+  'createWhatsAppTemplate': (e) => {
+    try {
+      const params = {
+        name: e.parameter.name,
+        description: e.parameter.description,
+        variableCount: e.parameter.variableCount,
+        variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
+        targetType: e.parameter.targetType,
+        language: e.parameter.language || 'en'
+      };
+      log.info('[createWhatsAppTemplate-handler] params:', JSON.stringify(params));
+      return createWhatsAppTemplate(params);
+    } catch (handlerError) {
+      log.error('[createWhatsAppTemplate-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString(), handlerError: true };
+    }
+  },
+  'updateWhatsAppTemplate': (e) => updateWhatsAppTemplate({
+    id: e.parameter.id,
+    name: e.parameter.name,
+    description: e.parameter.description,
+    variableCount: e.parameter.variableCount,
+    language: e.parameter.language,
+    variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
+    targetType: e.parameter.targetType
+  }),
+  'deleteWhatsAppTemplate': (e) => deleteWhatsAppTemplate({ id: e.parameter.id }),
+  'getWhatsAppVariableOptions': () => getWhatsAppVariableOptions(),
+
+  // WhatsApp Flow System (v3.4)
+  'getWhatsAppFlows': () => getWhatsAppFlows(),
+  'getWhatsAppFlow': (e) => getWhatsAppFlow(e.parameter),
+  'addWhatsAppFlow': (e) => addWhatsAppFlow(e.parameter),
+  'updateWhatsAppFlow': (e) => updateWhatsAppFlow(e.parameter),
+  'deleteWhatsAppFlow': (e) => deleteWhatsAppFlow(e.parameter),
+
+  // WhatsApp Daily Tasks (v3.4)
+  'getWhatsAppDailyTasks': () => getWhatsAppDailyTasks(),
+  'addWhatsAppDailyTask': (e) => addWhatsAppDailyTask(e.parameter),
+  'updateWhatsAppDailyTask': (e) => updateWhatsAppDailyTask(e.parameter),
+  'deleteWhatsAppDailyTask': (e) => deleteWhatsAppDailyTask(e.parameter)
 };
 
 /**
@@ -186,16 +321,32 @@ function doGet(e) {
     let response = {};
 
     try {
-      // Admin action kontrolü - API key gerekli mi?
-      if (ADMIN_ACTIONS.includes(action)) {
-        if (!AuthService.validateApiKey(apiKey)) {
+      // Admin action kontrolü - API key veya Session token gerekli mi?
+      // ADMIN_ACTIONS veya SESSION_ADMIN_ACTIONS içindeki action'lar için auth gerekli
+      const requiresAuth = ADMIN_ACTIONS.includes(action) || SESSION_ADMIN_ACTIONS.includes(action);
+
+      if (requiresAuth) {
+        // Önce session token kontrol et, sonra API key
+        var isAuthorized = false;
+
+        if (apiKey) {
+          // Session token mı yoksa API key mi?
+          var sessionResult = SessionAuthService.validateSession(apiKey);
+          if (sessionResult.valid) {
+            isAuthorized = true;
+          } else if (AuthService.validateApiKey(apiKey)) {
+            isAuthorized = true;
+          }
+        }
+
+        if (!isAuthorized) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
             requiresAuth: true
           };
         } else {
-          // API key geçerli, handler'ı çalıştır
+          // Auth geçerli, handler'ı çalıştır
           const handler = ACTION_HANDLERS[action];
           if (!handler) {
             response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };
@@ -285,16 +436,42 @@ function doPost(e) {
     let response = {};
 
     try {
-      // Admin action kontrolü - API key gerekli mi?
-      if (ADMIN_ACTIONS.includes(action)) {
-        if (!AuthService.validateApiKey(apiKey)) {
+      // Admin action kontrolü - API key veya Session token gerekli mi?
+      // ADMIN_ACTIONS veya SESSION_ADMIN_ACTIONS içindeki action'lar için auth gerekli
+      const requiresAuth = ADMIN_ACTIONS.includes(action) || SESSION_ADMIN_ACTIONS.includes(action);
+
+      if (requiresAuth) {
+        // Önce session token kontrol et, sonra API key
+        var isAuthorized = false;
+
+        if (apiKey) {
+          // Session token mı yoksa API key mi?
+          log.info('[AUTH-DEBUG] Checking auth for action: ' + action + ', token prefix: ' + (apiKey ? apiKey.substring(0, 8) : 'null'));
+          var sessionResult = SessionAuthService.validateSession(apiKey);
+          log.info('[AUTH-DEBUG] Session validation result: ' + JSON.stringify(sessionResult));
+          if (sessionResult.valid) {
+            log.info('[AUTH-DEBUG] Session token valid!');
+            isAuthorized = true;
+          } else if (AuthService.validateApiKey(apiKey)) {
+            log.info('[AUTH-DEBUG] API key valid!');
+            isAuthorized = true;
+          } else {
+            log.warn('[AUTH-DEBUG] Neither session nor API key valid');
+          }
+        } else {
+          log.warn('[AUTH-DEBUG] No apiKey provided for protected action: ' + action);
+        }
+
+        if (!isAuthorized) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
-            requiresAuth: true
+            requiresAuth: true,
+            debug: sessionResult ? sessionResult.error : 'no apiKey provided',
+            sessionDebug: sessionResult?.debug || null
           };
         } else {
-          // API key geçerli, handler'ı çalıştır
+          // Auth geçerli, handler'ı çalıştır
           const handler = ACTION_HANDLERS[action];
           if (!handler) {
             response = { success: false, error: CONFIG.ERROR_MESSAGES.UNKNOWN_ACTION + ': ' + action };

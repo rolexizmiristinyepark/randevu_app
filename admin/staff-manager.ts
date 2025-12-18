@@ -6,23 +6,48 @@
 import { apiCall } from '../api-service';
 import { ValidationUtils } from '../validation-utils';
 import { ErrorUtils } from '../error-utils';
+import { ButtonAnimator } from '../button-utils';
+import { formatPhoneForDisplay } from '../security-helpers';
+import { initPhoneInput, getPhoneNumber, setPhoneNumber, destroyPhoneInput } from '../phone-input';
 import type { DataStore, StaffMember } from './data-store';
 
 // Module-scoped variables
 let dataStore: DataStore;
-let currentEditId: number | null = null;
+let currentEditId: string | null = null;
 
 // Global references (accessed via window)
 declare const window: Window & {
     CONFIG: any;
     UI: any;
-    createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
 };
 
 // Lazy accessors to avoid module load order issues
 const getUI = () => window.UI;
 const getConfig = () => window.CONFIG;
-const getCreateElement = () => window.createElement;
+
+/**
+ * Helper: Create DOM element with attributes
+ */
+function createElement(tag: string, attrs?: Record<string, any>, text?: string): HTMLElement {
+    const el = document.createElement(tag);
+    if (attrs) {
+        Object.entries(attrs).forEach(([key, value]) => {
+            if (key === 'className') {
+                el.className = value;
+            } else if (key === 'style' && typeof value === 'object') {
+                Object.assign(el.style, value);
+            } else if (key.startsWith('data-')) {
+                el.setAttribute(key, value);
+            } else {
+                (el as any)[key] = value;
+            }
+        });
+    }
+    if (text) el.textContent = text;
+    return el;
+}
+
+// ButtonAnimator is imported from button-utils.ts
 
 /**
  * Initialize Staff Manager module
@@ -31,6 +56,9 @@ export async function initStaffManager(store: DataStore): Promise<void> {
     dataStore = store;
     await loadStaff();
     setupEventListeners();
+
+    // Initialize phone input for new staff form
+    initPhoneInput('newStaffPhone');
 }
 
 /**
@@ -54,19 +82,22 @@ function setupEventListeners(): void {
     staffList?.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         const action = target.getAttribute('data-action');
-        const staffId = parseInt(target.getAttribute('data-staff-id') || '0');
+        const staffId = target.getAttribute('data-staff-id');
 
         if (!action || !staffId) return;
+
+        // Get button element for loading state
+        const button = target.tagName === 'BUTTON' ? target as HTMLButtonElement : null;
 
         switch (action) {
             case 'edit':
                 openEditModal(staffId);
                 break;
             case 'toggle':
-                toggle(staffId);
+                toggle(staffId, button || undefined);
                 break;
             case 'remove':
-                remove(staffId);
+                remove(staffId, button || undefined);
                 break;
         }
     });
@@ -84,11 +115,16 @@ function setupEventListeners(): void {
  */
 async function add(): Promise<void> {
     const inputName = document.getElementById('newStaffName') as HTMLInputElement;
-    const inputPhone = document.getElementById('newStaffPhone') as HTMLInputElement;
     const inputEmail = document.getElementById('newStaffEmail') as HTMLInputElement;
+    const inputRole = document.getElementById('newStaffRole') as HTMLSelectElement;
+    const inputIsAdmin = document.getElementById('newStaffIsAdmin') as HTMLInputElement;
+
     const name = inputName.value.trim();
-    const phone = inputPhone.value.trim();
+    // Telefonu intl-tel-input'tan al (E.164 format, + olmadan: 905321234567)
+    const phone = getPhoneNumber('newStaffPhone');
     const email = inputEmail.value.trim();
+    const role = inputRole.value;
+    const isAdmin = inputIsAdmin.checked;
 
     // Validate
     const validation = ValidationUtils.validateStaffForm(name, phone, email);
@@ -98,15 +134,20 @@ async function add(): Promise<void> {
     }
 
     try {
-        const response = await apiCall('addStaff', { name, phone, email });
+        const response = await apiCall('addStaff', { name, phone, email, role, isAdmin: isAdmin ? 'true' : 'false' });
 
         if (response.success) {
-            dataStore.staff = response.data as StaffMember[];
+            // Backend doesn't return updated list, reload from API
+            await dataStore.loadStaff();
             inputName.value = '';
-            inputPhone.value = '';
+            // Reset phone input
+            destroyPhoneInput('newStaffPhone');
+            initPhoneInput('newStaffPhone');
             inputEmail.value = '';
+            inputRole.value = 'sales';
+            inputIsAdmin.checked = false;
             render();
-            getUI().showAlert('✅ ' + name + ' eklendi!', 'success');
+            getUI().showAlert(name + ' eklendi!', 'success');
         } else {
             ErrorUtils.handleApiError(response as any, 'addStaff', getUI().showAlert.bind(getUI()));
         }
@@ -118,18 +159,26 @@ async function add(): Promise<void> {
 /**
  * Toggle staff active/inactive status
  */
-async function toggle(id: number): Promise<void> {
+async function toggle(id: string, button?: HTMLButtonElement): Promise<void> {
+    if (button) ButtonAnimator.start(button);
+
     try {
         const response = await apiCall('toggleStaff', { id });
 
         if (response.success) {
-            dataStore.staff = response.data as StaffMember[];
-            render();
-            getUI().showAlert('✅ Durum değişti!', 'success');
+            if (button) ButtonAnimator.success(button, false);
+            // Backend doesn't return updated list, reload from API
+            setTimeout(async () => {
+                await dataStore.loadStaff();
+                render();
+            }, 500);
+            getUI().showAlert('Durum değişti!', 'success');
         } else {
+            if (button) ButtonAnimator.error(button);
             ErrorUtils.handleApiError(response as any, 'toggleStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
+        if (button) ButtonAnimator.error(button);
         ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(getUI()));
     }
 }
@@ -137,23 +186,31 @@ async function toggle(id: number): Promise<void> {
 /**
  * Remove staff member
  */
-async function remove(id: number): Promise<void> {
+async function remove(id: string, button?: HTMLButtonElement): Promise<void> {
     const staff = dataStore.staff.find(s => s.id === id);
     if (!staff) return;
 
     if (!confirm('"' + staff.name + '" silinsin mi?')) return;
 
+    if (button) ButtonAnimator.start(button);
+
     try {
         const response = await apiCall('removeStaff', { id });
 
         if (response.success) {
-            dataStore.staff = response.data as StaffMember[];
-            render();
-            getUI().showAlert('✅ ' + staff.name + ' silindi!', 'success');
+            if (button) ButtonAnimator.success(button, false);
+            // Backend doesn't return updated list, reload from API
+            setTimeout(async () => {
+                await dataStore.loadStaff();
+                render();
+            }, 500);
+            getUI().showAlert(staff.name + ' silindi!', 'success');
         } else {
+            if (button) ButtonAnimator.error(button);
             ErrorUtils.handleApiError(response as any, 'removeStaff', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
+        if (button) ButtonAnimator.error(button);
         ErrorUtils.handleException(error, 'Silme', getUI().showAlert.bind(getUI()));
     }
 }
@@ -173,7 +230,7 @@ function render(): void {
     list.textContent = '';
 
     if (dataStore.staff.length === 0) {
-        const emptyMsg = getCreateElement()('p', {
+        const emptyMsg = createElement('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         list.appendChild(emptyMsg);
@@ -185,45 +242,47 @@ function render(): void {
 
     dataStore.staff.forEach(s => {
         // Staff item container
-        const staffItem = getCreateElement()('div', { className: 'staff-item' });
+        const staffItem = createElement('div', { className: 'staff-item' });
 
         // Staff info section
-        const staffInfo = getCreateElement()('div', { className: 'staff-info' });
+        const staffInfo = createElement('div', { className: 'staff-info' });
 
-        const infoDiv = getCreateElement()('div');
-        const nameDiv = getCreateElement()('div', { className: 'staff-name' }, s.name);
-        const detailsDiv = getCreateElement()('div', {
+        const infoDiv = createElement('div');
+        const nameDiv = createElement('div', { className: 'staff-name' }, s.name);
+        // Telefon numarasını +90 formatında göster
+        const displayPhone = s.phone ? formatPhoneForDisplay(s.phone) : 'Telefon yok';
+        const detailsDiv = createElement('div', {
             style: { fontSize: '12px', color: '#666', marginTop: '4px' }
-        }, `${s.phone || 'Telefon yok'} • ${s.email || 'E-posta yok'}`);
+        }, `${displayPhone} • ${s.email || 'E-posta yok'}`);
 
         infoDiv.appendChild(nameDiv);
         infoDiv.appendChild(detailsDiv);
         staffInfo.appendChild(infoDiv);
 
         // Staff actions section
-        const staffActions = getCreateElement()('div', { className: 'staff-actions' });
+        const staffActions = createElement('div', { className: 'staff-actions' });
 
         // Status span
-        const statusSpan = getCreateElement()('span', {
+        const statusSpan = createElement('span', {
             className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
         }, s.active ? 'Aktif' : 'Pasif');
 
         // Edit button (with data attributes for event delegation)
-        const editBtn = getCreateElement()('button', {
+        const editBtn = createElement('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'edit',
             'data-staff-id': s.id
         }, 'Düzenle');
 
         // Toggle button
-        const toggleBtn = getCreateElement()('button', {
+        const toggleBtn = createElement('button', {
             className: `btn btn-small btn-secondary`,
             'data-action': 'toggle',
             'data-staff-id': s.id
         }, s.active ? 'Pasif' : 'Aktif');
 
         // Remove button
-        const removeBtn = getCreateElement()('button', {
+        const removeBtn = createElement('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'remove',
             'data-staff-id': s.id
@@ -258,7 +317,7 @@ function renderLinks(): void {
     const activeStaff = dataStore.staff.filter(s => s.active);
 
     if (activeStaff.length === 0) {
-        const emptyMsg = getCreateElement()('p', {
+        const emptyMsg = createElement('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         container.appendChild(emptyMsg);
@@ -266,22 +325,22 @@ function renderLinks(): void {
     }
 
     // Grid layout
-    const gridContainer = getCreateElement()('div', { className: 'link-grid' });
+    const gridContainer = createElement('div', { className: 'link-grid' });
 
     activeStaff.forEach(s => {
-        const staffLink = `${getConfig().BASE_URL}?staff=${s.id}`;
+        const staffLink = `${getConfig().BASE_URL}#s/${s.id}`;
 
         // Link card
-        const linkCard = getCreateElement()('div', { className: 'link-card' });
+        const linkCard = createElement('div', { className: 'link-card' });
 
         // Header
-        const header = getCreateElement()('div', { className: 'link-card-header' }, s.name);
+        const header = createElement('div', { className: 'link-card-header' }, s.name);
 
         // Body
-        const body = getCreateElement()('div', { className: 'link-card-body' });
+        const body = createElement('div', { className: 'link-card-body' });
 
         // Link input
-        const linkInput = getCreateElement()('input', {
+        const linkInput = createElement('input', {
             type: 'text',
             value: staffLink,
             readonly: true,
@@ -290,14 +349,14 @@ function renderLinks(): void {
         }) as HTMLInputElement;
 
         // Actions
-        const actions = getCreateElement()('div', { className: 'link-actions' });
+        const actions = createElement('div', { className: 'link-actions' });
 
-        const copyBtn = getCreateElement()('button', {
+        const copyBtn = createElement('button', {
             className: 'btn btn-small btn-secondary'
         }, 'Kopyala');
         copyBtn.addEventListener('click', () => copyLink(s.id));
 
-        const openBtn = getCreateElement()('button', {
+        const openBtn = createElement('button', {
             className: 'btn btn-small'
         }, 'Aç');
         openBtn.addEventListener('click', () => openLink(s.id));
@@ -319,33 +378,73 @@ function renderLinks(): void {
 /**
  * Copy staff link to clipboard
  */
-function copyLink(staffId: number): void {
-    const input = document.getElementById('staffLink_' + staffId) as HTMLInputElement;
-    input.select();
-    document.execCommand('copy');
-    getUI().showAlert('✅ Link kopyalandı!', 'success');
+async function copyLink(staffId: string): Promise<void> {
+    const input = document.getElementById(`staffLink_${staffId}`) as HTMLInputElement;
+    if (!input) {
+        getUI().showAlert('Link bulunamadı!', 'error');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(input.value);
+        getUI().showAlert('Link kopyalandı!', 'success');
+    } catch {
+        // Fallback for older browsers
+        input.select();
+        document.execCommand('copy');
+        getUI().showAlert('Link kopyalandı!', 'success');
+    }
 }
 
 /**
  * Open staff link in new tab
  */
-function openLink(staffId: number): void {
-    const input = document.getElementById('staffLink_' + staffId) as HTMLInputElement;
+function openLink(staffId: string): void {
+    const input = document.getElementById(`staffLink_${staffId}`) as HTMLInputElement;
+    if (!input) {
+        getUI().showAlert('Link bulunamadı!', 'error');
+        return;
+    }
     window.open(input.value, '_blank');
 }
 
 /**
  * Open edit modal for staff member
  */
-function openEditModal(staffId: number): void {
-    const staff = dataStore.staff.find(s => s.id === staffId);
-    if (!staff) return;
+function openEditModal(staffId: string): void {
+    try {
+        const staff = dataStore.staff.find(s => s.id === staffId);
+        if (!staff) {
+            console.error('Staff not found:', staffId);
+            return;
+        }
 
-    currentEditId = staffId;
-    (document.getElementById('editStaffName') as HTMLInputElement).value = staff.name;
-    (document.getElementById('editStaffPhone') as HTMLInputElement).value = staff.phone || '';
-    (document.getElementById('editStaffEmail') as HTMLInputElement).value = staff.email || '';
-    document.getElementById('editStaffModal')?.classList.add('active');
+        currentEditId = staffId;
+
+        const nameInput = document.getElementById('editStaffName') as HTMLInputElement;
+        const emailInput = document.getElementById('editStaffEmail') as HTMLInputElement;
+        const roleSelect = document.getElementById('editStaffRole') as HTMLSelectElement;
+        const isAdminCheckbox = document.getElementById('editStaffIsAdmin') as HTMLInputElement;
+        const modal = document.getElementById('editStaffModal');
+
+        if (nameInput) nameInput.value = staff.name;
+        if (emailInput) emailInput.value = staff.email || '';
+        if (roleSelect) roleSelect.value = staff.role || 'sales';
+        if (isAdminCheckbox) isAdminCheckbox.checked = staff.isAdmin || false;
+
+        // Initialize phone input for edit modal and set value
+        destroyPhoneInput('editStaffPhone');
+        initPhoneInput('editStaffPhone');
+        // Set phone number (with + prefix for intl-tel-input)
+        if (staff.phone) {
+            setPhoneNumber('editStaffPhone', String(staff.phone));
+        }
+
+        modal?.classList.add('active');
+    } catch (error) {
+        console.error('Error opening edit modal:', error);
+        getUI().showAlert('Modal açılırken hata oluştu', 'error');
+    }
 }
 
 /**
@@ -361,8 +460,11 @@ function closeEditModal(): void {
  */
 async function saveEdit(): Promise<void> {
     const name = (document.getElementById('editStaffName') as HTMLInputElement).value.trim();
-    const phone = (document.getElementById('editStaffPhone') as HTMLInputElement).value.trim();
+    // Telefonu intl-tel-input'tan al (E.164 format, + olmadan: 905321234567)
+    const phone = getPhoneNumber('editStaffPhone');
     const email = (document.getElementById('editStaffEmail') as HTMLInputElement).value.trim();
+    const role = (document.getElementById('editStaffRole') as HTMLSelectElement).value;
+    const isAdmin = (document.getElementById('editStaffIsAdmin') as HTMLInputElement).checked;
 
     // Validate
     const validation = ValidationUtils.validateStaffForm(name, phone, email);
@@ -376,14 +478,17 @@ async function saveEdit(): Promise<void> {
             id: currentEditId,
             name: name,
             phone: phone,
-            email: email
+            email: email,
+            role: role,
+            isAdmin: isAdmin ? 'true' : 'false'
         });
 
         if (response.success) {
-            dataStore.staff = response.data as StaffMember[];
+            // Backend doesn't return updated list, reload from API
+            await dataStore.loadStaff();
             render();
             closeEditModal();
-            getUI().showAlert('✅ Personel güncellendi!', 'success');
+            getUI().showAlert('Personel güncellendi!', 'success');
         } else {
             ErrorUtils.handleApiError(response as any, 'updateStaff', getUI().showAlert.bind(getUI()));
         }

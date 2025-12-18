@@ -9,10 +9,11 @@ import { state, Staff } from './StateManager';
 import { showAlert } from './UIManager';
 import { showSuccessPage } from './SuccessPageComponent';
 import { StringUtils } from './string-utils';
-import { ButtonUtils } from './button-utils';
+import { ButtonUtils, ButtonAnimator } from './button-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
-import { sanitizeName, sanitizePhone, sanitizeEmail, sanitizeInput } from './security-helpers';
+import { sanitizeName, sanitizeEmail, sanitizeInput } from './security-helpers';
+import { initPhoneInput, getPhoneNumber, isPhoneValid } from './phone-input';
 
 // ==================== TURNSTILE RESET ====================
 
@@ -44,6 +45,9 @@ export function initAppointmentForm(): void {
     const submitBtn = document.getElementById('submitBtn');
     if (!submitBtn) return;
 
+    // Initialize phone input with intl-tel-input
+    initPhoneInput('customerPhone');
+
     submitBtn.addEventListener('click', handleFormSubmit);
 }
 
@@ -53,12 +57,12 @@ export function initAppointmentForm(): void {
 async function handleFormSubmit(): Promise<void> {
     // Input sanitization - XSS ve injection koruması
     const rawName = (document.getElementById('customerName') as HTMLInputElement).value;
-    const rawPhone = (document.getElementById('customerPhone') as HTMLInputElement).value;
     const rawEmail = (document.getElementById('customerEmail') as HTMLInputElement).value;
     const rawNote = (document.getElementById('customerNote') as HTMLTextAreaElement).value;
 
     const name = StringUtils.toTitleCase(sanitizeName(rawName));
-    const phone = sanitizePhone(rawPhone);
+    // Telefonu intl-tel-input'tan al (E.164 format, + olmadan: 905321234567)
+    const phone = getPhoneNumber('customerPhone');
     const email = sanitizeEmail(rawEmail);
     const note = sanitizeInput(rawNote, { maxLength: 500 });
 
@@ -96,8 +100,13 @@ async function handleFormSubmit(): Promise<void> {
         return;
     }
 
-    // NEW: selectedStaff can be -1 (management link random), 0 (normal management), positive number (staff)
-    if (!selectedDate || selectedStaff === null || selectedStaff === undefined || !selectedTime) {
+    // NEW: selectedStaff can be -1 (management link random), 0 (normal management), positive number (staff), or null (staffFilter === 'none')
+    const profilAyarlari = state.get('profilAyarlari');
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
+
+    // staffFilter === 'none' allows null staff (admin assigns later)
+    const staffRequired = staffFilter !== 'none';
+    if (!selectedDate || (staffRequired && (selectedStaff === null || selectedStaff === undefined)) || !selectedTime) {
         showAlert('Lutfen tarih, calisan ve saat secin.', 'error');
         return;
     }
@@ -113,18 +122,23 @@ async function handleFormSubmit(): Promise<void> {
     }
 
     const btn = document.getElementById('submitBtn') as HTMLButtonElement;
-    ButtonUtils.setLoading(btn, 'Randevu oluşturuluyor');
+    ButtonAnimator.start(btn);
 
     // NEW: For staff=0, use managementContactPerson instead of staffName
     let staffName: string;
     let staff: Staff | undefined = undefined;
-    let assignedStaffId: number | null = selectedStaff;
+    // v3.6: staffId artık 8-karakterli secure ID (string) olabilir
+    let assignedStaffId: string | number | null = selectedStaff;
 
     // If management link (hk, ok, hmk) - don't assign staff, admin will assign
     if (isManagementLink) {
         // Create appointment without staff assignment
         assignedStaffId = null;
         staffName = 'Atanmadı'; // Placeholder
+    } else if (staffFilter === 'none') {
+        // Walk-in customers - admin assigns staff later
+        assignedStaffId = null;
+        staffName = 'Atanmadı';
     } else if (selectedStaff === 0) {
         staffName = (window as any).managementContactPerson || 'Yönetim';
         assignedStaffId = 0;
@@ -139,6 +153,14 @@ async function handleFormSubmit(): Promise<void> {
         staffName = staff.name;
     }
 
+    // v3.2: Link type from profile state
+    const currentProfile = state.get('currentProfile');
+    const linkType = currentProfile === 'gunluk' ? 'walkin' :
+                     currentProfile === 'vip' ? 'vip' :
+                     currentProfile === 'personel' ? 'staff' : 'general';
+
+    console.log('DEBUG: currentProfile=', currentProfile, 'linkType=', linkType, 'staffId=', assignedStaffId);
+
     try {
         const result = await apiCall('createAppointment', {
             date: selectedDate,
@@ -151,14 +173,18 @@ async function handleFormSubmit(): Promise<void> {
             customerNote: note,
             shiftType: selectedShiftType,
             appointmentType: selectedAppointmentType,
-            duration: (window as any).CONFIG?.APPOINTMENT_HOURS?.interval || 30,
+            duration: state.get('profilAyarlari')?.duration || 60,
             turnstileToken: turnstileToken,  // Bot protection token
             managementLevel: managementLevel,  // Management link level (1, 2, 3 or null)
-            isVipLink: isManagementLink,  // VIP link flag (#hk, #ok, #hmk)
+            isVipLink: isManagementLink,  // VIP link flag (#hk, #ok, #hmk) - legacy
+            linkType: linkType,  // v3.2: Link type (general, staff, vip, walkin)
             kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
         });
 
         if (result.success) {
+            // Show success animation
+            ButtonAnimator.success(btn, false);
+
             // Save last appointment data
             const appointmentData = {
                 customerName: name,
@@ -178,17 +204,20 @@ async function handleFormSubmit(): Promise<void> {
             // Export to window for calendar-integration.js module access
             // (window.lastAppointmentData is already configured as getter/setter)
 
-            showSuccessPage(selectedDate!, selectedTime!, staffName, note);
+            // Wait for success animation then show success page
+            setTimeout(() => {
+                showSuccessPage(selectedDate!, selectedTime!, staffName, note);
+            }, 800);
         } else {
+            ButtonAnimator.error(btn);
             showAlert('Randevu olusturulamadi: ' + (result.error || 'Bilinmeyen hata'), 'error');
-            ButtonUtils.reset(btn);
             // ⚡ FIX: Reset Turnstile widget after error (token is single-use)
             resetTurnstile();
         }
     } catch (error) {
+        ButtonAnimator.error(btn);
         logError(error as Error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
         showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
-        ButtonUtils.reset(btn);
         // ⚡ FIX: Reset Turnstile widget after error (token is single-use)
         resetTurnstile();
     }

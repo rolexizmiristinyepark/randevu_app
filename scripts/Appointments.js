@@ -130,8 +130,48 @@ const AppointmentService = {
         return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
       }
 
+      // WhatsApp Flow tetiklemesi için event bilgilerini al (silmeden önce)
+      const customerName = event.getTitle().split(' - ')[0] || '';
+      const customerPhone = event.getTag('customerPhone') || '';
+      const customerEmail = event.getTag('customerEmail') || '';
+      const staffId = event.getTag('staffId') || '';
+      const appointmentType = event.getTag('appointmentType') || '';
+      const linkType = event.getTag('linkType') || 'general';
+      const startTime = event.getStartTime(); // Silmeden önce tarihi al
+      
+      // Staff bilgisini al
+      const data = StorageService.getData();
+      const staff = data.staff.find(s => s.id === String(staffId));
+
       event.deleteEvent();
       log.info('Randevu silindi:', eventId);
+
+      // WhatsApp Flow tetikle - RANDEVU_IPTAL
+      try {
+        const eventData = {
+          eventId: eventId,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: customerEmail,
+          staffId: staffId,
+          staffName: staff ? staff.name : 'Atanmadı',
+          appointmentDate: Utilities.formatDate(startTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
+          appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
+          appointmentType: appointmentType,
+          linkType: linkType,
+          profile: linkType === 'vip' ? 'vip' : 
+                  linkType === 'staff' ? 'staff' : 
+                  linkType === 'walkin' ? 'w' : 
+                  linkType === 'management' ? 'm' : 
+                  linkType === 'boutique' ? 'b' : 'g'
+        };
+        
+        const flowResult = triggerFlowForEvent('RANDEVU_IPTAL', eventData);
+        log.info('RANDEVU_IPTAL flow result:', flowResult);
+      } catch (flowError) {
+        log.error('RANDEVU_IPTAL flow error:', flowError);
+        // Flow hatası ana işlemi etkilemesin
+      }
 
       // Cache invalidation: Version increment
       VersionService.incrementDataVersion();
@@ -236,6 +276,44 @@ const AppointmentService = {
       // Cache invalidation: Version increment (only if update successful)
       if (updateResult && updateResult.success) {
         VersionService.incrementDataVersion();
+        
+        // WhatsApp Flow tetikle - RANDEVU_GÜNCELLE
+        try {
+          const customerName = event.getTitle().split(' - ')[0] || '';
+          const customerPhone = event.getTag('customerPhone') || '';
+          const customerEmail = event.getTag('customerEmail') || '';
+          const staffId = event.getTag('staffId') || '';
+          const appointmentType = event.getTag('appointmentType') || '';
+          const linkType = event.getTag('linkType') || 'general';
+          
+          // Staff bilgisini al
+          const data = StorageService.getData();
+          const staff = data.staff.find(s => s.id === String(staffId));
+          
+          const eventData = {
+            eventId: eventId,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            customerEmail: customerEmail,
+            staffId: staffId,
+            staffName: staff ? staff.name : 'Atanmadı',
+            appointmentDate: Utilities.formatDate(newStartDateTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
+            appointmentTime: newTime,
+            appointmentType: appointmentType,
+            linkType: linkType,
+            profile: linkType === 'vip' ? 'vip' : 
+                    linkType === 'staff' ? 'staff' : 
+                    linkType === 'walkin' ? 'w' : 
+                    linkType === 'management' ? 'm' : 
+                    linkType === 'boutique' ? 'b' : 'g'
+          };
+          
+          const flowResult = triggerFlowForEvent('RANDEVU_GÜNCELLE', eventData);
+          log.info('RANDEVU_GÜNCELLE flow result:', flowResult);
+        } catch (flowError) {
+          log.error('RANDEVU_GÜNCELLE flow error:', flowError);
+          // Flow hatası ana işlemi etkilemesin
+        }
       }
 
       return updateResult;
@@ -303,7 +381,7 @@ const AppointmentService = {
 
       // Staff bilgilerini al
       const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id === parseInt(staffId));
+      const staff = data.staff.find(s => s.id === String(staffId));
 
       if (!staff) {
         return { success: false, error: 'Personel bulunamadı' };
@@ -330,6 +408,40 @@ const AppointmentService = {
       event.setDescription(newDesc);
 
       log.info('Personel atandı:', eventId, staffId, staff.name);
+      
+      // WhatsApp Flow tetikle - RANDEVU_ATAMA
+      try {
+        const customerName = event.getTitle().split(' - ')[0] || '';
+        const customerPhone = event.getTag('customerPhone') || '';
+        const customerEmail = event.getTag('customerEmail') || '';
+        const appointmentType = event.getTag('appointmentType') || '';
+        const linkType = event.getTag('linkType') || 'general';
+        
+        const eventData = {
+          eventId: eventId,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: customerEmail,
+          staffId: staffId,
+          staffName: staff.name,
+          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy'),
+          appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
+          appointmentType: appointmentType,
+          linkType: linkType,
+          profile: linkType === 'vip' ? 'vip' : 
+                  linkType === 'staff' ? 'staff' : 
+                  linkType === 'walkin' ? 'w' : 
+                  linkType === 'management' ? 'm' : 
+                  linkType === 'boutique' ? 'b' : 'g'
+        };
+        
+        const flowResult = triggerFlowForEvent('RANDEVU_ATAMA', eventData);
+        log.info('RANDEVU_ATAMA flow result:', flowResult);
+      } catch (flowError) {
+        log.error('RANDEVU_ATAMA flow error:', flowError);
+        // Flow hatası ana işlemi etkilemesin
+      }
+      
       return {
         success: true,
         message: `${staff.name} başarıyla atandı`,
@@ -374,9 +486,12 @@ const AppointmentService = {
       const startDateTime = new Date(`${date}T${time}:00`);
       const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
-      // Event başlığı
+      // Event başlığı - Manuel randevu formatı (v3.2)
+      // Manuel: Müşteri Adı - Seçilen İlgili / Randevu Türü
       const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
-      const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})`;
+      const title = isManagement
+        ? `${sanitizedCustomerName} - ${sanitizedStaffName} / Yönetim`
+        : `${sanitizedCustomerName} - ${sanitizedStaffName} / ${appointmentTypeLabel}`;
 
       // Event açıklaması
       const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
@@ -749,7 +864,8 @@ function createAppointment(params) {
       duration,
       turnstileToken,
       managementLevel,
-      isVipLink
+      isVipLink,
+      linkType  // v3.5: Link type (general, staff, vip, walkin)
     } = params;
 
     // ===== SECURITY CHECKS =====
@@ -817,7 +933,14 @@ function createAppointment(params) {
     }
 
     // Staff ID validation
-    if (!staffId) {
+    // v3.5: Profil ayarına göre staffId zorunluluğu belirlenir
+    // staffFilter === 'none' ise staffId null olabilir (admin sonra atar)
+    // isVipLink ise de staffId null olabilir (backend random atar)
+    const profilAyarlari = getProfilAyarlariByLinkType(linkType);
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
+    const staffOptional = staffFilter === 'none' || isVipLink;
+    log.info('Staff validation:', { linkType, staffFilter, staffId, staffOptional, isVipLink });
+    if (!staffId && !staffOptional) {
       return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
     }
 
@@ -839,7 +962,8 @@ function createAppointment(params) {
       hour,
       appointmentType,
       staffId,
-      isVipLink
+      isVipLink,
+      linkType  // v3.5: walkin linklerde staff validation atla
     });
 
     if (!validation.valid) {
@@ -862,11 +986,25 @@ function createAppointment(params) {
       event = LockServiceWrapper.withLock(() => {
         log.info('Lock acquired - starting critical section (Calendar check + create)');
 
-        // ===== LEGACY RANDEVU ÇAKIŞMA KONTROLÜ (EPOCH-MINUTE STANDARD) =====
-        // Not: validateReservation zaten kontrol ediyor ama backward compatibility için tutuldu
-        // KURAL: 1 SAATE 1 RANDEVU (tür/link farketmeksizin)
-        // TEK İSTİSNA: Yönetim randevusu → o saate 2 randevu olabilir
+        // ===== RANDEVU ÇAKIŞMA KONTROLÜ (PROFIL AYARLARINA GÖRE) =====
+        // v3.5: Profil ayarlarından maxSlotAppointment alınır
+        // maxSlotAppointment = 0 → sınırsız
+        // maxSlotAppointment = 1 → saat başına 1 randevu
+        // maxSlotAppointment = 2 → saat başına 2 randevu
         // STANDART: [start, end) interval (start dahil, end hariç)
+
+        let profilAyarlari;
+        let maxSlotAppointment = 1;
+        try {
+          profilAyarlari = getProfilAyarlariByLinkType(linkType);
+          maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
+        } catch (profileError) {
+          log.error('getProfilAyarlariByLinkType error:', profileError);
+          // Fallback to default
+          maxSlotAppointment = 1;
+        }
+
+        log.info('Calendar slot check with profile:', { linkType, maxSlotAppointment, profilCode: profilAyarlari?.code });
 
         const calendar = CalendarService.getCalendar();
 
@@ -889,53 +1027,28 @@ function createAppointment(params) {
 
         const overlappingCount = overlappingEvents.length;
 
+        log.info('Overlapping check:', { overlappingCount, maxSlotAppointment });
+
         // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları her zaman çakışabilir
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
           // OK, yönetim randevusu için çakışma kontrolünü bypass et
           log.info('Yönetim randevusu - çakışma kontrolü bypass edildi');
         }
-        // 1a. Çakışan randevu yok → Devam et
-        else if (overlappingCount === 0) {
+        // maxSlotAppointment = 0 → sınırsız, kontrol yapma
+        else if (maxSlotAppointment === 0) {
+          // OK, sınırsız randevu izinli
+          log.info('maxSlotAppointment=0, sınırsız randevu izinli');
+        }
+        // Çakışan randevu sayısı < maxSlotAppointment → OK
+        else if (overlappingCount < maxSlotAppointment) {
           // OK, devam et
+          log.info('Slot available:', { overlappingCount, maxSlotAppointment });
         }
-        // 1b. 1 çakışan randevu var
-        else if (overlappingCount === 1) {
-          // Mevcut randevu bilgilerini al
-          const existingType = overlappingEvents[0].getTag('appointmentType');
-          const existingIsVipTag = overlappingEvents[0].getTag('isVipLink');
-          const existingTitle = overlappingEvents[0].getTitle();
-
-          // VIP link kontrolü (yeni tag veya eski başlık kontrolü)
-          const existingIsVip = existingIsVipTag === 'true' ||
-                               existingTitle.includes('(HK)') ||
-                               existingTitle.includes('(OK)') ||
-                               existingTitle.includes('(HMK)');
-
-          // Yeni randevu VIP mi? (string/boolean karşılaştırması)
-          const newIsVip = isVipLink === true || isVipLink === 'true';
-
-          // VIP LINK → HER ZAMAN 2. RANDEVU EKLENEBİLİR (mevcut randevu ne olursa olsun)
-          if (newIsVip) {
-            // OK, devam et
-          }
-          // Yönetim randevusu üzerine → OK
-          else if (existingType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
-            // OK, yönetim randevusu üzerine normal randevu eklenebilir
-          }
-          // Diğer durumlar → BLOKE
-          else {
-            // Normal randevu üzerine normal randevu eklenemez → BLOKE
-            return {
-              success: false,
-              error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
-            };
-          }
-        }
-        // 1c. 2 veya daha fazla çakışan randevu var → BLOKE
-        else if (overlappingCount >= 2) {
+        // Çakışan randevu sayısı >= maxSlotAppointment → BLOKE
+        else {
           return {
             success: false,
-            error: 'Bu saat dolu. Lütfen başka bir saat seçin.'
+            error: `Bu saat dolu (${overlappingCount}/${maxSlotAppointment}). Lütfen başka bir saat seçin.`
           };
         }
 
@@ -964,17 +1077,49 @@ function createAppointment(params) {
         // Event başlığı - sanitized değerleri kullan
         const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
 
-        // Yönetim linki bilgisini ekle (HK, OK, HMK)
-        let managementSuffix = '';
-        if (managementLevel === 1) {
-          managementSuffix = ' (HK)';
-        } else if (managementLevel === 2) {
-          managementSuffix = ' (OK)';
-        } else if (managementLevel === 3) {
-          managementSuffix = ' (HMK)';
-        }
+        // ========== TAKVİM BAŞLIK FORMATI (v3.5) ==========
+        // Personel varsa:    Müşteri Adı - İlgili (Tag) / Randevu Türü
+        // Personel yoksa:    Müşteri Adı (Randevu Türü)
+        // Tag'ler: VIP-HK, VIP-OK, VIP-HMK, Walk-in (normal linkler tag yok)
 
-        const title = `${sanitizedCustomerName} - ${sanitizedStaffName} (${appointmentTypeLabel})${managementSuffix}`;
+        // v3.2: linkType parametresi dış scope'dan geliyor (satır 868'de destructure edildi)
+        // NOT: Burada yeniden tanımlamıyoruz, dış scope'daki linkType kullanılıyor
+
+        let title = '';
+        const hasStaff = sanitizedStaffName && sanitizedStaffName.trim() !== '';
+
+        // VIP link mi? (management level ile belirlenir: HK=1, OK=2, HMK=3)
+        if (managementLevel === 1) {
+          // VIP-HK formatı
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (VIP-HK) / ${appointmentTypeLabel}`
+            : `${sanitizedCustomerName} (VIP-HK) / ${appointmentTypeLabel}`;
+        } else if (managementLevel === 2) {
+          // VIP-OK formatı
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (VIP-OK) / ${appointmentTypeLabel}`
+            : `${sanitizedCustomerName} (VIP-OK) / ${appointmentTypeLabel}`;
+        } else if (managementLevel === 3) {
+          // VIP-HMK formatı
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (VIP-HMK) / ${appointmentTypeLabel}`
+            : `${sanitizedCustomerName} (VIP-HMK) / ${appointmentTypeLabel}`;
+        } else if (linkType === 'walkin') {
+          // Walk-in link (günlük müşteri)
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (Walk-in) / ${appointmentTypeLabel}`
+            : `${sanitizedCustomerName} (Walk-in) / ${appointmentTypeLabel}`;
+        } else if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+          // Yönetim randevusu
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} / Yönetim`
+            : `${sanitizedCustomerName} (Yönetim)`;
+        } else {
+          // Genel ve Personel linkleri - personel yoksa sadece müşteri + randevu türü
+          title = hasStaff
+            ? `${sanitizedCustomerName} - ${sanitizedStaffName} / ${appointmentTypeLabel}`
+            : `${sanitizedCustomerName} (${appointmentTypeLabel})`;
+        }
 
         // Event açıklaması - sanitized değerleri kullan
         const description = `
@@ -1005,6 +1150,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
         calEvent.setTag('shiftType', shiftType);
         calEvent.setTag('appointmentType', appointmentType);
         calEvent.setTag('isVipLink', isVipLink ? 'true' : 'false');
+        calEvent.setTag('linkType', linkType);  // v3.2: Link tipi (general, staff, vip, walkin)
         
         // ✅ KVKK Açık Rıza Kaydı (Yasal ispat için - ANALIZ_FINAL #2)
         calEvent.setTag('kvkkConsentDate', new Date().toISOString());
@@ -1014,10 +1160,10 @@ Bu randevu otomatik olarak oluşturulmuştur.
         return calEvent; // Event'i return et, lock serbest bırakılacak
       }); // withLock() sonu
     } catch (lockError) {
-      log.error('Lock acquisition failed:', lockError.message);
+      log.error('Lock/Calendar error:', lockError.message, lockError.stack);
       return {
         success: false,
-        error: 'Randevu oluşturma sırasında bir hata oluştu. Lütfen tekrar deneyin.'
+        error: 'Randevu oluşturma sırasında bir hata oluştu: ' + lockError.message
       };
     }
 
@@ -1035,7 +1181,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
     const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
     // Staff bilgisini çek (data zaten yukarıda çekildi)
-    const staff = data.staff.find(s => s.id === parseInt(staffId));
+    const staff = data.staff.find(s => s.id === String(staffId));
     const staffPhone = staff?.phone ?? '';
     const staffEmail = staff?.email ?? '';
 
@@ -1119,6 +1265,43 @@ Bu randevu otomatik olarak oluşturulmuştur.
     // ⭐ Cache invalidation: Version increment
     VersionService.incrementDataVersion();
 
+    // WhatsApp Flow tetikle - RANDEVU_OLUŞTUR
+    try {
+      const eventData = {
+        eventId: event.getId(),
+        customerName: sanitizedCustomerName,
+        customerPhone: sanitizedCustomerPhone,
+        customerEmail: sanitizedCustomerEmail,
+        customerNote: sanitizedCustomerNote,  // ⚡ FIX: Müşteri notu eklendi
+        staffId: staffId,
+        staffName: sanitizedStaffName,
+        appointmentDate: formattedDate,
+        appointmentTime: time,
+        appointmentType: appointmentType,
+        linkType: linkType,
+        profile: linkType === 'vip' ? 'vip' :
+                linkType === 'staff' ? 'staff' :
+                linkType === 'walkin' ? 'w' :
+                linkType === 'management' ? 'm' :
+                linkType === 'boutique' ? 'b' : 'g'
+      };
+
+      log.info('🚀 [FLOW DEBUG] Calling triggerFlowForEvent with:', JSON.stringify({
+        trigger: 'RANDEVU_OLUŞTUR',
+        linkType: linkType,
+        profile: eventData.profile,
+        customerName: eventData.customerName,
+        staffId: eventData.staffId,
+        staffIdType: typeof eventData.staffId
+      }));
+
+      const flowResult = triggerFlowForEvent('RANDEVU_OLUŞTUR', eventData);
+      log.info('🚀 [FLOW DEBUG] triggerFlowForEvent result:', JSON.stringify(flowResult));
+    } catch (flowError) {
+      log.error('🚀 [FLOW DEBUG] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);
+      // Flow hatası ana işlemi etkilemesin
+    }
+
     return {
       success: true,
       eventId: event.getId(),
@@ -1127,10 +1310,10 @@ Bu randevu otomatik olarak oluşturulmuştur.
 
   } catch (error) {
     const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
-    log.error(`[${errorId}] createAppointment hatası:`, error);
-    return { 
-      success: false, 
-      error: 'Randevu oluşturulurken bir hata oluştu.',
+    log.error(`[${errorId}] createAppointment hatası:`, error.message, error.stack);
+    return {
+      success: false,
+      error: 'Randevu oluşturulurken bir hata oluştu: ' + error.message,
       errorId: errorId
     };
   }

@@ -8,22 +8,23 @@
 // ==================== TYPES ====================
 
 export interface Staff {
-  id: number;
+  id: string;
   name: string;
   active: boolean;
   phone?: string;
   email?: string;
+  role?: string; // 'sales' | 'management' | etc.
 }
 
 export interface Shift {
-  [staffId: number]: string; // 'morning' | 'evening' | 'full'
+  [staffId: string]: string; // 'morning' | 'evening' | 'full'
 }
 
 export interface Appointment {
   id: string;
   date: string;
   time: string;
-  staffId: number;
+  staffId: string;
   type: string;
   customerName: string;
 }
@@ -45,13 +46,38 @@ export interface AppointmentData {
 
 // ==================== STATE INTERFACE ====================
 
+// Profile types (v3.2)
+export type ProfilType = 'genel' | 'personel' | 'vip' | 'gunluk' | 'manuel' | 'yonetim';
+
+export interface ProfileData {
+  id: string;
+  name?: string;
+  role?: string;
+  type?: string;
+}
+
+// v3.5: Profil ayarları interface (simplified - only bugun/hepsi for calendar)
+export interface ProfilAyarlari {
+  sameDayBooking: boolean;
+  maxSlotAppointment: number;
+  slotGrid: number;
+  maxDailyPerStaff: number;
+  maxDailyDelivery: number;
+  duration: number;
+  assignByAdmin: boolean;
+  allowedTypes: string[];
+  staffFilter: string;
+  showCalendar: boolean;
+  takvimFiltresi: 'bugun' | 'hepsi';
+}
+
 export interface AppState {
   // Calendar state
   currentMonth: Date;
   selectedDate: string | null;
 
   // Selection state
-  selectedStaff: number | null;
+  selectedStaff: number | string | null;
   selectedTime: string | null;
   selectedShiftType: string | null;
   selectedAppointmentType: string | null;
@@ -62,10 +88,20 @@ export interface AppState {
   allAppointments: Record<string, Appointment[]>;
   googleCalendarEvents: Record<string, CalendarEvent[]>;
 
-  // URL state
+  // URL state (legacy - keeping for backward compatibility)
   specificStaffId: string | null;
   managementLevel: number | null; // 1, 2, 3 for HK, OK, HMK
   isManagementLink: boolean;
+
+  // v3.2 Profile state
+  currentProfile: ProfilType;
+  profileId: string | null;
+  profileData: ProfileData | null;
+  profileError: string | null;
+  linkedStaffId: string | null;
+  linkedStaffName: string | null;
+  linkedStaffRole: string | null;
+  profilAyarlari: ProfilAyarlari | null;
 
   // Last action
   lastAppointmentData: AppointmentData | null;
@@ -99,6 +135,15 @@ class StateManager {
       specificStaffId: null,
       managementLevel: null,
       isManagementLink: false,
+      // v3.2 Profile state
+      currentProfile: 'genel',
+      profileId: null,
+      profileData: null,
+      profileError: null,
+      linkedStaffId: null,
+      linkedStaffName: null,
+      linkedStaffRole: null,
+      profilAyarlari: null,
       lastAppointmentData: null,
       managementContactPerson: null,
     };

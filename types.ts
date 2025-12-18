@@ -39,7 +39,7 @@ export interface Config {
 // ==================== STAFF TYPES ====================
 
 export interface Staff {
-  id: number | string;
+  id: string;
   name: string;
   phone: string;
   email?: string;
@@ -202,9 +202,10 @@ declare global {
     };
     AdminAuth: typeof import('./admin-auth').AdminAuth;
     UI: {
-      showAlert: (message: string, type?: 'success' | 'error' | 'info') => void;
-      showLoading: (show: boolean) => void;
-      updateUI: () => void;
+      showAlert: (message: string, type: string) => void;
+      showLoading?: (show: boolean) => void;
+      updateUI?: () => void;
+      switchTab?: (tabName: string) => void;
       // Diğer UI metodları buraya eklenebilir
     };
     lastAppointmentData: LastAppointmentData | null;

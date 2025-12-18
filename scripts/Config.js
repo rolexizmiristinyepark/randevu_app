@@ -2,7 +2,7 @@
 // Global configuration, constants, and enums
 // Deploy: New Deployment → Web App → Execute as: Me, Anyone can access
 
-const DEBUG = false;
+const DEBUG = true; // TEST ORTAMI
 
 const CONFIG = {
   // Calendar & Storage
@@ -11,6 +11,9 @@ const CONFIG = {
   TIMEZONE: 'Europe/Istanbul',
   PROPERTIES_KEY: 'RANDEVU_DATA',
   API_KEY_PROPERTY: 'ADMIN_API_KEY', // Admin API key için property
+
+  // TEST ORTAMI - Spreadsheet ID
+  SPREADSHEET_ID: '1VQDzsvycpxg52gOzlD6CS-JA6e6LYcbWGBdFyM0fl7c', // Randevu_Database_Test
 
   // Security & Abuse Prevention
   // 🔒 SECURITY: TURNSTILE_SECRET_KEY Script Properties'den yüklenir (loadExternalConfigs)
@@ -55,16 +58,17 @@ const CONFIG = {
 
   // Appointment Type Labels
   APPOINTMENT_TYPE_LABELS: {
-    delivery: 'Teslim',
+    delivery: 'Saat Takdim',
     shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
+    general: 'Görüşme',        // Alias for meeting
     service: 'Teknik Servis',
     management: 'Yönetim'
   },
 
   // Service Names (Email "Konu" alanı için)
   SERVICE_NAMES: {
-    delivery: 'Saat Teslimi',
+    delivery: 'Saat Takdim',
     shipping: 'Gönderi',       // YENİ
     meeting: 'Görüşme',
     service: 'Teknik Servis',
@@ -187,8 +191,8 @@ const CONFIG = {
       delivery: 'Saat Takdimi',
       service: 'Servis & Bakım',      // Frontend ile sync (Teknik Servis → Servis & Bakım)
       consultation: 'Ürün Danışmanlığı', // Frontend'den eklendi
-      general: 'Genel Görüşme',       // Frontend'den eklendi
-      meeting: 'Genel Görüşme',       // Alias for 'general'
+      general: 'Görüşme',       // Frontend'den eklendi
+      meeting: 'Görüşme',       // Alias for 'general'
       management: 'Yönetim'
     },
     SECTION_TITLE: 'RANDEVU BİLGİLERİ',
@@ -254,6 +258,171 @@ const SHIFT_SLOT_FILTERS = {
   management: [11, 12, 13, 14, 15, 16, 17, 18, 19, 20]  // Yönetim için vardiya sınırı yok, tüm slotlar
 };
 
+// ==================== PROFIL AYARLARI (v3.2) ====================
+/**
+ * Her profil için randevu kuralları
+ *
+ * Ayar Açıklamaları:
+ * - sameDayBooking: Aynı gün randevu alınabilir mi
+ * - maxSlotAppointment: Slot başı max randevu (0=∞)
+ * - slotGrid: Slot süresi (30 veya 60 dakika)
+ * - maxDailyPerStaff: Personel başı günlük max (0=∞)
+ * - maxDailyDelivery: Günlük teslim+gönderi max (0=∞)
+ * - duration: Randevu süresi (30 veya 60 dakika)
+ * - assignByAdmin: İlgili admin tarafından mı atanır
+ * - allowedTypes: Seçilebilir randevu türleri
+ * - staffFilter: Personel filtresi (role:sales, role:management, self)
+ * - showCalendar: Takvim gösterilsin mi (false ise takvim gizli)
+ * - takvimFiltresi: Takvim filtresi (bugun, vardiyaHaftasi, hepsi)
+ * - defaultType: Varsayılan randevu türü (boşsa müşteri seçer)
+ * - showTypeSelection: Varsayılan tür varsa seçimi göster mi (true: göster, false: gizle)
+ */
+/**
+ * PROFIL_AYARLARI v3.3
+ *
+ * URL Kodları:
+ * - #w → gunluk (walk-in)
+ * - #g → genel
+ * - #b → boutique (manuel/mağaza)
+ * - #m → yonetim (management)
+ * - #s/{id} → personel (staff)
+ * - #v/{id} → vip
+ *
+ * idKontrol:
+ * - false: Sadece profil kodu yeterli (#w, #g, #b, #m)
+ * - true: Personel ID gerekli ve kontrol edilir (#s/{id}, #v/{id})
+ */
+const PROFIL_AYARLARI = {
+  // #g - Genel link (idKontrol: false)
+  genel: {
+    code: 'g',
+    idKontrol: false,
+    sameDayBooking: false,
+    maxSlotAppointment: 1,
+    slotGrid: 60,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 3,
+    duration: 60,
+    assignByAdmin: false,
+    allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
+    staffFilter: 'role:sales',
+    showCalendar: true,
+    takvimFiltresi: 'vardiyaHaftasi',
+    defaultType: '',  // Müşteri seçer
+    showTypeSelection: true
+  },
+  // #s/{id} - Personel linki (idKontrol: true)
+  personel: {
+    code: 's',
+    idKontrol: true,
+    expectedRole: 'sales',
+    sameDayBooking: false,
+    maxSlotAppointment: 1,
+    slotGrid: 60,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 3,
+    duration: 60,
+    assignByAdmin: false,
+    allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
+    staffFilter: 'self',
+    showCalendar: true,
+    takvimFiltresi: 'vardiyaHaftasi',
+    defaultType: '',  // Müşteri seçer
+    showTypeSelection: true
+  },
+  // #v/{id} - VIP linki (idKontrol: true)
+  vip: {
+    code: 'v',
+    idKontrol: true,
+    expectedRole: 'management',
+    sameDayBooking: true,
+    maxSlotAppointment: 2,
+    slotGrid: 30,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 0,
+    duration: 30,
+    assignByAdmin: true,
+    allowedTypes: ['delivery', 'meeting', 'service'],
+    staffFilter: 'role:sales',
+    showCalendar: true,
+    takvimFiltresi: 'vardiyaHaftasi',
+    defaultType: '',  // Müşteri seçer
+    showTypeSelection: true
+  },
+  // #b - Boutique/Mağaza (idKontrol: false)
+  boutique: {
+    code: 'b',
+    idKontrol: false,
+    sameDayBooking: true,
+    maxSlotAppointment: 2,
+    slotGrid: 30,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 0,
+    duration: 60,
+    assignByAdmin: false,
+    allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
+    staffFilter: 'role:sales',
+    showCalendar: true,
+    takvimFiltresi: 'vardiyaHaftasi',
+    defaultType: '',  // Müşteri seçer
+    showTypeSelection: true
+  },
+  // #m - Yönetim (idKontrol: false)
+  yonetim: {
+    code: 'm',
+    idKontrol: false,
+    sameDayBooking: true,
+    maxSlotAppointment: 2,
+    slotGrid: 60,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 0,
+    duration: 60,
+    assignByAdmin: true,
+    allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
+    staffFilter: 'role:management',
+    showCalendar: true,
+    takvimFiltresi: 'hepsi',
+    defaultType: '',  // Müşteri seçer
+    showTypeSelection: true
+  },
+  // #w - Walk-in/Günlük (idKontrol: false)
+  gunluk: {
+    code: 'w',
+    idKontrol: false,
+    sameDayBooking: true,
+    maxSlotAppointment: 2,
+    slotGrid: 30,
+    maxDailyPerStaff: 0,
+    maxDailyDelivery: 0,
+    duration: 30,
+    assignByAdmin: true,
+    allowedTypes: ['meeting'],
+    staffFilter: 'none',  // Personel seçimi yok, admin atar
+    showCalendar: false,
+    takvimFiltresi: 'bugun'
+  }
+};
+
+// Kod -> Profil mapping
+var PROFILE_CODE_MAP = {
+  w: 'gunluk',
+  g: 'genel',
+  b: 'boutique',
+  m: 'yonetim',
+  s: 'personel',
+  v: 'vip'
+};
+
+// linkType -> Profil mapping (Frontend'den gelen linkType'ı profil adına çevirir)
+var LINK_TYPE_TO_PROFILE = {
+  walkin: 'gunluk',
+  general: 'genel',
+  staff: 'personel',
+  vip: 'vip',
+  management: 'yonetim',
+  boutique: 'boutique'
+};
+
 /**
  * Sistem sabitleri - Magic number'ları burada tanımla
  */
@@ -280,3 +449,139 @@ const CONSTANTS = {
   RETENTION_DAYS: 30,                 // KVKK saklama süresi
   MAX_BACKUPS: 7                      // Maksimum yedek sayısı
 };
+
+// ==================== PROFIL AYARLARI SERVICE ====================
+/**
+ * Profil Ayarları yönetim servisi
+ * PropertiesService'te saklanır, runtime'da override edilebilir
+ */
+var ProfilAyarlariService = {
+  STORAGE_KEY: 'profil_ayarlari_v3',
+
+  /**
+   * Varsayılan profil ayarlarını al (hardcoded)
+   */
+  getDefaults: function() {
+    return PROFIL_AYARLARI;
+  },
+
+  /**
+   * Kaydedilmiş profil ayarlarını al (varsa), yoksa default
+   */
+  getAll: function() {
+    try {
+      var props = PropertiesService.getScriptProperties();
+      var saved = props.getProperty(this.STORAGE_KEY);
+
+      if (saved) {
+        var parsed = JSON.parse(saved);
+        // Merge with defaults (yeni eklenen alanlar için)
+        return this._mergeWithDefaults(parsed);
+      }
+
+      return this.getDefaults();
+    } catch (error) {
+      log.error('ProfilAyarlari getAll hatası', error);
+      return this.getDefaults();
+    }
+  },
+
+  /**
+   * Tek profil ayarını al
+   */
+  get: function(profilKey) {
+    var all = this.getAll();
+    return all[profilKey] || all.genel;
+  },
+
+  /**
+   * Profil ayarını güncelle
+   */
+  update: function(profilKey, updates) {
+    try {
+      var all = this.getAll();
+
+      if (!all[profilKey]) {
+        return { success: false, error: 'Profil bulunamadı: ' + profilKey };
+      }
+
+      // Sadece izin verilen alanları güncelle
+      var allowedFields = [
+        'sameDayBooking', 'maxSlotAppointment', 'slotGrid',
+        'maxDailyPerStaff', 'maxDailyDelivery', 'duration',
+        'assignByAdmin', 'allowedTypes', 'staffFilter', 'showCalendar', 'takvimFiltresi', 'defaultType', 'showTypeSelection'
+      ];
+
+      for (var field in updates) {
+        if (allowedFields.indexOf(field) !== -1) {
+          all[profilKey][field] = updates[field];
+        }
+      }
+
+      // Kaydet
+      var props = PropertiesService.getScriptProperties();
+      props.setProperty(this.STORAGE_KEY, JSON.stringify(all));
+
+      // Global'i de güncelle (runtime için)
+      PROFIL_AYARLARI[profilKey] = all[profilKey];
+
+      log.info('Profil ayarı güncellendi', { profil: profilKey, updates: Object.keys(updates) });
+
+      return { success: true, data: all[profilKey] };
+    } catch (error) {
+      log.error('ProfilAyarlari update hatası', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Tüm profil ayarlarını sıfırla (varsayılana dön)
+   */
+  reset: function() {
+    try {
+      var props = PropertiesService.getScriptProperties();
+      props.deleteProperty(this.STORAGE_KEY);
+      log.info('Profil ayarları sıfırlandı');
+      return { success: true };
+    } catch (error) {
+      log.error('ProfilAyarlari reset hatası', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Kaydedilmiş ayarları varsayılanlarla birleştir
+   */
+  _mergeWithDefaults: function(saved) {
+    var defaults = this.getDefaults();
+    var result = {};
+
+    for (var key in defaults) {
+      if (saved[key]) {
+        // Saved varsa, default ile merge et (eksik alanlar için)
+        result[key] = {};
+        for (var field in defaults[key]) {
+          result[key][field] = saved[key].hasOwnProperty(field)
+            ? saved[key][field]
+            : defaults[key][field];
+        }
+      } else {
+        // Saved yoksa default kullan
+        result[key] = defaults[key];
+      }
+    }
+
+    return result;
+  }
+};
+
+/**
+ * linkType'tan profil ayarlarını döner
+ * ProfilAyarlariService tanımlandıktan sonra çağrılmalı
+ * @param {string} linkType - Frontend'den gelen link tipi (general, staff, vip, walkin, management, boutique)
+ * @returns {Object} Profil ayarları
+ */
+function getProfilAyarlariByLinkType(linkType) {
+  var profilKey = LINK_TYPE_TO_PROFILE[linkType] || 'genel';
+  return ProfilAyarlariService.get(profilKey);
+}

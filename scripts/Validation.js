@@ -26,22 +26,31 @@ const ValidationService = {
   /**
    * Validate appointment reservation against all business rules
    * CORE validation with race condition protection
-   * @param {Object} payload - {date, hour, appointmentType, staffId, isVipLink}
+   * v3.5: Tüm kurallar profil ayarlarından alınır
+   * @param {Object} payload - {date, hour, appointmentType, staffId, isVipLink, linkType}
    * @returns {{valid: boolean, error?: string, isDayMaxed?: boolean, suggestAlternatives?: boolean}}
    */
   validateReservation: function(payload) {
-    const { date, hour, appointmentType, staffId, isVipLink } = payload;
+    const { date, hour, appointmentType, staffId, isVipLink, linkType } = payload;
 
     try {
+      // v3.5: Profil ayarlarını al - tüm kurallar buradan
+      const profilAyarlari = getProfilAyarlariByLinkType(linkType);
+
+      log.info('RAW profilAyarlari:', JSON.stringify(profilAyarlari));
+
+      const maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
+      const maxDailyDelivery = profilAyarlari?.maxDailyDelivery || 3;
+
+      log.info('Validation with profile settings:', {
+        linkType,
+        maxSlotAppointment,
+        maxDailyDelivery,
+        profilKey: profilAyarlari?.code
+      });
+
       // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları için tüm kontrolleri bypass et
       if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
-        return { valid: true };
-      }
-
-      // VIP LINK EXCEPTION: VIP linkler için slot kontrolünü bypass et (max 2 randevu)
-      // Google Apps Script e.parameter'dan gelen değerler string olabilir ("true"/"false")
-      const isVip = isVipLink === true || isVipLink === 'true';
-      if (isVip) {
         return { valid: true };
       }
 
@@ -53,34 +62,57 @@ const ValidationService = {
         };
       }
 
-      // KURAL 2: Slot boş mu? (saat başına 1 randevu)
-      if (!SlotService.isSlotFree(date, hour)) {
-        return {
-          valid: false,
-          error: 'Bu saat dolu. Lütfen başka bir saat seçin.',
-          suggestAlternatives: true
-        };
+      // KURAL 2: Slot doluluk kontrolü - profil ayarına göre (maxSlotAppointment)
+      // maxSlotAppointment = 0 → sınırsız
+      // maxSlotAppointment = 1 → saat başına 1 randevu
+      // maxSlotAppointment = 2 → saat başına 2 randevu
+      if (maxSlotAppointment > 0) {
+        const slotCount = SlotService.getSlotAppointmentCount(date, hour);
+        log.info('Slot check:', { date, hour, slotCount, maxSlotAppointment, willBlock: slotCount >= maxSlotAppointment });
+        if (slotCount >= maxSlotAppointment) {
+          return {
+            valid: false,
+            error: `Bu saat dolu (${slotCount}/${maxSlotAppointment}). Lütfen başka bir saat seçin.`,
+            suggestAlternatives: true
+          };
+        }
       }
 
-      // KURAL 3: Teslim/Gönderi ise - Global limit kontrolü (max 3/gün, ikisi toplamda)
+      // KURAL 3: Teslim/Gönderi günlük limit kontrolü - profil ayarına göre (maxDailyDelivery)
+      // maxDailyDelivery = 0 → sınırsız
+      // maxDailyDelivery > 0 → günlük limit (global)
       const isDeliveryOrShipping = (
         appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery' ||
         appointmentType === CONFIG.APPOINTMENT_TYPES.SHIPPING || appointmentType === 'shipping'
       );
 
-      if (isDeliveryOrShipping) {
+      if (isDeliveryOrShipping && maxDailyDelivery > 0) {
         const deliveryCount = AvailabilityService.getDeliveryCount(date);
 
-        if (deliveryCount >= 3) {
+        if (deliveryCount >= maxDailyDelivery) {
           return {
             valid: false,
-            error: 'Bu gün için teslim/gönderi randevu limiti doldu (max 3). Lütfen başka bir gün seçin.',
+            error: `Bu gün için teslim/gönderi randevu limiti doldu (max ${maxDailyDelivery}). Lütfen başka bir gün seçin.`,
             isDayMaxed: true
           };
         }
+      }
 
-        // KURAL 4: KALDIRILDI - Personel bazlı teslim limiti artık yok
-        // Sadece global günlük limit (max 3) geçerli
+      // KURAL 4: Personel bazlı günlük teslim/gönderi limiti - profil ayarına göre (maxDailyPerStaff)
+      // maxDailyPerStaff = 0 → sınırsız
+      // maxDailyPerStaff > 0 → personel başına günlük limit
+      const maxDailyPerStaff = profilAyarlari?.maxDailyPerStaff || 0;
+
+      if (isDeliveryOrShipping && maxDailyPerStaff > 0 && staffId) {
+        const staffDeliveryCount = AvailabilityService.getDeliveryCountByStaff(date, staffId);
+
+        if (staffDeliveryCount >= maxDailyPerStaff) {
+          return {
+            valid: false,
+            error: `Bu personelin günlük teslim/gönderi limiti doldu (max ${maxDailyPerStaff}). Lütfen başka bir gün veya personel seçin.`,
+            isDayMaxed: true
+          };
+        }
       }
 
       // Tüm kontroller geçildi

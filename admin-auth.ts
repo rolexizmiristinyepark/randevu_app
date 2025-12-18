@@ -1,33 +1,40 @@
-// ==================== ADMIN AUTHENTICATION ====================
-// API Key yönetimi ve yetkilendirme sistemi
-// ✅ GÜVENLİK: Inline stil ve event handler'lar kaldırıldı
-// ✅ GÜVENLİK: sessionStorage + 15 dk inaktivite timeout
-// ✅ GÜVENLİK: AES-256 encryption ile API key şifreleme
+// ==================== ADMIN AUTHENTICATION v3.2 ====================
+// Email + Password auth sistemi (API Key sistemini değiştiriyor)
+// Session-based auth with 10 minute sliding expiration
 
 import { ApiService } from './api-service';
 import CryptoJS from 'crypto-js';
 
+// Session storage keys
+const SESSION_KEYS = {
+    TOKEN: 'admin_session_token',
+    STAFF: 'admin_session_staff',
+    EXPIRES: 'admin_session_expires',
+    SESSION_ID: 'admin_session_id'
+};
+
+// Session duration (10 minutes)
+const SESSION_DURATION = 10 * 60 * 1000;
+
 // Encryption key - browser fingerprint + static salt
-// NOT: Bu tam güvenlik sağlamaz ama casual snooping'e karşı korur
 const getEncryptionKey = (): string => {
-    const staticSalt = 'RLX_ADMIN_2024_SECURE';
-    
-    // ✅ YENİ: Session-specific entropy ekle
-    let sessionId = sessionStorage.getItem('admin_session_id');
+    const staticSalt = 'RLX_ADMIN_2024_SECURE_V3';
+
+    let sessionId = sessionStorage.getItem(SESSION_KEYS.SESSION_ID);
     if (!sessionId) {
         sessionId = crypto.randomUUID();
-        sessionStorage.setItem('admin_session_id', sessionId);
+        sessionStorage.setItem(SESSION_KEYS.SESSION_ID, sessionId);
     }
-    
+
     const browserInfo = [
         navigator.userAgent,
         navigator.language,
         screen.width,
         screen.height,
         new Date().getTimezoneOffset(),
-        sessionId  // ✅ Session-specific entropy
+        sessionId
     ].join('|');
-    
+
     return CryptoJS.SHA256(staticSalt + browserInfo).toString().substring(0, 32);
 };
 
@@ -49,177 +56,211 @@ const decryptData = (encryptedData: string): string | null => {
     }
 };
 
+// Staff bilgisi interface
+interface StaffInfo {
+    id: string;
+    name: string;
+    email: string;
+    role: 'sales' | 'management';
+    isAdmin: boolean;
+}
+
 const AdminAuth = {
-    API_KEY_STORAGE: 'admin_api_key',
-    INACTIVITY_TIMEOUT: 10 * 60 * 1000, // 10 dakika inaktivite
+    INACTIVITY_TIMEOUT: SESSION_DURATION,
     _lastActivityTime: Date.now(),
     _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
     _activityHandler: null as (() => void) | null,
 
-    // API key kontrolü - AES-256 şifreleme AKTİF
-    isAuthenticated() {
-        const storedKey = sessionStorage.getItem(this.API_KEY_STORAGE);
-        const savedTime = sessionStorage.getItem(this.API_KEY_STORAGE + '_time');
+    // Session kontrolü
+    isAuthenticated(): StaffInfo | false {
+        const encryptedToken = sessionStorage.getItem(SESSION_KEYS.TOKEN);
+        const encryptedStaff = sessionStorage.getItem(SESSION_KEYS.STAFF);
+        const expiresAt = sessionStorage.getItem(SESSION_KEYS.EXPIRES);
 
-        if (!storedKey || !savedTime) {
-            console.debug('[AdminAuth] No stored key or time found');
+        if (!encryptedToken || !encryptedStaff || !expiresAt) {
             return false;
         }
 
-        // İnaktivite timeout kontrolü
-        const elapsed = Date.now() - this._lastActivityTime;
-        if (elapsed > this.INACTIVITY_TIMEOUT) {
-            console.warn('[AdminAuth] Session timeout - logging out');
+        // Session süresi dolmuş mu?
+        if (Date.now() > parseInt(expiresAt)) {
+            console.warn('[AdminAuth] Session expired');
             this.logout();
             return false;
         }
 
-        // Şifreli key - AES-256 ile çöz
-        const decryptedKey = decryptData(storedKey);
-        if (!decryptedKey) {
-            console.warn('[AdminAuth] Failed to decrypt API key - session corrupted');
+        // Token ve staff bilgisini çöz
+        const token = decryptData(encryptedToken);
+        const staffJson = decryptData(encryptedStaff);
+
+        if (!token || !staffJson) {
+            console.warn('[AdminAuth] Failed to decrypt session data');
             this.logout();
             return false;
         }
 
-        // Debug: API key format kontrolü
-        if (!decryptedKey.startsWith('RLX_')) {
-            console.warn('[AdminAuth] Invalid API key format - expected RLX_ prefix');
+        try {
+            const staff = JSON.parse(staffJson) as StaffInfo;
+
+            // Session'ı yenile (sliding expiration)
+            this._refreshSession();
+
+            return staff;
+        } catch {
+            console.warn('[AdminAuth] Failed to parse staff data');
             this.logout();
             return false;
         }
-
-        return decryptedKey;
     },
 
-    // API key kaydet - ŞİFRELEME AKTİF
-    saveApiKey(apiKey: string): void {
-        // API key'i AES-256 ile şifrele ve kaydet
-        const encryptedKey = encryptData(apiKey);
-        sessionStorage.setItem(this.API_KEY_STORAGE, encryptedKey);
-        sessionStorage.setItem(this.API_KEY_STORAGE + '_time', Date.now().toString());
+    // Session'ı yenile
+    _refreshSession(): void {
+        const newExpiry = Date.now() + SESSION_DURATION;
+        sessionStorage.setItem(SESSION_KEYS.EXPIRES, newExpiry.toString());
         this._lastActivityTime = Date.now();
+    },
 
-        // İnaktivite takibini başlat
+    // Session token'ı al (API istekleri için)
+    getSessionToken(): string | null {
+        const encryptedToken = sessionStorage.getItem(SESSION_KEYS.TOKEN);
+        const expiresAt = sessionStorage.getItem(SESSION_KEYS.EXPIRES);
+
+        if (!encryptedToken || !expiresAt) {
+            return null;
+        }
+
+        // Session süresi dolmuş mu?
+        if (Date.now() > parseInt(expiresAt)) {
+            return null;
+        }
+
+        const token = decryptData(encryptedToken);
+        return token || null;
+    },
+
+    // Session kaydet
+    saveSession(token: string, staff: StaffInfo, expiresAt: number): void {
+        const encryptedToken = encryptData(token);
+        const encryptedStaff = encryptData(JSON.stringify(staff));
+
+        sessionStorage.setItem(SESSION_KEYS.TOKEN, encryptedToken);
+        sessionStorage.setItem(SESSION_KEYS.STAFF, encryptedStaff);
+        sessionStorage.setItem(SESSION_KEYS.EXPIRES, expiresAt.toString());
+
+        this._lastActivityTime = Date.now();
         this._startActivityTracking();
     },
 
     // Çıkış yap
-    logout() {
-        sessionStorage.removeItem(this.API_KEY_STORAGE);
-        sessionStorage.removeItem(this.API_KEY_STORAGE + '_time');
+    logout(): void {
+        sessionStorage.removeItem(SESSION_KEYS.TOKEN);
+        sessionStorage.removeItem(SESSION_KEYS.STAFF);
+        sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
         this._stopActivityTracking();
         location.reload();
     },
 
+    // Session'ı temizle (sayfa yenilemeden)
+    clearSession(): void {
+        sessionStorage.removeItem(SESSION_KEYS.TOKEN);
+        sessionStorage.removeItem(SESSION_KEYS.STAFF);
+        sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
+        this._stopActivityTracking();
+    },
+
     // Login modal göster
-    showLoginModal() {
-        // Modal HTML oluştur (temiz, inline stil yok)
-        // CSS artık admin.css dosyasında yükleniyor
+    showLoginModal(): void {
         const modalHtml = `
             <div id="authModal" class="admin-auth-modal">
                 <div class="admin-auth-modal-content">
                     <h2 class="admin-auth-title">🔐 Admin Girişi</h2>
-                    <p class="admin-auth-subtitle">Admin paneline erişmek için API key'inizi girin</p>
+                    <p class="admin-auth-subtitle">E-posta ve şifrenizle giriş yapın</p>
 
                     <div id="authError" class="admin-auth-error"></div>
 
-                    <form autocomplete="off" onsubmit="return false;">
-                        <input type="text" name="username" autocomplete="username" style="display:none" aria-hidden="true">
+                    <form id="loginForm" autocomplete="on">
                         <div class="admin-auth-input-group">
-                            <label for="apiKeyInput" class="admin-auth-label">API Key</label>
-                            <input type="password" id="apiKeyInput" placeholder="RLX_..." class="admin-auth-input" autocomplete="new-password">
+                            <label for="emailInput" class="admin-auth-label">E-posta</label>
+                            <input type="email" id="emailInput" placeholder="ornek@email.com" class="admin-auth-input" autocomplete="email" required>
                         </div>
+
+                        <div class="admin-auth-input-group">
+                            <label for="passwordInput" class="admin-auth-label">Şifre</label>
+                            <input type="password" id="passwordInput" placeholder="••••••••" class="admin-auth-input" autocomplete="current-password" required>
+                        </div>
+
+                        <button type="submit" id="adminLoginBtn" class="admin-auth-btn">Giriş Yap</button>
                     </form>
 
-                    <button id="adminLoginBtn" class="admin-auth-btn">Giriş Yap</button>
-
                     <div class="admin-auth-divider">
-                        <p class="admin-auth-help-text">API key'iniz yok mu?</p>
-                        <button id="adminRequestKeyBtn" class="admin-auth-btn-secondary">📧 E-posta ile API Key İste</button>
+                        <button id="forgotPasswordBtn" class="admin-auth-btn-secondary">🔑 Şifremi Unuttum</button>
                     </div>
                 </div>
             </div>
         `;
 
-        // Modal'ı body'ye ekle
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-
-        // Event listener'ları ekle (inline değil, programatik)
         this._attachModalEvents();
 
-        // Input'a focus
         setTimeout(() => {
-            document.getElementById('apiKeyInput')?.focus();
+            document.getElementById('emailInput')?.focus();
         }, 100);
     },
 
     // Modal event listener'larını ekle
-    _attachModalEvents() {
-        // Login butonu
-        const loginBtn = document.getElementById('adminLoginBtn');
-        if (loginBtn) {
-            loginBtn.addEventListener('click', () => this.login());
-        }
-
-        // Request key butonu
-        const requestBtn = document.getElementById('adminRequestKeyBtn');
-        if (requestBtn) {
-            requestBtn.addEventListener('click', () => this.requestApiKey());
-        }
-
-        // Enter tuşu ile giriş
-        const input = document.getElementById('apiKeyInput');
-        if (input) {
-            input.addEventListener('keypress', (e) => {
-                if (e.key === 'Enter') {
-                    this.login();
-                }
+    _attachModalEvents(): void {
+        const form = document.getElementById('loginForm');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.login();
             });
+        }
+
+        const forgotBtn = document.getElementById('forgotPasswordBtn');
+        if (forgotBtn) {
+            forgotBtn.addEventListener('click', () => this.showForgotPasswordModal());
         }
     },
 
     // Giriş yap
     async login(): Promise<void> {
-        const apiKeyInput = document.getElementById('apiKeyInput') as HTMLInputElement | null;
-        const apiKey = apiKeyInput?.value.trim();
+        const emailInput = document.getElementById('emailInput') as HTMLInputElement | null;
+        const passwordInput = document.getElementById('passwordInput') as HTMLInputElement | null;
         const errorDiv = document.getElementById('authError');
         const button = document.getElementById('adminLoginBtn') as HTMLButtonElement | null;
 
-        if (!button) return;
+        if (!button || !emailInput || !passwordInput) return;
 
-        if (!apiKey) {
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+
+        if (!email || !password) {
             if (errorDiv) {
-                errorDiv.textContent = '❌ Lütfen API key girin';
+                errorDiv.textContent = '❌ Lütfen e-posta ve şifre girin';
                 errorDiv.classList.add('show');
             }
             return;
         }
 
-        // Loading göster
         const originalText = button.textContent;
-        button.textContent = 'Kontrol ediliyor...';
+        button.textContent = 'Giriş yapılıyor...';
         button.disabled = true;
 
         try {
-            // Test API çağrısı yaparak key'i doğrula (ApiService kullan)
-            const response = await ApiService.testApiKey(apiKey);
+            const response = await ApiService.call('login', { email, password });
 
             if (response.success) {
                 // Başarılı giriş
-                this.saveApiKey(apiKey);
+                this.saveSession(
+                    response.token,
+                    response.staff as StaffInfo,
+                    response.expiresAt as number
+                );
                 document.getElementById('authModal')?.remove();
                 location.reload();
-            } else if ((response as any).requiresAuth) {
-                if (errorDiv) {
-                    errorDiv.textContent = '❌ Geçersiz API key';
-                    errorDiv.classList.add('show');
-                }
-                button.textContent = originalText;
-                button.disabled = false;
             } else {
                 if (errorDiv) {
-                    errorDiv.textContent = '❌ Bağlantı hatası';
+                    errorDiv.textContent = `❌ ${response.error || 'Giriş başarısız'}`;
                     errorDiv.classList.add('show');
                 }
                 button.textContent = originalText;
@@ -227,38 +268,112 @@ const AdminAuth = {
             }
         } catch (error) {
             if (errorDiv) {
-                const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
-                errorDiv.textContent = '❌ Bağlantı hatası: ' + errorMessage;
+                errorDiv.textContent = '❌ Bağlantı hatası';
                 errorDiv.classList.add('show');
             }
-            if (button) {
-                button.textContent = originalText;
-                button.disabled = false;
-            }
+            button.textContent = originalText;
+            button.disabled = false;
         }
     },
 
-    // API key iste
-    async requestApiKey(): Promise<void> {
-        const button = document.getElementById('adminRequestKeyBtn') as HTMLButtonElement | null;
-        if (!button) return;
+    // Şifremi unuttum modal
+    showForgotPasswordModal(): void {
+        // Mevcut modal'ı güncelle
+        const modalContent = document.querySelector('.admin-auth-modal-content');
+        if (!modalContent) return;
 
-        const originalText = button.innerHTML;
-        button.innerHTML = 'Gönderiliyor...';
+        modalContent.innerHTML = `
+            <h2 class="admin-auth-title">🔑 Şifre Sıfırlama</h2>
+            <p class="admin-auth-subtitle">E-posta adresinize yeni şifre gönderilecek</p>
+
+            <div id="authError" class="admin-auth-error"></div>
+            <div id="authSuccess" class="admin-auth-success"></div>
+
+            <form id="resetForm" autocomplete="on">
+                <div class="admin-auth-input-group">
+                    <label for="resetEmailInput" class="admin-auth-label">E-posta</label>
+                    <input type="email" id="resetEmailInput" placeholder="ornek@email.com" class="admin-auth-input" autocomplete="email" required>
+                </div>
+
+                <button type="submit" id="resetPasswordBtn" class="admin-auth-btn">Şifre Gönder</button>
+            </form>
+
+            <div class="admin-auth-divider">
+                <button id="backToLoginBtn" class="admin-auth-btn-secondary">← Giriş Sayfasına Dön</button>
+            </div>
+        `;
+
+        // Event listeners
+        const form = document.getElementById('resetForm');
+        if (form) {
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.resetPassword();
+            });
+        }
+
+        const backBtn = document.getElementById('backToLoginBtn');
+        if (backBtn) {
+            backBtn.addEventListener('click', () => {
+                document.getElementById('authModal')?.remove();
+                this.showLoginModal();
+            });
+        }
+
+        setTimeout(() => {
+            document.getElementById('resetEmailInput')?.focus();
+        }, 100);
+    },
+
+    // Şifre sıfırla
+    async resetPassword(): Promise<void> {
+        const emailInput = document.getElementById('resetEmailInput') as HTMLInputElement | null;
+        const errorDiv = document.getElementById('authError');
+        const successDiv = document.getElementById('authSuccess');
+        const button = document.getElementById('resetPasswordBtn') as HTMLButtonElement | null;
+
+        if (!button || !emailInput) return;
+
+        const email = emailInput.value.trim();
+
+        if (!email) {
+            if (errorDiv) {
+                errorDiv.textContent = '❌ Lütfen e-posta adresinizi girin';
+                errorDiv.classList.add('show');
+            }
+            return;
+        }
+
+        const originalText = button.textContent;
+        button.textContent = 'Gönderiliyor...';
         button.disabled = true;
 
         try {
-            const response = await ApiService.call('initializeApiKey');
+            const response = await ApiService.call('resetPassword', { email });
 
             if (response.success) {
-                alert('✅ API key e-posta adresinize gönderildi.\n\nLütfen e-postanızı kontrol edin ve gelen API key ile giriş yapın.');
+                if (successDiv) {
+                    successDiv.textContent = '✅ Yeni şifreniz e-posta adresinize gönderildi';
+                    successDiv.classList.add('show');
+                }
+                if (errorDiv) {
+                    errorDiv.classList.remove('show');
+                }
+                button.textContent = 'Gönderildi';
             } else {
-                alert('❌ E-posta gönderilemedi.\n\nLütfen daha sonra tekrar deneyin veya sistem yöneticinizle iletişime geçin.');
+                if (errorDiv) {
+                    errorDiv.textContent = `❌ ${response.error || 'Şifre sıfırlanamadı'}`;
+                    errorDiv.classList.add('show');
+                }
+                button.textContent = originalText;
+                button.disabled = false;
             }
         } catch (error) {
-            alert('❌ Bağlantı hatası.\n\nLütfen internet bağlantınızı kontrol edin.');
-        } finally {
-            button.innerHTML = originalText;
+            if (errorDiv) {
+                errorDiv.textContent = '❌ Bağlantı hatası';
+                errorDiv.classList.add('show');
+            }
+            button.textContent = originalText;
             button.disabled = false;
         }
     },
@@ -268,11 +383,19 @@ const AdminAuth = {
         const header = document.querySelector('.header') as HTMLElement | null;
         if (!header) return;
 
+        const staff = this.isAuthenticated();
+        if (!staff) return;
+
+        // Kullanıcı adını "Admin Paneli" yanına ekle
+        const userNameSpan = document.getElementById('adminUserName');
+        if (userNameSpan) {
+            userNameSpan.textContent = ` - ${staff.name}`;
+        }
+
+        // Sadece çıkış butonu
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
         logoutBtn.textContent = '🔓 Çıkış';
-
-        // Event listener ekle (inline değil)
         logoutBtn.addEventListener('click', () => {
             if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
                 this.logout();
@@ -283,19 +406,30 @@ const AdminAuth = {
         header.appendChild(logoutBtn);
     },
 
+    // Mevcut kullanıcı bilgisi
+    getCurrentUser(): StaffInfo | null {
+        const result = this.isAuthenticated();
+        return result || null;
+    },
+
+    // Admin yetkisi kontrolü
+    isAdmin(): boolean {
+        const staff = this.isAuthenticated();
+        return staff ? staff.isAdmin : false;
+    },
+
     // İnaktivite takibini başlat
-    _startActivityTracking() {
-        // Kullanıcı aktivitelerini dinle
+    _startActivityTracking(): void {
         this._activityHandler = () => {
             this._lastActivityTime = Date.now();
+            this._refreshSession();
         };
 
-        // Event listeners (referansı sakla ki sonra kaldırabiliriz)
         document.addEventListener('mousemove', this._activityHandler);
         document.addEventListener('keypress', this._activityHandler);
         document.addEventListener('click', this._activityHandler);
         document.addEventListener('scroll', this._activityHandler);
-        document.addEventListener('touchstart', this._activityHandler); // Mobil için
+        document.addEventListener('touchstart', this._activityHandler);
 
         // Her 60 saniyede bir kontrol et
         this._activityCheckInterval = setInterval(() => {
@@ -304,17 +438,16 @@ const AdminAuth = {
                 alert('⏰ 10 dakika boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.');
                 this.logout();
             }
-        }, 60 * 1000); // 60 saniye
+        }, 60 * 1000);
     },
 
     // İnaktivite takibini durdur
-    _stopActivityTracking() {
+    _stopActivityTracking(): void {
         if (this._activityCheckInterval) {
             clearInterval(this._activityCheckInterval);
             this._activityCheckInterval = null;
         }
 
-        // Event listeners'ı kaldır (memory leak önleme)
         if (this._activityHandler) {
             document.removeEventListener('mousemove', this._activityHandler);
             document.removeEventListener('keypress', this._activityHandler);
@@ -323,6 +456,20 @@ const AdminAuth = {
             document.removeEventListener('touchstart', this._activityHandler);
             this._activityHandler = null;
         }
+    },
+
+    // ==================== LEGACY SUPPORT ====================
+    // Eski API key sisteminden geçiş için
+
+    // API key kontrolü (backward compatibility)
+    get API_KEY_STORAGE() {
+        return 'admin_api_key';
+    },
+
+    // Eski API key varsa temizle
+    clearLegacyAuth(): void {
+        sessionStorage.removeItem('admin_api_key');
+        sessionStorage.removeItem('admin_api_key_time');
     }
 };
 

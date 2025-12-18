@@ -25,10 +25,12 @@ export const AppointmentTypeSchema = z.enum(['delivery', 'service', 'consultatio
 export const StaffSchema = z.object({
     id: z.union([z.number(), z.string()]),
     name: z.string().min(1),
-    phone: z.string().min(1),
+    phone: z.union([z.string(), z.number()]),
     email: z.string().email().optional(),
+    role: z.string().optional(),
+    isAdmin: z.boolean().optional(),
     active: z.boolean(),
-}) satisfies z.ZodType<Staff>;
+});
 
 export const StaffArraySchema = z.array(StaffSchema);
 
@@ -126,13 +128,32 @@ export const GetGoogleCalendarEventsResponseSchema = createApiResponseSchema(
     z.record(z.string(), GoogleCalendarEventsArraySchema)
 );
 
-export const GetDayStatusResponseSchema = createApiResponseSchema(DayStatusSchema);
-
-export const GetDailySlotsResponseSchema = createApiResponseSchema(
+// ⚡ FIX: getDayStatus returns fields directly in response (not wrapped in data)
+export const GetDayStatusResponseSchema = z.union([
     z.object({
+        success: z.literal(true),
+        isDeliveryMaxed: z.boolean(),
+        availableHours: z.array(z.number()),
+        unavailableHours: z.array(z.number()),
+        deliveryCount: z.number().optional(),
+    }),
+    z.object({
+        success: z.literal(false),
+        error: z.string(),
+    }),
+]);
+
+// ⚡ FIX: getDailySlots returns slots directly in response (not wrapped in data)
+export const GetDailySlotsResponseSchema = z.union([
+    z.object({
+        success: z.literal(true),
         slots: TimeSlotsArraySchema,
-    })
-);
+    }),
+    z.object({
+        success: z.literal(false),
+        error: z.string(),
+    }),
+]);
 
 export const GetManagementSlotAvailabilityResponseSchema = createApiResponseSchema(
     z.object({

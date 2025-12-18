@@ -34,23 +34,45 @@ const SlotService = {
    * Generate daily slot objects for a specific date
    * @param {string} date - Date in YYYY-MM-DD format
    * @param {string} shiftType - Shift type (optional, default: 'full')
+   * @param {number} slotGrid - Slot interval in minutes (30 or 60, optional, default: 60)
    * @returns {Object[]} Slot objects [{start, end, hour, time}]
    */
-  getDailySlots: function(date, shiftType = 'full') {
+  getDailySlots: function(date, shiftType = 'full', slotGrid = 60) {
     const hours = this.getSlotsByShift(shiftType);
+    const slots = [];
 
-    return hours.map(hour => {
+    // slotGrid 30dk ise yarım saatlik slotlar da ekle
+    const interval = slotGrid === 30 ? 30 : 60;
+
+    hours.forEach(hour => {
+      // Ana slot (tam saat)
       const startDate = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
       const endDate = new Date(startDate);
-      endDate.setHours(endDate.getHours() + 1);
+      endDate.setMinutes(endDate.getMinutes() + interval);
 
-      return {
+      slots.push({
         start: startDate.toISOString(),
         end: endDate.toISOString(),
         hour: hour,
         time: `${String(hour).padStart(2, '0')}:00`
-      };
+      });
+
+      // Yarım saat slotu (slotGrid 30dk ise)
+      if (interval === 30 && hour < 20) { // 20:30 ekleme, son slot 20:00
+        const halfStart = new Date(`${date}T${String(hour).padStart(2, '0')}:30:00`);
+        const halfEnd = new Date(halfStart);
+        halfEnd.setMinutes(halfEnd.getMinutes() + interval);
+
+        slots.push({
+          start: halfStart.toISOString(),
+          end: halfEnd.toISOString(),
+          hour: hour,
+          time: `${String(hour).padStart(2, '0')}:30`
+        });
+      }
     });
+
+    return slots;
   },
 
   /**
@@ -73,6 +95,28 @@ const SlotService = {
     } catch (error) {
       log.error('isSlotFree error:', error);
       return false; // Hata durumunda safe side: dolu kabul et
+    }
+  },
+
+  /**
+   * Get appointment count for a time slot
+   * v3.5: Profil ayarlarına göre slot limiti kontrolü için
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {number} hour - Hour (11-20)
+   * @returns {number} Number of appointments in this slot
+   */
+  getSlotAppointmentCount: function(date, hour) {
+    try {
+      const calendar = CalendarService.getCalendar();
+      const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+      const slotEnd = new Date(slotStart);
+      slotEnd.setHours(slotEnd.getHours() + 1);
+
+      const events = calendar.getEvents(slotStart, slotEnd);
+      return events.length;
+    } catch (error) {
+      log.error('getSlotAppointmentCount error:', error);
+      return 999; // Hata durumunda safe side: çok dolu kabul et
     }
   }
 };

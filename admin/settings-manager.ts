@@ -4,8 +4,6 @@
  */
 
 import { ApiService } from '../api-service';
-import { ButtonUtils } from '../button-utils';
-import { ErrorUtils } from '../error-utils';
 import type { DataStore } from './data-store';
 
 // Module-scoped variables
@@ -24,7 +22,6 @@ const getUI = () => window.UI;
  */
 export async function initSettingsManager(store: DataStore): Promise<void> {
     dataStore = store;
-    await loadSettings();
     setupEventListeners();
 
     // Load API integration settings
@@ -36,10 +33,6 @@ export async function initSettingsManager(store: DataStore): Promise<void> {
  * Setup event listeners for settings management
  */
 function setupEventListeners(): void {
-    // General settings save button
-    const saveSettingsBtn = document.getElementById('saveSettingsBtn');
-    saveSettingsBtn?.addEventListener('click', () => save());
-
     // WhatsApp settings save button
     const saveWhatsAppBtn = document.getElementById('saveWhatsAppSettingsBtn');
     saveWhatsAppBtn?.addEventListener('click', () => saveWhatsAppSettings());
@@ -47,53 +40,6 @@ function setupEventListeners(): void {
     // Slack settings save button
     const saveSlackBtn = document.getElementById('saveSlackSettingsBtn');
     saveSlackBtn?.addEventListener('click', () => saveSlackSettings());
-}
-
-/**
- * Load general settings (interval, maxDaily)
- */
-async function loadSettings(): Promise<void> {
-    try {
-        await dataStore.loadSettings();
-        const intervalInput = document.getElementById('interval') as HTMLInputElement;
-        const maxDailyInput = document.getElementById('maxDaily') as HTMLInputElement;
-
-        if (intervalInput) intervalInput.value = String(dataStore.settings.interval || 60);
-        if (maxDailyInput) maxDailyInput.value = String(dataStore.settings.maxDaily || 4);
-    } catch (error) {
-        console.error('Ayarlar yüklenemedi:', error);
-    }
-}
-
-/**
- * Save general settings (interval, maxDaily)
- */
-async function save(): Promise<void> {
-    const btn = document.getElementById('saveSettingsBtn') as HTMLButtonElement;
-    const intervalInput = document.getElementById('interval') as HTMLInputElement;
-    const maxDailyInput = document.getElementById('maxDaily') as HTMLInputElement;
-
-    if (!btn || !intervalInput || !maxDailyInput) return;
-
-    ButtonUtils.setLoading(btn, 'Kaydediliyor');
-
-    try {
-        const response = await ApiService.call('saveSettings', {
-            interval: intervalInput.value,
-            maxDaily: maxDailyInput.value
-        });
-
-        if (response.success) {
-            dataStore.settings = response.data as any;
-            getUI().showAlert('✅ Ayarlar kaydedildi!', 'success');
-        } else {
-            ErrorUtils.handleApiError(response as any, 'saveSettings', getUI().showAlert.bind(getUI()));
-        }
-    } catch (error) {
-        ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(getUI()));
-    } finally {
-        ButtonUtils.reset(btn);
-    }
 }
 
 /**
@@ -150,7 +96,7 @@ async function saveWhatsAppSettings(): Promise<void> {
     const accessToken = accessTokenInput?.value.trim();
 
     if (!phoneNumberId || !accessToken) {
-        getUI().showAlert('❌ Lütfen tüm alanları doldurun', 'error');
+        getUI().showAlert('Lütfen tüm alanları doldurun', 'error');
         return;
     }
 
@@ -163,15 +109,15 @@ async function saveWhatsAppSettings(): Promise<void> {
         });
 
         if (response.success) {
-            getUI().showAlert('✅ WhatsApp ayarları kaydedildi', 'success');
+            getUI().showAlert('WhatsApp ayarları kaydedildi', 'success');
             phoneNumberIdInput.value = '';
             accessTokenInput.value = '';
             loadWhatsAppSettings();
         } else {
-            getUI().showAlert('❌ Hata: ' + response.error, 'error');
+            getUI().showAlert('Hata: ' + response.error, 'error');
         }
     } catch (error: any) {
-        getUI().showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+        getUI().showAlert('Kaydetme hatası: ' + error.message, 'error');
     }
 }
 
@@ -216,12 +162,12 @@ async function saveSlackSettings(): Promise<void> {
     const webhookUrl = webhookUrlInput?.value.trim();
 
     if (!webhookUrl) {
-        getUI().showAlert('❌ Lütfen Slack Webhook URL girin', 'error');
+        getUI().showAlert('Lütfen Slack Webhook URL girin', 'error');
         return;
     }
 
     if (!webhookUrl.startsWith('https://hooks.slack.com/')) {
-        getUI().showAlert('❌ Geçerli bir Slack Webhook URL girin', 'error');
+        getUI().showAlert('Geçerli bir Slack Webhook URL girin', 'error');
         return;
     }
 
@@ -231,16 +177,14 @@ async function saveSlackSettings(): Promise<void> {
         });
 
         if (response.success) {
-            getUI().showAlert('✅ Slack ayarları kaydedildi', 'success');
+            getUI().showAlert('Slack ayarları kaydedildi', 'success');
             webhookUrlInput.value = '';
             loadSlackSettings();
         } else {
-            getUI().showAlert('❌ Hata: ' + response.error, 'error');
+            getUI().showAlert('Hata: ' + response.error, 'error');
         }
     } catch (error: any) {
-        getUI().showAlert('❌ Kaydetme hatası: ' + error.message, 'error');
+        getUI().showAlert('Kaydetme hatası: ' + error.message, 'error');
     }
 }
 
-// Export for potential future use
-export { loadSettings as loadGeneralSettings, save as saveGeneralSettings };

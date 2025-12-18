@@ -50,7 +50,7 @@ interface Config extends DynamicConfig {
 
 // ✅ FALLBACK VALUES - Production değerleri (son çare olarak kullanılır)
 const FALLBACK_CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz2H47TXf61bMev30qxUVw8TSZMFwKUps35uVY1WnXCxjshpPbodlNgfk2RkxoI-flV/exec',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyv2AJ9bHkXPFfK7QGPI-cX6ISjI15eLDNAcacpYBzuYqQr4N7p3OC6p6c85hcGwFOG0g/exec',
     BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
     TURNSTILE_SITE_KEY: '0x4AAAAAACDJXoobV68BNCME',
     DEBUG: false,
@@ -316,7 +316,7 @@ export async function initConfig(): Promise<Config> {
             appointmentHours: { earliest: 11, latest: 21, interval: 60 },
             maxDailyDeliveryAppointments: 3,
             appointmentTypes: {
-                'delivery': 'Saat Teslim Alma',
+                'delivery': 'Saat Takdim',
                 'service': 'Servis & Bakım',
                 'consultation': 'Ürün Danışmanlığı',
                 'general': 'Genel Görüşme',

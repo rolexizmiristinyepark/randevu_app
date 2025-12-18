@@ -136,9 +136,12 @@ const ValidationUtils: IValidationUtils = {
             };
         }
 
-        // Türk telefon formatı: +90 555 123 45 67 veya 0555 123 45 67
-        // Kabul edilen: (+90|0)?5XX XXX XX XX (X = 0-9)
-        const phoneRegex = /^(\+90|0)?5\d{9}$/;
+        // Türk telefon formatları:
+        // - 905551234567 (12 hane - ülke kodu ile, + olmadan)
+        // - +905551234567 (12 hane + işareti ile)
+        // - 05551234567 (11 hane - başında 0 ile)
+        // - 5551234567 (10 hane - sadece numara)
+        const phoneRegex = /^(\+?90|0)?5\d{9}$/;
         if (!phoneRegex.test(cleaned)) {
             return {
                 valid: false,

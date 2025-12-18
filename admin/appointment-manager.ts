@@ -6,7 +6,7 @@
 import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
 import { TimeUtils } from '../time-utils';
-import { ButtonUtils } from '../button-utils';
+import { ButtonUtils, ButtonAnimator } from '../button-utils';
 import { escapeHtml } from '../security-helpers';
 import type { DataStore } from './data-store';
 
@@ -78,6 +78,7 @@ async function load(): Promise<void> {
     let endDate: Date;
 
     if (filterWeek) {
+        // Specific week selected - show that week
         const [year, week] = filterWeek.split('-W');
         const firstDayOfYear = new Date(parseInt(year || '0'), 0, 1);
         const daysOffset = (parseInt(week || '0') - 1) * 7;
@@ -91,14 +92,11 @@ async function load(): Promise<void> {
         endDate = new Date(startDate);
         endDate.setDate(endDate.getDate() + 6);
     } else {
-        // Default: This week
-        const today = new Date();
-        const dayOfWeek = today.getDay();
-        const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-        startDate = new Date(today);
-        startDate.setDate(startDate.getDate() + diff);
+        // Default: Today and next 30 days (future appointments)
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0);
         endDate = new Date(startDate);
-        endDate.setDate(endDate.getDate() + 6);
+        endDate.setDate(endDate.getDate() + 30);
     }
 
     try {
@@ -128,18 +126,24 @@ async function load(): Promise<void> {
 /**
  * Delete appointment
  */
-async function deleteAppointment(eventId: string): Promise<void> {
+async function deleteAppointment(eventId: string, button?: HTMLButtonElement): Promise<void> {
     if (!confirm('Bu randevuyu silmek istediğinizden emin misiniz?')) return;
+
+    // Start button animation
+    if (button) ButtonAnimator.start(button);
 
     try {
         const result = await ApiService.call('deleteAppointment', { eventId });
         if (result.success) {
-            getUI().showAlert('✅ Randevu silindi', 'success');
-            load();
+            if (button) ButtonAnimator.success(button, false);
+            getUI().showAlert('Randevu silindi', 'success');
+            // Wait for animation then reload
+            setTimeout(() => load(), 800);
         } else {
+            if (button) ButtonAnimator.error(button);
             // API key hatası için özel mesaj
             if ((result as any).requiresAuth || result.error?.includes('Yetkilendirme')) {
-                getUI().showAlert('❌ Oturum süresi dolmuş. Lütfen çıkış yapıp tekrar giriş yapın.', 'error');
+                getUI().showAlert('Oturum süresi dolmuş. Lütfen çıkış yapıp tekrar giriş yapın.', 'error');
                 // 3 saniye sonra logout
                 setTimeout(() => {
                     if (confirm('Oturum süresi dolmuş. Çıkış yapılsın mı?')) {
@@ -147,15 +151,16 @@ async function deleteAppointment(eventId: string): Promise<void> {
                     }
                 }, 500);
             } else {
-                getUI().showAlert('❌ Silme hatası: ' + result.error, 'error');
+                getUI().showAlert('Silme hatası: ' + result.error, 'error');
             }
         }
     } catch (error) {
+        if (button) ButtonAnimator.error(button);
         const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata';
         if (errorMessage.includes('Authentication')) {
-            getUI().showAlert('❌ Oturum gerekli. Lütfen giriş yapın.', 'error');
+            getUI().showAlert('Oturum gerekli. Lütfen giriş yapın.', 'error');
         } else {
-            getUI().showAlert('❌ Silme hatası: ' + errorMessage, 'error');
+            getUI().showAlert('Silme hatası: ' + errorMessage, 'error');
         }
     }
 }
@@ -190,7 +195,7 @@ function openEditModal(appointment: any): void {
         document.getElementById('editAppointmentModal')?.classList.add('active');
     } catch (error) {
         console.error('Modal açma hatası:', error, appointment);
-        getUI().showAlert('❌ Randevu tarihi okunamadı', 'error');
+        getUI().showAlert('Randevu tarihi okunamadı', 'error');
     }
 }
 
@@ -210,11 +215,15 @@ async function saveEditedAppointment(): Promise<void> {
 
     const newDate = (document.getElementById('editAppointmentDate') as HTMLInputElement).value;
     const newTime = (document.getElementById('editAppointmentTime') as HTMLInputElement).value;
+    const saveBtn = document.getElementById('saveEditAppointmentBtn') as HTMLButtonElement;
 
     if (!newDate || !newTime) {
-        getUI().showAlert('❌ Lütfen tarih ve saat seçin', 'error');
+        getUI().showAlert('Lütfen tarih ve saat seçin', 'error');
         return;
     }
+
+    // Start button animation
+    ButtonAnimator.start(saveBtn);
 
     try {
         const result = await ApiService.call('updateAppointment', {
@@ -224,14 +233,19 @@ async function saveEditedAppointment(): Promise<void> {
         });
 
         if (result.success) {
-            getUI().showAlert('✅ Randevu güncellendi', 'success');
-            closeEditModal();
-            load();
+            ButtonAnimator.success(saveBtn, false);
+            getUI().showAlert('Randevu güncellendi', 'success');
+            setTimeout(() => {
+                closeEditModal();
+                load();
+            }, 800);
         } else {
-            getUI().showAlert('❌ Güncelleme hatası: ' + result.error, 'error');
+            ButtonAnimator.error(saveBtn);
+            getUI().showAlert('Güncelleme hatası: ' + result.error, 'error');
         }
     } catch (error) {
-        getUI().showAlert('❌ Güncelleme hatası', 'error');
+        ButtonAnimator.error(saveBtn);
+        getUI().showAlert('Güncelleme hatası', 'error');
     }
 }
 
@@ -264,7 +278,7 @@ function openAssignStaffModal(appointment: any): void {
     if (select) {
         select.innerHTML = '<option value="">-- Seçin --</option>';
 
-        const activeStaff = dataStore.staff.filter(s => s.active);
+        const activeStaff = dataStore.staff.filter(s => s.active && s.role === 'sales');
         activeStaff.forEach(staff => {
             const option = getCreateElement()('option', { value: staff.id }, staff.name) as HTMLOptionElement;
             select.appendChild(option);
@@ -293,11 +307,12 @@ async function saveAssignedStaff(): Promise<void> {
     const btn = document.getElementById('saveAssignStaffBtn') as HTMLButtonElement;
 
     if (!staffId) {
-        getUI().showAlert('❌ Lütfen personel seçin', 'error');
+        getUI().showAlert('Lütfen personel seçin', 'error');
         return;
     }
 
-    ButtonUtils.setLoading(btn, 'Atanıyor');
+    // Start button animation
+    ButtonAnimator.start(btn);
 
     try {
         const result = await ApiService.call('assignStaffToAppointment', {
@@ -306,16 +321,19 @@ async function saveAssignedStaff(): Promise<void> {
         });
 
         if (result.success) {
-            getUI().showAlert('✅ ' + (result as any).staffName + ' atandı', 'success');
-            closeAssignStaffModal();
-            load();
+            ButtonAnimator.success(btn, false);
+            getUI().showAlert((result as any).staffName + ' atandı', 'success');
+            setTimeout(() => {
+                closeAssignStaffModal();
+                load();
+            }, 800);
         } else {
-            getUI().showAlert('❌ Atama hatası: ' + result.error, 'error');
+            ButtonAnimator.error(btn);
+            getUI().showAlert('Atama hatası: ' + result.error, 'error');
         }
     } catch (error) {
-        getUI().showAlert('❌ Atama hatası', 'error');
-    } finally {
-        ButtonUtils.reset(btn);
+        ButtonAnimator.error(btn);
+        getUI().showAlert('Atama hatası', 'error');
     }
 }
 
@@ -369,7 +387,7 @@ function render(appointments: any[]): void {
             const start = new Date(apt.start.dateTime || apt.start.date);
             const end = new Date(apt.end.dateTime || apt.end.date);
             const staffId = apt.extendedProperties?.private?.staffId;
-            const staff = dataStore.staff.find(s => s.id === parseInt(staffId || '0'));
+            const staff = dataStore.staff.find(s => s.id === staffId);
             const phone = apt.extendedProperties?.private?.customerPhone || '-';
             const customerName = apt.summary?.replace('Randevu: ', '') || 'İsimsiz';
             const customerNote = apt.extendedProperties?.private?.customerNote || '';
@@ -446,7 +464,7 @@ function render(appointments: any[]): void {
             // Edit button
             const editBtn = getCreateElement()('button', {
                 className: 'btn btn-small btn-secondary'
-            }, 'Düzenle');
+            }, 'Düzenle') as HTMLButtonElement;
             editBtn.addEventListener('click', () => {
                 openEditModal(apt);
             });
@@ -454,9 +472,9 @@ function render(appointments: any[]): void {
             // Cancel button
             const cancelBtn = getCreateElement()('button', {
                 className: 'btn btn-small btn-secondary'
-            }, 'İptal Et');
+            }, 'İptal Et') as HTMLButtonElement;
             cancelBtn.addEventListener('click', () => {
-                deleteAppointment(apt.id);
+                deleteAppointment(apt.id, cancelBtn);
             });
 
             buttonsDiv.appendChild(editBtn);

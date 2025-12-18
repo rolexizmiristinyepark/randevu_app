@@ -85,6 +85,86 @@ function sanitizePhone(phone: string): string {
 }
 
 /**
+ * Telefon numarasını standart formata dönüştür
+ * Input: herhangi bir format (5321234567, 05321234567, +905321234567)
+ * Output: sadece rakamlar, ülke kodu + numara (905321234567)
+ * @param phone - Telefon numarası
+ * @param countryCode - Ülke kodu (varsayılan: 90)
+ */
+function getFullPhone(phone: string, countryCode: string = '90'): string {
+    if (!phone) return '';
+
+    // Tüm non-digit karakterleri temizle
+    let cleanPhone = phone.replace(/\D/g, '');
+
+    // Eğer 0 ile başlıyorsa kaldır (05XX -> 5XX)
+    if (cleanPhone.startsWith('0')) {
+        cleanPhone = cleanPhone.substring(1);
+    }
+
+    // Eğer zaten ülke kodu ile başlıyorsa, olduğu gibi döndür
+    if (cleanPhone.startsWith(countryCode)) {
+        return cleanPhone;
+    }
+
+    // Ülke kodu ekle
+    return countryCode + cleanPhone;
+}
+
+/**
+ * Telefon numarasını ülke kodu ve numara olarak parçala
+ * Input: 905321234567 veya +905321234567
+ * Output: { countryCode: '90', phoneNumber: '5321234567' }
+ */
+function parsePhone(phone: string | number | null | undefined): { countryCode: string; phoneNumber: string } {
+    if (!phone) return { countryCode: '90', phoneNumber: '' };
+
+    // String'e çevir ve tüm non-digit karakterleri temizle
+    const cleanPhone = String(phone).replace(/\D/g, '');
+
+    // Bilinen ülke kodlarını kontrol et (en uzundan en kısaya)
+    const countryCodes = ['971', '966', '974', '965', '973', '968', '380', '358', '212', '213', '216', '90', '44', '49', '33', '39', '34', '31', '32', '43', '41', '46', '47', '45', '48', '30', '20', '27', '91', '86', '81', '82', '61', '64', '55', '52', '54', '57', '56', '7', '1'];
+
+    for (const code of countryCodes) {
+        if (cleanPhone.startsWith(code)) {
+            return {
+                countryCode: code,
+                phoneNumber: cleanPhone.substring(code.length)
+            };
+        }
+    }
+
+    // Ülke kodu bulunamazsa varsayılan 90
+    return { countryCode: '90', phoneNumber: cleanPhone };
+}
+
+/**
+ * Telefon numarasını görüntüleme formatına dönüştür (+90 532 123 45 67)
+ * WhatsApp recipient hariç her yerde kullanılacak
+ */
+function formatPhoneForDisplay(phone: string | number | null | undefined): string {
+    if (!phone) return '';
+
+    // Önce temiz formata çevir
+    const cleanPhone = String(phone).replace(/\D/g, '');
+
+    if (cleanPhone.length < 10) return '+' + cleanPhone;
+
+    // Türkiye formatı: +90 5XX XXX XX XX (12 hane - ülke kodu ile)
+    if (cleanPhone.startsWith('90') && cleanPhone.length === 12) {
+        return `+${cleanPhone.substring(0, 2)} ${cleanPhone.substring(2, 5)} ${cleanPhone.substring(5, 8)} ${cleanPhone.substring(8, 10)} ${cleanPhone.substring(10)}`;
+    }
+
+    // 10 haneli Türkiye numarası (5XX ile başlayan, ülke kodu olmadan kaydedilmiş)
+    if (cleanPhone.length === 10 && cleanPhone.startsWith('5')) {
+        return `+90 ${cleanPhone.substring(0, 3)} ${cleanPhone.substring(3, 6)} ${cleanPhone.substring(6, 8)} ${cleanPhone.substring(8)}`;
+    }
+
+    // Diğer ülkeler için genel format: +XX XXXXXXXXX
+    return '+' + cleanPhone;
+}
+
+/**
  * E-posta sanitization
  */
 function sanitizeEmail(email: string): string {
@@ -165,10 +245,10 @@ function showAlertSafe(message: string, type: string = 'info', containerId: stri
 
     container.appendChild(alertDiv);
 
-    // 4 saniye sonra temizle
+    // 3 saniye sonra temizle
     setTimeout(() => {
         container.textContent = '';
-    }, 4000);
+    }, 3000);
 }
 
 // Güvenli liste render
@@ -438,6 +518,10 @@ export {
     sanitizePhone,
     sanitizeEmail,
     sanitizeName,
+    // Phone Formatting
+    getFullPhone,
+    parsePhone,
+    formatPhoneForDisplay,
     // DOM Security
     escapeHtml,
     createElement,
@@ -463,6 +547,10 @@ if (typeof window !== 'undefined') {
     (window as any).sanitizePhone = sanitizePhone;
     (window as any).sanitizeEmail = sanitizeEmail;
     (window as any).sanitizeName = sanitizeName;
+    // Phone Formatting
+    (window as any).getFullPhone = getFullPhone;
+    (window as any).parsePhone = parsePhone;
+    (window as any).formatPhoneForDisplay = formatPhoneForDisplay;
     // DOM Security
     (window as any).escapeHtml = escapeHtml;
     (window as any).createElement = createElement;

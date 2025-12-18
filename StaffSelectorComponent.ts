@@ -49,7 +49,8 @@ export async function loadSettings(): Promise<void> {
             const data = response.data as any;
             if (config) {
                 config.APPOINTMENT_HOURS = config.APPOINTMENT_HOURS || {};
-                config.APPOINTMENT_HOURS.interval = data.interval || 60;
+                // NOT: interval artık profil ayarlarından geliyor (profilAyarlari.slotGrid ve .duration)
+                // Burada sadece maxDaily güncelleniyor (teslim limiti)
                 config.MAX_DAILY_DELIVERY_APPOINTMENTS = data.maxDaily || 4;
             }
         }
@@ -67,12 +68,27 @@ export function displayAvailableStaff(): void {
     const staffList = document.getElementById('staffList');
     if (!staffList) return;
 
-    staffList.innerHTML = '';
+    // Clear existing content safely
+    while (staffList.firstChild) {
+        staffList.removeChild(staffList.firstChild);
+    }
+
     const staffMembers = state.get('staffMembers');
     const selectedDate = state.get('selectedDate');
     const dayShifts = state.get('dayShifts');
+    const profilAyarlari = state.get('profilAyarlari');
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
 
-    if (staffMembers.length === 0) {
+    // v3.5: Filter staff by role
+    let filteredStaff = staffMembers;
+    if (staffFilter === 'role:sales') {
+        filteredStaff = staffMembers.filter((s: Staff) => s.role === 'sales');
+    } else if (staffFilter === 'role:management') {
+        filteredStaff = staffMembers.filter((s: Staff) => s.role === 'management');
+    }
+    // 'all' shows everyone, 'none' is handled in app.ts (section hidden)
+
+    if (filteredStaff.length === 0) {
         // Safe DOM manipulation
         const emptyDiv = createElement('div', {
             style: 'grid-column: 1/-1; text-align: center; padding: 40px;'
@@ -96,7 +112,7 @@ export function displayAvailableStaff(): void {
 
     const dayShiftsForDate = dayShifts[selectedDate!] || {};
 
-    staffMembers.forEach((staff: Staff) => {
+    filteredStaff.forEach((staff: Staff) => {
         if (!staff.active) return;
 
         const shiftType = dayShiftsForDate[staff.id];
@@ -130,13 +146,13 @@ export function displayAvailableStaff(): void {
 /**
  * ⚡ PERFORMANCE: Async for dynamic imports
  */
-export async function selectStaff(staffId: number, shiftType: string, event?: MouseEvent): Promise<void> {
-    state.set('selectedStaff', parseInt(String(staffId)));
+export async function selectStaff(staffId: string, shiftType: string, event?: MouseEvent): Promise<void> {
+    state.set('selectedStaff', String(staffId));
     state.set('selectedShiftType', shiftType);
     const staffMembers = state.get('staffMembers');
 
     // Show staff name in header
-    const staff = staffMembers.find((s: Staff) => s.id === parseInt(String(staffId)));
+    const staff = staffMembers.find((s: Staff) => s.id === String(staffId));
     if (staff) {
         const header = document.getElementById('staffHeader');
         if (header) {

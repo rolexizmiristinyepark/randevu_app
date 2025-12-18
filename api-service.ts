@@ -35,7 +35,19 @@ type ProtectedAction =
     | 'updateWhatsAppSettings'
     | 'getWhatsAppSettings'
     | 'updateSlackSettings'
-    | 'getSlackSettings';
+    | 'getSlackSettings'
+    | 'addWhatsAppFlow'
+    | 'updateWhatsAppFlow'
+    | 'deleteWhatsAppFlow'
+    | 'addWhatsAppDailyTask'
+    | 'updateWhatsAppDailyTask'
+    | 'deleteWhatsAppDailyTask'
+    | 'createWhatsAppTemplate'
+    | 'updateWhatsAppTemplate'
+    | 'deleteWhatsAppTemplate'
+    | 'getWhatsAppTemplates'
+    | 'getAllLinks'
+    | 'getWhatsAppVariableOptions';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -52,7 +64,21 @@ const ApiService = {
         'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
         'getWhatsAppSettings',          // YENİ: WhatsApp Business API
         'updateSlackSettings',          // YENİ: Slack Webhook
-        'getSlackSettings'              // YENİ: Slack Webhook
+        'getSlackSettings',             // YENİ: Slack Webhook
+        'updateProfilAyarlari',         // v3.3: Profil ayarları
+        'resetProfilAyarlari',          // v3.3: Profil ayarları sıfırla
+        'addWhatsAppFlow',              // v3.4: WhatsApp Flow Sistemi
+        'updateWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
+        'deleteWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
+        'addWhatsAppDailyTask',         // v3.4: WhatsApp Günlük Görevler
+        'updateWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
+        'deleteWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
+        'createWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
+        'updateWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
+        'deleteWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
+        'getWhatsAppTemplates',         // v3.4: WhatsApp Template CRUD
+        'getAllLinks',                  // v3.0: Session auth
+        'getWhatsAppVariableOptions'    // v3.4: WhatsApp Template CRUD
     ] as const,
 
     // Validation map for actions that support Zod validation
@@ -76,10 +102,14 @@ const ApiService = {
     ): Promise<ApiResponse<T>> {
         // Check if action requires authentication
         if (this.PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
-            // Check for API key or AdminAuth
-            const key = apiKey || (typeof (window as any).AdminAuth !== 'undefined'
-                ? (window as any).AdminAuth.isAuthenticated()
-                : null);
+            // Check for API key or AdminAuth session token
+            let key = apiKey;
+
+            if (!key && typeof (window as any).AdminAuth !== 'undefined') {
+                // Try to get session token
+                key = (window as any).AdminAuth.getSessionToken?.() || null;
+                console.log('[API] Session token retrieved:', key ? `${key.substring(0, 8)}...` : 'null');
+            }
 
             // If no API key and AdminAuth is available, show login modal
             if (!key && typeof (window as any).AdminAuth !== 'undefined') {
@@ -108,7 +138,7 @@ const ApiService = {
         return new Promise(async (resolve, reject) => {
             try {
                 // ✅ HARDCODED FALLBACK - Env vars başarısız olursa kullanılır
-                const FALLBACK_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbz2H47TXf61bMev30qxUVw8TSZMFwKUps35uVY1WnXCxjshpPbodlNgfk2RkxoI-flV/exec';
+                const FALLBACK_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBHaKk0MJPZ88EuY_AYnZatCQZo3CKbM2O-yw-EIlHJu5DAOqnq5ZgkMPR8Z3u7m3bIQ/exec';
 
                 // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable, then fallback
                 let appsScriptUrl: string | null = null;
@@ -137,6 +167,9 @@ const ApiService = {
                     return;
                 }
 
+                // 🔍 DEBUG: Log used URL
+                console.log(`[API] ${action} -> ${appsScriptUrl.substring(0, 80)}...`);
+
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
 
@@ -148,6 +181,7 @@ const ApiService = {
 
                 if (isProtectedAction && apiKey) {
                     // ✅ POST + JSON Body - API key güvenli
+                    console.log('[API] Sending protected action with apiKey:', apiKey ? `${apiKey.substring(0, 8)}...` : 'null');
                     const requestBody = {
                         action,
                         apiKey,
@@ -218,6 +252,12 @@ const ApiService = {
 
                 // Başarılı response kontrolü (fallback for non-validated or failed validation)
                 if (data && typeof data === 'object') {
+                    // Session expired veya auth hatası kontrolü
+                    if (!data.success && (data as any).requiresAuth) {
+                        console.warn('[API] Session expired or auth failed:', (data as any).debug, (data as any).sessionDebug);
+                        // NOT: clearSession yapmıyoruz çünkü paralel API çağrıları var
+                        // Kullanıcı zaten login modal'ı görecek
+                    }
                     resolve(data);
                 } else {
                     throw new Error('Geçersiz API yanıtı');

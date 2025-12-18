@@ -10,7 +10,7 @@ export default defineConfig(({ mode }) => {
   // ✅ DEBUG: Log loaded environment variables
   console.log('🔧 Vite Build Configuration:');
   console.log('   Mode:', mode);
-  console.log('   VITE_APPS_SCRIPT_URL:', env.VITE_APPS_SCRIPT_URL ? '✅ Loaded' : '❌ Missing');
+  console.log('   VITE_APPS_SCRIPT_URL:', env.VITE_APPS_SCRIPT_URL ? `✅ ${env.VITE_APPS_SCRIPT_URL.substring(0, 60)}...` : '❌ Missing');
   console.log('   VITE_BASE_URL:', env.VITE_BASE_URL ? '✅ Loaded' : '❌ Missing');
   console.log('   VITE_TURNSTILE_SITE_KEY:', env.VITE_TURNSTILE_SITE_KEY ? '✅ Loaded' : '❌ Missing');
 

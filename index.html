@@ -7,7 +7,7 @@
     <!-- 🔒 SECURITY: Content Security Policy (Defense-in-Depth XSS Protection) -->
     <!-- NOT: frame-ancestors, form-action, base-uri meta tag'de çalışmaz, sadece HTTP header ile gönderilebilir -->
     <!-- GitHub Pages'de HTTP header kontrolümüz yok, bu yüzden sadece desteklenen direktifler kullanıyoruz -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; frame-src https://challenges.cloudflare.com;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; frame-src https://challenges.cloudflare.com;">
     <title>İzmir İstinyepark Rolex</title>
     <link rel="icon" type="image/svg+xml" href="assets/rolex-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -18,8 +18,33 @@
     <script type="module" src="date-utils.ts"></script>
     <!-- Security Helper Functions -->
     <script type="module" src="security-helpers.ts"></script>
-    <!-- Cloudflare Turnstile -->
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <!-- Cloudflare Turnstile (explicit render mode - site key JavaScript'ten gelir) -->
+    <script>
+        // Turnstile callback - script yüklenmeden önce tanımlanmalı
+        window.onloadTurnstileCallback = function() {
+            var widget = document.getElementById('turnstileWidget');
+            var siteKey = window.TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
+            console.log('🔒 Turnstile loading with key:', siteKey.substring(0, 10) + '...');
+            if (widget && window.turnstile) {
+                window.turnstile.render(widget, {
+                    sitekey: siteKey,
+                    callback: function(token) {
+                        console.log('✅ Turnstile verified');
+                        window.turnstileVerified = true;
+                        // Submit butonunu göster
+                        var submitBtn = document.getElementById('submitBtn');
+                        var detailsSection = document.getElementById('detailsSection');
+                        if (submitBtn && detailsSection && detailsSection.style.display !== 'none') {
+                            submitBtn.style.display = 'block';
+                        }
+                    },
+                    theme: 'light',
+                    size: 'normal'
+                });
+            }
+        };
+    </script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback" async defer></script>
 </head>
 <body>
     <div class="container">
@@ -39,14 +64,14 @@
         <!-- Randevu Tipi Seçimi -->
         <div class="section" id="appointmentTypesSection" style="display: none;">
             <div class="appointment-types" id="appointmentTypesContainer">
+                <div class="type-card" id="typeMeeting" data-type="meeting">
+                    <h3>Görüşme</h3>
+                </div>
                 <div class="type-card" id="typeDelivery" data-type="delivery">
-                    <h3>Teslim</h3>
+                    <h3>Saat Takdim</h3>
                 </div>
                 <div class="type-card" id="typeService" data-type="service">
                     <h3>Teknik Servis</h3>
-                </div>
-                <div class="type-card" id="typeMeeting" data-type="meeting">
-                    <h3>Görüşme</h3>
                 </div>
                 <!-- Gönderi butonu sadece staff=0 için gösterilecek -->
                 <div class="type-card" id="typeShipping" data-type="shipping" style="display: none;">
@@ -100,7 +125,7 @@
             </div>
             <div class="input-group">
                 <label for="customerPhone">Telefon *</label>
-                <input type="tel" id="customerPhone" placeholder="0555 123 45 67" required>
+                <input type="tel" id="customerPhone" required>
             </div>
             <div class="input-group">
                 <label for="customerEmail">E-posta *</label>
@@ -127,14 +152,9 @@
         </div>
 
         <!-- Cloudflare Turnstile Widget (Bot Protection) -->
+        <!-- Widget JavaScript ile dinamik render edilir (config-loader.ts'den TURNSTILE_SITE_KEY alır) -->
         <div id="turnstileContainer" style="display: none; margin: 20px auto; text-align: center;">
-            <div class="cf-turnstile"
-                 id="turnstileWidget"
-                 data-sitekey="0x4AAAAAACDJXoobV68BNCME"
-                 data-callback="onTurnstileSuccess"
-                 data-theme="light"
-                 data-size="normal">
-            </div>
+            <div id="turnstileWidget"></div>
         </div>
 
         <button class="btn" id="submitBtn" style="display: none;">

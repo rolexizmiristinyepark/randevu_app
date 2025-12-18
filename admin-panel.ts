@@ -304,6 +304,193 @@ function setupLinkButtons(): void {
 
     document.getElementById('copyManagement3Btn')?.addEventListener('click', copyManagement3Link);
     document.getElementById('openManagement3Btn')?.addEventListener('click', openManagement3Page);
+
+    // Profile link buttons (Linkler sekmesi)
+    document.querySelectorAll('[data-copy-profile]').forEach(btn => {
+        btn.addEventListener('click', function(this: HTMLElement) {
+            const profile = this.dataset.copyProfile;
+            if (profile) copyProfileLink(profile);
+        });
+    });
+
+    document.querySelectorAll('[data-open-profile]').forEach(btn => {
+        btn.addEventListener('click', function(this: HTMLElement) {
+            const profile = this.dataset.openProfile;
+            if (profile) openProfileLink(profile);
+        });
+    });
+
+    // Load VIP and Staff links
+    loadProfileLinks();
+}
+
+/**
+ * Copy profile link to clipboard
+ */
+function copyProfileLink(profile: string): void {
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    const link = `${baseUrl}#${profile}`;
+    navigator.clipboard.writeText(link).then(() => {
+        UI.showAlert('Link kopyalandı!', 'success');
+    }).catch(() => {
+        UI.showAlert('Kopyalama başarısız', 'error');
+    });
+}
+
+/**
+ * Open profile link in new tab
+ */
+function openProfileLink(profile: string): void {
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    const link = `${baseUrl}#${profile}`;
+    window.open(link, '_blank');
+}
+
+/**
+ * Copy staff link to clipboard
+ */
+function copyStaffLink(type: string, id: string): void {
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    const link = `${baseUrl}#${type}/${id}`;
+    navigator.clipboard.writeText(link).then(() => {
+        UI.showAlert('Link kopyalandı!', 'success');
+    }).catch(() => {
+        UI.showAlert('Kopyalama başarısız', 'error');
+    });
+}
+
+/**
+ * Open staff link in new tab
+ */
+function openStaffLink(type: string, id: string): void {
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    const link = `${baseUrl}#${type}/${id}`;
+    window.open(link, '_blank');
+}
+
+/**
+ * Load VIP and Staff profile links
+ */
+async function loadProfileLinks(): Promise<void> {
+    try {
+        const response = await fetch((window as any).CONFIG.APPS_SCRIPT_URL + '?action=getStaff');
+        const data = await response.json();
+
+        if (data.success && data.staff) {
+            const vipList: Array<{ id: string; name: string }> = [];
+            const staffList: Array<{ id: string; name: string }> = [];
+
+            data.staff.forEach((s: any) => {
+                if (s.isVip) {
+                    vipList.push({ id: s.id, name: s.name });
+                }
+                staffList.push({ id: s.id, name: s.name });
+            });
+
+            displayVipLinks(vipList);
+            displayStaffLinks(staffList);
+        }
+    } catch (error) {
+        console.error('Profile links yüklenemedi:', error);
+    }
+}
+
+/**
+ * Display VIP links
+ */
+function displayVipLinks(vipList: Array<{ id: string; name: string }>): void {
+    const container = document.getElementById('vipLinksGrid');
+    if (!container) return;
+
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if (vipList.length === 0) {
+        const emptyP = document.createElement('p');
+        emptyP.style.cssText = 'color:#666;font-size:14px;';
+        emptyP.textContent = 'VIP personeli bulunmuyor';
+        container.appendChild(emptyP);
+        return;
+    }
+
+    vipList.forEach(vip => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:10px;';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'flex:0 0 120px;font-weight:500;';
+        nameSpan.textContent = vip.name;
+
+        const codeEl = document.createElement('code');
+        codeEl.style.cssText = 'flex:1;font-size:13px;color:#666;';
+        codeEl.textContent = `#v/${vip.id}`;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-small btn-secondary';
+        copyBtn.textContent = 'Kopyala';
+        copyBtn.addEventListener('click', () => copyStaffLink('v', vip.id));
+
+        const openBtn = document.createElement('button');
+        openBtn.className = 'btn btn-small';
+        openBtn.textContent = 'Aç';
+        openBtn.addEventListener('click', () => openStaffLink('v', vip.id));
+
+        row.appendChild(nameSpan);
+        row.appendChild(codeEl);
+        row.appendChild(copyBtn);
+        row.appendChild(openBtn);
+        container.appendChild(row);
+    });
+}
+
+/**
+ * Display Staff links
+ */
+function displayStaffLinks(staffList: Array<{ id: string; name: string }>): void {
+    const container = document.getElementById('staffLinks');
+    if (!container) return;
+
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if (staffList.length === 0) {
+        const emptyP = document.createElement('p');
+        emptyP.style.cssText = 'color:#666;font-size:14px;';
+        emptyP.textContent = 'Personel bulunmuyor';
+        container.appendChild(emptyP);
+        return;
+    }
+
+    staffList.forEach(s => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:10px;';
+
+        const nameSpan = document.createElement('span');
+        nameSpan.style.cssText = 'flex:0 0 120px;font-weight:500;';
+        nameSpan.textContent = s.name;
+
+        const codeEl = document.createElement('code');
+        codeEl.style.cssText = 'flex:1;font-size:13px;color:#666;';
+        codeEl.textContent = `#s/${s.id}`;
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'btn btn-small btn-secondary';
+        copyBtn.textContent = 'Kopyala';
+        copyBtn.addEventListener('click', () => copyStaffLink('s', s.id));
+
+        const openBtn = document.createElement('button');
+        openBtn.className = 'btn btn-small';
+        openBtn.textContent = 'Aç';
+        openBtn.addEventListener('click', () => openStaffLink('s', s.id));
+
+        row.appendChild(nameSpan);
+        row.appendChild(codeEl);
+        row.appendChild(copyBtn);
+        row.appendChild(openBtn);
+        container.appendChild(row);
+    });
 }
 //#endregion
 

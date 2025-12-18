@@ -39,20 +39,83 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     const managementLevel = state.get('managementLevel');
 
     // Check required parameters
-    // Don't check shifts for VIP links (staff will be assigned later)
-    if (isManagementLink) {
+    const profilAyarlari = state.get('profilAyarlari');
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
+
+    // Don't check shifts for:
+    // - VIP links (staff will be assigned later)
+    // - staffFilter === 'none' (admin will assign staff later)
+    if (isManagementLink || staffFilter === 'none') {
         if (!selectedDate || !selectedAppointmentType) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih ve randevu türü seçin.</div>';
+            container.textContent = 'Lütfen önce tarih ve randevu türü seçin.';
             return;
         }
     } else {
         if (!selectedDate || !selectedShiftType || !selectedAppointmentType) {
-            container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Lütfen önce tarih, vardiya ve randevu türü seçin.</div>';
+            container.textContent = 'Lütfen önce tarih, vardiya ve randevu türü seçin.';
             return;
         }
     }
 
     try {
+        // staffFilter === 'none' - Walk-in customers, show all slots (admin assigns staff later)
+        if (staffFilter === 'none') {
+            // Clear spinner
+            while (container.firstChild) container.removeChild(container.firstChild);
+
+            // v3.6: Profil ayarlarından slotGrid al
+            const slotGrid = profilAyarlari?.slotGrid || 60;
+
+            // Generate slots for today based on slotGrid
+            const today = new Date();
+            const todayStr = today.getFullYear() + '-' +
+                           String(today.getMonth() + 1).padStart(2, '0') + '-' +
+                           String(today.getDate()).padStart(2, '0');
+            const isToday = selectedDate === todayStr;
+            const currentHour = today.getHours();
+            const currentMinute = today.getMinutes();
+
+            // Generate slots from 11:00 to 20:00 based on slotGrid
+            for (let hour = 11; hour <= 20; hour++) {
+                // Full hour slot
+                const timeStr = `${hour}:00`;
+
+                // Skip past times if today
+                if (isToday && (hour < currentHour || (hour === currentHour && 0 <= currentMinute))) {
+                    // Continue to check half hour if slotGrid is 30
+                } else {
+                    const btn = document.createElement('div');
+                    btn.className = 'slot-btn';
+                    btn.textContent = timeStr;
+                    btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
+                    container.appendChild(btn);
+                }
+
+                // Half hour slot if slotGrid is 30
+                if (slotGrid === 30 && hour < 20) {
+                    const halfTimeStr = `${hour}:30`;
+                    // Skip past times if today
+                    if (isToday && (hour < currentHour || (hour === currentHour && 30 <= currentMinute))) {
+                        continue;
+                    }
+                    const halfBtn = document.createElement('div');
+                    halfBtn.className = 'slot-btn';
+                    halfBtn.textContent = halfTimeStr;
+                    halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
+                    container.appendChild(halfBtn);
+                }
+            }
+
+            // If no slots available (all past)
+            if (container.children.length === 0) {
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
+                container.appendChild(infoDiv);
+            }
+            return;
+        }
+
         // VIP links (hk, ok, hmk) - Special logic for ALL appointment types
         if (isManagementLink) {
             // Spinner already visible, API call in progress...
@@ -180,6 +243,17 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         }
 
         // ⭐ NEW: getDayStatus endpoint - all business rules at once
+        // v3.5: linkType parametresi profil bazlı slotGrid kullanımı için eklendi
+        const currentProfile = state.get('currentProfile');
+        const linkType = currentProfile === 'gunluk' ? 'walkin' :
+                         currentProfile === 'vip' ? 'vip' :
+                         currentProfile === 'personel' ? 'staff' :
+                         currentProfile === 'boutique' ? 'boutique' :
+                         currentProfile === 'yonetim' ? 'management' : 'general';
+
+        // DEBUG: slotGrid için linkType kontrolü
+        console.log('DEBUG getDailySlots:', { currentProfile, linkType, selectedDate, selectedShiftType });
+
         const [dayStatusResult, slotsResult] = await Promise.all([
             apiCall('getDayStatus', {
                 date: selectedDate,
@@ -187,7 +261,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             }),
             apiCall('getDailySlots', {
                 date: selectedDate,
-                shiftType: selectedShiftType
+                shiftType: selectedShiftType,
+                linkType: linkType
             })
         ]);
 
@@ -278,11 +353,28 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
     const isManagementLink = state.get('isManagementLink');
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const selectedStaff = state.get('selectedStaff');
+    const profilAyarlari = state.get('profilAyarlari');
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
 
     // ⚡ PERFORMANCE: Only update previous selected element (reduce reflow)
     const prev = document.querySelector('.slot-btn.selected');
     if (prev) prev.classList.remove('selected');
     element.classList.add('selected');
+
+    // staffFilter === 'none' - Walk-in customers, go directly to form
+    if (staffFilter === 'none') {
+        // No staff assigned, admin will assign later
+        hideSection('staffSection');
+        revealSection('detailsSection');
+        const kvkkContainer = document.getElementById('kvkkContainer');
+        if (kvkkContainer) kvkkContainer.style.display = 'block';
+        const turnstileContainer = document.getElementById('turnstileContainer');
+        if (turnstileContainer) turnstileContainer.style.display = 'block';
+        // Only show submit if Turnstile already verified
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        return;
+    }
 
     // Management link (hk, ok, hmk) - go directly to form
     if (isManagementLink) {

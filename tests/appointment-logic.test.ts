@@ -131,7 +131,7 @@ describe('Appointment Slot Availability Logic', () => {
       const result = checkDayAvailability('2025-02-15');
 
       expect(result.available).toBe(false);
-      expect(result.reason).toContain('Teslim/gönderi randevuları dolu');
+      expect(result.reason).toContain('Saat takdim/gönderi randevuları dolu');
       expect(result.reason).toContain('3/3');
     });
 
@@ -514,7 +514,7 @@ describe('Appointment Slot Availability Logic', () => {
       if (deliveryCount >= CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS) {
         return {
           available: false,
-          reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})`
+          reason: `Saat takdim/gönderi randevuları dolu (${deliveryCount}/${CONFIG.MAX_DAILY_DELIVERY_APPOINTMENTS})`
         };
       }
     }

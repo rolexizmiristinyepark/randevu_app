@@ -20,6 +20,9 @@ import { initMonitoring } from './monitoring';
 import { initConfig, checkAndInvalidateCache } from './config-loader';
 import { debounce } from './performance-utils';
 
+// Import profile resolver (v3.2 - unified ?id=xxx format)
+import { initProfileFromURL, applyProfileUI, showInvalidIdError, ProfilInfo } from './ProfileResolver';
+
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
 // ⭐ NEW: Config loaded dynamically from backend API
 // - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded
@@ -101,6 +104,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ⚠️ Config is loaded via initConfig() IIFE (line 22) - no need to load here
     // CONFIG available globally via window.CONFIG after async initialization
 
+    // ==================== TURNSTILE WIDGET INIT ====================
+    // Turnstile widget'ı index.html'deki inline script ile render ediliyor
+    // Site key: window.TURNSTILE_SITE_KEY (config-loader.ts'den)
+
     // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
     // Calendar modal buttons - Lazy loaded handlers
     document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);
@@ -118,72 +125,95 @@ document.addEventListener('DOMContentLoaded', async () => {
         return; // Admin sayfasında customer init'i atlat
     }
 
-    // URL parametrelerini hemen kontrol et (API beklemeden)
-    const urlParams = new URLSearchParams(window.location.search);
-    const specificStaffIdParam = urlParams.get('staff');
-    state.set('specificStaffId', specificStaffIdParam);
+    // ==================== v3.2: Unified ?id=xxx URL Format ====================
+    // Backend'den ID tipini çözümle ve profil belirle
+    const profileInfo: ProfilInfo = await initProfileFromURL();
 
-    // YENİ: URL pathname veya hash'den yönetim linkini kontrol et
-    const pathname = window.location.pathname;
-    const hash = window.location.hash.replace('#/', '').replace('#', '');
-    const basePath = import.meta.env.BASE_URL || '/';
-    const relativePath = pathname.replace(basePath, '').replace(/^\//, '');
-
-    // Hash routing (GitHub Pages için) veya path routing
-    const route = hash || relativePath;
-
-    if (route === 'hk') {
-        state.set('managementLevel', 1);
-        state.set('isManagementLink', true);
-    } else if (route === 'ok') {
-        state.set('managementLevel', 2);
-        state.set('isManagementLink', true);
-    } else if (route === 'hmk') {
-        state.set('managementLevel', 3);
-        state.set('isManagementLink', true);
+    // Geçersiz ID ise uyarı göster
+    if (!profileInfo.isValid && profileInfo.id) {
+        showInvalidIdError();
     }
 
-    // Yönetim linki ise UI'yi ayarla
-    const isManagementLink = state.get('isManagementLink');
-    if (isManagementLink) {
-        const header = document.getElementById('staffHeader');
-        if (header) {
-            header.textContent = 'Randevu Sistemi';
-            header.style.visibility = 'visible';
+    // Profil bazlı UI ayarlarını uygula
+    applyProfileUI(profileInfo);
+
+    // v3.2: Profil ayarlarını backend'den yükle
+    let profilAyarlari: any = null;
+    try {
+        const ayarResponse = await apiCall('getProfilAyarlari', { profil: profileInfo.profil });
+        if (ayarResponse.success) {
+            profilAyarlari = ayarResponse.data;
+            state.set('profilAyarlari', profilAyarlari);
         }
-
-        // Randevu türü seçimi göster (Teslim, Teknik Servis, Görüşme, vs.)
-        // selectedAppointmentType henüz seçilmedi - kullanıcı seçecek
-
-        // Gönderi ve Yönetim butonlarını gizle (sadece normal randevu türleri)
-        const typeShipping = document.getElementById('typeShipping');
-        const typeManagement = document.getElementById('typeManagement');
-        if (typeShipping) typeShipping.style.display = 'none';
-        if (typeManagement) typeManagement.style.display = 'none';
-
-        // Staff seçimini gizle (random atama yapılacak)
-        hideSection('staffSection');
+    } catch (e) {
+        console.warn('Profil ayarları yüklenemedi:', e);
     }
-    // YENİ: staff=0 için UI'yi hemen ayarla (API beklemeden)
-    const specificStaffId = state.get('specificStaffId');
-    if (specificStaffId === '0') {
-        const header = document.getElementById('staffHeader');
-        if (header) {
-            header.textContent = 'Randevu Sistemi';
-            header.style.visibility = 'visible';
+
+    // v3.4: Profil ayarlarına göre UI düzenle
+    // takvimFiltresi: 'bugun' = takvim gösterilmez, bugün otomatik seçilir
+    //                 'hepsi' = takvim gösterilir, müşteri seçer
+    let todayOnlyCalendar = false;
+    if (profilAyarlari) {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+
+        // Takvim filtresi kontrolü
+        if (profilAyarlari.takvimFiltresi === 'bugun') {
+            // Sadece bugün: Takvim gösterilmez, bugün otomatik seçilir
+            state.set('selectedDate', todayStr);
+            todayOnlyCalendar = true;
+        } else {
+            // Tüm günler: Varsayılan tarih sameDayBooking'e göre
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            const defaultDate = profilAyarlari.sameDayBooking
+                ? todayStr
+                : tomorrow.toISOString().split('T')[0];
+            state.set('selectedDate', defaultDate);
         }
 
-        // Gönderi ve Yönetim butonlarını göster ve grid'i ayarla
-        const typeShipping = document.getElementById('typeShipping');
-        const typeManagement = document.getElementById('typeManagement');
-        if (typeShipping) typeShipping.style.display = 'block';
-        if (typeManagement) typeManagement.style.display = 'block';
-        const typesContainer = document.getElementById('appointmentTypesContainer');
-        if (typesContainer) typesContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-    } else if (!specificStaffId) {
-        // Normal link için butonları ortala
-        const typesContainer = document.getElementById('appointmentTypesContainer');
-        if (typesContainer) typesContainer.style.justifyContent = 'center';
+        // v3.5: staffFilter kontrolü
+        // - none: Personel seçimi gösterilmez, admin sonradan atar
+        // - self: URL'deki personel otomatik seçilir, personel seçimi gösterilmez
+        // - all/role:sales/role:management: Personel listesi gösterilir (filtreleme StaffSelectorComponent'te)
+        if (profilAyarlari.staffFilter === 'none' || profilAyarlari.staffFilter === 'self') {
+            hideSection('staffSection');
+        }
+
+    }
+
+    // v3.4: allowedTypes'a göre randevu türü kartlarını filtrele
+    // 1 tür seçili → otomatik seç ve gizle, 2+ tür → müşteri seçsin
+    // NOT: Tek tür kontrolü aşağıda revealSection'dan sonra yapılacak (sıralama önemli)
+    let singleTypeSelected = false;
+    if (profilAyarlari?.allowedTypes && profilAyarlari.allowedTypes.length > 0) {
+        const allowedTypes = profilAyarlari.allowedTypes;
+        const typeCards = [
+            { id: 'typeDelivery', type: 'delivery' },
+            { id: 'typeService', type: 'service' },
+            { id: 'typeMeeting', type: 'meeting' },
+            { id: 'typeShipping', type: 'shipping' },
+            { id: 'typeManagement', type: 'management' }
+        ];
+
+        // Kartları filtrele
+        typeCards.forEach(card => {
+            const element = document.getElementById(card.id);
+            if (element) {
+                if (allowedTypes.includes(card.type)) {
+                    element.style.display = '';
+                } else {
+                    element.style.display = 'none';
+                }
+            }
+        });
+
+        // 1 tür seçili ise: otomatik seç (gizleme aşağıda yapılacak)
+        if (allowedTypes.length === 1) {
+            state.set('selectedAppointmentType', allowedTypes[0]);
+            singleTypeSelected = true;
+        }
+        // 2+ tür seçili ise: müşteri seçsin (kartlar görünür)
     }
 
     // Ana spinner zaten gösteriliyor, sadece verilerini yükle
@@ -196,24 +226,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     initAppointmentForm();
 
     // Staff verilerini yükle
-    if (specificStaffId) {
-        await loadStaffMembers();
+    await loadStaffMembers();
 
-        // Normal staff link için header'ı güncelle
-        if (specificStaffId !== '0') {
-            const staffMembers = state.get('staffMembers');
-            const staff = staffMembers.find((s: any) => s.id == specificStaffId);
-            if (staff) {
-                const header = document.getElementById('staffHeader');
-                if (header) {
-                    header.textContent = staff.name;
-                    header.style.visibility = 'visible';
-                }
-                state.set('selectedStaff', parseInt(specificStaffId));
-            }
+    // Personel linki ise selectedStaff'ı ayarla
+    if (profileInfo.profil === 'personel' && profileInfo.data?.id) {
+        const staffMembers = state.get('staffMembers');
+        const staff = staffMembers.find((s: any) => s.id === profileInfo.data?.id);
+        if (staff) {
+            state.set('selectedStaff', staff.id);
         }
-    } else {
-        await loadStaffMembers();
     }
 
     // Ana spinner'ı gizle ve butonları göster
@@ -228,18 +249,33 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (submitBtn) submitBtn.style.display = 'none';
     if (turnstileContainer) turnstileContainer.style.display = 'none';
 
-    // Buton section'ını göster ve animate et
-    if (typesContainer) {
-        typesContainer.style.display = 'grid';
-    }
-    revealSection('appointmentTypesSection', false);
+    // Buton section'ını göster ve animate et (tek tür seçili değilse)
+    if (!singleTypeSelected) {
+        if (typesContainer) {
+            typesContainer.style.display = 'grid';
+        }
+        revealSection('appointmentTypesSection', false);
 
-    // İlk yükleme animasyonu: Randevu tipi seçimini göster
-    const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
-    if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
-        setTimeout(() => {
-            appointmentTypesSection.classList.add('visible');
-        }, 100);
+        // İlk yükleme animasyonu: Randevu tipi seçimini göster
+        const appointmentTypesSection = document.getElementById('appointmentTypesContainer')?.parentElement;
+        if (appointmentTypesSection && appointmentTypesSection.classList.contains('section')) {
+            setTimeout(() => {
+                appointmentTypesSection.classList.add('visible');
+            }, 100);
+        }
+    } else {
+        // Tek tür seçili: Section'ı gizle
+        if (todayOnlyCalendar) {
+            // Sadece bugün: Takvimi de gizle, direkt staff/time'a geç
+            const { selectDay } = await import('./CalendarComponent');
+            await selectDay(state.get('selectedDate')!);
+        } else {
+            // Tüm günler: Takvimi göster
+            const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
+            revealSection('calendarSection');
+            renderCalendar();
+            await loadMonthData();
+        }
     }
 
     // Appointment type cards event listeners (async due to dynamic imports)

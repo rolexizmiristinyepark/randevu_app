@@ -8,10 +8,12 @@ import { apiCall } from '../api-service';
 import { logError } from '../monitoring';
 
 export interface StaffMember {
-    id: number;
+    id: string;
     name: string;
     phone: string;
     email: string;
+    role: string;
+    isAdmin: boolean;
     active: boolean;
 }
 

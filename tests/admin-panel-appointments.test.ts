@@ -551,13 +551,13 @@ describe('Admin Panel - Appointment Management', () => {
 
     it('should show appointment type', () => {
       const types = {
-        delivery: 'Teslim',
+        delivery: 'Saat Takdim',
         service: 'Teknik Servis',
         meeting: 'Görüşme',
         shipping: 'Gönderi'
       };
 
-      expect(types.delivery).toBe('Teslim');
+      expect(types.delivery).toBe('Saat Takdim');
       expect(types.service).toBe('Teknik Servis');
     });
 

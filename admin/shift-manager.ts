@@ -6,7 +6,7 @@
 import { apiCall } from '../api-service';
 import { DateUtils } from '../date-utils';
 import { ErrorUtils } from '../error-utils';
-import { ButtonUtils } from '../button-utils';
+import { ButtonUtils, ButtonAnimator } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // Module-scoped variables
@@ -25,6 +25,60 @@ declare global {
 const getUI = () => window.UI;
 const getCreateElement = () => window.createElement;
 
+// Turkish month names
+const TURKISH_MONTHS = [
+    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
+];
+
+/**
+ * Get Monday date from week string (YYYY-Www)
+ */
+function getMondayFromWeek(weekStr: string): Date {
+    const [year, week] = weekStr.split('-W').map(Number);
+    const date = new Date(year, 0, 1);
+    const dayOfWeek = date.getDay();
+    const diff = (dayOfWeek <= 4 ? 1 - dayOfWeek : 8 - dayOfWeek);
+    date.setDate(date.getDate() + diff + (week - 1) * 7);
+    return date;
+}
+
+/**
+ * Format week as "08 - 14 Aralık 2025"
+ */
+function formatWeekDisplay(weekStr: string): string {
+    if (!weekStr) return 'Hafta Seç';
+
+    const monday = getMondayFromWeek(weekStr);
+    const sunday = new Date(monday);
+    sunday.setDate(sunday.getDate() + 6);
+
+    const monDay = String(monday.getDate()).padStart(2, '0');
+    const sunDay = String(sunday.getDate()).padStart(2, '0');
+    const monMonth = TURKISH_MONTHS[monday.getMonth()];
+    const sunMonth = TURKISH_MONTHS[sunday.getMonth()];
+    const year = sunday.getFullYear();
+
+    // Same month
+    if (monday.getMonth() === sunday.getMonth()) {
+        return `${monDay} - ${sunDay} ${sunMonth} ${year}`;
+    }
+    // Different months
+    return `${monDay} ${monMonth} - ${sunDay} ${sunMonth} ${year}`;
+}
+
+/**
+ * Update the week display text
+ */
+function updateWeekDisplay(): void {
+    const weekInput = document.getElementById('weekDate') as HTMLInputElement;
+    const displayText = document.getElementById('weekDisplayText');
+
+    if (displayText && weekInput) {
+        displayText.textContent = formatWeekDisplay(weekInput.value);
+    }
+}
+
 /**
  * Initialize Shift Manager module
  */
@@ -38,6 +92,10 @@ export async function initShiftManager(store: DataStore): Promise<void> {
  * Setup event listeners for shift management
  */
 function setupEventListeners(): void {
+    // Previous week button
+    const prevWeekBtn = document.getElementById('prevWeekBtn');
+    prevWeekBtn?.addEventListener('click', () => prevWeek());
+
     // Next week button
     const nextWeekBtn = document.getElementById('nextWeekBtn');
     nextWeekBtn?.addEventListener('click', () => nextWeek());
@@ -47,8 +105,23 @@ function setupEventListeners(): void {
     saveBtn?.addEventListener('click', () => save());
 
     // Week selector change
-    const weekDate = document.getElementById('weekDate');
-    weekDate?.addEventListener('change', () => load());
+    const weekDate = document.getElementById('weekDate') as HTMLInputElement;
+    weekDate?.addEventListener('change', () => {
+        updateWeekDisplay();
+        load();
+    });
+
+    // Click anywhere on week display to open picker
+    const weekWrapper = document.querySelector('.week-display-wrapper');
+    weekWrapper?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (weekDate && typeof weekDate.showPicker === 'function') {
+            weekDate.showPicker();
+        } else if (weekDate) {
+            weekDate.focus();
+        }
+    });
 
     // Window resize for responsive shift labels
     window.addEventListener('resize', () => updateShiftLabels());
@@ -70,6 +143,7 @@ function init(): void {
         weekInput.value = `${year}-W${String(weekNumber).padStart(2, '0')}`;
     }
 
+    updateWeekDisplay();
     load();
 }
 
@@ -81,7 +155,7 @@ async function load(): Promise<void> {
     const weekValue = weekInput?.value;
 
     if (!weekValue) {
-        getUI().showAlert('❌ Hafta seçin!', 'error');
+        getUI().showAlert('Hafta seçin!', 'error');
         return;
     }
 
@@ -117,6 +191,28 @@ async function load(): Promise<void> {
 }
 
 /**
+ * Go to previous week
+ */
+function prevWeek(): void {
+    const weekInput = document.getElementById('weekDate') as HTMLInputElement;
+    const weekValue = weekInput?.value;
+
+    if (!weekValue) return;
+
+    const [year, week] = weekValue.split('-W');
+    const prevWeekNum = parseInt(week || '0') - 1;
+
+    if (prevWeekNum < 1) {
+        weekInput.value = `${parseInt(year || '0') - 1}-W52`;
+    } else {
+        weekInput.value = `${year}-W${String(prevWeekNum).padStart(2, '0')}`;
+    }
+
+    updateWeekDisplay();
+    load();
+}
+
+/**
  * Go to next week
  */
 function nextWeek(): void {
@@ -134,6 +230,7 @@ function nextWeek(): void {
         weekInput.value = `${year}-W${String(nextWeekNum).padStart(2, '0')}`;
     }
 
+    updateWeekDisplay();
     load();
 }
 
@@ -142,17 +239,19 @@ function nextWeek(): void {
  */
 async function save(): Promise<void> {
     if (!currentWeek) {
-        getUI().showAlert('❌ Önce hafta yükleyin!', 'error');
+        getUI().showAlert('Önce hafta yükleyin!', 'error');
         return;
     }
 
-    const shiftsData: Record<string, Record<number, string>> = {};
+    const shiftsData: Record<string, Record<string, string>> = {};
     const selects = document.querySelectorAll('.shift-select') as NodeListOf<HTMLSelectElement>;
 
     selects.forEach(select => {
-        const staffId = parseInt(select.dataset.staff || '0');
+        const staffId = select.dataset.staff || '';
         const date = select.dataset.date || '';
         const value = select.value;
+
+        if (!staffId || !date) return;
 
         if (!shiftsData[date]) shiftsData[date] = {};
 
@@ -162,7 +261,7 @@ async function save(): Promise<void> {
     });
 
     const btn = document.getElementById('saveShiftsBtn') as HTMLButtonElement;
-    ButtonUtils.setLoading(btn, 'Kaydediliyor');
+    ButtonAnimator.start(btn);
 
     try {
         const response = await apiCall('saveShifts', {
@@ -172,15 +271,16 @@ async function save(): Promise<void> {
         if (response.success) {
             // Merge with local data
             Object.assign(dataStore.shifts, shiftsData);
+            ButtonAnimator.success(btn);
             renderSaved();
-            getUI().showAlert('✅ Vardiyalar kaydedildi!', 'success');
+            getUI().showAlert('Vardiyalar kaydedildi!', 'success');
         } else {
+            ButtonAnimator.error(btn);
             ErrorUtils.handleApiError(response as any, 'saveShifts', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
+        ButtonAnimator.error(btn);
         ErrorUtils.handleException(error, 'Kaydetme', getUI().showAlert.bind(getUI()));
-    } finally {
-        ButtonUtils.reset(btn);
     }
 }
 

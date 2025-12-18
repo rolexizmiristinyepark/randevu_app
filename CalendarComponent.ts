@@ -113,6 +113,9 @@ export function renderCalendar(): void {
     const specificStaffId = state.get('specificStaffId');
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const isManagementLink = state.get('isManagementLink');
+    const profilAyarlari = state.get('profilAyarlari');
+    const takvimFiltresi = profilAyarlari?.takvimFiltresi || 'hepsi';
+    const sameDayBooking = profilAyarlari?.sameDayBooking ?? true;
 
     for (let day = 1; day <= daysInMonth; day++) {
         const dayEl = document.createElement('div');
@@ -126,9 +129,23 @@ export function renderCalendar(): void {
         // Add data-date attribute
         dayEl.setAttribute('data-date', dateStr);
 
+        // Takvim filtresi kontrolü
+        const isToday = date.getTime() === today.getTime();
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const isTomorrow = date.getTime() === tomorrow.getTime();
+
+        // 'bugun' filtresi: sadece bugün seçilebilir
+        if (takvimFiltresi === 'bugun' && !isToday) {
+            dayEl.classList.add('unavailable');
+            dayEl.title = 'Sadece bugün için randevu alınabilir';
+            fragment.appendChild(dayEl);
+            continue;
+        }
+
         // Past days - allow today for staff=0, management appointments or management links
-        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink;
-        if (date < today || (date.getTime() === today.getTime() && !allowToday)) {
+        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink || sameDayBooking;
+        if (date < today || (isToday && !allowToday)) {
             dayEl.classList.add('past');
         } else {
             // Check availability
@@ -170,7 +187,10 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
     // Shift check
     if (specificStaffId && specificStaffId !== '0') {
         // Normal staff link - check only that staff's shift
-        const staffHasShift = dayShifts[dateStr] && dayShifts[dateStr][parseInt(specificStaffId)];
+        // v3.6: Support both numeric IDs and secure string IDs
+        const shifts = dayShifts[dateStr];
+        const staffHasShift = shifts && (shifts[specificStaffId] || shifts[parseInt(specificStaffId)]);
+
         if (!staffHasShift) {
             return { available: false, reason: 'İlgili çalışan bu gün müsait değil' };
         }
@@ -214,7 +234,7 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
     if (selectedAppointmentType === 'delivery' || selectedAppointmentType === 'shipping') {
         const maxDaily = (window as any).CONFIG?.MAX_DAILY_DELIVERY_APPOINTMENTS || 4;
         if (deliveryCount >= maxDaily) {
-            return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${maxDaily})` };
+            return { available: false, reason: `Saat takdim/gönderi randevuları dolu (${deliveryCount}/${maxDaily})` };
         }
     }
 
@@ -247,6 +267,8 @@ export async function selectDay(dateStr: string): Promise<void> {
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const isManagementLink = state.get('isManagementLink');
     const dayShifts = state.get('dayShifts');
+    const profilAyarlari = state.get('profilAyarlari');
+    const staffFilter = profilAyarlari?.staffFilter || 'all';
 
     // ⚡ PERFORMANCE: Only update previous and new selected elements (reduce reflow)
     const prev = document.querySelector('.calendar-day.selected');
@@ -254,6 +276,35 @@ export async function selectDay(dateStr: string): Promise<void> {
 
     const newDay = document.querySelector(`.calendar-day[data-date="${dateStr}"]`);
     if (newDay) newDay.classList.add('selected');
+
+    // v3.5: staffFilter === 'none' - skip staff selection, go directly to time
+    if (staffFilter === 'none') {
+        state.set('selectedStaff', null); // No staff assigned, admin will assign later
+        state.set('selectedShiftType', 'full'); // Default shift type for time slots
+        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
+        displayAvailableTimeSlots();
+        revealSection('timeSection');
+        hideSection('staffSection');
+        hideSection('detailsSection');
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) submitBtn.style.display = 'none';
+        return;
+    }
+
+    // v3.6: staffFilter === 'self' - auto-select staff from URL ID, hide staff section
+    if (staffFilter === 'self' && specificStaffId && specificStaffId !== '0') {
+        state.set('selectedStaff', specificStaffId); // Use secure ID from URL (string)
+        const shiftType = dayShifts[dateStr]?.[specificStaffId] || dayShifts[dateStr]?.[parseInt(specificStaffId)] || 'full';
+        state.set('selectedShiftType', shiftType);
+        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
+        displayAvailableTimeSlots();
+        revealSection('timeSection');
+        hideSection('staffSection');
+        hideSection('detailsSection');
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) submitBtn.style.display = 'none';
+        return;
+    }
 
     // NEW: For staff=0 and management appointment, go directly to time selection
     if (specificStaffId === '0' && selectedAppointmentType === 'management') {
@@ -363,7 +414,10 @@ export async function loadMonthData(): Promise<void> {
     const cacheKey = `${monthStr}_${specificStaffId || 'all'}_${selectedAppointmentType || 'general'}`;
     if (cache.has(cacheKey)) {
         const cached = cache.get<any>(cacheKey);
-        if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        // ⚡ BUG FIX: Validate cache data - dayShifts must have entries for calendar to work
+        const hasValidData = cached?.data?.dayShifts && Object.keys(cached.data.dayShifts).length > 0;
+
+        if (cached && Date.now() - cached.timestamp < CACHE_DURATION && hasValidData) {
             // Cache still valid, use it
             state.set('dayShifts', cached.data.dayShifts || {});
             state.set('allAppointments', cached.data.allAppointments || {});

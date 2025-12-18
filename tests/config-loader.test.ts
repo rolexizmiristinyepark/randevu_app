@@ -266,7 +266,7 @@ describe('Config Loader Logic', () => {
         appointmentHours: { earliest: 11, latest: 21, interval: 60 },
         maxDailyDeliveryAppointments: 3,
         appointmentTypes: {
-          'delivery': 'Saat Teslim Alma',
+          'delivery': 'Saat Takdim',
           'service': 'Servis & Bakım',
           'consultation': 'Ürün Danışmanlığı',
           'general': 'Genel Görüşme',
@@ -282,7 +282,7 @@ describe('Config Loader Logic', () => {
 
     it('should have Turkish labels in fallback config', () => {
       const fallbackTypes = {
-        'delivery': 'Saat Teslim Alma',
+        'delivery': 'Saat Takdim',
         'service': 'Servis & Bakım',
         'consultation': 'Ürün Danışmanlığı',
         'general': 'Genel Görüşme',

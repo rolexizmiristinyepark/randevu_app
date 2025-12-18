@@ -538,14 +538,39 @@ label {
     transform: none;
 }
 
+/* Alert Container - Fixed pozisyon, her zaman görünür */
+#alertContainer {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    width: 90%;
+    max-width: 500px;
+    pointer-events: none;
+}
+
 /* Alert */
 .alert {
     padding: 15px 20px;
-    border-radius: 2px;
-    margin-bottom: 20px;
+    border-radius: 4px;
     font-size: 13px;
     line-height: 1.6;
     border-left: 3px solid;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: alertSlideDown 0.3s ease-out;
+    pointer-events: auto;
+}
+
+@keyframes alertSlideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .alert-success {
@@ -1113,4 +1138,93 @@ label {
 
 .kvkk-consent.error .consent-text {
     color: #7f1d1d;
+}
+
+/* ==================== INTL-TEL-INPUT CUSTOMIZATION ==================== */
+.iti {
+    width: 100%;
+}
+
+.iti__tel-input {
+    width: 100%;
+    padding: 14px 16px 14px 90px !important;
+    border: 1px solid #E8E8E8;
+    border-radius: 2px;
+    font-size: 14px;
+    font-family: 'Montserrat', sans-serif;
+    color: #1A1A2E;
+    background: #FAFAFA;
+    transition: all 0.2s ease;
+}
+
+.iti__tel-input:focus {
+    outline: none;
+    border-color: #C9A55A;
+    background: white;
+}
+
+.iti__tel-input::placeholder {
+    color: #BDBDBD;
+}
+
+.iti__country-container {
+    padding: 0;
+}
+
+.iti__selected-country {
+    background: #FAFAFA;
+    border-right: 1px solid #E8E8E8;
+    padding: 0 8px 0 12px;
+}
+
+.iti__selected-country:hover,
+.iti__selected-country:focus {
+    background: #F5F5F0;
+}
+
+.iti__selected-dial-code {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1A1A2E;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.iti__dropdown-content {
+    border: 1px solid #E8E8E8;
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.iti__search-input {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.iti__country {
+    padding: 10px 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+}
+
+.iti__country:hover,
+.iti__country--highlight {
+    background: #F5F5F0;
+}
+
+.iti__dial-code {
+    color: #757575;
+}
+
+/* Mobile responsive */
+@media (max-width: 600px) {
+    .iti__tel-input {
+        padding: 12px 14px 12px 85px !important;
+        font-size: 13px;
+    }
+
+    .iti__selected-dial-code {
+        font-size: 13px;
+    }
 }
