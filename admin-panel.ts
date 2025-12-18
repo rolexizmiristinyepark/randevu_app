@@ -199,6 +199,9 @@ async function startApp(): Promise<void> {
         // Setup link button event listeners
         setupLinkButtons();
 
+        // Setup randevu oluştur butonları
+        setupCreateAppointmentButtons();
+
         // Hide loading overlay and show tabs
         const loadingOverlay = document.getElementById('loadingOverlay');
         const tabs = document.querySelector('.tabs') as HTMLElement;
@@ -322,6 +325,29 @@ function setupLinkButtons(): void {
 
     // Load VIP and Staff links
     loadProfileLinks();
+}
+
+/**
+ * Setup randevu oluştur butonları - aynı sekmede açılır
+ */
+function setupCreateAppointmentButtons(): void {
+    // Mağaza butonu (#b profili)
+    document.getElementById('selectManuelBtn')?.addEventListener('click', () => {
+        openAppointmentForm('b');
+    });
+
+    // Yönetim butonu (#m profili)
+    document.getElementById('selectYonetimBtn')?.addEventListener('click', () => {
+        openAppointmentForm('m');
+    });
+}
+
+/**
+ * Randevu formunu aynı sekmede aç
+ */
+function openAppointmentForm(code: 'b' | 'm'): void {
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    window.location.href = baseUrl + '#' + code;
 }
 
 /**
