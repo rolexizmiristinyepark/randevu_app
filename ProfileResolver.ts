@@ -175,9 +175,8 @@ export function applyProfileUI(info: ProfileInfo): void {
     header.style.visibility = 'visible';
   }
 
-  // Gönderi ve Yönetim gizli
-  document.getElementById('typeShipping')?.style.setProperty('display', 'none');
-  document.getElementById('typeManagement')?.style.setProperty('display', 'none');
+  // NOT: Gönderi ve Yönetim kartları artık app.ts'de profilAyarlari.allowedTypes'a göre dinamik olarak filtreleniyor
+  // Burada hardcoded gizleme kaldırıldı (backend PROFIL_AYARLARI ile senkronizasyon)
 }
 
 /**

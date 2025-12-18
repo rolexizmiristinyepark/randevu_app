@@ -48,7 +48,7 @@ export interface Staff {
 
 // ==================== APPOINTMENT TYPES ====================
 
-export type AppointmentType = 'delivery' | 'service' | 'consultation' | 'general' | 'management' | 'meeting';
+export type AppointmentType = 'delivery' | 'service' | 'consultation' | 'general' | 'management' | 'meeting' | 'shipping';
 export type ShiftType = 'morning' | 'evening' | 'full';
 
 export interface AppointmentData {

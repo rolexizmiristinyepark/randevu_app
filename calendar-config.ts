@@ -11,7 +11,8 @@ export const CALENDAR_CONFIG = {
         'consultation': 'Ürün Danışmanlığı',
         'general': 'Genel Görüşme',
         'meeting': 'Genel Görüşme',      // Alias for 'general'
-        'management': 'Yönetim'
+        'management': 'Yönetim',
+        'shipping': 'Gönderi'
     },
 
     // ICS file metadata

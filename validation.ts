@@ -18,7 +18,7 @@ import type {
 
 export const ShiftTypeSchema = z.enum(['morning', 'evening', 'full']);
 
-export const AppointmentTypeSchema = z.enum(['delivery', 'service', 'consultation', 'general', 'management', 'meeting']);
+export const AppointmentTypeSchema = z.enum(['delivery', 'service', 'consultation', 'general', 'management', 'meeting', 'shipping']);
 
 // ==================== STAFF SCHEMAS ====================
 
