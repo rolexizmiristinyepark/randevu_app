@@ -288,6 +288,34 @@
             justify-content: flex-end;
         }
 
+        /* Fixed Alert Container */
+        #alertContainer {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            width: 90%;
+            max-width: 500px;
+            pointer-events: none;
+        }
+
+        #alertContainer .alert {
+            pointer-events: auto;
+            animation: alertSlideDown 0.3s ease-out;
+        }
+
+        @keyframes alertSlideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .alert {
             padding: 15px;
             border-radius: 4px;
@@ -298,13 +326,13 @@
         .alert-success {
             background: #E8F5E8;
             color: #2E7D32;
-            border: 1px solid #E8F5E8;
+            border: 1px solid #C8E6C9;
         }
 
         .alert-error {
             background: #FFEBEE;
             color: #C62828;
-            border: 1px solid #FFEBEE;
+            border: 1px solid #FFCDD2;
         }
 
         .shift-table {

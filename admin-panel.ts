@@ -67,7 +67,7 @@ function copyLink(): void {
     const linkInput = document.getElementById('customerLink') as HTMLInputElement;
     linkInput.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Link kopyalandı!', 'success');
+    UI.showAlert('Link kopyalandı!', 'success');
 }
 
 function openCustomerPage(): void {
@@ -81,7 +81,7 @@ function copyManualLink(): void {
     const linkInput = document.getElementById('manualLink') as HTMLInputElement;
     linkInput.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Manuel randevu linki kopyalandı!', 'success');
+    UI.showAlert('Manuel randevu linki kopyalandı!', 'success');
 }
 
 function openManualPage(): void {
@@ -96,7 +96,7 @@ function copyManagement1Link(): void {
     const linkInput = document.getElementById('management1Link') as HTMLInputElement;
     linkInput.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Yönetim-1 linki kopyalandı!', 'success');
+    UI.showAlert('Yönetim-1 linki kopyalandı!', 'success');
 }
 
 function openManagement1Page(): void {
@@ -110,7 +110,7 @@ function copyManagement2Link(): void {
     const linkInput = document.getElementById('management2Link') as HTMLInputElement;
     linkInput.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Yönetim-2 linki kopyalandı!', 'success');
+    UI.showAlert('Yönetim-2 linki kopyalandı!', 'success');
 }
 
 function openManagement2Page(): void {
@@ -124,7 +124,7 @@ function copyManagement3Link(): void {
     const linkInput = document.getElementById('management3Link') as HTMLInputElement;
     linkInput.select();
     document.execCommand('copy');
-    UI.showAlert('✅ Yönetim-3 linki kopyalandı!', 'success');
+    UI.showAlert('Yönetim-3 linki kopyalandı!', 'success');
 }
 
 function openManagement3Page(): void {
@@ -209,7 +209,7 @@ async function startApp(): Promise<void> {
     } catch (error) {
         console.error('Admin panel başlatma hatası:', error);
         logError(error, { context: 'startApp' });
-        UI.showAlert('❌ Yönetim paneli başlatılamadı', 'error');
+        UI.showAlert('Yönetim paneli başlatılamadı', 'error');
     }
 }
 
