@@ -38,11 +38,16 @@ export interface Config {
 
 // ==================== STAFF TYPES ====================
 
+export type StaffRole = 'sales' | 'management' | 'reception' | 'service';
+
 export interface Staff {
   id: string;
   name: string;
   phone: string;
   email?: string;
+  role?: StaffRole;
+  isAdmin?: boolean;
+  isVip?: boolean;
   active: boolean;
 }
 
