@@ -44,6 +44,11 @@ secrets.txt
 *.bak
 *.old
 
+# ==================== FIREBASE ====================
+# Firebase debug logs
+firebase-debug.log
+firebase-debug.*.log
+
 # ==================== BACKEND & ARCHIVE ====================
 # Backend managed in Google Apps Script (not in git)
 scripts/apps-script-backend.js
