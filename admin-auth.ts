@@ -10,32 +10,58 @@ const SESSION_KEYS = {
     TOKEN: 'admin_session_token',
     STAFF: 'admin_session_staff',
     EXPIRES: 'admin_session_expires',
-    SESSION_ID: 'admin_session_id'
+    SESSION_ID: 'admin_session_id',
+    // Encryption key cache - browser tab icinde tutulur (guvenlik + tutarlilik)
+    ENCRYPTION_KEY_CACHE: '_enc_key_cache'
 };
 
 // Session duration (10 minutes)
 const SESSION_DURATION = 10 * 60 * 1000;
 
-// Encryption key - browser fingerprint + static salt
+/**
+ * Encryption key olusturur - gelismis guvenlik
+ *
+ * GUVENLIK NOTU:
+ * - Her browser tab icin benzersiz bir session ID olusturulur
+ * - Static salt + session ID kombinasyonu kullanilir
+ * - Browser fingerprinting ozellikleri (userAgent, screen size vb.) KALDIRILDI
+ *   cunku bu degerler tarayici guncellemelerinde degisebilir ve
+ *   session'in bozulmasina neden olabilir
+ * - sessionStorage tab-specific oldugu icin, ayni tab icinde tutarlilik saglanir
+ * - Encryption key cache'lenir - ayni tab icinde tekrar hesaplama yapilmaz
+ *
+ * @returns {string} 32 karakter uzunlugunda encryption key
+ */
 const getEncryptionKey = (): string => {
+    // Eger onceden hesaplanmis key varsa, onu kullan (performans + tutarlilik)
+    const cachedKey = sessionStorage.getItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
+    if (cachedKey) {
+        return cachedKey;
+    }
+
+    // Static salt - uygulama ozgu, degistirilmemeli
     const staticSalt = 'RLX_ADMIN_2024_SECURE_V3';
 
+    // Session-unique ID - her tab icin farkli
     let sessionId = sessionStorage.getItem(SESSION_KEYS.SESSION_ID);
     if (!sessionId) {
         sessionId = crypto.randomUUID();
         sessionStorage.setItem(SESSION_KEYS.SESSION_ID, sessionId);
     }
 
-    const browserInfo = [
-        navigator.userAgent,
-        navigator.language,
-        screen.width,
-        screen.height,
-        new Date().getTimezoneOffset(),
-        sessionId
-    ].join('|');
+    // Sadece static salt ve session ID kullan
+    // Browser fingerprinting degerleri (userAgent, screen size vb.) kaldirildi
+    // cunku bu degerler tarayici guncellemelerinde veya zoom degisikliklerinde
+    // degisebilir ve session'in bozulmasina neden olabilir
+    const keySource = staticSalt + '|' + sessionId;
 
-    return CryptoJS.SHA256(staticSalt + browserInfo).toString().substring(0, 32);
+    // SHA256 hash olustur ve ilk 32 karakteri al
+    const encryptionKey = CryptoJS.SHA256(keySource).toString().substring(0, 32);
+
+    // Cache'e kaydet - ayni tab icinde tekrar hesaplama yapilmasin
+    sessionStorage.setItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE, encryptionKey);
+
+    return encryptionKey;
 };
 
 // Encrypt helper
@@ -81,19 +107,19 @@ const AdminAuth = {
             return false;
         }
 
-        // Session süresi dolmuş mu?
+        // Session suresi dolmus mu?
         if (Date.now() > parseInt(expiresAt)) {
-            console.warn('[AdminAuth] Session expired');
+            // Session expired - hassas bilgi icermedigi icin log yazmiyoruz
             this.logout();
             return false;
         }
 
-        // Token ve staff bilgisini çöz
+        // Token ve staff bilgisini coz
         const token = decryptData(encryptedToken);
         const staffJson = decryptData(encryptedStaff);
 
         if (!token || !staffJson) {
-            console.warn('[AdminAuth] Failed to decrypt session data');
+            // Decryption failed - guvenlik nedeniyle detay vermiyoruz
             this.logout();
             return false;
         }
@@ -101,12 +127,12 @@ const AdminAuth = {
         try {
             const staff = JSON.parse(staffJson) as StaffInfo;
 
-            // Session'ı yenile (sliding expiration)
+            // Session'i yenile (sliding expiration)
             this._refreshSession();
 
             return staff;
         } catch {
-            console.warn('[AdminAuth] Failed to parse staff data');
+            // Parse failed - guvenlik nedeniyle detay vermiyoruz
             this.logout();
             return false;
         }
@@ -150,20 +176,24 @@ const AdminAuth = {
         this._startActivityTracking();
     },
 
-    // Çıkış yap
+    // Cikis yap
     logout(): void {
         sessionStorage.removeItem(SESSION_KEYS.TOKEN);
         sessionStorage.removeItem(SESSION_KEYS.STAFF);
         sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
+        // Encryption key cache'i de temizle (guvenlik)
+        sessionStorage.removeItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
         this._stopActivityTracking();
         location.reload();
     },
 
-    // Session'ı temizle (sayfa yenilemeden)
+    // Session'i temizle (sayfa yenilemeden)
     clearSession(): void {
         sessionStorage.removeItem(SESSION_KEYS.TOKEN);
         sessionStorage.removeItem(SESSION_KEYS.STAFF);
         sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
+        // Encryption key cache'i de temizle (guvenlik)
+        sessionStorage.removeItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
         this._stopActivityTracking();
     },
 
