@@ -38,18 +38,6 @@ import { initProfileFromURL, applyProfileUI, showInvalidIdError, ProfilInfo } fr
 
 // ==================== UTILITY FONKSİYONLARI ====================
 
-
-// Debug logger - Production'da log'ları devre dışı bırakır
-// ⚠️ Uses window.CONFIG because CONFIG is loaded asynchronously
-// Kept for backward compatibility and debugging
-// @ts-ignore - Intentionally unused, kept for future use
-const _log = {
-    error: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.error(...args),
-    warn: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.warn(...args),
-    info: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.info(...args),
-    log: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.log(...args)
-};
-
 // ==================== SMOOTH SCROLL & REVEAL ANIMATIONS ====================
 // ⭐ REMOVED: UI functions moved to UIManager.ts
 // - revealSection, hideSection: imported from UIManager
@@ -79,9 +67,6 @@ if (typeof window !== 'undefined') {
 
 // ⭐ REMOVED: sessionStorageCache replaced by CacheManager.ts
 // Cache is now imported from CacheManager at the top of the file
-// All cache.get/set/has/delete/clear operations use the CacheManager instance
-// @ts-ignore - Intentionally unused, kept for backward compatibility
-const _CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // ==================== CONFIG LOADING (Backend Single Source of Truth) ====================
 
@@ -305,53 +290,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ⭐ TypeSelector functions moved to TypeSelectorComponent.ts
 // ⭐ Calendar functions moved to CalendarComponent.ts (changeMonth, renderCalendar, checkDayAvailability, selectDay, loadMonthData)
 
-// GÜVENLİ FETCH API İMPLEMENTASYONU
-// JSONP yerine modern Fetch API kullanımı - XSS ve CSRF koruması
-
-// API çağrısı için wrapper - Tutarlı hata yönetimi
-// Kept for backward compatibility - currently unused but may be needed
-// @ts-ignore - Intentionally unused, kept for future use
-async function _safeApiCall(action: string, params: any = {}, options: {
-    successMessage?: string;
-    errorPrefix?: string;
-    onSuccess?: (response: any) => void;
-    onError?: (error: any) => void;
-    showLoading?: boolean;
-} = {}) {
-    const {
-        successMessage,
-        errorPrefix = 'Hata',
-        onSuccess,
-        onError,
-        showLoading: shouldShowLoading = false
-    } = options;
-
-    if (shouldShowLoading) showLoading();
-
-    try {
-        const response = await apiCall(action, params);
-
-        if (response.success) {
-            if (successMessage) showAlert(successMessage, 'success');
-            if (onSuccess) onSuccess(response);
-            return response;
-        } else {
-            const msg = `❌ ${errorPrefix}: ${response.error}`;
-            showAlert(msg, 'error');
-            if (onError) onError(response);
-            return response;
-        }
-    } catch (error: any) {
-        const msg = `❌ ${errorPrefix}: ${error?.message || 'Bilinmeyen hata'}`;
-        showAlert(msg, 'error');
-        if (onError) onError(error);
-        throw error;
-    } finally {
-        if (shouldShowLoading) hideAlert();
-    }
-}
-
-// apiCall function moved to api-service.js (DRY principle)
+// apiCall function moved to api-service.ts (DRY principle)
 // Now imported at the top of this file
 
 // ⭐ StaffSelector functions moved to StaffSelectorComponent.ts (loadStaffMembers, loadSettings, displayAvailableStaff, selectStaff)

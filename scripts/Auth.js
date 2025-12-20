@@ -5,8 +5,8 @@
  *
  * GUNCELLEME_PLANI v3.2 uyumlu:
  * - Email + Password login (API Key yerine)
- * - Session bazlı auth (10 dakika timeout)
- * - Şifre sıfırlama
+ * - Session bazli auth (10 dakika timeout)
+ * - Sifre sifirlama
  *
  * Dependencies:
  * - Config.js (CONFIG)
@@ -17,50 +17,51 @@
 // ==================== SESSION AUTH SERVICE ====================
 /**
  * Session-based authentication service
+ * Bu, birincil (primary) kimlik dogrulama servisidir.
  * @namespace SessionAuthService
  */
 const SessionAuthService = {
   SESSION_DURATION: 10 * 60 * 1000, // 10 dakika (ms)
 
   /**
-   * Login işlemi
+   * Login islemi
    * @param {string} email - E-posta adresi
-   * @param {string} password - Şifre
+   * @param {string} password - Sifre
    * @returns {{success: boolean, token?: string, staff?: Object, expiresAt?: number, error?: string}}
    */
   login: function(email, password) {
     try {
       if (!email || !password) {
-        return { success: false, error: 'E-posta ve şifre zorunludur' };
+        return { success: false, error: 'E-posta ve sifre zorunludur' };
       }
 
       // Email ile personeli bul
       var staff = StaffService.getByEmail(email);
 
       if (!staff) {
-        log.warn('Login başarısız - email bulunamadı', { email: email });
-        return { success: false, error: 'Geçersiz e-posta veya şifre' };
+        log.warn('Login basarisiz - email bulunamadi', { email: email });
+        return { success: false, error: 'Gecersiz e-posta veya sifre' };
       }
 
       if (!staff.active) {
-        log.warn('Login başarısız - hesap pasif', { email: email });
-        return { success: false, error: 'Hesabınız pasif durumda' };
+        log.warn('Login basarisiz - hesap pasif', { email: email });
+        return { success: false, error: 'Hesabiniz pasif durumda' };
       }
 
-      // Şifre kontrolü
+      // Sifre kontrolu
       var hashedInput = StaffService.hashPassword(password);
       if (hashedInput !== staff.password) {
-        log.warn('Login başarısız - yanlış şifre', { email: email });
-        return { success: false, error: 'Geçersiz e-posta veya şifre' };
+        log.warn('Login basarisiz - yanlis sifre', { email: email });
+        return { success: false, error: 'Gecersiz e-posta veya sifre' };
       }
 
-      // Session token üret
+      // Session token uret
       var sessionToken = Utilities.getUuid();
       var expiresAt = new Date().getTime() + this.SESSION_DURATION;
 
-      // Session'ı kaydet
+      // Session'i kaydet
       var sessions = this.getSessions();
-      log.info('[LOGIN-DEBUG] Sessions before save: ' + Object.keys(sessions).length);
+      // DEBUG logging kaldirildi - guvenlik icin
       sessions[sessionToken] = {
         staffId: staff.id,
         email: staff.email,
@@ -72,12 +73,7 @@ const SessionAuthService = {
       };
       this.saveSessions(sessions);
 
-      // Verify save
-      var verifySession = this.getSessions();
-      log.info('[LOGIN-DEBUG] Sessions after save: ' + Object.keys(verifySession).length);
-      log.info('[LOGIN-DEBUG] New token prefix: ' + sessionToken.substring(0, 8));
-
-      log.info('Login başarılı', { email: email, staffId: staff.id });
+      log.info('Login basarili', { email: email, staffId: staff.id });
 
       return {
         success: true,
@@ -92,13 +88,13 @@ const SessionAuthService = {
         expiresAt: expiresAt
       };
     } catch (error) {
-      log.error('Login hatası', error);
-      return { success: false, error: 'Giriş işlemi başarısız' };
+      log.error('Login hatasi', error);
+      return { success: false, error: 'Giris islemi basarisiz' };
     }
   },
 
   /**
-   * Session doğrula
+   * Session dogrula
    * @param {string} token - Session token
    * @returns {{valid: boolean, staff?: Object, expiresAt?: number, error?: string}}
    */
@@ -109,34 +105,25 @@ const SessionAuthService = {
       }
 
       var sessions = this.getSessions();
-      var sessionKeys = Object.keys(sessions);
-      log.info('[SESSION-DEBUG] Stored sessions count: ' + sessionKeys.length);
-      log.info('[SESSION-DEBUG] Looking for token: ' + token.substring(0, 8) + '...');
-      log.info('[SESSION-DEBUG] Stored token prefixes: ' + sessionKeys.map(function(k) { return k.substring(0, 8); }).join(', '));
-
+      // DEBUG logging kaldirildi - token bilgisi hassas veri
       var session = sessions[token];
 
       if (!session) {
         return {
           valid: false,
-          error: 'Geçersiz session - token bulunamadı',
-          debug: {
-            storedCount: sessionKeys.length,
-            lookingFor: token.substring(0, 8),
-            storedPrefixes: sessionKeys.map(function(k) { return k.substring(0, 8); })
-          }
+          error: 'Gecersiz session - token bulunamadi'
         };
       }
 
-      // Süre kontrolü
+      // Sure kontrolu
       var now = new Date().getTime();
       if (now > session.expiresAt) {
         delete sessions[token];
         this.saveSessions(sessions);
-        return { valid: false, error: 'Session süresi doldu' };
+        return { valid: false, error: 'Session suresi doldu' };
       }
 
-      // Session'ı yenile (sliding expiration)
+      // Session'i yenile (sliding expiration)
       session.expiresAt = now + this.SESSION_DURATION;
       sessions[token] = session;
       this.saveSessions(sessions);
@@ -153,8 +140,8 @@ const SessionAuthService = {
         expiresAt: session.expiresAt
       };
     } catch (error) {
-      log.error('Session validation hatası', error);
-      return { valid: false, error: 'Session doğrulama hatası' };
+      log.error('Session validation hatasi', error);
+      return { valid: false, error: 'Session dogrulama hatasi' };
     }
   },
 
@@ -169,17 +156,17 @@ const SessionAuthService = {
       if (sessions[token]) {
         delete sessions[token];
         this.saveSessions(sessions);
-        log.info('Logout başarılı', { token: token.substring(0, 8) + '...' });
+        log.info('Logout basarili', { token: token.substring(0, 8) + '...' });
       }
       return { success: true };
     } catch (error) {
-      log.error('Logout hatası', error);
-      return { success: true }; // Logout her zaman başarılı kabul edilir
+      log.error('Logout hatasi', error);
+      return { success: true }; // Logout her zaman basarili kabul edilir
     }
   },
 
   /**
-   * Şifre sıfırlama
+   * Sifre sifirlama
    * @param {string} email - E-posta adresi
    * @returns {{success: boolean, message?: string, error?: string}}
    */
@@ -191,61 +178,61 @@ const SessionAuthService = {
         return result;
       }
 
-      // Email gönder
+      // Email gonder
       try {
         var emailBody = 'Merhaba ' + result.name + ',\n\n' +
-          'Randevu sistemi yeni şifreniz:\n\n' +
+          'Randevu sistemi yeni sifreniz:\n\n' +
           'E-posta: ' + result.email + '\n' +
-          'Şifre: ' + result.plainPassword + '\n\n' +
-          'Giriş: https://rolexizmiristinyepark.github.io/randevu_app/admin.html\n\n' +
-          'Güvenliğiniz için şifrenizi kimseyle paylaşmayın.\n\n' +
+          'Sifre: ' + result.plainPassword + '\n\n' +
+          'Giris: https://rolexizmiristinyepark.github.io/randevu_app/admin.html\n\n' +
+          'Guvenliginiz icin sifrenizi kimseyle paylasmay in.\n\n' +
           CONFIG.COMPANY_NAME;
 
         MailApp.sendEmail({
           to: result.email,
-          subject: 'Randevu Sistemi - Yeni Şifreniz',
+          subject: 'Randevu Sistemi - Yeni Sifreniz',
           body: emailBody,
           name: CONFIG.COMPANY_NAME
         });
 
-        log.info('Şifre sıfırlama e-postası gönderildi', { email: email });
-        return { success: true, message: 'Yeni şifre e-posta adresinize gönderildi' };
+        log.info('Sifre sifirlama e-postasi gonderildi', { email: email });
+        return { success: true, message: 'Yeni sifre e-posta adresinize gonderildi' };
       } catch (e) {
-        log.error('Şifre sıfırlama e-postası gönderilemedi', e);
-        return { success: false, error: 'E-posta gönderilemedi: ' + e.message };
+        log.error('Sifre sifirlama e-postasi gonderilemedi', e);
+        return { success: false, error: 'E-posta gonderilemedi: ' + e.message };
       }
     } catch (error) {
-      log.error('Şifre sıfırlama hatası', error);
-      return { success: false, error: 'Şifre sıfırlama işlemi başarısız' };
+      log.error('Sifre sifirlama hatasi', error);
+      return { success: false, error: 'Sifre sifirlama islemi basarisiz' };
     }
   },
 
   /**
-   * Şifre değiştir
+   * Sifre degistir
    * @param {string} token - Session token
-   * @param {string} oldPassword - Mevcut şifre
-   * @param {string} newPassword - Yeni şifre
+   * @param {string} oldPassword - Mevcut sifre
+   * @param {string} newPassword - Yeni sifre
    * @returns {{success: boolean, error?: string}}
    */
   changePassword: function(token, oldPassword, newPassword) {
     try {
       var sessionResult = this.validateSession(token);
       if (!sessionResult.valid) {
-        return { success: false, error: 'Geçersiz session' };
+        return { success: false, error: 'Gecersiz session' };
       }
 
       return StaffService.changePassword(sessionResult.staff.id, oldPassword, newPassword);
     } catch (error) {
-      log.error('Şifre değiştirme hatası', error);
-      return { success: false, error: 'Şifre değiştirme işlemi başarısız' };
+      log.error('Sifre degistirme hatasi', error);
+      return { success: false, error: 'Sifre degistirme islemi basarisiz' };
     }
   },
 
   // ==================== HELPER FUNCTIONS ====================
-  // Session'lar artık Spreadsheet'te saklanıyor (deployment-bağımsız)
+  // Session'lar artik Spreadsheet'te saklaniyor (deployment-bagimsiz)
 
   /**
-   * Session'ları getir (Spreadsheet'ten)
+   * Session'lari getir (Spreadsheet'ten)
    * @returns {Object} Sessions objesi
    */
   getSessions: function() {
@@ -253,7 +240,7 @@ const SessionAuthService = {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
       var sheet = ss.getSheetByName('SESSIONS');
 
-      // Sheet yoksa oluştur
+      // Sheet yoksa olustur
       if (!sheet) {
         sheet = ss.insertSheet('SESSIONS');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
@@ -271,13 +258,13 @@ const SessionAuthService = {
         var sessionData = data[i][1];
         var expiresAt = data[i][2];
 
-        // Süresi dolmamış session'ları al
+        // Suresi dolmamis session'lari al
         if (token && expiresAt > now) {
           try {
             sessions[token] = JSON.parse(sessionData);
             sessions[token].expiresAt = expiresAt;
           } catch (e) {
-            // Parse hatası, bu session'ı atla
+            // Parse hatasi, bu session'i atla
           }
         }
       }
@@ -290,7 +277,7 @@ const SessionAuthService = {
   },
 
   /**
-   * Session'ları kaydet (Spreadsheet'e)
+   * Session'lari kaydet (Spreadsheet'e)
    * @param {Object} sessions - Sessions objesi
    */
   saveSessions: function(sessions) {
@@ -298,25 +285,25 @@ const SessionAuthService = {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
       var sheet = ss.getSheetByName('SESSIONS');
 
-      // Sheet yoksa oluştur
+      // Sheet yoksa olustur
       if (!sheet) {
         sheet = ss.insertSheet('SESSIONS');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
       }
 
-      // Mevcut verileri temizle (header hariç)
+      // Mevcut verileri temizle (header haric)
       var lastRow = sheet.getLastRow();
       if (lastRow > 1) {
         sheet.deleteRows(2, lastRow - 1);
       }
 
-      // Yeni session'ları ekle
+      // Yeni session'lari ekle
       var rows = [];
       for (var token in sessions) {
         var session = sessions[token];
         var sessionCopy = JSON.parse(JSON.stringify(session));
         var expiresAt = sessionCopy.expiresAt;
-        delete sessionCopy.expiresAt; // expiresAt ayrı kolonda
+        delete sessionCopy.expiresAt; // expiresAt ayri kolonda
 
         rows.push([
           token,
@@ -335,7 +322,7 @@ const SessionAuthService = {
   },
 
   /**
-   * Eski session'ları temizle (günde 1 kez çalıştırılmalı)
+   * Eski session'lari temizle (gunde 1 kez calistirilmali)
    * @returns {{cleaned: number}}
    */
   cleanupSessions: function() {
@@ -351,18 +338,31 @@ const SessionAuthService = {
     }
 
     this.saveSessions(sessions);
-    log.info('Session temizliği yapıldı', { cleaned: cleaned });
+    log.info('Session temizligi yapildi', { cleaned: cleaned });
     return { cleaned: cleaned };
   }
 };
 
 // ==================== LEGACY API KEY SERVICE ====================
 /**
+ * @deprecated DEPRECATED - Bu servis v3.0'dan itibaren kullanilmamalidir.
+ * Yerine SessionAuthService kullanin.
+ *
  * API Key authentication service (legacy - geriye uyumluluk)
+ *
+ * GUVENLIK NOTU (2024-12):
+ * - Bu sistem yalnizca geriye donuk uyumluluk icin korunmaktadir
+ * - Yeni gelistirmelerde SessionAuthService tercih edilmelidir
+ * - Session-based auth daha guvenlidir (sliding expiration, logout destegi)
+ * - API key sistemi gelecekte kaldirilacaktir
+ * - API key'ler uzun omurludur ve calinabildiklerinde riski yuksek
+ *
  * @namespace AuthService
+ * @deprecated v3.0'dan itibaren SessionAuthService kullanin
  */
 const AuthService = {
   /**
+   * @deprecated API key sistemi yerine SessionAuthService.login() kullanin
    * Generate a new random API key with 'RLX_' prefix
    * @returns {string} Generated API key
    */
@@ -371,6 +371,7 @@ const AuthService = {
   },
 
   /**
+   * @deprecated API key sistemi yerine session token kullanin
    * Save API key to PropertiesService
    * @param {string} key - API key to save
    * @returns {string} Saved key
@@ -382,6 +383,7 @@ const AuthService = {
   },
 
   /**
+   * @deprecated API key sistemi yerine SessionAuthService.getSessionToken() kullanin
    * Get stored API key
    * @returns {string} Current API key
    */
@@ -398,6 +400,7 @@ const AuthService = {
   },
 
   /**
+   * @deprecated API key sistemi yerine SessionAuthService.validateSession() kullanin
    * Validate provided API key
    * @param {string} providedKey - API key to validate
    * @returns {boolean} True if valid
@@ -409,6 +412,7 @@ const AuthService = {
   },
 
   /**
+   * @deprecated API key yenileme yerine sifre degistirme ozelligini kullanin
    * Regenerate API key
    * @param {string} oldKey - Current API key for verification
    * @returns {{success: boolean, apiKey?: string, error?: string}}
@@ -423,7 +427,7 @@ const AuthService = {
 
     log.info('API key yenilendi');
 
-    // Admin'e e-posta gönder
+    // Admin'e e-posta gonder
     try {
       MailApp.sendEmail({
         to: CONFIG.ADMIN_EMAIL,
@@ -432,13 +436,14 @@ const AuthService = {
         htmlBody: '<div style="font-family: Arial, sans-serif;"><h3>API Key Yenilendi</h3><p>Yeni API Key: <code>' + newKey + '</code></p></div>'
       });
     } catch (e) {
-      log.error('API key yenileme e-postası gönderilemedi', e);
+      log.error('API key yenileme e-postasi gonderilemedi', e);
     }
 
     return { success: true, apiKey: newKey };
   },
 
   /**
+   * @deprecated Bu fonksiyon sadece geriye donuk uyumluluk icin korunmaktadir
    * Initialize API key and send to admin email
    * @returns {{success: boolean, apiKey: string}}
    */
@@ -452,10 +457,10 @@ const AuthService = {
         name: CONFIG.COMPANY_NAME,
         htmlBody: '<div style="font-family: Arial, sans-serif;"><h3>API Key</h3><p>API Key: <code>' + existingKey + '</code></p></div>'
       });
-      return { success: true, message: 'API key e-posta ile gönderildi', apiKey: existingKey };
+      return { success: true, message: 'API key e-posta ile gonderildi', apiKey: existingKey };
     } catch (e) {
-      log.error('API key e-postası gönderilemedi', e);
-      return { success: true, apiKey: existingKey, warning: 'E-posta gönderilemedi' };
+      log.error('API key e-postasi gonderilemedi', e);
+      return { success: true, apiKey: existingKey, warning: 'E-posta gonderilemedi' };
     }
   }
 };
@@ -463,14 +468,25 @@ const AuthService = {
 // ==================== STANDALONE FUNCTIONS ====================
 
 /**
- * Session temizliği - Trigger ile günde 1 kez çalıştır
+ * Session temizligi - Trigger ile gunde 1 kez calistir
+ *
+ * KURULUM TALIMATLARI:
+ * 1. Google Apps Script Editor'de Triggers menusune gidin
+ * 2. "Add Trigger" tiklayin
+ * 3. Fonksiyon: cleanupExpiredSessions
+ * 4. Event source: Time-driven
+ * 5. Type: Day timer
+ * 6. Time of day: 03:00 - 04:00 (gece saati onerilir)
+ *
+ * Bu trigger suresi dolmus session'lari temizler ve
+ * veritabani sismesini onler.
  */
 function cleanupExpiredSessions() {
   return SessionAuthService.cleanupSessions();
 }
 
 /**
- * Test: Login işlemi
+ * Test: Login islemi
  */
 function testLogin() {
   var result = SessionAuthService.login('test@rolex.com', 'test1234');
@@ -479,6 +495,7 @@ function testLogin() {
 }
 
 /**
+ * @deprecated API key sistemi kullanilmamalidir
  * Send API Key to admin email (legacy)
  */
 function sendApiKeyToAdmin() {
@@ -486,6 +503,7 @@ function sendApiKeyToAdmin() {
 }
 
 /**
+ * @deprecated API key sistemi kullanilmamalidir
  * Get current API Key (legacy)
  */
 function showCurrentApiKey() {

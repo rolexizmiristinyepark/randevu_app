@@ -3,6 +3,9 @@ dist/
 .DS_Store
 *.zip
 
+# Recovered/backup files
+_RECOVERED_FILES/
+
 # Local development settings
 .claude/
 
