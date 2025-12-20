@@ -122,7 +122,7 @@ const ApiService = {
             if (!key && typeof (window as any).AdminAuth !== 'undefined') {
                 // Try to get session token
                 key = (window as any).AdminAuth.getSessionToken?.() || null;
-                console.log('[API] Session token retrieved:', key ? `${key.substring(0, 8)}...` : 'null');
+                // Token bilgisi loglanmiyor - guvenlik icin
             }
 
             // If no API key and AdminAuth is available, show login modal
@@ -181,8 +181,7 @@ const ApiService = {
                     return;
                 }
 
-                // 🔍 DEBUG: Log used URL
-                console.log(`[API] ${action} -> ${appsScriptUrl.substring(0, 80)}...`);
+                // DEBUG logging kaldirildi - production'da URL loglama guvenlik riski olusturabilir
 
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
@@ -194,8 +193,8 @@ const ApiService = {
                 const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
 
                 if (isProtectedAction && apiKey) {
-                    // ✅ POST + JSON Body - API key güvenli
-                    console.log('[API] Sending protected action with apiKey:', apiKey ? `${apiKey.substring(0, 8)}...` : 'null');
+                    // POST + JSON Body - API key guvenli (URL'de gorunmez)
+                    // API key bilgisi loglanmiyor - guvenlik icin
                     const requestBody = {
                         action,
                         apiKey,
