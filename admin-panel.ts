@@ -12,6 +12,7 @@ import { initStaffManager } from './admin/staff-manager';
 import { initShiftManager } from './admin/shift-manager';
 import { initAppointmentManager, loadAppointments } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
+import { initWhatsAppManager, loadSentMessages, loadReceivedMessages } from './admin/whatsapp-manager';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -246,6 +247,7 @@ async function startApp(): Promise<void> {
         await initShiftManager(dataStore);
         await initAppointmentManager(dataStore);
         await initSettingsManager(dataStore);
+        await initWhatsAppManager(dataStore);
 
         // Setup tabs
         setupTabs();
@@ -317,6 +319,12 @@ function setupTabs(): void {
 
             if (innerTabName && subTabId) {
                 UI.switchInnerTab(subTabId, innerTabName);
+
+                // Load messages when switching to WhatsApp messages tab
+                if (innerTabName === 'whatsappMessages') {
+                    loadSentMessages();
+                    loadReceivedMessages();
+                }
             }
         });
     });
