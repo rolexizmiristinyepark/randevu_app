@@ -515,6 +515,59 @@ function testLogin() {
 }
 
 /**
+ * DEBUG: Session sheet'ini kontrol et
+ * Google Apps Script'te bu fonksiyonu manuel çalıştırarak debug yapabilirsiniz
+ */
+function debugSessions() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  Logger.log('Spreadsheet ID: ' + CONFIG.SPREADSHEET_ID);
+  Logger.log('Spreadsheet Name: ' + ss.getName());
+
+  // Tüm sheet isimlerini listele
+  var sheets = ss.getSheets();
+  Logger.log('Available sheets: ' + sheets.map(function(s) { return s.getName(); }).join(', '));
+
+  // SESSIONS sheet'ini bul
+  var sessionsSheet = ss.getSheetByName('SESSIONS');
+  if (!sessionsSheet) {
+    Logger.log('❌ SESSIONS sheet bulunamadi!');
+    return { error: 'SESSIONS sheet not found', availableSheets: sheets.map(function(s) { return s.getName(); }) };
+  }
+
+  Logger.log('✅ SESSIONS sheet bulundu');
+
+  // Verileri oku
+  var data = sessionsSheet.getDataRange().getValues();
+  Logger.log('Total rows: ' + data.length);
+
+  if (data.length > 0) {
+    Logger.log('Headers: ' + JSON.stringify(data[0]));
+  }
+
+  if (data.length > 1) {
+    for (var i = 1; i < data.length; i++) {
+      Logger.log('Row ' + i + ': token=' + (data[i][0] ? String(data[i][0]).substring(0, 8) + '...' : 'empty') +
+                 ', expiresAt=' + data[i][2] +
+                 ', type=' + typeof data[i][2]);
+    }
+  }
+
+  // getSessions fonksiyonunu test et
+  var sessions = SessionAuthService.getSessions();
+  Logger.log('Parsed sessions count: ' + Object.keys(sessions).length);
+  Logger.log('Session tokens: ' + Object.keys(sessions).map(function(k) { return k.substring(0, 8); }).join(', '));
+
+  return {
+    spreadsheetId: CONFIG.SPREADSHEET_ID,
+    spreadsheetName: ss.getName(),
+    availableSheets: sheets.map(function(s) { return s.getName(); }),
+    sessionsSheetFound: true,
+    totalRows: data.length,
+    parsedSessionsCount: Object.keys(sessions).length
+  };
+}
+
+/**
  * @deprecated API key sistemi kullanilmamalidir
  * Send API Key to admin email (legacy)
  */
