@@ -113,7 +113,12 @@ const SessionAuthService = {
       if (!session) {
         return {
           valid: false,
-          error: 'Gecersiz session - token bulunamadi (count: ' + Object.keys(sessions).length + ')'
+          error: 'Gecersiz session - token bulunamadi',
+          debug: {
+            storedCount: Object.keys(sessions).length,
+            lookingFor: token ? token.substring(0, 8) : null,
+            storedPrefixes: Object.keys(sessions).map(function(k) { return k.substring(0, 8); })
+          }
         };
       }
 
