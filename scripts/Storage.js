@@ -570,12 +570,21 @@ const DataRetentionService = {
  * - Time: 03:00-04:00
  */
 function runDataRetention() {
-  return DataRetentionService.cleanupOldAppointments();
+  const results = {
+    appointments: DataRetentionService.cleanupOldAppointments(),
+    messageLogs: SheetStorageService.cleanupOldMessageLogs()
+  };
+
+  log.info('KVKK Data Retention completed:', results);
+  return results;
 }
 
 /**
  * Dry-run: Ne kadar veri temizleneceğini gör
  */
 function previewDataRetention() {
-  return DataRetentionService.previewCleanup();
+  return {
+    appointments: DataRetentionService.previewCleanup(),
+    messageLogs: SheetStorageService.previewMessageLogCleanup()
+  };
 }

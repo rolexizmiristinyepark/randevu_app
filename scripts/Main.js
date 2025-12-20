@@ -42,7 +42,9 @@ const ADMIN_ACTIONS = [
 const SESSION_ADMIN_ACTIONS = [
   'createStaff', 'updateStaffV3', 'getAllLinks', 'regenerateLink',
   // WhatsApp Template CRUD (v3.2)
-  'getWhatsAppTemplates', 'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate', 'getWhatsAppVariableOptions'
+  'getWhatsAppTemplates', 'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate', 'getWhatsAppVariableOptions',
+  // WhatsApp Message Log (v4.0)
+  'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -293,6 +295,26 @@ const ACTION_HANDLERS = {
   'deleteWhatsAppTemplate': (e) => deleteWhatsAppTemplate({ id: e.parameter.id }),
   'getWhatsAppVariableOptions': () => getWhatsAppVariableOptions(),
 
+  // WhatsApp Message Log (v4.0)
+  'getWhatsAppMessages': (e) => ({
+    success: true,
+    data: SheetStorageService.getMessageLogs({
+      appointmentId: e.parameter.appointmentId || null,
+      phone: e.parameter.phone || null,
+      status: e.parameter.status || null,
+      limit: parseInt(e.parameter.limit) || 100,
+      offset: parseInt(e.parameter.offset) || 0
+    })
+  }),
+  'getWhatsAppMessageStats': () => ({
+    success: true,
+    data: SheetStorageService.getMessageStats()
+  }),
+  'getAppointmentMessages': (e) => ({
+    success: true,
+    data: SheetStorageService.getAppointmentMessages(e.parameter.appointmentId)
+  }),
+
   // WhatsApp Flow System (v3.4)
   'getWhatsAppFlows': () => getWhatsAppFlows(),
   'getWhatsAppFlow': (e) => getWhatsAppFlow(e.parameter),
@@ -315,6 +337,31 @@ const ACTION_HANDLERS = {
  */
 function doGet(e) {
   try {
+    // WhatsApp Webhook Verification (Meta requirement)
+    // 🔒 GÜVENLİK: Token Script Properties'den alınmalı, hardcoded değer yok
+    if (e.parameter['hub.mode'] === 'subscribe' && e.parameter['hub.verify_token']) {
+      const verifyToken = PropertiesService.getScriptProperties().getProperty('WHATSAPP_WEBHOOK_VERIFY_TOKEN');
+
+      // Token yapılandırılmamışsa güvenli bir şekilde hata döndür
+      if (!verifyToken) {
+        log.error('WHATSAPP_WEBHOOK_VERIFY_TOKEN Script Property ayarlanmamış');
+        return ContentService
+          .createTextOutput('Webhook not configured')
+          .setMimeType(ContentService.MimeType.TEXT);
+      }
+
+      if (e.parameter['hub.verify_token'] === verifyToken) {
+        // Return the challenge to verify the webhook
+        return ContentService
+          .createTextOutput(e.parameter['hub.challenge'])
+          .setMimeType(ContentService.MimeType.TEXT);
+      } else {
+        return ContentService
+          .createTextOutput('Verification failed')
+          .setMimeType(ContentService.MimeType.TEXT);
+      }
+    }
+
     const action = e.parameter.action;
     const apiKey = e.parameter.apiKey;
 
@@ -428,6 +475,20 @@ function doPost(e) {
     }
 
     const params = JSON.parse(e.postData.contents);
+
+    // WhatsApp Webhook Status Updates (Meta callback)
+    if (params.object === 'whatsapp_business_account' && params.entry) {
+      try {
+        handleWhatsAppWebhook(params);
+      } catch (webhookError) {
+        console.error('WhatsApp webhook error:', webhookError);
+      }
+      // Meta expects 200 OK response
+      return ContentService
+        .createTextOutput('OK')
+        .setMimeType(ContentService.MimeType.TEXT);
+    }
+
     const action = params.action;
     const apiKey = params.apiKey;
 

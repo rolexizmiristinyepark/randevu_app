@@ -6,7 +6,7 @@
 
         body {
             font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #FAFAFA 0%, #F5F5F0 100%);
+            background: #FAFAFA;
             min-height: 100vh;
         }
 
@@ -721,56 +721,49 @@
 
 /* ==================== HIERARCHICAL TAB SYSTEM ==================== */
 /* 3-level tabs: main-tabs > sub-tabs > inner-tabs */
+/* Rolex-inspired elegant design */
 
 /* Main Tabs (Randevu, Bildirim, Team, Apps) */
 .main-tabs {
     display: flex;
-    gap: 0;
+    gap: 4px;
     margin-bottom: 0;
-    background: white;
-    border-radius: 4px 4px 0 0;
-    overflow: hidden;
-    border: 1px solid #E8E8E8;
-    border-bottom: none;
+    background: transparent;
+    padding: 0 0 12px 0;
 }
 
 .main-tab {
     flex: 1;
-    padding: 16px 24px;
-    background: #FAFAFA;
+    padding: 14px 20px;
+    background: transparent;
     border: none;
-    border-right: 1px solid #E8E8E8;
+    border-bottom: 2px solid transparent;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
-    letter-spacing: 1px;
-    color: #757575;
-    transition: all 0.3s;
+    letter-spacing: 1.5px;
+    color: #9E9E9E;
+    transition: all 0.25s ease;
     text-transform: uppercase;
     text-align: center;
-}
-
-.main-tab:last-child {
-    border-right: none;
+    position: relative;
 }
 
 .main-tab:hover {
-    background: #F5F5F0;
     color: #1A1A2E;
 }
 
 .main-tab.active {
-    background: #1A1A2E;
-    color: #FAFAFA;
+    color: #1A1A2E;
+    border-bottom-color: #C9A55A;
 }
 
 .main-tab-content {
     display: none;
-    background: white;
-    border: 1px solid #E8E8E8;
-    border-top: none;
-    border-radius: 0 0 4px 4px;
+    background: #FAFAFA;
+    border-radius: 8px;
     padding: 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
 }
 
 .main-tab-content.active {
@@ -780,31 +773,31 @@
 /* Sub Tabs (within each main tab) */
 .sub-tabs {
     display: flex;
-    gap: 0;
-    background: #F5F5F0;
+    gap: 8px;
+    background: transparent;
     border-bottom: 1px solid #E8E8E8;
-    padding: 0 15px;
+    padding: 16px 20px 0;
     flex-wrap: wrap;
 }
 
 .sub-tab {
-    padding: 12px 20px;
+    padding: 10px 16px;
     background: transparent;
     border: none;
     border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
     cursor: pointer;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 400;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.3px;
     color: #757575;
-    transition: all 0.3s;
+    transition: all 0.2s ease;
     text-transform: none;
     position: relative;
 }
 
 .sub-tab:hover:not(.disabled) {
     color: #1A1A2E;
-    background: rgba(201, 165, 90, 0.05);
 }
 
 .sub-tab.active {
@@ -820,7 +813,7 @@
 
 .sub-tab-content {
     display: none;
-    padding: 20px;
+    padding: 24px;
 }
 
 .sub-tab-content.active {
@@ -968,29 +961,32 @@
 
 @media (max-width: 768px) {
     .main-tabs {
-        flex-direction: column;
+        gap: 0;
+        padding-bottom: 8px;
     }
 
     .main-tab {
-        border-right: none;
-        border-bottom: 1px solid #E8E8E8;
-    }
-
-    .main-tab:last-child {
-        border-bottom: none;
+        padding: 12px 8px;
+        font-size: 10px;
+        letter-spacing: 0.5px;
     }
 
     .sub-tabs {
-        padding: 0 10px;
+        padding: 12px 12px 0;
         overflow-x: auto;
         flex-wrap: nowrap;
+        gap: 4px;
         -webkit-overflow-scrolling: touch;
     }
 
     .sub-tab {
         white-space: nowrap;
-        padding: 10px 15px;
-        font-size: 11px;
+        padding: 8px 12px;
+        font-size: 12px;
+    }
+
+    .sub-tab-content {
+        padding: 16px;
     }
 
     .inner-tabs {
@@ -1000,5 +996,317 @@
     .apps-grid {
         grid-template-columns: 1fr;
         padding: 15px;
+    }
+}
+
+/* ==================== PERMISSION BADGES ==================== */
+
+.perm-badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.perm-full {
+    background: #E8F5E8;
+    color: #2E7D32;
+}
+
+.perm-view {
+    background: #E3F2FD;
+    color: #1976D2;
+}
+
+.perm-none {
+    background: #FFEBEE;
+    color: #C62828;
+}
+
+/* Permission Table */
+.permission-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.permission-table th,
+.permission-table td {
+    border: 1px solid #E8E8E8;
+}
+
+.permission-table th:first-child,
+.permission-table td:first-child {
+    text-align: left;
+}
+
+/* Hidden elements for non-admin */
+.admin-only {
+    display: none;
+}
+
+.admin-user .admin-only {
+    display: block;
+}
+
+/* Disabled state for non-admin interactions */
+.readonly-for-user {
+    pointer-events: none;
+    opacity: 0.7;
+}
+
+.readonly-for-user::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(250, 250, 250, 0.4);
+    pointer-events: none;
+}
+
+/* Admin Users List */
+.admin-user-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 15px;
+    background: #FAFAFA;
+    border: 1px solid #E8E8E8;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.admin-user-item:last-child {
+    margin-bottom: 0;
+}
+
+.admin-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-user-avatar {
+    width: 36px;
+    height: 36px;
+    background: #1A1A2E;
+    color: #FAFAFA;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.admin-user-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #1A1A2E;
+}
+
+.admin-user-role {
+    font-size: 11px;
+    color: #757575;
+    margin-top: 2px;
+}
+
+/* ==================== BUTTON LOADING STATES ==================== */
+
+/* Button loading spinner - sadece btn-animating YOKSA ::after kullan */
+/* ButtonAnimator kendi spinner'ını ekliyor, çakışma olmasın */
+.btn.btn-loading:not(.btn-animating) {
+    position: relative;
+    pointer-events: none;
+    color: transparent !important;
+}
+
+.btn.btn-loading:not(.btn-animating)::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid rgba(201, 165, 90, 0.3);
+    border-top-color: #C9A55A;
+    border-radius: 50%;
+    animation: btnSpin 0.8s linear infinite;
+}
+
+/* Button success state with checkmark */
+.btn.btn-success-state {
+    position: relative;
+    pointer-events: none;
+    background: #2E7D32 !important;
+    border-color: #2E7D32 !important;
+    color: transparent !important;
+}
+
+.btn.btn-success-state::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 14px;
+    margin: -9px 0 0 -4px;
+    border: solid #FAFAFA;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    animation: btnCheck 0.3s ease-out;
+}
+
+/* Button error state */
+.btn.btn-error-state {
+    position: relative;
+    pointer-events: none;
+    background: #C62828 !important;
+    border-color: #C62828 !important;
+    color: transparent !important;
+}
+
+.btn.btn-error-state::after {
+    content: '!';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 16px;
+    font-weight: bold;
+    color: #FAFAFA;
+}
+
+/* Animations */
+@keyframes btnSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes btnCheck {
+    0% {
+        opacity: 0;
+        transform: rotate(45deg) scale(0);
+    }
+    50% {
+        opacity: 1;
+        transform: rotate(45deg) scale(1.2);
+    }
+    100% {
+        transform: rotate(45deg) scale(1);
+    }
+}
+
+/* Button disabled state improvements */
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Ensure consistent button styling across all pages */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Button icon support */
+.btn-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+/* Small button adjustments for loading state */
+.btn-small.btn-loading:not(.btn-animating)::after {
+    width: 12px;
+    height: 12px;
+    margin: -6px 0 0 -6px;
+    border-width: 1.5px;
+}
+
+.btn-small.btn-success-state::after {
+    width: 6px;
+    height: 10px;
+    margin: -7px 0 0 -3px;
+}
+
+/* ========================================
+   PROFIL AYARLARI TABLE - RESPONSIVE
+   ======================================== */
+
+#profilAyarlariTable {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+#profilAyarlariTable table {
+    min-width: 900px;
+}
+
+#profilAyarlariTable th,
+#profilAyarlariTable td {
+    white-space: nowrap;
+}
+
+/* Mobile responsive - stack layout for very small screens */
+@media (max-width: 768px) {
+    #profilAyarlariTable table {
+        font-size: 12px;
+    }
+
+    #profilAyarlariTable th,
+    #profilAyarlariTable td {
+        padding: 8px 6px !important;
+    }
+
+    /* Hide less important columns on small screens */
+    #profilAyarlariTable th:nth-child(3),
+    #profilAyarlariTable td:nth-child(3),
+    #profilAyarlariTable th:nth-child(4),
+    #profilAyarlariTable td:nth-child(4) {
+        display: none;
+    }
+}
+
+/* Tablet view - slightly smaller */
+@media (max-width: 1024px) {
+    #profilAyarlariTable {
+        margin: 0 -15px;
+        padding: 0 15px;
+    }
+}
+
+/* Profil ayarları edit modal responsive */
+#editProfilModal .modal-content {
+    max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+@media (max-width: 600px) {
+    #editProfilModal .modal-content {
+        margin: 10px;
+        max-width: calc(100% - 20px);
+    }
+
+    #editProfilModal .form-group {
+        margin-bottom: 15px;
+    }
+
+    #editProfilModal select,
+    #editProfilModal input {
+        width: 100%;
     }
 }

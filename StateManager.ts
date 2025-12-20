@@ -68,7 +68,7 @@ export interface ProfilAyarlari {
   allowedTypes: string[];
   staffFilter: string;
   showCalendar: boolean;
-  takvimFiltresi: 'bugun' | 'hepsi';
+  takvimFiltresi: 'onlytoday' | 'withtoday' | 'withouttoday';
 }
 
 export interface AppState {

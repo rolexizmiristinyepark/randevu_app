@@ -135,26 +135,29 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // v3.4: Profil ayarlarına göre UI düzenle
-    // takvimFiltresi: 'bugun' = takvim gösterilmez, bugün otomatik seçilir
-    //                 'hepsi' = takvim gösterilir, müşteri seçer
+    // takvimFiltresi:
+    //   'onlytoday' = takvim gösterilmez, bugün otomatik seçilir
+    //   'withtoday' = takvim gösterilir, bugün dahil
+    //   'withouttoday' = takvim gösterilir, yarından itibaren
     let todayOnlyCalendar = false;
     if (profilAyarlari) {
         const today = new Date();
         const todayStr = today.toISOString().split('T')[0];
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
         // Takvim filtresi kontrolü
-        if (profilAyarlari.takvimFiltresi === 'bugun') {
+        if (profilAyarlari.takvimFiltresi === 'onlytoday') {
             // Sadece bugün: Takvim gösterilmez, bugün otomatik seçilir
             state.set('selectedDate', todayStr);
             todayOnlyCalendar = true;
+        } else if (profilAyarlari.takvimFiltresi === 'withouttoday') {
+            // Yarın ve sonrası: Varsayılan tarih yarın
+            state.set('selectedDate', tomorrowStr);
         } else {
-            // Tüm günler: Varsayılan tarih sameDayBooking'e göre
-            const tomorrow = new Date(today);
-            tomorrow.setDate(tomorrow.getDate() + 1);
-            const defaultDate = profilAyarlari.sameDayBooking
-                ? todayStr
-                : tomorrow.toISOString().split('T')[0];
-            state.set('selectedDate', defaultDate);
+            // withtoday veya diğer: Bugün dahil, varsayılan tarih bugün
+            state.set('selectedDate', todayStr);
         }
 
         // v3.5: staffFilter kontrolü

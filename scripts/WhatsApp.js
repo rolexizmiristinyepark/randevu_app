@@ -19,6 +19,82 @@
  * - Security.gs (log)
  */
 
+// ==================== WHATSAPP WEBHOOK HANDLER ====================
+/**
+ * WhatsApp Webhook Handler
+ * Meta WhatsApp Cloud API'dan gelen delivery status güncellemelerini işler
+ * Status types: sent, delivered, read, failed
+ * @param {Object} webhookData - Meta'dan gelen webhook verisi
+ */
+function handleWhatsAppWebhook(webhookData) {
+  try {
+    if (!webhookData.entry || !Array.isArray(webhookData.entry)) {
+      console.log('Invalid webhook data: no entry array');
+      return;
+    }
+
+    for (const entry of webhookData.entry) {
+      if (!entry.changes || !Array.isArray(entry.changes)) continue;
+
+      for (const change of entry.changes) {
+        if (change.field !== 'messages') continue;
+
+        const value = change.value;
+        if (!value) continue;
+
+        // Status updates
+        if (value.statuses && Array.isArray(value.statuses)) {
+          for (const status of value.statuses) {
+            const messageId = status.id;
+            const statusType = status.status; // sent, delivered, read, failed
+            const timestamp = status.timestamp;
+            const recipientId = status.recipient_id;
+
+            // Error handling for failed messages
+            let errorMessage = '';
+            if (status.errors && status.errors.length > 0) {
+              errorMessage = status.errors.map(e => e.message || e.title).join('; ');
+            }
+
+            // Update message status in MessageLog sheet
+            try {
+              const updated = SheetStorageService.updateMessageStatus(messageId, statusType, errorMessage);
+              if (updated) {
+                console.log(`Message status updated: ${messageId} -> ${statusType}`);
+              }
+            } catch (updateError) {
+              console.error('Failed to update message status:', updateError);
+            }
+          }
+        }
+
+        // Incoming messages (for future: auto-reply or logging)
+        if (value.messages && Array.isArray(value.messages)) {
+          for (const message of value.messages) {
+            // Log incoming message for audit (KVKK compliant - no content logged)
+            try {
+              SheetStorageService.addMessageLog({
+                direction: 'incoming',
+                phone: message.from || '',
+                recipientName: '',
+                templateName: '',
+                templateId: '',
+                status: 'received',
+                messageId: message.id || '',
+                triggeredBy: 'webhook'
+              });
+            } catch (logError) {
+              console.error('Failed to log incoming message:', logError);
+            }
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('handleWhatsAppWebhook error:', error);
+  }
+}
+
 // ==================== DEBUG SHEET LOG ====================
 /**
  * 🔍 DEBUG: Sheet'e log yazar (doPost içinde bile çalışır!)
@@ -661,14 +737,60 @@ const WhatsAppService = {
       const responseData = JSON.parse(response.getContentText());
 
       if (responseCode === 200) {
+        const messageId = responseData.messages[0].id;
+
+        // MESSAGE_LOG: Başarılı gönderimi logla
+        try {
+          SheetStorageService.addMessageLog({
+            direction: 'outgoing',
+            appointmentId: appointmentData.eventId || '',
+            phone: cleanPhone,
+            recipientName: appointmentData.customerName || appointmentData.staffName || '',
+            templateName: template.name,
+            templateId: template.id || '',
+            status: 'sent',
+            messageId: messageId,
+            staffId: appointmentData.staffId || '',
+            staffName: appointmentData.staffName || '',
+            flowId: appointmentData._flowId || '',
+            triggeredBy: appointmentData._triggeredBy || 'manual',
+            profile: appointmentData.profile || appointmentData.linkType || ''
+          });
+        } catch (logError) {
+          console.error('Message log error (non-critical):', logError);
+        }
+
         return {
           success: true,
-          messageId: responseData.messages[0].id,
+          messageId: messageId,
           phone: cleanPhone,
           templateUsed: template.name
         };
       } else {
         log.error('WhatsApp API hatası:', responseData);
+
+        // MESSAGE_LOG: Başarısız gönderimi logla
+        try {
+          SheetStorageService.addMessageLog({
+            direction: 'outgoing',
+            appointmentId: appointmentData.eventId || '',
+            phone: cleanPhone,
+            recipientName: appointmentData.customerName || appointmentData.staffName || '',
+            templateName: template.name,
+            templateId: template.id || '',
+            status: 'failed',
+            messageId: '',
+            errorMessage: responseData.error?.message || 'Bilinmeyen hata',
+            staffId: appointmentData.staffId || '',
+            staffName: appointmentData.staffName || '',
+            flowId: appointmentData._flowId || '',
+            triggeredBy: appointmentData._triggeredBy || 'manual',
+            profile: appointmentData.profile || appointmentData.linkType || ''
+          });
+        } catch (logError) {
+          console.error('Message log error (non-critical):', logError);
+        }
+
         return {
           success: false,
           error: responseData.error?.message || 'Bilinmeyen hata',

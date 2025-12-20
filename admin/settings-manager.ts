@@ -5,6 +5,7 @@
 
 import { ApiService } from '../api-service';
 import { logError } from '../monitoring';
+import { ButtonAnimator } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -501,17 +502,6 @@ function renderTemplatesList(templates: WhatsAppTemplate[]): void {
 }
 
 /**
- * Set button loading state
- */
-function setButtonLoading(buttonId: string, isLoading: boolean, loadingText: string, normalText: string): void {
-    const btn = document.getElementById(buttonId) as HTMLButtonElement;
-    if (btn) {
-        btn.disabled = isLoading;
-        btn.textContent = isLoading ? loadingText : normalText;
-    }
-}
-
-/**
  * Add new template
  */
 async function addTemplate(): Promise<void> {
@@ -547,7 +537,8 @@ async function addTemplate(): Promise<void> {
     }
 
     isLoadingTemplate = true;
-    setButtonLoading('addTemplateBtn', true, 'Ekleniyor...', 'Şablon Ekle');
+    const addBtn = document.getElementById('addTemplateBtn') as HTMLButtonElement;
+    ButtonAnimator.start(addBtn);
 
     try {
         const response = await ApiService.call('createWhatsAppTemplate', {
@@ -564,12 +555,14 @@ async function addTemplate(): Promise<void> {
         }) as ApiResponse;
 
         if (response.success) {
+            ButtonAnimator.success(addBtn);
             getUI().showAlert('Şablon eklendi', 'success');
             // Reset form
             (document.getElementById('newTemplateName') as HTMLInputElement).value = '';
             (document.getElementById('newTemplateDescription') as HTMLInputElement).value = '';
-            loadTemplates();
+            setTimeout(() => loadTemplates(), 1000);
         } else {
+            ButtonAnimator.error(addBtn);
             logError(new Error('Create template failed'), {
                 action: 'addTemplate',
                 templateName: name,
@@ -578,6 +571,7 @@ async function addTemplate(): Promise<void> {
             getUI().showAlert('Hata: ' + (response.error || 'Bilinmeyen hata'), 'error');
         }
     } catch (error) {
+        ButtonAnimator.error(addBtn);
         logError(error, {
             action: 'addTemplate',
             templateName: name,
@@ -587,7 +581,6 @@ async function addTemplate(): Promise<void> {
         getUI().showAlert('Ekleme hatası: ' + errorMessage, 'error');
     } finally {
         isLoadingTemplate = false;
-        setButtonLoading('addTemplateBtn', false, 'Ekleniyor...', 'Şablon Ekle');
     }
 }
 

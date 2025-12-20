@@ -24,10 +24,10 @@
         <div id="alertContainer"></div>
 
         <!-- Loading Overlay -->
-        <div id="loadingOverlay" style="display: flex; justify-content: center; align-items: center; padding: 100px 0;">
+        <div id="loadingOverlay" style="display: flex; justify-content: center; align-items: center; padding: 40px 0;">
             <div style="text-align: center;">
-                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #1a1a1a; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-                <p style="color: #666; font-size: 14px;">Yükleniyor...</p>
+                <div class="spinner" style="width: 40px; height: 40px; border: 3px solid #f3f3f3; border-top: 3px solid #C9A55A; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 12px;"></div>
+                <p style="color: #666; font-size: 13px;">Yükleniyor...</p>
             </div>
         </div>
 
@@ -133,23 +133,6 @@
 
             <!-- Randevu Ayarları -->
             <div id="settings" class="sub-tab-content">
-                <div class="card">
-                    <div class="card-title">Genel Ayarlar</div>
-                    <div class="input-group">
-                        <label for="interval">Randevu Süresi</label>
-                        <select id="interval">
-                            <option value="30">30 Dakika</option>
-                            <option value="60" selected>60 Dakika</option>
-                            <option value="90">90 Dakika</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="maxDaily">Günlük Max Teslim Randevusu</label>
-                        <input type="number" id="maxDaily" value="4" min="1">
-                    </div>
-                    <button class="btn" id="saveSettingsBtn">Kaydet</button>
-                </div>
-
                 <!-- Profil Ayarları Tablosu -->
                 <div class="card">
                     <div class="card-title">Profil Ayarları</div>
@@ -280,6 +263,7 @@
             <div class="sub-tabs">
                 <div class="sub-tab active" data-subtab="staff">Çalışanlar</div>
                 <div class="sub-tab" data-subtab="shifts">Vardiyalar</div>
+                <div class="sub-tab" data-subtab="admin">Admin</div>
             </div>
 
             <!-- Çalışanlar -->
@@ -337,6 +321,218 @@
                 <div class="card">
                     <div class="card-title">Kayıtlı Planlar</div>
                     <div id="savedShifts"></div>
+                </div>
+            </div>
+
+            <!-- Admin Yetki Yönetimi -->
+            <div id="admin" class="sub-tab-content">
+                <div class="card">
+                    <div class="card-title">Yetki Yönetimi</div>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                        Admin yetkisi olan kullanıcılar tüm bölümlere erişebilir. Diğer kullanıcılar aşağıdaki tabloya göre erişim sağlar.
+                    </p>
+
+                    <div class="permission-table-wrapper" style="overflow-x: auto;">
+                        <table class="permission-table" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #1A1A2E; color: #FAFAFA;">
+                                    <th style="padding: 12px 15px; text-align: left; border-bottom: 2px solid #C9A55A;">Bölüm</th>
+                                    <th style="padding: 12px 15px; text-align: center; border-bottom: 2px solid #C9A55A;">Admin</th>
+                                    <th style="padding: 12px 15px; text-align: center; border-bottom: 2px solid #C9A55A;">Normal Kullanıcı</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Randevu Sekmesi -->
+                                <tr style="background: #F5F5F0;">
+                                    <td colspan="3" style="padding: 10px 15px; font-weight: 600; color: #1A1A2E;">
+                                        1. Sekme: Randevu
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Randevu Linkleri</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Görüntüle</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Randevu Oluştur</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Görüntüle</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Randevular</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Görüntüle</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Randevu Ayarları</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+
+                                <!-- Bildirim Sekmesi -->
+                                <tr style="background: #F5F5F0;">
+                                    <td colspan="3" style="padding: 10px 15px; font-weight: 600; color: #1A1A2E;">
+                                        2. Sekme: Bildirim
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">WhatsApp - Flow</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">WhatsApp - Template</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">WhatsApp - Mesajlar</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Görüntüle</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Mail - Flow</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Mail - Template</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Message (SMS)</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+
+                                <!-- Team Sekmesi -->
+                                <tr style="background: #F5F5F0;">
+                                    <td colspan="3" style="padding: 10px 15px; font-weight: 600; color: #1A1A2E;">
+                                        3. Sekme: Team
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Çalışanlar</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Ekle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Vardiyalar</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Ekle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Sadece Görüntüle</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Admin Yetki Yönetimi</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Görüntüle + Düzenle</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-none">Erişim Yok</span>
+                                    </td>
+                                </tr>
+
+                                <!-- Apps Sekmesi -->
+                                <tr style="background: #F5F5F0;">
+                                    <td colspan="3" style="padding: 10px 15px; font-weight: 600; color: #1A1A2E;">
+                                        4. Sekme: Apps
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Teslim Onay Formu</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Tam Erişim</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Kullanabilir</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Teslim Tutanak</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Tam Erişim</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Kullanabilir</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Teknik Servis Formu</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Tam Erişim</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Kullanabilir</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 15px; border-bottom: 1px solid #E8E8E8;">Katalog</td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-full">Tam Erişim</span>
+                                    </td>
+                                    <td style="padding: 10px 15px; text-align: center; border-bottom: 1px solid #E8E8E8;">
+                                        <span class="perm-badge perm-view">Kullanabilir</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Admin Listesi -->
+                <div class="card">
+                    <div class="card-title">Admin Yetkili Kullanıcılar</div>
+                    <div id="adminUsersList" style="margin-top: 15px;">
+                        <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -483,11 +679,6 @@
                 <div class="modal-body">
                     <input type="hidden" id="editProfilKey">
 
-                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="editProfilSameDayBooking" style="width: auto;">
-                        <label for="editProfilSameDayBooking" style="margin: 0;">Aynı Gün Randevu</label>
-                    </div>
-
                     <div class="input-group">
                         <label for="editProfilMaxSlot">Slot Başı Max Randevu</label>
                         <select id="editProfilMaxSlot">
@@ -537,11 +728,6 @@
                         </select>
                     </div>
 
-                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="editProfilAssignByAdmin" style="width: auto;">
-                        <label for="editProfilAssignByAdmin" style="margin: 0;">Admin Tarafından Atanır</label>
-                    </div>
-
                     <div class="input-group">
                         <label for="editProfilStaffFilter">Personel Filtresi</label>
                         <select id="editProfilStaffFilter">
@@ -555,8 +741,9 @@
                     <div class="input-group">
                         <label for="editProfilTakvimFiltresi">Takvim Filtresi</label>
                         <select id="editProfilTakvimFiltresi">
-                            <option value="bugun">Sadece Bugün</option>
-                            <option value="hepsi">Tüm Günler</option>
+                            <option value="onlytoday">Sadece Bugün (Takvim Gizli)</option>
+                            <option value="withtoday">Bugün ve Sonrası</option>
+                            <option value="withouttoday">Yarın ve Sonrası</option>
                         </select>
                     </div>
 
@@ -584,6 +771,275 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelProfilBtn">İptal</button>
                     <button class="btn" id="saveProfilBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WhatsApp Flow Modal -->
+        <div id="whatsappFlowModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">Yeni WhatsApp Flow</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="flowName">Flow Adı</label>
+                        <input type="text" id="flowName" placeholder="Randevu Hatırlatma">
+                    </div>
+                    <div class="input-group">
+                        <label for="flowDescription">Açıklama</label>
+                        <input type="text" id="flowDescription" placeholder="1 gün önce gönderilecek hatırlatma">
+                    </div>
+                    <div class="input-group">
+                        <label for="flowTriggerType">Tetikleme Türü</label>
+                        <select id="flowTriggerType">
+                            <option value="time">Zaman Bazlı</option>
+                            <option value="event">Olay Bazlı</option>
+                        </select>
+                    </div>
+                    <!-- Zaman Bazlı Seçenekler -->
+                    <div id="timeBasedOptions">
+                        <div class="input-group">
+                            <label for="flowTime">Gönderim Saati</label>
+                            <input type="time" id="flowTime" value="09:00">
+                        </div>
+                        <div class="input-group">
+                            <label for="flowTimeBefore">Ne Zaman Önce</label>
+                            <select id="flowTimeBefore">
+                                <option value="1_gun_once">1 gün önce</option>
+                                <option value="2_saat_once">2 saat önce</option>
+                                <option value="1_saat_once">1 saat önce</option>
+                                <option value="30_dk_once">30 dakika önce</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Olay Bazlı Seçenekler -->
+                    <div id="eventBasedOptions" style="display: none;">
+                        <div class="input-group">
+                            <label for="flowTrigger">Tetikleyici Olay</label>
+                            <select id="flowTrigger">
+                                <option value="RANDEVU_OLUŞTUR">Randevu Oluşturuldu</option>
+                                <option value="RANDEVU_İPTAL">Randevu İptal Edildi</option>
+                                <option value="RANDEVU_GÜNCELLE">Randevu Güncellendi</option>
+                                <option value="PERSONEL_ATAMA">Personel Atandı</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label>Hedef Profiller</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="flowProfiles" value="g"> Genel
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="flowProfiles" value="w"> Günlük
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="flowProfiles" value="b"> Butik
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="flowProfiles" value="m"> Yönetim
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="flowProfiles" value="v"> VIP
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="flowTemplates">Kullanılacak Şablonlar</label>
+                        <select id="flowTemplates" multiple style="min-height: 80px;">
+                            <!-- Dinamik yüklenecek -->
+                        </select>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Ctrl/Cmd ile çoklu seçim yapabilirsiniz</small>
+                    </div>
+                    <input type="hidden" id="flowEditId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelFlowBtn">İptal</button>
+                    <button class="btn" id="saveFlowBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WhatsApp Template Modal -->
+        <div id="whatsappTemplateModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">WhatsApp Şablonu Ekle</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="templateName">Şablon Adı (Meta'daki isim)</label>
+                        <input type="text" id="templateName" placeholder="randevu_hatirlatma">
+                    </div>
+                    <div class="input-group">
+                        <label for="templateDescription">Açıklama</label>
+                        <input type="text" id="templateDescription" placeholder="Randevu hatırlatma mesajı">
+                    </div>
+                    <div class="input-group">
+                        <label for="templateTargetType">Hedef Kişi</label>
+                        <select id="templateTargetType">
+                            <option value="customer">Müşteri</option>
+                            <option value="staff">Personel</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="templateLanguage">Dil</label>
+                        <select id="templateLanguage">
+                            <option value="tr" selected>Türkçe (tr)</option>
+                            <option value="en">English (en)</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="templateVariableCount">Değişken Sayısı</label>
+                        <input type="number" id="templateVariableCount" min="0" max="10" value="0">
+                    </div>
+                    <div id="templateVariablesContainer">
+                        <!-- Değişken alanları dinamik olarak eklenecek -->
+                    </div>
+
+                    <!-- Değişken Referans Paneli -->
+                    <div class="variable-reference-panel" style="margin-top: 20px; border-top: 1px solid #E8E8E8; padding-top: 15px;">
+                        <div class="variable-reference-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="toggleVarRefBtn">
+                            <span style="font-weight: 500; color: #1A1A2E;">📋 Kullanılabilir Değişkenler</span>
+                            <span id="variableRefToggle" style="color: #757575; font-size: 12px;">▼ Göster</span>
+                        </div>
+                        <div id="variableReferenceContent" style="display: none; margin-top: 15px;">
+                            <!-- Müşteri Bilgileri -->
+                            <div class="var-category" style="margin-bottom: 15px;">
+                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Müşteri Bilgileri</div>
+                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    <span class="var-tag" data-var="musteri" title="Ahmet Yılmaz">{{musteri}}</span>
+                                    <span class="var-tag" data-var="musteri_tel" title="+90 532 123 4567">{{musteri_tel}}</span>
+                                    <span class="var-tag" data-var="musteri_mail" title="ahmet@email.com">{{musteri_mail}}</span>
+                                </div>
+                            </div>
+                            <!-- Randevu Bilgileri -->
+                            <div class="var-category" style="margin-bottom: 15px;">
+                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Randevu Bilgileri</div>
+                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    <span class="var-tag" data-var="randevu_tarih" title="20 Aralık 2025, Cumartesi">{{randevu_tarih}}</span>
+                                    <span class="var-tag" data-var="randevu_saat" title="14:30">{{randevu_saat}}</span>
+                                    <span class="var-tag" data-var="randevu_ek_bilgi" title="Müşteri notu">{{randevu_ek_bilgi}}</span>
+                                    <span class="var-tag" data-var="randevu_turu" title="Satış Görüşmesi">{{randevu_turu}}</span>
+                                    <span class="var-tag" data-var="randevu_profili" title="VIP, Butik, Walk-in vb.">{{randevu_profili}}</span>
+                                </div>
+                            </div>
+                            <!-- Personel Bilgileri -->
+                            <div class="var-category">
+                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Personel Bilgileri</div>
+                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
+                                    <span class="var-tag" data-var="personel" title="Mehmet Kaya">{{personel}}</span>
+                                    <span class="var-tag" data-var="personel_tel" title="+90 532 987 6543">{{personel_tel}}</span>
+                                    <span class="var-tag" data-var="personel_mail" title="mehmet@rolex.com">{{personel_mail}}</span>
+                                </div>
+                            </div>
+                            <div style="margin-top: 12px; font-size: 11px; color: #757575;">
+                                💡 Değişkene tıklayarak kopyalayabilirsiniz
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="templateEditId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelTemplateBtn">İptal</button>
+                    <button class="btn" id="saveTemplateBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mail Flow Modal -->
+        <div id="mailFlowModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content" style="max-width: 600px;">
+                <div class="modal-header">Yeni Mail Flow</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="mailFlowName">Flow Adı</label>
+                        <input type="text" id="mailFlowName" placeholder="Randevu Onay Maili">
+                    </div>
+                    <div class="input-group">
+                        <label for="mailFlowDescription">Açıklama</label>
+                        <input type="text" id="mailFlowDescription" placeholder="Randevu oluşturulduğunda gönderilecek onay">
+                    </div>
+                    <div class="input-group">
+                        <label for="mailFlowTrigger">Tetikleyici Olay</label>
+                        <select id="mailFlowTrigger">
+                            <option value="RANDEVU_OLUŞTUR">Randevu Oluşturuldu</option>
+                            <option value="RANDEVU_İPTAL">Randevu İptal Edildi</option>
+                            <option value="RANDEVU_GÜNCELLE">Randevu Güncellendi</option>
+                            <option value="HATIRLATMA">Hatırlatma</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Hedef Profiller</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="g"> Genel
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="w"> Günlük
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="b"> Butik
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="m"> Yönetim
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="v"> VIP
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="mailFlowTemplates">Kullanılacak Şablon</label>
+                        <select id="mailFlowTemplates">
+                            <!-- Dinamik yüklenecek -->
+                        </select>
+                    </div>
+                    <input type="hidden" id="mailFlowEditId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelMailFlowBtn">İptal</button>
+                    <button class="btn" id="saveMailFlowBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mail Template Modal -->
+        <div id="mailTemplateModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content" style="max-width: 700px;">
+                <div class="modal-header">Mail Şablonu Ekle</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="mailTemplateName">Şablon Adı</label>
+                        <input type="text" id="mailTemplateName" placeholder="randevu_onay">
+                    </div>
+                    <div class="input-group">
+                        <label for="mailTemplateSubject">Konu</label>
+                        <input type="text" id="mailTemplateSubject" placeholder="Randevunuz Onaylandı - {{TARIH}}">
+                    </div>
+                    <div class="input-group">
+                        <label for="mailTemplateBody">İçerik (HTML)</label>
+                        <textarea id="mailTemplateBody" rows="10" placeholder="<h1>Merhaba {{ISIM}},</h1><p>Randevunuz onaylanmıştır.</p>" style="font-family: monospace; font-size: 13px;"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Kullanılabilir Değişkenler</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{ISIM}}">{{ISIM}}</code>
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{SOYISIM}}">{{SOYISIM}}</code>
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{TARIH}}">{{TARIH}}</code>
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{SAAT}}">{{SAAT}}</code>
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{TELEFON}}">{{TELEFON}}</code>
+                            <code style="padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer;" data-var="{{PERSONEL}}">{{PERSONEL}}</code>
+                        </div>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Değişkenlere tıklayarak kopyalayabilirsiniz</small>
+                    </div>
+                    <input type="hidden" id="mailTemplateEditId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelMailTemplateBtn">İptal</button>
+                    <button class="btn" id="saveMailTemplateBtn">Kaydet</button>
                 </div>
             </div>
         </div>

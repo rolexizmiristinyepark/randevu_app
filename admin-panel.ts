@@ -13,6 +13,8 @@ import { initShiftManager } from './admin/shift-manager';
 import { initAppointmentManager, loadAppointments } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
 import { initWhatsAppManager, loadSentMessages, loadReceivedMessages } from './admin/whatsapp-manager';
+import { initPermissionManager } from './admin/permission-manager';
+import { initProfileSettingsManager } from './admin/profile-settings-manager';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -248,6 +250,12 @@ async function startApp(): Promise<void> {
         await initAppointmentManager(dataStore);
         await initSettingsManager(dataStore);
         await initWhatsAppManager(dataStore);
+
+        // Initialize permission manager (applies role-based access control)
+        await initPermissionManager(dataStore);
+
+        // Initialize profile settings manager
+        await initProfileSettingsManager();
 
         // Setup tabs
         setupTabs();

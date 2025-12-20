@@ -11,6 +11,8 @@
 
 import { ApiService } from '../api-service';
 import { logError } from '../monitoring';
+import { closeModal } from '../ui-utils';
+import { ButtonAnimator } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -95,6 +97,47 @@ declare const window: Window & {
 
 const getUI = () => window.UI;
 
+// ==================== HELPER FUNCTIONS ====================
+
+/**
+ * Copy variable to clipboard with visual feedback
+ */
+function copyVariableToClipboard(varName: string, element: HTMLElement): void {
+    const variableText = `{{${varName}}}`;
+
+    navigator.clipboard.writeText(variableText).then(() => {
+        // Visual feedback
+        element.classList.add('copied');
+        const originalText = element.textContent;
+        element.textContent = '✓ Kopyalandı';
+
+        setTimeout(() => {
+            element.classList.remove('copied');
+            element.textContent = originalText;
+        }, 1500);
+    }).catch(() => {
+        // Fallback for older browsers
+        const textarea = document.createElement('textarea');
+        textarea.value = variableText;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        // Visual feedback
+        element.classList.add('copied');
+        const originalText = element.textContent;
+        element.textContent = '✓ Kopyalandı';
+
+        setTimeout(() => {
+            element.classList.remove('copied');
+            element.textContent = originalText;
+        }, 1500);
+    });
+}
+
 // ==================== INITIALIZATION ====================
 
 /**
@@ -120,9 +163,55 @@ function setupEventListeners(): void {
     document.getElementById('addEventBasedFlowBtn')?.addEventListener('click', () => openFlowModal('event'));
 
     // Template buttons
-    document.getElementById('addTemplateBtn')?.addEventListener('click', openTemplateModal);
+    document.getElementById('addTemplateBtn')?.addEventListener('click', () => openTemplateModal());
 
-    // Modal close handlers (modal açıkken escape veya overlay tıklama)
+    // Flow Modal handlers
+    document.getElementById('cancelFlowBtn')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
+    document.getElementById('saveFlowBtn')?.addEventListener('click', saveFlow);
+    document.querySelector('#whatsappFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
+
+    // Template Modal handlers
+    document.getElementById('cancelTemplateBtn')?.addEventListener('click', () => closeModal('whatsappTemplateModal'));
+    document.getElementById('saveTemplateBtn')?.addEventListener('click', saveTemplate);
+    document.querySelector('#whatsappTemplateModal .modal-overlay')?.addEventListener('click', () => closeModal('whatsappTemplateModal'));
+
+    // Trigger type change - show/hide time vs event options
+    document.getElementById('flowTriggerType')?.addEventListener('change', (e) => {
+        const value = (e.target as HTMLSelectElement).value;
+        const timeOptions = document.getElementById('timeBasedOptions');
+        const eventOptions = document.getElementById('eventBasedOptions');
+        if (timeOptions) timeOptions.style.display = value === 'time' ? 'block' : 'none';
+        if (eventOptions) eventOptions.style.display = value === 'event' ? 'block' : 'none';
+    });
+
+    // Template variable count change - generate variable inputs
+    document.getElementById('templateVariableCount')?.addEventListener('change', (e) => {
+        const count = parseInt((e.target as HTMLInputElement).value) || 0;
+        generateVariableInputs(count);
+    });
+
+    // Variable reference panel toggle
+    document.getElementById('toggleVarRefBtn')?.addEventListener('click', () => {
+        const content = document.getElementById('variableReferenceContent');
+        const toggle = document.getElementById('variableRefToggle');
+        if (content && toggle) {
+            const isHidden = content.style.display === 'none';
+            content.style.display = isHidden ? 'block' : 'none';
+            toggle.textContent = isHidden ? '▲ Gizle' : '▼ Göster';
+        }
+    });
+
+    // Variable tag click - copy to clipboard
+    document.querySelectorAll('.var-tag').forEach(tag => {
+        tag.addEventListener('click', (e) => {
+            const varName = (e.target as HTMLElement).dataset.var;
+            if (varName) {
+                copyVariableToClipboard(varName, e.target as HTMLElement);
+            }
+        });
+    });
+
+    // Modal close handlers (escape key)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
             closeAllModals();
@@ -271,10 +360,194 @@ function createFlowItem(flow: WhatsAppFlow, type: 'time' | 'event'): HTMLElement
  * Open flow creation/edit modal
  */
 function openFlowModal(type: 'time' | 'event', flowId?: string): void {
-    // TODO: Create modal dynamically or use existing modal structure
-    // For now, show a simple alert
-    const typeName = type === 'time' ? 'Zaman Bazlı' : 'Olay Bazlı';
-    getUI().showAlert(`${typeName} Flow ekleme özelliği yakında aktif olacak`, 'success');
+    const modal = document.getElementById('whatsappFlowModal');
+    if (!modal) return;
+
+    // Reset form
+    resetFlowForm();
+
+    // Set trigger type
+    const triggerTypeSelect = document.getElementById('flowTriggerType') as HTMLSelectElement;
+    if (triggerTypeSelect) {
+        triggerTypeSelect.value = type;
+        // Trigger change event to show/hide options
+        triggerTypeSelect.dispatchEvent(new Event('change'));
+    }
+
+    // Update modal header
+    const header = modal.querySelector('.modal-header');
+    if (header) {
+        header.textContent = flowId ? 'Flow Düzenle' : `Yeni ${type === 'time' ? 'Zaman Bazlı' : 'Olay Bazlı'} Flow`;
+    }
+
+    // If editing, populate form with existing data
+    if (flowId) {
+        const flow = flows.find(f => f.id === flowId);
+        if (flow) {
+            populateFlowForm(flow);
+        }
+        const editIdInput = document.getElementById('flowEditId') as HTMLInputElement;
+        if (editIdInput) editIdInput.value = flowId;
+    }
+
+    // Populate template options
+    populateTemplateSelect();
+
+    // Show modal
+    modal.classList.add('active');
+}
+
+/**
+ * Reset flow form to defaults
+ */
+function resetFlowForm(): void {
+    (document.getElementById('flowName') as HTMLInputElement).value = '';
+    (document.getElementById('flowDescription') as HTMLInputElement).value = '';
+    (document.getElementById('flowTime') as HTMLInputElement).value = '09:00';
+    (document.getElementById('flowTimeBefore') as HTMLSelectElement).value = '1_gun_once';
+    (document.getElementById('flowTrigger') as HTMLSelectElement).value = 'RANDEVU_OLUŞTUR';
+    (document.getElementById('flowEditId') as HTMLInputElement).value = '';
+
+    // Uncheck all profile checkboxes
+    document.querySelectorAll('input[name="flowProfiles"]').forEach(cb => {
+        (cb as HTMLInputElement).checked = false;
+    });
+
+    // Clear template selection
+    const templateSelect = document.getElementById('flowTemplates') as HTMLSelectElement;
+    if (templateSelect) {
+        Array.from(templateSelect.options).forEach(opt => opt.selected = false);
+    }
+}
+
+/**
+ * Populate flow form with existing flow data
+ */
+function populateFlowForm(flow: WhatsAppFlow): void {
+    (document.getElementById('flowName') as HTMLInputElement).value = flow.name;
+    (document.getElementById('flowDescription') as HTMLInputElement).value = flow.description || '';
+    (document.getElementById('flowTriggerType') as HTMLSelectElement).value = flow.triggerType;
+
+    if (flow.triggerType === 'time') {
+        (document.getElementById('flowTime') as HTMLInputElement).value = flow.hatirlatmaSaat || '09:00';
+        (document.getElementById('flowTimeBefore') as HTMLSelectElement).value = flow.hatirlatmaZaman || '1_gun_once';
+    } else {
+        (document.getElementById('flowTrigger') as HTMLSelectElement).value = flow.trigger;
+    }
+
+    // Check profile checkboxes
+    flow.profiles.forEach(profile => {
+        const checkbox = document.querySelector(`input[name="flowProfiles"][value="${profile}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+/**
+ * Populate template select with available templates (using safe DOM methods)
+ */
+function populateTemplateSelect(): void {
+    const select = document.getElementById('flowTemplates') as HTMLSelectElement;
+    if (!select) return;
+
+    // Clear existing options using safe DOM method
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
+    }
+
+    // Add template options using safe DOM methods
+    templates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = `${template.name} (${template.targetType === 'customer' ? 'Müşteri' : 'Personel'})`;
+        select.appendChild(option);
+    });
+}
+
+/**
+ * Save flow to backend
+ */
+async function saveFlow(): Promise<void> {
+    const saveBtn = document.getElementById('saveFlowBtn') as HTMLButtonElement;
+
+    const name = (document.getElementById('flowName') as HTMLInputElement).value.trim();
+    const description = (document.getElementById('flowDescription') as HTMLInputElement).value.trim();
+    const triggerType = (document.getElementById('flowTriggerType') as HTMLSelectElement).value as 'time' | 'event';
+    const editId = (document.getElementById('flowEditId') as HTMLInputElement).value;
+
+    // Validation
+    if (!name) {
+        getUI().showAlert('Flow adı gereklidir', 'error');
+        return;
+    }
+
+    // Get selected profiles
+    const profiles: string[] = [];
+    document.querySelectorAll('input[name="flowProfiles"]:checked').forEach(cb => {
+        profiles.push((cb as HTMLInputElement).value);
+    });
+
+    if (profiles.length === 0) {
+        getUI().showAlert('En az bir profil seçmelisiniz', 'error');
+        return;
+    }
+
+    // Get selected templates
+    const templateSelect = document.getElementById('flowTemplates') as HTMLSelectElement;
+    const templateIds = Array.from(templateSelect.selectedOptions).map(opt => opt.value);
+
+    if (templateIds.length === 0) {
+        getUI().showAlert('En az bir şablon seçmelisiniz', 'error');
+        return;
+    }
+
+    // Build flow data
+    const flowData: Partial<WhatsAppFlow> = {
+        name,
+        description,
+        triggerType,
+        profiles,
+        templateIds,
+        active: true
+    };
+
+    if (triggerType === 'time') {
+        flowData.trigger = 'HATIRLATMA';
+        flowData.hatirlatmaSaat = (document.getElementById('flowTime') as HTMLInputElement).value;
+        flowData.hatirlatmaZaman = (document.getElementById('flowTimeBefore') as HTMLSelectElement).value;
+    } else {
+        flowData.trigger = (document.getElementById('flowTrigger') as HTMLSelectElement).value;
+    }
+
+    // Add loading state
+    if (saveBtn) {
+        ButtonAnimator.start(saveBtn);
+    }
+
+    try {
+        const action = editId ? 'updateWhatsAppFlow' : 'createWhatsAppFlow';
+        const params = editId ? { id: editId, ...flowData } : flowData;
+
+        const response = await ApiService.call(action, params) as ApiResponse;
+
+        if (response.success) {
+            if (saveBtn) {
+                ButtonAnimator.success(saveBtn);
+            }
+            getUI().showAlert(editId ? 'Flow güncellendi' : 'Flow oluşturuldu', 'success');
+            setTimeout(() => {
+                closeModal('whatsappFlowModal');
+                loadFlows();
+            }, 1000);
+        } else {
+            throw new Error(response.error || 'Bilinmeyen hata');
+        }
+    } catch (error) {
+        if (saveBtn) {
+            ButtonAnimator.error(saveBtn);
+        }
+        logError(error, { action: 'saveFlow' });
+        getUI().showAlert('Kaydetme hatası: ' + (error as Error).message, 'error');
+    }
 }
 
 /**
@@ -445,7 +718,201 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
  * Open template modal
  */
 function openTemplateModal(templateId?: string): void {
-    getUI().showAlert('Şablon ekleme özelliği yakında aktif olacak', 'success');
+    const modal = document.getElementById('whatsappTemplateModal');
+    if (!modal) return;
+
+    // Reset form
+    resetTemplateForm();
+
+    // Update modal header
+    const header = modal.querySelector('.modal-header');
+    if (header) {
+        header.textContent = templateId ? 'Şablon Düzenle' : 'WhatsApp Şablonu Ekle';
+    }
+
+    // If editing, populate form with existing data
+    if (templateId) {
+        const template = templates.find(t => t.id === templateId);
+        if (template) {
+            populateTemplateForm(template);
+        }
+        const editIdInput = document.getElementById('templateEditId') as HTMLInputElement;
+        if (editIdInput) editIdInput.value = templateId;
+    }
+
+    // Show modal
+    modal.classList.add('active');
+}
+
+/**
+ * Reset template form to defaults
+ */
+function resetTemplateForm(): void {
+    (document.getElementById('templateName') as HTMLInputElement).value = '';
+    (document.getElementById('templateDescription') as HTMLInputElement).value = '';
+    (document.getElementById('templateTargetType') as HTMLSelectElement).value = 'customer';
+    (document.getElementById('templateLanguage') as HTMLSelectElement).value = 'tr';
+    (document.getElementById('templateVariableCount') as HTMLInputElement).value = '0';
+    (document.getElementById('templateEditId') as HTMLInputElement).value = '';
+
+    // Clear variable inputs
+    const container = document.getElementById('templateVariablesContainer');
+    if (container) {
+        while (container.firstChild) {
+            container.removeChild(container.firstChild);
+        }
+    }
+}
+
+/**
+ * Populate template form with existing data
+ */
+function populateTemplateForm(template: WhatsAppTemplate): void {
+    (document.getElementById('templateName') as HTMLInputElement).value = template.name;
+    (document.getElementById('templateDescription') as HTMLInputElement).value = template.description || '';
+    (document.getElementById('templateTargetType') as HTMLSelectElement).value = template.targetType;
+    (document.getElementById('templateLanguage') as HTMLSelectElement).value = template.language || 'tr';
+    (document.getElementById('templateVariableCount') as HTMLInputElement).value = String(template.variableCount || 0);
+
+    // Generate variable inputs and populate
+    generateVariableInputs(template.variableCount || 0);
+
+    // Populate variable values
+    if (template.variables) {
+        Object.entries(template.variables).forEach(([key, value]) => {
+            const input = document.getElementById(`var_${key}`) as HTMLInputElement;
+            if (input) input.value = value;
+        });
+    }
+}
+
+/**
+ * Generate variable input fields
+ */
+function generateVariableInputs(count: number): void {
+    const container = document.getElementById('templateVariablesContainer');
+    if (!container) return;
+
+    // Clear existing
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if (count === 0) return;
+
+    // Create header
+    const header = document.createElement('label');
+    header.style.cssText = 'display: block; margin-top: 15px; margin-bottom: 10px; font-weight: 500;';
+    header.textContent = 'Değişken Tanımları';
+    container.appendChild(header);
+
+    // Create variable inputs
+    for (let i = 1; i <= count; i++) {
+        const inputGroup = document.createElement('div');
+        inputGroup.className = 'input-group';
+        inputGroup.style.marginBottom = '10px';
+
+        const label = document.createElement('label');
+        label.setAttribute('for', `var_${i}`);
+        label.textContent = `{{${i}}} değişkeni`;
+
+        const select = document.createElement('select');
+        select.id = `var_${i}`;
+        select.style.width = '100%';
+
+        // Add options for common variables
+        const options = [
+            { value: '', label: 'Seçiniz...' },
+            { value: 'ISIM', label: 'Müşteri Adı' },
+            { value: 'SOYISIM', label: 'Müşteri Soyadı' },
+            { value: 'TARIH', label: 'Randevu Tarihi' },
+            { value: 'SAAT', label: 'Randevu Saati' },
+            { value: 'TELEFON', label: 'Telefon' },
+            { value: 'PERSONEL', label: 'Personel Adı' },
+            { value: 'MAGAZA', label: 'Mağaza Adı' }
+        ];
+
+        options.forEach(opt => {
+            const optionEl = document.createElement('option');
+            optionEl.value = opt.value;
+            optionEl.textContent = opt.label;
+            select.appendChild(optionEl);
+        });
+
+        inputGroup.appendChild(label);
+        inputGroup.appendChild(select);
+        container.appendChild(inputGroup);
+    }
+}
+
+/**
+ * Save template to backend
+ */
+async function saveTemplate(): Promise<void> {
+    const saveBtn = document.getElementById('saveTemplateBtn') as HTMLButtonElement;
+
+    const name = (document.getElementById('templateName') as HTMLInputElement).value.trim();
+    const description = (document.getElementById('templateDescription') as HTMLInputElement).value.trim();
+    const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value as 'customer' | 'staff';
+    const language = (document.getElementById('templateLanguage') as HTMLSelectElement).value;
+    const variableCount = parseInt((document.getElementById('templateVariableCount') as HTMLInputElement).value) || 0;
+    const editId = (document.getElementById('templateEditId') as HTMLInputElement).value;
+
+    // Validation
+    if (!name) {
+        getUI().showAlert('Şablon adı gereklidir', 'error');
+        return;
+    }
+
+    // Collect variables
+    const variables: Record<string, string> = {};
+    for (let i = 1; i <= variableCount; i++) {
+        const select = document.getElementById(`var_${i}`) as HTMLSelectElement;
+        if (select && select.value) {
+            variables[String(i)] = select.value;
+        }
+    }
+
+    // Build template data
+    const templateData: Partial<WhatsAppTemplate> = {
+        name,
+        description,
+        targetType,
+        language,
+        variableCount,
+        variables
+    };
+
+    // Add loading state
+    if (saveBtn) {
+        ButtonAnimator.start(saveBtn);
+    }
+
+    try {
+        const action = editId ? 'updateWhatsAppTemplate' : 'createWhatsAppTemplate';
+        const params = editId ? { id: editId, ...templateData } : templateData;
+
+        const response = await ApiService.call(action, params) as ApiResponse;
+
+        if (response.success) {
+            if (saveBtn) {
+                ButtonAnimator.success(saveBtn);
+            }
+            getUI().showAlert(editId ? 'Şablon güncellendi' : 'Şablon oluşturuldu', 'success');
+            setTimeout(() => {
+                closeModal('whatsappTemplateModal');
+                loadTemplates();
+            }, 1000);
+        } else {
+            throw new Error(response.error || 'Bilinmeyen hata');
+        }
+    } catch (error) {
+        if (saveBtn) {
+            ButtonAnimator.error(saveBtn);
+        }
+        logError(error, { action: 'saveTemplate' });
+        getUI().showAlert('Kaydetme hatası: ' + (error as Error).message, 'error');
+    }
 }
 
 /**

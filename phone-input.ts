@@ -6,6 +6,34 @@
 import intlTelInput from 'intl-tel-input';
 import 'intl-tel-input/build/css/intlTelInput.css';
 
+// Set flag image paths based on Vite base URL
+// This runs once when the module is loaded
+function setFlagImagePaths(): void {
+    // Get base URL from Vite (handles both dev and production)
+    const baseUrl = (import.meta as any).env?.BASE_URL || '/';
+
+    // Create a style element to set CSS variables
+    const style = document.createElement('style');
+    style.textContent = `
+        .iti {
+            --iti-path-flags-1x: url('${baseUrl}img/flags.webp');
+            --iti-path-flags-2x: url('${baseUrl}img/flags@2x.webp');
+            --iti-path-globe-1x: url('${baseUrl}img/globe.webp');
+            --iti-path-globe-2x: url('${baseUrl}img/globe@2x.webp');
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Initialize flag paths when DOM is ready
+if (typeof document !== 'undefined') {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setFlagImagePaths);
+    } else {
+        setFlagImagePaths();
+    }
+}
+
 // Type definitions
 interface IntlTelInputInstance {
     getNumber(): string;
@@ -44,7 +72,8 @@ export function initPhoneInput(
         instances.delete(inputId);
     }
 
-    const instance = intlTelInput(input, {
+    // intl-tel-input TypeScript types are incomplete, using any for options
+    const itiOptions: any = {
         initialCountry: options.initialCountry || 'tr',
         preferredCountries: options.preferredCountries || ['tr', 'de', 'gb', 'us', 'fr'],
         separateDialCode: true,
@@ -55,7 +84,7 @@ export function initPhoneInput(
         countrySearch: true,
         i18n: {
             searchPlaceholder: 'Ara...',
-            noResultsFound: 'Sonuç bulunamadı',
+            zeroSearchResults: 'Sonuç bulunamadı',
             // Turkish country names
             tr: 'Türkiye',
             de: 'Almanya',
@@ -99,7 +128,8 @@ export function initPhoneInput(
             dz: 'Cezayir',
             tn: 'Tunus',
         }
-    }) as IntlTelInputInstance;
+    };
+    const instance = intlTelInput(input, itiOptions) as IntlTelInputInstance;
 
     instances.set(inputId, instance);
     return instance;
@@ -168,6 +198,40 @@ export function getSelectedCountry(inputId: string): { iso2: string; dialCode: s
     return instance.getSelectedCountryData();
 }
 
+/**
+ * Format phone number for display (with + prefix)
+ * @param number - Phone number (with or without +)
+ * @returns Formatted number like +90 532 123 4567
+ */
+export function formatPhoneForDisplay(number: string): string {
+    if (!number) return '';
+
+    // Ensure + prefix
+    const withPlus = number.startsWith('+') ? number : `+${number}`;
+
+    // Basic formatting: +XX XXX XXX XX XX
+    const digits = withPlus.replace(/\D/g, '');
+
+    if (digits.length <= 2) return withPlus;
+    if (digits.length <= 5) return `+${digits.slice(0, 2)} ${digits.slice(2)}`;
+    if (digits.length <= 8) return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5)}`;
+    if (digits.length <= 10) return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8)}`;
+
+    // For longer numbers: +XX XXX XXX XX XX
+    return `+${digits.slice(0, 2)} ${digits.slice(2, 5)} ${digits.slice(5, 8)} ${digits.slice(8, 10)} ${digits.slice(10)}`;
+}
+
+/**
+ * Get phone number for WhatsApp API (without + and spaces)
+ * @param number - Phone number (with or without +)
+ * @returns Clean number like 905321234567
+ */
+export function formatPhoneForWhatsApp(number: string): string {
+    if (!number) return '';
+    // Remove all non-digits
+    return number.replace(/\D/g, '');
+}
+
 // Export for global access
 if (typeof window !== 'undefined') {
     (window as any).PhoneInput = {
@@ -176,6 +240,8 @@ if (typeof window !== 'undefined') {
         isValid: isPhoneValid,
         setNumber: setPhoneNumber,
         destroy: destroyPhoneInput,
-        getCountry: getSelectedCountry
+        getCountry: getSelectedCountry,
+        formatForDisplay: formatPhoneForDisplay,
+        formatForWhatsApp: formatPhoneForWhatsApp
     };
 }

@@ -24,7 +24,8 @@ const SheetStorageService = {
     STAFF: 'Staff',
     SHIFTS: 'Shifts',
     SETTINGS: 'Settings',
-    AUDIT_LOG: 'AuditLog'
+    AUDIT_LOG: 'AuditLog',
+    MESSAGE_LOG: 'MessageLog'
   },
 
   // Header tanımları
@@ -32,7 +33,8 @@ const SheetStorageService = {
     STAFF: ['id', 'name', 'phone', 'email', 'active', 'createdAt'],
     SHIFTS: ['date', 'staffId', 'shiftType', 'createdAt'],
     SETTINGS: ['key', 'value', 'updatedAt'],
-    AUDITLOG: ['timestamp', 'action', 'data', 'userId']
+    AUDITLOG: ['timestamp', 'action', 'data', 'userId'],
+    MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile']
   },
 
   // ==================== INITIALIZATION ====================
@@ -486,6 +488,307 @@ const SheetStorageService = {
     });
   },
 
+  // ==================== MESSAGE LOG OPERATIONS ====================
+
+  /**
+   * WhatsApp mesaj logu ekle
+   * @param {Object} messageData - Mesaj verisi
+   * @returns {Object} Eklenen mesaj logu
+   */
+  addMessageLog: function(messageData) {
+    const id = 'msg_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    const logEntry = {
+      id: id,
+      timestamp: new Date().toISOString(),
+      direction: messageData.direction || 'outgoing',
+      appointmentId: messageData.appointmentId || '',
+      phone: messageData.phone || '',
+      recipientName: messageData.recipientName || '',
+      templateName: messageData.templateName || '',
+      templateId: messageData.templateId || '',
+      status: messageData.status || 'sent',
+      messageId: messageData.messageId || '',
+      errorMessage: messageData.errorMessage || '',
+      staffId: messageData.staffId || '',
+      staffName: messageData.staffName || '',
+      flowId: messageData.flowId || '',
+      triggeredBy: messageData.triggeredBy || 'manual',
+      profile: messageData.profile || ''
+    };
+
+    this.appendRow(this.SHEET_NAMES.MESSAGE_LOG, logEntry);
+    return logEntry;
+  },
+
+  /**
+   * Mesaj durumunu güncelle (webhook'tan gelen bilgi ile)
+   * @param {string} messageId - WhatsApp mesaj ID
+   * @param {string} status - Yeni durum (delivered, read, failed)
+   * @param {string} errorMessage - Hata mesajı (opsiyonel)
+   * @returns {boolean} Güncelleme başarılı mı
+   */
+  updateMessageStatus: function(messageId, status, errorMessage) {
+    const sheet = this.getOrCreateSheet(this.SHEET_NAMES.MESSAGE_LOG);
+    const data = sheet.getDataRange().getValues();
+
+    if (data.length <= 1) return false;
+
+    const headers = data[0];
+    const messageIdColIndex = headers.indexOf('messageId');
+    const statusColIndex = headers.indexOf('status');
+    const errorColIndex = headers.indexOf('errorMessage');
+
+    if (messageIdColIndex === -1 || statusColIndex === -1) return false;
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][messageIdColIndex]) === String(messageId)) {
+        sheet.getRange(i + 1, statusColIndex + 1).setValue(status);
+        if (errorMessage && errorColIndex !== -1) {
+          sheet.getRange(i + 1, errorColIndex + 1).setValue(errorMessage);
+        }
+        return true;
+      }
+    }
+
+    return false;
+  },
+
+  /**
+   * Mesaj loglarını getir
+   * @param {Object} options - Filtreleme seçenekleri
+   * @param {string} options.appointmentId - Randevu ID'sine göre filtrele
+   * @param {string} options.phone - Telefon numarasına göre filtrele
+   * @param {string} options.status - Duruma göre filtrele
+   * @param {number} options.limit - Maksimum kayıt sayısı (varsayılan: 100)
+   * @param {number} options.offset - Başlangıç indeksi (varsayılan: 0)
+   * @returns {Array<Object>} Mesaj logları
+   */
+  getMessageLogs: function(options) {
+    options = options || {};
+    const limit = options.limit || 100;
+    const offset = options.offset || 0;
+
+    let logs = this.readAll(this.SHEET_NAMES.MESSAGE_LOG);
+
+    // Tarihe göre sırala (en yeniden en eskiye)
+    logs.sort(function(a, b) {
+      return new Date(b.timestamp) - new Date(a.timestamp);
+    });
+
+    // Filtreleme
+    if (options.appointmentId) {
+      logs = logs.filter(function(log) {
+        return log.appointmentId === options.appointmentId;
+      });
+    }
+
+    if (options.phone) {
+      logs = logs.filter(function(log) {
+        return log.phone && log.phone.includes(options.phone);
+      });
+    }
+
+    if (options.status) {
+      logs = logs.filter(function(log) {
+        return log.status === options.status;
+      });
+    }
+
+    // Pagination
+    return logs.slice(offset, offset + limit);
+  },
+
+  /**
+   * Belirli bir randevu için mesaj geçmişini getir
+   * @param {string} appointmentId - Randevu ID
+   * @returns {Array<Object>} Mesaj geçmişi
+   */
+  getAppointmentMessages: function(appointmentId) {
+    return this.getMessageLogs({ appointmentId: appointmentId, limit: 50 });
+  },
+
+  /**
+   * Belirli bir telefon numarası için mesaj geçmişini getir
+   * @param {string} phone - Telefon numarası
+   * @returns {Array<Object>} Mesaj geçmişi
+   */
+  getPhoneMessages: function(phone) {
+    return this.getMessageLogs({ phone: phone, limit: 50 });
+  },
+
+  /**
+   * Mesaj istatistiklerini getir (son 24 saat, 7 gün, 30 gün)
+   * @returns {Object} İstatistikler
+   */
+  getMessageStats: function() {
+    const logs = this.readAll(this.SHEET_NAMES.MESSAGE_LOG);
+    const now = new Date();
+    const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+
+    const stats = {
+      last24h: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 },
+      last7d: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 },
+      last30d: { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 },
+      byTemplate: {},
+      byProfile: {}
+    };
+
+    logs.forEach(function(log) {
+      const logDate = new Date(log.timestamp);
+      const status = log.status || 'sent';
+
+      // Son 30 gün
+      if (logDate >= thirtyDaysAgo) {
+        stats.last30d.total++;
+        stats.last30d[status] = (stats.last30d[status] || 0) + 1;
+
+        // Template istatistikleri
+        if (log.templateName) {
+          if (!stats.byTemplate[log.templateName]) {
+            stats.byTemplate[log.templateName] = { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 };
+          }
+          stats.byTemplate[log.templateName].total++;
+          stats.byTemplate[log.templateName][status] = (stats.byTemplate[log.templateName][status] || 0) + 1;
+        }
+
+        // Profil istatistikleri
+        if (log.profile) {
+          if (!stats.byProfile[log.profile]) {
+            stats.byProfile[log.profile] = { total: 0, sent: 0, delivered: 0, read: 0, failed: 0 };
+          }
+          stats.byProfile[log.profile].total++;
+          stats.byProfile[log.profile][status] = (stats.byProfile[log.profile][status] || 0) + 1;
+        }
+
+        // Son 7 gün
+        if (logDate >= sevenDaysAgo) {
+          stats.last7d.total++;
+          stats.last7d[status] = (stats.last7d[status] || 0) + 1;
+
+          // Son 24 saat
+          if (logDate >= oneDayAgo) {
+            stats.last24h.total++;
+            stats.last24h[status] = (stats.last24h[status] || 0) + 1;
+          }
+        }
+      }
+    });
+
+    return stats;
+  },
+
+  // ==================== MESSAGE LOG RETENTION (KVKK) ====================
+
+  /**
+   * KVKK: Eski mesaj loglarını anonimleştir (30 gün sonra)
+   * Telefon numarası ve kişi bilgileri anonimleştirilir
+   * @returns {{success: boolean, anonymizedCount: number, cutoffDate: string}}
+   */
+  cleanupOldMessageLogs: function() {
+    try {
+      const RETENTION_DAYS = 30; // KVKK uyumu: 30 gün saklama süresi
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+
+      const sheet = this.getOrCreateSheet(this.SHEET_NAMES.MESSAGE_LOG);
+      const data = sheet.getDataRange().getValues();
+
+      if (data.length <= 1) {
+        return { success: true, anonymizedCount: 0, cutoffDate: cutoffDate.toISOString() };
+      }
+
+      const headers = data[0];
+      const timestampIdx = headers.indexOf('timestamp');
+      const phoneIdx = headers.indexOf('phone');
+      const recipientNameIdx = headers.indexOf('recipientName');
+      const staffNameIdx = headers.indexOf('staffName');
+
+      let anonymizedCount = 0;
+
+      // 2. satırdan itibaren (header atla)
+      for (let i = 1; i < data.length; i++) {
+        const row = data[i];
+        const timestamp = new Date(row[timestampIdx]);
+
+        // Cutoff'tan eski kayıtlar
+        if (timestamp < cutoffDate) {
+          const phone = row[phoneIdx];
+
+          // Zaten anonimleştirilmiş mi kontrol et
+          if (phone && phone !== '[Anonimleştirildi]') {
+            // Telefon numarasını anonimleştir
+            sheet.getRange(i + 1, phoneIdx + 1).setValue('[Anonimleştirildi]');
+
+            // Alıcı adını anonimleştir (sadece ilk harf)
+            if (recipientNameIdx >= 0 && row[recipientNameIdx]) {
+              const initial = row[recipientNameIdx].substring(0, 1);
+              sheet.getRange(i + 1, recipientNameIdx + 1).setValue(initial + '***');
+            }
+
+            // Personel adını anonimleştir
+            if (staffNameIdx >= 0 && row[staffNameIdx]) {
+              const staffInitial = row[staffNameIdx].substring(0, 1);
+              sheet.getRange(i + 1, staffNameIdx + 1).setValue(staffInitial + '***');
+            }
+
+            anonymizedCount++;
+          }
+        }
+      }
+
+      log.info('MessageLog retention completed:', {
+        anonymizedCount: anonymizedCount,
+        cutoffDate: cutoffDate.toISOString()
+      });
+
+      return {
+        success: true,
+        anonymizedCount: anonymizedCount,
+        cutoffDate: cutoffDate.toISOString()
+      };
+
+    } catch (error) {
+      log.error('MessageLog retention error:', error);
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
+  /**
+   * Dry-run: Anonimleştirilecek mesaj loglarını say (silmeden)
+   * @returns {{success: boolean, count: number, cutoffDate: string}}
+   */
+  previewMessageLogCleanup: function() {
+    try {
+      const RETENTION_DAYS = 30;
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - RETENTION_DAYS);
+
+      const logs = this.readAll(this.SHEET_NAMES.MESSAGE_LOG);
+
+      const toAnonymize = logs.filter(function(log) {
+        const logDate = new Date(log.timestamp);
+        return logDate < cutoffDate && log.phone && log.phone !== '[Anonimleştirildi]';
+      });
+
+      return {
+        success: true,
+        count: toAnonymize.length,
+        cutoffDate: cutoffDate.toISOString()
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: error.toString()
+      };
+    }
+  },
+
   // ==================== COMPATIBILITY LAYER ====================
   // Mevcut StorageService API'si ile uyumluluk için
 
@@ -550,6 +853,94 @@ const SheetStorageService = {
     }
   }
 };
+
+// ==================== MESSAGE LOG INITIALIZATION ====================
+
+/**
+ * MessageLog Sheet'ini oluştur (v4.0)
+ * Apps Script editöründen bu fonksiyonu çalıştırarak MessageLog sheet'ini oluşturabilirsiniz
+ * @returns {{success: boolean, message: string}}
+ */
+function initializeMessageLogSheet() {
+  try {
+    const sheet = SheetStorageService.getOrCreateSheet(SheetStorageService.SHEET_NAMES.MESSAGE_LOG);
+    console.log('MessageLog sheet oluşturuldu/kontrol edildi:', sheet.getName());
+
+    // Header'ları kontrol et
+    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    console.log('Mevcut headers:', headers);
+
+    return {
+      success: true,
+      message: 'MessageLog sheet hazır',
+      sheetName: sheet.getName(),
+      headers: headers
+    };
+  } catch (error) {
+    console.error('initializeMessageLogSheet error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test: Manuel mesaj logu ekle
+ * @returns {{success: boolean, data?: Object}}
+ */
+function testAddMessageLog() {
+  try {
+    const testLog = SheetStorageService.addMessageLog({
+      direction: 'outgoing',
+      appointmentId: 'TEST_EVENT_123',
+      phone: '905321234567',
+      recipientName: 'Test Müşteri',
+      templateName: 'test_template',
+      templateId: 'tmpl_001',
+      status: 'sent',
+      messageId: 'wamid.TEST123456',
+      staffId: '',
+      staffName: '',
+      flowId: 'flow_001',
+      triggeredBy: 'manual_test',
+      profile: 'g'
+    });
+
+    console.log('Test log eklendi:', testLog);
+    return { success: true, data: testLog };
+  } catch (error) {
+    console.error('testAddMessageLog error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test: Mesaj loglarını getir
+ * @returns {{success: boolean, data?: Array}}
+ */
+function testGetMessageLogs() {
+  try {
+    const logs = SheetStorageService.getMessageLogs({ limit: 10 });
+    console.log('Son 10 mesaj logu:', logs);
+    return { success: true, data: logs, count: logs.length };
+  } catch (error) {
+    console.error('testGetMessageLogs error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Test: Mesaj istatistiklerini getir
+ * @returns {{success: boolean, data?: Object}}
+ */
+function testGetMessageStats() {
+  try {
+    const stats = SheetStorageService.getMessageStats();
+    console.log('Mesaj istatistikleri:', stats);
+    return { success: true, data: stats };
+  } catch (error) {
+    console.error('testGetMessageStats error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
 
 // ==================== MIGRATION UTILITIES ====================
 

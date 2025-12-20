@@ -273,7 +273,7 @@ const SHIFT_SLOT_FILTERS = {
  * - allowedTypes: Seçilebilir randevu türleri
  * - staffFilter: Personel filtresi (role:sales, role:management, self)
  * - showCalendar: Takvim gösterilsin mi (false ise takvim gizli)
- * - takvimFiltresi: Takvim filtresi (bugun, vardiyaHaftasi, hepsi)
+ * - takvimFiltresi: Takvim filtresi (onlytoday, withtoday, withouttoday)
  * - defaultType: Varsayılan randevu türü (boşsa müşteri seçer)
  * - showTypeSelection: Varsayılan tür varsa seçimi göster mi (true: göster, false: gizle)
  */
@@ -307,7 +307,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
     staffFilter: 'role:sales',
     showCalendar: true,
-    takvimFiltresi: 'vardiyaHaftasi',
+    takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
     showTypeSelection: true
   },
@@ -326,7 +326,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
     staffFilter: 'self',
     showCalendar: true,
-    takvimFiltresi: 'vardiyaHaftasi',
+    takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
     showTypeSelection: true
   },
@@ -345,7 +345,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['delivery', 'meeting', 'service'],
     staffFilter: 'role:sales',
     showCalendar: true,
-    takvimFiltresi: 'vardiyaHaftasi',
+    takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
     showTypeSelection: true
   },
@@ -363,7 +363,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
     staffFilter: 'role:sales',
     showCalendar: true,
-    takvimFiltresi: 'vardiyaHaftasi',
+    takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
     showTypeSelection: true
   },
@@ -381,7 +381,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['delivery', 'meeting', 'shipping', 'service'],
     staffFilter: 'role:management',
     showCalendar: true,
-    takvimFiltresi: 'hepsi',
+    takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
     showTypeSelection: true
   },
@@ -399,7 +399,7 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['meeting'],
     staffFilter: 'none',  // Personel seçimi yok, admin atar
     showCalendar: false,
-    takvimFiltresi: 'bugun'
+    takvimFiltresi: 'onlytoday'
   }
 };
 

@@ -104,9 +104,9 @@ export const ButtonAnimator = {
         const btn = this._getButton(button);
         if (!btn) return;
 
-        // Store original state
-        if (!btn.dataset.originalHtml) {
-            btn.dataset.originalHtml = btn.innerHTML;
+        // Store original state (textContent for security)
+        if (!btn.dataset.originalText) {
+            btn.dataset.originalText = btn.textContent || '';
             btn.dataset.originalWidth = btn.offsetWidth + 'px';
             btn.dataset.originalMinWidth = btn.style.minWidth || '';
         }
@@ -117,11 +117,16 @@ export const ButtonAnimator = {
         // Set loading state with spinner
         btn.classList.add('btn-animating', 'btn-loading');
         (btn as HTMLButtonElement).disabled = true;
-        btn.innerHTML = '<span class="btn-spinner"></span>';
+
+        // Clear and add spinner using DOM API
+        while (btn.firstChild) btn.removeChild(btn.firstChild);
+        const spinner = document.createElement('span');
+        spinner.className = 'btn-spinner';
+        btn.appendChild(spinner);
     },
 
     /**
-     * Başarılı - tick animasyonu göster
+     * Başarılı - SVG animated checkmark göster
      */
     success(button: HTMLElement | string, autoReset: boolean = true): void {
         const btn = this._getButton(button);
@@ -130,7 +135,23 @@ export const ButtonAnimator = {
         // Switch to success state
         btn.classList.remove('btn-loading');
         btn.classList.add('btn-success');
-        btn.innerHTML = '<span class="btn-tick"></span>';
+
+        // Clear button content
+        while (btn.firstChild) btn.removeChild(btn.firstChild);
+
+        // Create SVG checkmark using DOM API
+        const tickSpan = document.createElement('span');
+        tickSpan.className = 'btn-tick';
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+
+        const polyline = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+        polyline.setAttribute('points', '4,12 9,17 20,6');
+
+        svg.appendChild(polyline);
+        tickSpan.appendChild(svg);
+        btn.appendChild(tickSpan);
 
         // Auto reset after delay
         if (autoReset) {
@@ -148,7 +169,12 @@ export const ButtonAnimator = {
         // Switch to error state
         btn.classList.remove('btn-loading');
         btn.classList.add('btn-error');
-        btn.innerHTML = '<span class="btn-cross"></span>';
+
+        // Clear button content and add cross using DOM API
+        while (btn.firstChild) btn.removeChild(btn.firstChild);
+        const crossSpan = document.createElement('span');
+        crossSpan.className = 'btn-cross';
+        btn.appendChild(crossSpan);
 
         // Auto reset after delay
         if (autoReset) {
@@ -167,16 +193,16 @@ export const ButtonAnimator = {
         btn.classList.remove('btn-animating', 'btn-loading', 'btn-success', 'btn-error');
         (btn as HTMLButtonElement).disabled = false;
 
-        // Restore original content
-        if (btn.dataset.originalHtml) {
-            btn.innerHTML = btn.dataset.originalHtml;
+        // Restore original content (using textContent for security)
+        if (btn.dataset.originalText) {
+            btn.textContent = btn.dataset.originalText;
         }
 
         // Restore min-width
         btn.style.minWidth = btn.dataset.originalMinWidth || '';
 
         // Clean up data attributes
-        delete btn.dataset.originalHtml;
+        delete btn.dataset.originalText;
         delete btn.dataset.originalWidth;
         delete btn.dataset.originalMinWidth;
     },
@@ -200,6 +226,8 @@ export const ButtonAnimator = {
 
 /**
  * CSS'i sayfaya inject et (bir kez)
+ * Tasarım: https://codepen.io/fxm90/pen/wJLjgB benzeri
+ * Renkler: Site teması (#1A1A2E, #C9A55A, #FAFAFA)
  */
 export function injectButtonAnimationStyles(): void {
     if (document.getElementById('btn-animation-styles')) return;
@@ -207,84 +235,83 @@ export function injectButtonAnimationStyles(): void {
     const styles = document.createElement('style');
     styles.id = 'btn-animation-styles';
     styles.textContent = `
-        /* Button Animation Base */
+        /* ==================== BUTTON ANIMATION ==================== */
+
         .btn-animating {
             position: relative;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
+            pointer-events: none;
         }
 
+        /* Loading state - Buton görünmez, sadece spinner */
         .btn-animating.btn-loading {
-            transform: scale(0.95);
-            opacity: 0.9;
+            background: transparent !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
         }
 
-        /* Spinner */
+        /* Spinner - Altın rengi dönen border */
         .btn-spinner {
             display: inline-block;
-            width: 18px;
-            height: 18px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-top-color: #fff;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(201, 165, 90, 0.3);
+            border-top-color: #C9A55A;
             border-radius: 50%;
             animation: btn-spin 0.8s linear infinite;
-        }
-
-        .btn-secondary .btn-spinner {
-            border-color: rgba(26, 26, 46, 0.2);
-            border-top-color: #1A1A2E;
         }
 
         @keyframes btn-spin {
             to { transform: rotate(360deg); }
         }
 
-        /* Success Tick - buton kendi rengini koruyor */
-        .btn-success {
-            transform: scale(1);
+        /* Success state - Buton görünür, içinde beyaz tick */
+        .btn-animating.btn-success {
+            /* Buton stili korunur */
         }
 
+        /* Checkmark - SVG animated tick (beyaz) */
         .btn-tick {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 18px;
-            height: 18px;
-            font-size: 18px;
-            line-height: 1;
-            color: #fff;
-            animation: tick-appear 0.25s ease-out forwards;
+            width: 20px;
+            height: 20px;
         }
 
-        .btn-tick::before {
-            content: '✓';
+        .btn-tick svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: #fff;
+            stroke-width: 3;
+            stroke-linecap: round;
+            stroke-linejoin: round;
         }
 
-        /* Secondary butonlar için koyu tick */
-        .btn-secondary .btn-tick {
-            color: #1A1A2E;
+        .btn-secondary .btn-tick svg {
+            stroke: #1A1A2E;
         }
 
-        @keyframes tick-appear {
-            from {
-                opacity: 0;
-                transform: scale(0.5);
-            }
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+        .btn-tick svg polyline {
+            stroke-dasharray: 30;
+            stroke-dashoffset: 30;
+            animation: checkmark-draw 0.4s ease-out forwards;
         }
 
-        /* Error Cross - buton kendi rengini koruyor */
-        .btn-error {
-            transform: scale(1);
+        @keyframes checkmark-draw {
+            to { stroke-dashoffset: 0; }
         }
 
+        /* Error state - Buton görünür, içinde X */
+        .btn-animating.btn-error {
+            /* Buton stili korunur */
+        }
+
+        /* X işareti (beyaz) */
         .btn-cross {
             display: inline-block;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
             position: relative;
         }
 
@@ -293,88 +320,61 @@ export function injectButtonAnimationStyles(): void {
             content: '';
             position: absolute;
             background: #fff;
-            border-radius: 1px;
+            border-radius: 2px;
             width: 2px;
-            height: 12px;
+            height: 0;
             left: 50%;
             top: 50%;
+            transform-origin: center;
         }
 
-        /* Secondary butonlar için koyu cross */
         .btn-secondary .btn-cross::before,
         .btn-secondary .btn-cross::after {
-            background: #1A1A2E;
+            background: #C62828;
         }
 
         .btn-cross::before {
             transform: translate(-50%, -50%) rotate(45deg);
-            animation: cross-appear 0.15s ease-out forwards;
+            animation: cross-draw 0.2s ease-out forwards;
         }
 
         .btn-cross::after {
             transform: translate(-50%, -50%) rotate(-45deg);
-            animation: cross-appear 0.15s ease-out 0.05s forwards;
+            animation: cross-draw 0.2s ease-out 0.1s forwards;
         }
 
-        @keyframes cross-appear {
-            from {
-                height: 0;
-                opacity: 0;
-            }
-            to {
-                height: 12px;
-                opacity: 1;
-            }
+        @keyframes cross-draw {
+            to { height: 12px; }
         }
 
-        /* Small buttons adjustment */
-        .btn-small .btn-spinner,
-        .btn-small .btn-tick,
-        .btn-small .btn-cross {
-            width: 14px;
-            height: 14px;
-        }
-
+        /* Small buttons */
         .btn-small .btn-spinner {
+            width: 16px;
+            height: 16px;
             border-width: 2px;
         }
 
         .btn-small .btn-tick {
-            font-size: 14px;
+            width: 16px;
+            height: 16px;
+        }
+
+        .btn-small .btn-tick svg {
+            stroke-width: 2.5;
+        }
+
+        .btn-small .btn-cross {
+            width: 12px;
+            height: 12px;
         }
 
         .btn-small .btn-cross::before,
         .btn-small .btn-cross::after {
-            height: 10px;
-            width: 1.5px;
+            animation-name: cross-draw-small;
         }
 
-        /* Large buttons */
-        .btn-large .btn-spinner {
-            width: 24px;
-            height: 24px;
-            border-width: 3px;
-        }
-
-        .btn-large .btn-tick,
-        .btn-large .btn-cross {
-            width: 24px;
-            height: 24px;
-        }
-
-        .btn-large .btn-tick {
-            font-size: 24px;
-        }
-
-        /* Subtle scale back to normal */
-        .btn-success,
-        .btn-error {
-            animation: btn-complete 0.3s ease-out;
-        }
-
-        @keyframes btn-complete {
-            from { transform: scale(0.95); }
-            to { transform: scale(1); }
+        @keyframes cross-draw-small {
+            to { height: 10px; }
         }
     `;
 

@@ -114,7 +114,7 @@ export function renderCalendar(): void {
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const isManagementLink = state.get('isManagementLink');
     const profilAyarlari = state.get('profilAyarlari');
-    const takvimFiltresi = profilAyarlari?.takvimFiltresi || 'hepsi';
+    const takvimFiltresi = profilAyarlari?.takvimFiltresi || 'withtoday';
     const sameDayBooking = profilAyarlari?.sameDayBooking ?? true;
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -131,20 +131,25 @@ export function renderCalendar(): void {
 
         // Takvim filtresi kontrolü
         const isToday = date.getTime() === today.getTime();
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        const isTomorrow = date.getTime() === tomorrow.getTime();
 
-        // 'bugun' filtresi: sadece bugün seçilebilir
-        if (takvimFiltresi === 'bugun' && !isToday) {
+        // 'onlytoday' filtresi: sadece bugün seçilebilir (takvim normalde gizli olmalı)
+        if (takvimFiltresi === 'onlytoday' && !isToday) {
             dayEl.classList.add('unavailable');
             dayEl.title = 'Sadece bugün için randevu alınabilir';
             fragment.appendChild(dayEl);
             continue;
         }
 
-        // Past days - allow today for staff=0, management appointments or management links
-        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink || sameDayBooking;
+        // 'withouttoday' filtresi: bugün seçilemez, yarın ve sonrası
+        if (takvimFiltresi === 'withouttoday' && isToday) {
+            dayEl.classList.add('past');
+            dayEl.title = 'Bugün için randevu alınamaz';
+            fragment.appendChild(dayEl);
+            continue;
+        }
+
+        // Past days - allow today for staff=0, management appointments, management links, sameDayBooking or withtoday filter
+        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink || sameDayBooking || takvimFiltresi === 'withtoday';
         if (date < today || (isToday && !allowToday)) {
             dayEl.classList.add('past');
         } else {

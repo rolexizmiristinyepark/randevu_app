@@ -4,6 +4,7 @@
  */
 
 import { apiCall } from '../api-service';
+import { ButtonAnimator } from '../button-utils';
 
 // Profil ayarları interface
 interface ProfilAyari {
@@ -19,7 +20,7 @@ interface ProfilAyari {
     assignByAdmin: boolean;
     allowedTypes: string[];
     staffFilter: string;
-    takvimFiltresi: 'bugun' | 'hepsi';
+    takvimFiltresi: 'onlytoday' | 'withtoday' | 'withouttoday';
 }
 
 type ProfilAyarlari = Record<string, ProfilAyari>;
@@ -78,7 +79,12 @@ async function loadProfilAyarlari(): Promise<void> {
         console.error('Profil ayarları yüklenemedi:', error);
         const container = document.getElementById('profilAyarlariTable');
         if (container) {
-            container.innerHTML = '<p style="color: #c00; text-align: center; padding: 20px;">Profil ayarları yüklenemedi.</p>';
+            // 🔒 GÜVENLİK: DOM API kullanılıyor
+            while (container.firstChild) container.removeChild(container.firstChild);
+            const errorP = document.createElement('p');
+            errorP.style.cssText = 'color: #c00; text-align: center; padding: 20px;';
+            errorP.textContent = 'Profil ayarları yüklenemedi.';
+            container.appendChild(errorP);
         }
     }
 }
@@ -99,14 +105,12 @@ function renderTable(): void {
                     <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Profil</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Kod</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">ID Kontrol</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Aynı Gün</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Slot Max</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Günlük T/G</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">P.Başı T/G</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Grid</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Süre</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Admin Atar</th>
-                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Personel</th>
+                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Personel Filtresi</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">İşlem</th>
                 </tr>
             </thead>
@@ -117,22 +121,21 @@ function renderTable(): void {
         const p = profilAyarlari[key];
         if (!p) continue;
 
-        const staffLabel = p.staffFilter === 'self' ? 'Self' :
-                          p.staffFilter === 'role:sales' ? 'Sales' :
-                          p.staffFilter === 'role:management' ? 'Management' : p.staffFilter;
+        const staffLabel = p.staffFilter === 'self' ? 'Self (URL ID)' :
+                          p.staffFilter === 'role:sales' ? 'Satış' :
+                          p.staffFilter === 'role:management' ? 'Yönetim' :
+                          p.staffFilter === 'none' ? 'Admin Atar' : p.staffFilter;
 
         html += `
             <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${PROFIL_LABELS[key] || key}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${CODE_LABELS[p.code] || '#' + p.code}</code></td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrol ? '✓' : '-'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.sameDayBooking ? '✓' : '-'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxSlotAppointment}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyDelivery || '∞'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyPerStaff || '∞'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.slotGrid}dk</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.duration}dk</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.assignByAdmin ? '✓' : '-'}</td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${staffLabel}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
                     <button class="btn btn-small" data-action="edit" data-profil="${key}">Düzenle</button>
@@ -168,15 +171,13 @@ function openEditModal(key: string): void {
 
     // Set form values
     (document.getElementById('editProfilKey') as HTMLInputElement).value = key;
-    (document.getElementById('editProfilSameDayBooking') as HTMLInputElement).checked = p.sameDayBooking;
     (document.getElementById('editProfilMaxSlot') as HTMLSelectElement).value = String(p.maxSlotAppointment);
     (document.getElementById('editProfilSlotGrid') as HTMLSelectElement).value = String(p.slotGrid);
     (document.getElementById('editProfilDuration') as HTMLSelectElement).value = String(p.duration);
     (document.getElementById('editProfilMaxDailyDelivery') as HTMLSelectElement).value = String(p.maxDailyDelivery || 0);
     (document.getElementById('editProfilMaxDailyPerStaff') as HTMLSelectElement).value = String(p.maxDailyPerStaff || 0);
-    (document.getElementById('editProfilAssignByAdmin') as HTMLInputElement).checked = p.assignByAdmin;
     (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value = p.staffFilter;
-    (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value = p.takvimFiltresi || 'bugun';
+    (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value = p.takvimFiltresi || 'withtoday';
 
     // Set allowed types checkboxes
     const typeCheckboxes = document.querySelectorAll('.profil-type-checkbox') as NodeListOf<HTMLInputElement>;
@@ -210,25 +211,27 @@ async function saveProfilAyari(): Promise<void> {
     if (!currentEditKey) return;
 
     const saveBtn = document.getElementById('saveProfilBtn') as HTMLButtonElement;
-    const originalText = saveBtn.textContent;
-    saveBtn.textContent = '⏳';
-    saveBtn.disabled = true;
+    ButtonAnimator.start(saveBtn);
 
     // Get allowed types from checkboxes
     const allowedTypes: string[] = [];
     const typeCheckboxes = document.querySelectorAll('.profil-type-checkbox:checked') as NodeListOf<HTMLInputElement>;
     typeCheckboxes.forEach(checkbox => allowedTypes.push(checkbox.value));
 
+    const staffFilter = (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value;
+    const takvimFiltresi = (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value;
+
     const updates = {
-        sameDayBooking: (document.getElementById('editProfilSameDayBooking') as HTMLInputElement).checked,
+        // sameDayBooking takvimFiltresi'nden türetiliyor: onlytoday/withtoday = true, withouttoday = false
+        sameDayBooking: takvimFiltresi !== 'withouttoday',
         maxSlotAppointment: parseInt((document.getElementById('editProfilMaxSlot') as HTMLSelectElement).value),
         slotGrid: parseInt((document.getElementById('editProfilSlotGrid') as HTMLSelectElement).value),
         duration: parseInt((document.getElementById('editProfilDuration') as HTMLSelectElement).value),
         maxDailyDelivery: parseInt((document.getElementById('editProfilMaxDailyDelivery') as HTMLSelectElement).value),
         maxDailyPerStaff: parseInt((document.getElementById('editProfilMaxDailyPerStaff') as HTMLSelectElement).value),
-        assignByAdmin: (document.getElementById('editProfilAssignByAdmin') as HTMLInputElement).checked,
-        staffFilter: (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value,
-        takvimFiltresi: (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value,
+        assignByAdmin: staffFilter === 'none',  // Admin atar = Personel filtresi "none" ise
+        staffFilter: staffFilter,
+        takvimFiltresi: takvimFiltresi,
         allowedTypes: allowedTypes
     };
 
@@ -239,18 +242,20 @@ async function saveProfilAyari(): Promise<void> {
         }) as { success: boolean; error?: string };
 
         if (response.success) {
+            ButtonAnimator.success(saveBtn);
             getUI().showAlert('Profil ayarları güncellendi!', 'success');
-            closeEditModal();
-            await loadProfilAyarlari();
+            setTimeout(() => {
+                closeEditModal();
+                loadProfilAyarlari();
+            }, 1000);
         } else {
+            ButtonAnimator.error(saveBtn);
             getUI().showAlert(`${response.error || 'Güncelleme başarısız'}`, 'error');
         }
     } catch (error) {
         console.error('Profil güncelleme hatası:', error);
+        ButtonAnimator.error(saveBtn);
         getUI().showAlert('Bağlantı hatası', 'error');
-    } finally {
-        saveBtn.textContent = originalText;
-        saveBtn.disabled = false;
     }
 }
 
@@ -263,25 +268,23 @@ async function resetProfilAyarlari(): Promise<void> {
     }
 
     const resetBtn = document.getElementById('resetProfilBtn') as HTMLButtonElement;
-    const originalText = resetBtn.textContent;
-    resetBtn.textContent = '⏳';
-    resetBtn.disabled = true;
+    ButtonAnimator.start(resetBtn);
 
     try {
         const response = await apiCall('resetProfilAyarlari') as { success: boolean; error?: string };
 
         if (response.success) {
+            ButtonAnimator.success(resetBtn);
             getUI().showAlert('Profil ayarları sıfırlandı!', 'success');
-            await loadProfilAyarlari();
+            setTimeout(() => loadProfilAyarlari(), 1000);
         } else {
+            ButtonAnimator.error(resetBtn);
             getUI().showAlert(`${response.error || 'Sıfırlama başarısız'}`, 'error');
         }
     } catch (error) {
         console.error('Profil sıfırlama hatası:', error);
+        ButtonAnimator.error(resetBtn);
         getUI().showAlert('Bağlantı hatası', 'error');
-    } finally {
-        resetBtn.textContent = originalText;
-        resetBtn.disabled = false;
     }
 }
 

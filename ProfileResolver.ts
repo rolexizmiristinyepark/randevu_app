@@ -181,16 +181,38 @@ export function applyProfileUI(info: ProfileInfo): void {
 
 /**
  * Hata göster
+ * 🔒 GÜVENLİK: DOM API kullanılıyor (XSS koruması)
  */
 export function showInvalidProfileError(message?: string): void {
   const container = document.getElementById('alertContainer');
   if (container) {
-    container.innerHTML = `
-      <div style="margin:20px 0;padding:15px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;text-align:center;color:#856404">
-        <strong>⚠️ Geçersiz Link</strong><br>
-        ${message || 'Bu link geçerli değil.'}<br>
-        Lütfen linki kontrol edin.
-      </div>`;
+    // Clear existing content safely
+    while (container.firstChild) {
+      container.removeChild(container.firstChild);
+    }
+
+    // Create alert div
+    const alertDiv = document.createElement('div');
+    alertDiv.style.cssText = 'margin:20px 0;padding:15px;background:#fff3cd;border:1px solid #ffc107;border-radius:8px;text-align:center;color:#856404';
+
+    // Create title
+    const title = document.createElement('strong');
+    title.textContent = '⚠️ Geçersiz Link';
+    alertDiv.appendChild(title);
+    alertDiv.appendChild(document.createElement('br'));
+
+    // Create message text (safely escaped via textContent)
+    const messageSpan = document.createElement('span');
+    messageSpan.textContent = message || 'Bu link geçerli değil.';
+    alertDiv.appendChild(messageSpan);
+    alertDiv.appendChild(document.createElement('br'));
+
+    // Create info text
+    const infoSpan = document.createElement('span');
+    infoSpan.textContent = 'Lütfen linki kontrol edin.';
+    alertDiv.appendChild(infoSpan);
+
+    container.appendChild(alertDiv);
   }
 }
 

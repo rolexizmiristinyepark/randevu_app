@@ -1,5 +1,95 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* intl-tel-input base styles */
+.iti {
+    width: 100%;
+}
+
+/* Flag image paths are set dynamically in phone-input.ts to support Vite base URL */
+
+/* intl-tel-input custom styling to match our design */
+.iti__country-container {
+    background: #FAFAFA;
+    border-right: 1px solid #E8E8E8;
+}
+
+.iti__selected-country {
+    padding: 0 12px !important;
+}
+
+.iti__dropdown-content {
+    border-radius: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.iti__search-input {
+    font-family: 'Montserrat', sans-serif;
+    padding: 10px 12px;
+    border: none;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.iti__country {
+    padding: 10px 12px;
+}
+
+.iti__country:hover {
+    background: #F5F5F0;
+}
+
+.iti__country--highlight {
+    background: #F5F5F0;
+}
+
+.iti__dial-code {
+    color: #757575;
+}
+
+/* Template Variable Tags */
+.var-tag {
+    display: inline-block;
+    padding: 4px 8px;
+    background: #E3F2FD;
+    color: #1976D2;
+    font-family: 'Courier New', monospace;
+    font-size: 11px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.var-tag:hover {
+    background: #BBDEFB;
+    border-color: #1976D2;
+}
+
+.var-tag.staff-only {
+    background: #FFF3E0;
+    color: #E65100;
+}
+
+.var-tag.staff-only:hover {
+    background: #FFE0B2;
+    border-color: #E65100;
+}
+
+.var-tag.customer-only {
+    background: #E8F5E9;
+    color: #2E7D32;
+}
+
+.var-tag.customer-only:hover {
+    background: #C8E6C9;
+    border-color: #2E7D32;
+}
+
+.var-tag.copied {
+    background: #C8E6C9;
+    color: #2E7D32;
+    border-color: #2E7D32;
+}
+
 html {
     scroll-behavior: smooth;
 }

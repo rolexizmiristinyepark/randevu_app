@@ -105,13 +105,15 @@ const SessionAuthService = {
       }
 
       var sessions = this.getSessions();
-      // DEBUG logging kaldirildi - token bilgisi hassas veri
+      log.info('[SESSION-DEBUG] Token prefix: ' + (token ? token.substring(0, 8) : 'null'));
+      log.info('[SESSION-DEBUG] Available sessions count: ' + Object.keys(sessions).length);
+      log.info('[SESSION-DEBUG] Session keys: ' + Object.keys(sessions).map(k => k.substring(0, 8)).join(', '));
       var session = sessions[token];
 
       if (!session) {
         return {
           valid: false,
-          error: 'Gecersiz session - token bulunamadi'
+          error: 'Gecersiz session - token bulunamadi (count: ' + Object.keys(sessions).length + ')'
         };
       }
 
@@ -238,16 +240,24 @@ const SessionAuthService = {
   getSessions: function() {
     try {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+      log.info('[SESSION-DEBUG] Spreadsheet ID: ' + CONFIG.SPREADSHEET_ID);
+
       var sheet = ss.getSheetByName('SESSIONS');
+      log.info('[SESSION-DEBUG] Sheet found: ' + (sheet ? 'YES' : 'NO'));
 
       // Sheet yoksa olustur
       if (!sheet) {
+        log.info('[SESSION-DEBUG] Creating SESSIONS sheet');
         sheet = ss.insertSheet('SESSIONS');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
         return {};
       }
 
       var data = sheet.getDataRange().getValues();
+      log.info('[SESSION-DEBUG] Sheet data rows: ' + data.length);
+      if (data.length > 1) {
+        log.info('[SESSION-DEBUG] First data row: token=' + (data[1][0] ? String(data[1][0]).substring(0, 8) : 'empty') + ', expiresAt=' + data[1][2]);
+      }
       if (data.length <= 1) return {};
 
       var sessions = {};
@@ -256,16 +266,21 @@ const SessionAuthService = {
       for (var i = 1; i < data.length; i++) {
         var token = data[i][0];
         var sessionData = data[i][1];
-        var expiresAt = data[i][2];
+        var expiresAt = parseInt(data[i][2], 10); // String olabilir, number'a çevir
 
         // Suresi dolmamis session'lari al
-        if (token && expiresAt > now) {
+        if (token && !isNaN(expiresAt) && expiresAt > now) {
           try {
-            sessions[token] = JSON.parse(sessionData);
+            // sessionData string veya object olabilir
+            var parsedData = typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData;
+            sessions[token] = parsedData;
             sessions[token].expiresAt = expiresAt;
+            log.info('[SESSION-DEBUG] Loaded session for token: ' + token.substring(0, 8) + ', expiresAt: ' + expiresAt + ', now: ' + now);
           } catch (e) {
-            // Parse hatasi, bu session'i atla
+            log.warn('[SESSION-DEBUG] Parse error for token: ' + (token ? token.substring(0, 8) : 'null') + ', error: ' + e.message);
           }
+        } else if (token) {
+          log.info('[SESSION-DEBUG] Skipping expired/invalid session: token=' + token.substring(0, 8) + ', expiresAt=' + expiresAt + ', now=' + now + ', isNaN=' + isNaN(expiresAt));
         }
       }
 

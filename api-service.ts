@@ -151,10 +151,8 @@ const ApiService = {
     ): Promise<ApiResponse<T>> {
         return new Promise(async (resolve, reject) => {
             try {
-                // ✅ HARDCODED FALLBACK - Env vars başarısız olursa kullanılır
-                const FALLBACK_APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzBHaKk0MJPZ88EuY_AYnZatCQZo3CKbM2O-yw-EIlHJu5DAOqnq5ZgkMPR8Z3u7m3bIQ/exec';
-
-                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable, then fallback
+                // 🔒 GÜVENLİK: Hardcoded URL kaldırıldı - Environment variable ZORUNLU
+                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
                 let appsScriptUrl: string | null = null;
 
                 // 1. Try global CONFIG (set after initConfig)
@@ -169,15 +167,12 @@ const ApiService = {
                 else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL && import.meta.env.VITE_APPS_SCRIPT_URL !== 'undefined' && import.meta.env.VITE_APPS_SCRIPT_URL !== '') {
                     appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
                 }
-                // 4. ✅ FALLBACK: Hardcoded production URL (last resort)
-                else {
-                    console.warn('⚠️ Using fallback APPS_SCRIPT_URL - env vars not loaded');
-                    appsScriptUrl = FALLBACK_APPS_SCRIPT_URL;
-                }
 
-                // Final validation
+                // Final validation - no fallback, environment variable is REQUIRED
                 if (!appsScriptUrl || !appsScriptUrl.startsWith('https://')) {
-                    reject(new Error('Invalid APPS_SCRIPT_URL configuration'));
+                    const errorMsg = 'APPS_SCRIPT_URL yapılandırılmamış. .env dosyasında VITE_APPS_SCRIPT_URL tanımlayın.';
+                    console.error('❌ API Hatası:', errorMsg);
+                    reject(new Error(errorMsg));
                     return;
                 }
 
