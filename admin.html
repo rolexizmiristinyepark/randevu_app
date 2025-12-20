@@ -31,98 +31,569 @@
             </div>
         </div>
 
-        <div class="tabs" style="display: none;">
-            <div class="tab active" data-tab="links">Linkler</div>
-            <div class="tab" data-tab="createAppointment">Randevu Oluştur</div>
-            <div class="tab" data-tab="appointments">Randevular</div>
-            <div class="tab" data-tab="staff">İlgili Personel</div>
-            <div class="tab" data-tab="shifts">Vardiyalar</div>
-            <div class="tab" data-tab="whatsapp">WhatsApp</div>
-            <div class="tab" data-tab="settings">Ayarlar</div>
-            <div class="tab" data-tab="apps">Uygulamalar</div>
+        <!-- ==================== ANA SEKMELER (4 ADET) ==================== -->
+        <div class="main-tabs" style="display: none;">
+            <div class="main-tab active" data-maintab="randevu">Randevu</div>
+            <div class="main-tab" data-maintab="bildirim">Bildirim</div>
+            <div class="main-tab" data-maintab="team">Team</div>
+            <div class="main-tab" data-maintab="apps">Apps</div>
         </div>
 
-        <!-- LİNKLER -->
-        <div id="links" class="tab-content active">
-            <!-- Sabit Profil Linkleri -->
-            <div class="card">
-                <div class="card-title">Sabit Linkler (ID Kontrol Yok)</div>
-                <div class="links-grid" style="display: grid; gap: 15px; margin-top: 15px;">
-                    <!-- #g - Genel -->
-                    <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                        <span style="flex: 0 0 100px; font-weight: 500;">Genel</span>
-                        <code style="flex: 1; font-size: 13px; color: #666;">#g</code>
-                        <button class="btn btn-small btn-secondary" data-copy-profile="g">Kopyala</button>
-                        <button class="btn btn-small" data-open-profile="g">Aç</button>
-                    </div>
-                    <!-- #w - Walk-in -->
-                    <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                        <span style="flex: 0 0 100px; font-weight: 500;">Günlük</span>
-                        <code style="flex: 1; font-size: 13px; color: #666;">#w</code>
-                        <button class="btn btn-small btn-secondary" data-copy-profile="w">Kopyala</button>
-                        <button class="btn btn-small" data-open-profile="w">Aç</button>
-                    </div>
-                    <!-- #b - Boutique -->
-                    <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                        <span style="flex: 0 0 100px; font-weight: 500;">Butik</span>
-                        <code style="flex: 1; font-size: 13px; color: #666;">#b</code>
-                        <button class="btn btn-small btn-secondary" data-copy-profile="b">Kopyala</button>
-                        <button class="btn btn-small" data-open-profile="b">Aç</button>
-                    </div>
-                    <!-- #m - Management -->
-                    <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                        <span style="flex: 0 0 100px; font-weight: 500;">Yönetim</span>
-                        <code style="flex: 1; font-size: 13px; color: #666;">#m</code>
-                        <button class="btn btn-small btn-secondary" data-copy-profile="m">Kopyala</button>
-                        <button class="btn btn-small" data-open-profile="m">Aç</button>
-                    </div>
-                </div>
-            </div>
-
-            <!-- VIP Linkleri -->
-            <div class="card">
-                <div class="card-title">VIP Linkleri (#v/{id})</div>
-                <div id="vipLinksGrid" style="margin-top: 15px;">
-                    <!-- Dinamik yüklenecek -->
-                </div>
-            </div>
-
-            <!-- Personel Linkleri -->
-            <div class="card">
-                <div class="card-title">Personel Linkleri (#s/{id})</div>
-                <div id="staffLinks" style="margin-top: 15px;">
-                    <!-- Dinamik yüklenecek -->
-                </div>
-            </div>
-        </div>
-
-        <!-- RANDEVU OLUŞTUR -->
-        <div id="createAppointment" class="tab-content">
-            <div class="card">
-                <div class="profile-selection" style="display: flex; gap: 15px;">
-                    <button class="btn" id="selectManuelBtn" style="flex: 1;">
-                        Mağaza
-                    </button>
-                    <button class="btn" id="selectYonetimBtn" style="flex: 1;">
-                        Yönetim
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- WHATSAPP -->
-        <div id="whatsapp" class="tab-content">
-            <!-- Sub-tabs for WhatsApp -->
+        <!-- ==================== RANDEVU SEKMESİ ==================== -->
+        <div id="randevu" class="main-tab-content active">
+            <!-- Alt Sekmeler -->
             <div class="sub-tabs">
-                <div class="tab active" data-subtab="whatsappSettings">API Ayarları</div>
-                <div class="tab" data-subtab="whatsappTemplates">Şablonlar</div>
-                <div class="tab" data-subtab="whatsappLogs">Gönderim Logları</div>
+                <div class="sub-tab active" data-subtab="links">Randevu Linkleri</div>
+                <div class="sub-tab" data-subtab="createAppointment">Randevu Oluştur</div>
+                <div class="sub-tab" data-subtab="appointments">Randevular</div>
+                <div class="sub-tab" data-subtab="settings">Randevu Ayarları</div>
             </div>
 
-            <!-- WhatsApp Settings Sub-tab -->
-            <div id="whatsappSettings" class="sub-tab-content active">
+            <!-- Randevu Linkleri -->
+            <div id="links" class="sub-tab-content active">
+                <!-- Sabit Profil Linkleri -->
                 <div class="card">
-                    <div class="card-title">WhatsApp Business API Ayarları</div>
+                    <div class="card-title">Sabit Linkler (ID Kontrol Yok)</div>
+                    <div class="links-grid" style="display: grid; gap: 15px; margin-top: 15px;">
+                        <!-- #g - Genel -->
+                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                            <span style="flex: 0 0 100px; font-weight: 500;">Genel</span>
+                            <code style="flex: 1; font-size: 13px; color: #666;">#g</code>
+                            <button class="btn btn-small btn-secondary" data-copy-profile="g">Kopyala</button>
+                            <button class="btn btn-small" data-open-profile="g">Aç</button>
+                        </div>
+                        <!-- #w - Walk-in -->
+                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                            <span style="flex: 0 0 100px; font-weight: 500;">Günlük</span>
+                            <code style="flex: 1; font-size: 13px; color: #666;">#w</code>
+                            <button class="btn btn-small btn-secondary" data-copy-profile="w">Kopyala</button>
+                            <button class="btn btn-small" data-open-profile="w">Aç</button>
+                        </div>
+                        <!-- #b - Boutique -->
+                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                            <span style="flex: 0 0 100px; font-weight: 500;">Butik</span>
+                            <code style="flex: 1; font-size: 13px; color: #666;">#b</code>
+                            <button class="btn btn-small btn-secondary" data-copy-profile="b">Kopyala</button>
+                            <button class="btn btn-small" data-open-profile="b">Aç</button>
+                        </div>
+                        <!-- #m - Management -->
+                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
+                            <span style="flex: 0 0 100px; font-weight: 500;">Yönetim</span>
+                            <code style="flex: 1; font-size: 13px; color: #666;">#m</code>
+                            <button class="btn btn-small btn-secondary" data-copy-profile="m">Kopyala</button>
+                            <button class="btn btn-small" data-open-profile="m">Aç</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIP Linkleri -->
+                <div class="card">
+                    <div class="card-title">Özel Müşteri Linkleri (#v/{id})</div>
+                    <div id="vipLinksGrid" style="margin-top: 15px;">
+                        <!-- Dinamik yüklenecek -->
+                    </div>
+                </div>
+
+                <!-- Personel Linkleri -->
+                <div class="card">
+                    <div class="card-title">Personel Linkleri (#s/{id})</div>
+                    <div id="staffLinks" style="margin-top: 15px;">
+                        <!-- Dinamik yüklenecek -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Randevu Oluştur -->
+            <div id="createAppointment" class="sub-tab-content">
+                <div class="card">
+                    <div class="card-title">Randevu Profili Seç</div>
+                    <div class="profile-selection" style="display: flex; gap: 15px; margin-top: 15px;">
+                        <button class="btn" id="selectManuelBtn" style="flex: 1;">
+                            <strong>Mağaza</strong><br>
+                            <small style="font-weight: 300;">Yönetim randevusu</small>
+                        </button>
+                        <button class="btn" id="selectYonetimBtn" style="flex: 1;">
+                            <strong>Yönetim</strong><br>
+                            <small style="font-weight: 300;">Mağaza randevusu</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Randevular -->
+            <div id="appointments" class="sub-tab-content">
+                <div class="card">
+                    <div class="card-title">Randevu Listesi</div>
+                    <div class="input-group" style="max-width: 250px;">
+                        <input type="week" id="filterWeek" style="flex: 1;" placeholder="-- . hafta, ----">
+                    </div>
+                    <div id="appointmentsList"></div>
+                </div>
+            </div>
+
+            <!-- Randevu Ayarları -->
+            <div id="settings" class="sub-tab-content">
+                <div class="card">
+                    <div class="card-title">Genel Ayarlar</div>
+                    <div class="input-group">
+                        <label for="interval">Randevu Süresi</label>
+                        <select id="interval">
+                            <option value="30">30 Dakika</option>
+                            <option value="60" selected>60 Dakika</option>
+                            <option value="90">90 Dakika</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="maxDaily">Günlük Max Teslim Randevusu</label>
+                        <input type="number" id="maxDaily" value="4" min="1">
+                    </div>
+                    <button class="btn" id="saveSettingsBtn">Kaydet</button>
+                </div>
+
+                <!-- Profil Ayarları Tablosu -->
+                <div class="card">
+                    <div class="card-title">Profil Ayarları</div>
+                    <div id="profilAyarlariTable">
+                        <p style="color: #666; font-size: 14px;">Yükleniyor...</p>
+                    </div>
+                    <button class="btn btn-secondary" id="resetProfilBtn" style="margin-top: 15px;">Varsayılana Sıfırla</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== BİLDİRİM SEKMESİ ==================== -->
+        <div id="bildirim" class="main-tab-content">
+            <!-- Alt Sekmeler -->
+            <div class="sub-tabs">
+                <div class="sub-tab active" data-subtab="whatsapp">WhatsApp</div>
+                <div class="sub-tab" data-subtab="mail">Mail</div>
+                <div class="sub-tab disabled" data-subtab="message">Message <span class="badge">Coming Soon</span></div>
+            </div>
+
+            <!-- WhatsApp -->
+            <div id="whatsapp" class="sub-tab-content active">
+                <!-- WhatsApp İç Sekmeler -->
+                <div class="inner-tabs">
+                    <div class="inner-tab active" data-innertab="whatsappFlow">Flow</div>
+                    <div class="inner-tab" data-innertab="whatsappTemplates">Template</div>
+                    <div class="inner-tab" data-innertab="whatsappMessages">Mesajlar</div>
+                </div>
+
+                <!-- Flow Yönetimi -->
+                <div id="whatsappFlow" class="inner-tab-content active">
+                    <!-- Zaman Bazlı Flow -->
+                    <div class="card">
+                        <div class="card-title">Zaman Bazlı Flow</div>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Her gün belirli bir saatte otomatik gönderilecek mesajlar</p>
+                        <div id="timeBasedFlowList">
+                            <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                        </div>
+                        <button class="btn" id="addTimeBasedFlowBtn" style="margin-top: 15px;">+ Yeni Zaman Bazlı Flow</button>
+                    </div>
+
+                    <!-- Olay Bazlı Flow -->
+                    <div class="card">
+                        <div class="card-title">Olay Bazlı Flow</div>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Randevu işlemlerinde tetiklenen mesajlar</p>
+                        <div id="eventBasedFlowList">
+                            <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                        </div>
+                        <button class="btn" id="addEventBasedFlowBtn" style="margin-top: 15px;">+ Yeni Olay Bazlı Flow</button>
+                    </div>
+                </div>
+
+                <!-- Template Yönetimi -->
+                <div id="whatsappTemplates" class="inner-tab-content">
+                    <div class="card">
+                        <div class="card-title">WhatsApp Şablonları</div>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Meta Business'ta tanımlı şablonlar</p>
+                        <div id="templatesList">
+                            <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                        </div>
+                        <button class="btn" id="addTemplateBtn" style="margin-top: 15px;">+ Yeni Şablon Ekle</button>
+                    </div>
+                </div>
+
+                <!-- Mesajlar -->
+                <div id="whatsappMessages" class="inner-tab-content">
+                    <div class="card">
+                        <div class="card-title">Gönderilen Mesajlar</div>
+                        <div id="sentMessagesList">
+                            <p style="color: #888; font-size: 13px;">Henüz mesaj yok.</p>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-title">Alınan Mesajlar</div>
+                        <div id="receivedMessagesList">
+                            <p style="color: #888; font-size: 13px;">Henüz mesaj yok.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mail -->
+            <div id="mail" class="sub-tab-content">
+                <!-- Mail İç Sekmeler -->
+                <div class="inner-tabs">
+                    <div class="inner-tab active" data-innertab="mailFlow">Flow</div>
+                    <div class="inner-tab" data-innertab="mailTemplates">Template</div>
+                </div>
+
+                <!-- Mail Flow -->
+                <div id="mailFlow" class="inner-tab-content active">
+                    <div class="card">
+                        <div class="card-title">Mail Flow Yönetimi</div>
+                        <div id="mailFlowList">
+                            <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                        </div>
+                        <button class="btn" id="addMailFlowBtn" style="margin-top: 15px;">+ Yeni Mail Flow</button>
+                    </div>
+                </div>
+
+                <!-- Mail Templates -->
+                <div id="mailTemplates" class="inner-tab-content">
+                    <div class="card">
+                        <div class="card-title">Mail Şablonları</div>
+                        <div id="mailTemplatesList">
+                            <p style="color: #888; font-size: 13px;">Yükleniyor...</p>
+                        </div>
+                        <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ Yeni Mail Şablonu</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Message (Coming Soon) -->
+            <div id="message" class="sub-tab-content">
+                <div class="card">
+                    <div class="coming-soon-container" style="text-align: center; padding: 60px 20px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📱</div>
+                        <h3 style="color: #333; margin-bottom: 10px;">SMS Mesaj Sistemi</h3>
+                        <p style="color: #666;">Bu özellik yakında eklenecek...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== TEAM SEKMESİ ==================== -->
+        <div id="team" class="main-tab-content">
+            <!-- Alt Sekmeler -->
+            <div class="sub-tabs">
+                <div class="sub-tab active" data-subtab="staff">Çalışanlar</div>
+                <div class="sub-tab" data-subtab="shifts">Vardiyalar</div>
+            </div>
+
+            <!-- Çalışanlar -->
+            <div id="staff" class="sub-tab-content active">
+                <div class="card">
+                    <div class="card-title">Yeni Personel Ekle</div>
+                    <div class="input-group">
+                        <label for="newStaffName">İsim</label>
+                        <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
+                    </div>
+                    <div class="input-group">
+                        <label for="newStaffPhone">Telefon</label>
+                        <input type="tel" id="newStaffPhone" placeholder="0555 123 4567">
+                    </div>
+                    <div class="input-group">
+                        <label for="newStaffEmail">E-posta</label>
+                        <input type="email" id="newStaffEmail" placeholder="ahmet@example.com">
+                    </div>
+                    <div class="input-group">
+                        <label for="newStaffRole">Rol</label>
+                        <select id="newStaffRole">
+                            <option value="sales" selected>Satış</option>
+                            <option value="management">Yönetim</option>
+                            <option value="greeter">Karşılayıcı</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="newStaffIsAdmin" style="width: auto;">
+                        <label for="newStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
+                    </div>
+                    <button class="btn" id="addStaffBtn">Ekle</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Çalışan Listesi (<span id="staffCount">0</span>)</div>
+                    <div class="staff-list" id="staffList"></div>
+                </div>
+            </div>
+
+            <!-- Vardiyalar -->
+            <div id="shifts" class="sub-tab-content">
+                <div class="card">
+                    <div class="card-title">Vardiya Planlama</div>
+                    <div class="input-group">
+                        <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
+                        <div style="display: flex; gap: 10px;">
+                            <input type="week" id="weekDate" style="flex: 1;">
+                            <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki</button>
+                        </div>
+                    </div>
+                    <div id="shiftTable"></div>
+                    <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Kaydet</button>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">Kayıtlı Planlar</div>
+                    <div id="savedShifts"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== APPS SEKMESİ ==================== -->
+        <div id="apps" class="main-tab-content">
+            <div class="apps-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px;">
+                <!-- Teslim Onay Formu -->
+                <div class="card app-card coming-soon">
+                    <div class="app-icon">📋</div>
+                    <div class="app-title">Teslim Onay Formu</div>
+                    <div class="app-description">Saat teslimlerinde müşteri onay formu</div>
+                    <span class="badge">Coming Soon</span>
+                </div>
+
+                <!-- Teslim Tutanak -->
+                <div class="card app-card coming-soon">
+                    <div class="app-icon">📝</div>
+                    <div class="app-title">Teslim Tutanak</div>
+                    <div class="app-description">Saat teslim tutanak belgesi</div>
+                    <span class="badge">Coming Soon</span>
+                </div>
+
+                <!-- Teknik Servis Formu -->
+                <div class="card app-card coming-soon">
+                    <div class="app-icon">🔧</div>
+                    <div class="app-title">Teknik Servis Formu</div>
+                    <div class="app-description">Servis kabul ve takip formu</div>
+                    <span class="badge">Coming Soon</span>
+                </div>
+
+                <!-- Katalog -->
+                <div class="card app-card coming-soon">
+                    <div class="app-icon">📚</div>
+                    <div class="app-title">Katalog</div>
+                    <div class="app-description">Ürün kataloğu ve stok yönetimi</div>
+                    <span class="badge">Coming Soon</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== MODALLER ==================== -->
+
+        <!-- Personel Düzenleme Modal -->
+        <div id="editStaffModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">Personel Düzenle</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="editStaffName">İsim</label>
+                        <input type="text" id="editStaffName">
+                    </div>
+                    <div class="input-group">
+                        <label for="editStaffPhone">Telefon</label>
+                        <input type="tel" id="editStaffPhone">
+                    </div>
+                    <div class="input-group">
+                        <label for="editStaffEmail">E-posta</label>
+                        <input type="email" id="editStaffEmail">
+                    </div>
+                    <div class="input-group">
+                        <label for="editStaffRole">Rol</label>
+                        <select id="editStaffRole">
+                            <option value="sales">Satış</option>
+                            <option value="management">Yönetim</option>
+                            <option value="greeter">Karşılayıcı</option>
+                        </select>
+                    </div>
+                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="editStaffIsAdmin" style="width: auto;">
+                        <label for="editStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelEditStaffBtn">İptal</button>
+                    <button class="btn" id="saveEditStaffBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Randevu Düzenleme Modal -->
+        <div id="editAppointmentModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">Randevu Düzenle</div>
+                <div class="modal-body">
+                    <div class="input-group">
+                        <label for="editAppointmentDate">Tarih</label>
+                        <input type="date" id="editAppointmentDate">
+                    </div>
+                    <div class="input-group">
+                        <label for="editAppointmentTime">Saat</label>
+                        <select id="editAppointmentTime">
+                            <option value="">-- Seçin --</option>
+                            <option value="11:00">11:00</option>
+                            <option value="12:00">12:00</option>
+                            <option value="13:00">13:00</option>
+                            <option value="14:00">14:00</option>
+                            <option value="15:00">15:00</option>
+                            <option value="16:00">16:00</option>
+                            <option value="17:00">17:00</option>
+                            <option value="18:00">18:00</option>
+                            <option value="19:00">19:00</option>
+                            <option value="20:00">20:00</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
+                    <button class="btn" id="saveEditAppointmentBtn" disabled>Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- İlgili Personel Atama Modal -->
+        <div id="assignStaffModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">İlgili Personel Ata</div>
+                <div class="modal-body">
+                    <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
+                        <!-- Randevu bilgileri dinamik -->
+                    </div>
+                    <div class="input-group">
+                        <label for="assignStaffSelect">Personel Seçin</label>
+                        <select id="assignStaffSelect">
+                            <option value="">-- Seçin --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
+                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Profil Ayarı Düzenleme Modal -->
+        <div id="editProfilModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header" id="editProfilTitle">Profil Düzenle</div>
+                <div class="modal-body">
+                    <input type="hidden" id="editProfilKey">
+
+                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="editProfilSameDayBooking" style="width: auto;">
+                        <label for="editProfilSameDayBooking" style="margin: 0;">Aynı Gün Randevu</label>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilMaxSlot">Slot Başı Max Randevu</label>
+                        <select id="editProfilMaxSlot">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilSlotGrid">Slot Süresi</label>
+                        <select id="editProfilSlotGrid">
+                            <option value="30">30 Dakika</option>
+                            <option value="60">60 Dakika</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilDuration">Randevu Süresi</label>
+                        <select id="editProfilDuration">
+                            <option value="30">30 Dakika</option>
+                            <option value="60">60 Dakika</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilMaxDailyDelivery">Günlük Max Teslim+Gönderi</label>
+                        <select id="editProfilMaxDailyDelivery">
+                            <option value="0">∞ (Limitsiz)</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilMaxDailyPerStaff">Personel Başı Max Teslim+Gönderi</label>
+                        <select id="editProfilMaxDailyPerStaff">
+                            <option value="0">∞ (Limitsiz)</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
+                        <input type="checkbox" id="editProfilAssignByAdmin" style="width: auto;">
+                        <label for="editProfilAssignByAdmin" style="margin: 0;">Admin Tarafından Atanır</label>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilStaffFilter">Personel Filtresi</label>
+                        <select id="editProfilStaffFilter">
+                            <option value="self">Self (URL'deki ID)</option>
+                            <option value="role:sales">Sadece Satış</option>
+                            <option value="role:management">Sadece Yönetim</option>
+                            <option value="none">Hiçbiri (Admin Atar)</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="editProfilTakvimFiltresi">Takvim Filtresi</label>
+                        <select id="editProfilTakvimFiltresi">
+                            <option value="bugun">Sadece Bugün</option>
+                            <option value="hepsi">Tüm Günler</option>
+                        </select>
+                    </div>
+
+                    <div class="input-group">
+                        <label>İzin Verilen Randevu Türleri</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" id="profil-type-all"> Hepsi
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" class="profil-type-checkbox" value="delivery"> Teslim
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" class="profil-type-checkbox" value="shipping"> Gönderi
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" class="profil-type-checkbox" value="meeting"> Görüşme
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" class="profil-type-checkbox" value="service"> Servis
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelProfilBtn">İptal</button>
+                    <button class="btn" id="saveProfilBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- WhatsApp API Ayarları Modal -->
+        <div id="whatsappSettingsModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content">
+                <div class="modal-header">WhatsApp API Ayarları</div>
+                <div class="modal-body">
                     <div id="whatsappApiStatus" style="margin-bottom: 15px;"></div>
                     <div class="input-group">
                         <label for="whatsappPhoneNumberId">Phone Number ID</label>
@@ -135,303 +606,20 @@
                             <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx" autocomplete="new-password">
                         </div>
                     </form>
-                    <button class="btn" id="saveWhatsAppSettingsBtn">Ayarları Kaydet</button>
-                </div>
-
-                <div class="card">
-                    <div class="card-title">Slack Webhook Ayarları</div>
-                    <div id="slackStatus" style="margin-bottom: 15px;"></div>
-                    <div class="input-group">
-                        <label for="slackWebhookUrl">Slack Webhook URL</label>
-                        <input type="text" id="slackWebhookUrl" placeholder="https://hooks.slack.com/services/...">
-                    </div>
-                    <button class="btn" id="saveSlackSettingsBtn">Ayarları Kaydet</button>
-                </div>
-            </div>
-
-            <!-- WhatsApp Templates Sub-tab -->
-            <div id="whatsappTemplates" class="sub-tab-content">
-                <!-- Yeni Şablon Ekleme -->
-                <div class="card">
-                    <div class="card-title">Yeni Şablon Ekle</div>
-                    <div class="input-group">
-                        <label for="newTemplateName">Şablon Adı</label>
-                        <input type="text" id="newTemplateName" placeholder="Randevu Hatırlatma">
-                    </div>
-                    <div class="input-group">
-                        <label for="newTemplateDescription">Açıklama</label>
-                        <input type="text" id="newTemplateDescription" placeholder="Yarınki randevular için hatırlatma">
-                    </div>
-                    <div class="input-group">
-                        <label for="newTemplateTrigger">Tetikleyici</label>
-                        <select id="newTemplateTrigger">
-                            <option value="time">Zaman Bazlı (Her Gün Belirli Saatte)</option>
-                            <option value="event">Olay Bazlı (Randevu İşlemlerinde)</option>
-                            <option value="submit">Manuel Tetikleme (Butona Basınca)</option>
-                        </select>
-                    </div>
-                    <div class="input-group" id="scheduledTimeGroup">
-                        <label for="newTemplateScheduledTime">Gönderim Saati</label>
-                        <input type="time" id="newTemplateScheduledTime" value="10:00">
-                    </div>
-                    <div class="input-group">
-                        <label for="newTemplateVariableCount">Değişken Sayısı (1-10)</label>
-                        <input type="number" id="newTemplateVariableCount" value="3" min="1" max="10">
-                    </div>
-                    <div id="templateVariablesContainer" style="margin-bottom: 15px;">
-                        <!-- Değişken seçimleri dinamik olarak eklenecek -->
-                    </div>
-                    <div class="input-group">
-                        <label for="newTemplateRecipientType">Alıcı Tipi</label>
-                        <select id="newTemplateRecipientType">
-                            <option value="">Müşteri (Varsayılan)</option>
-                            <option value="individual">Belirli Personel</option>
-                            <option value="team">Ekip (Role Göre)</option>
-                        </select>
-                    </div>
-                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="newTemplateIsActive" checked style="width: auto;">
-                        <label for="newTemplateIsActive" style="margin: 0;">Aktif</label>
-                    </div>
-                    <button class="btn" id="addTemplateBtn">Şablon Ekle</button>
-                </div>
-
-                <!-- Mevcut Şablonlar -->
-                <div class="card">
-                    <div class="card-title">Mevcut Şablonlar</div>
-                    <div id="templatesList">
-                        <p style="color: #666; font-size: 14px;">Yükleniyor...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- WhatsApp Logs Sub-tab -->
-            <div id="whatsappLogs" class="sub-tab-content">
-                <div class="card">
-                    <div class="card-title">Gönderim Logları</div>
-                    <div style="padding: 20px; background: #FFF8E1; border: 1px solid #FFE082; border-radius: 8px; margin-bottom: 15px;">
-                        <p style="color: #F57C00; font-size: 14px; margin: 0;">
-                            <strong>ℹ️ Bilgi:</strong> WhatsApp gönderim logları Google Apps Script yürütme geçmişinde tutulmaktadır.
-                        </p>
-                        <p style="color: #666; font-size: 13px; margin: 10px 0 0 0;">
-                            Logları görüntülemek için: <a href="https://script.google.com/home/executions" target="_blank" style="color: #1976D2;">Apps Script Yürütmeler</a>
-                        </p>
-                    </div>
-                    <div class="card-title" style="margin-top: 20px;">Son Gönderimler</div>
-                    <div id="whatsappLogsList">
-                        <p style="color: #666; font-size: 14px;">Henüz log kaydı yok.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- UYGULAMALAR -->
-        <div id="apps" class="tab-content">
-            <div class="card">
-                <div class="card-title">Uygulama Ayarları</div>
-                <p style="color: #666; font-size: 14px;">Uygulama entegrasyonları yakında eklenecek...</p>
-            </div>
-        </div>
-
-        <!-- AYARLAR -->
-        <div id="settings" class="tab-content">
-            <div class="card">
-                <div class="card-title">Randevu Ayarları</div>
-                <div class="input-group">
-                    <label for="interval">Randevu Süresi</label>
-                    <select id="interval">
-                        <option value="30">30 Dakika</option>
-                        <option value="60" selected>60 Dakika</option>
-                        <option value="90">90 Dakika</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="maxDaily">Günlük Max Teslim Randevusu</label>
-                    <input type="number" id="maxDaily" value="4" min="1">
-                </div>
-                <button class="btn" id="saveSettingsBtn">Kaydet</button>
-            </div>
-        </div>
-
-        <!-- İLGİLİ PERSONEL -->
-        <div id="staff" class="tab-content">
-            <div class="card">
-                <div class="card-title">Yeni Personel</div>
-                <div class="input-group">
-                    <label for="newStaffName">İsim</label>
-                    <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
-                </div>
-                <div class="input-group">
-                    <label for="newStaffPhone">Telefon</label>
-                    <input type="tel" id="newStaffPhone" placeholder="0555 123 4567">
-                </div>
-                <div class="input-group">
-                    <label for="newStaffEmail">E-posta</label>
-                    <input type="email" id="newStaffEmail" placeholder="ahmet@example.com">
-                </div>
-                <div class="input-group">
-                    <label for="newStaffRole">Rol</label>
-                    <select id="newStaffRole">
-                        <option value="sales" selected>Satış</option>
-                        <option value="management">Yönetim</option>
-                        <option value="reception">Resepsiyon</option>
-                        <option value="service">Teknik Servis</option>
-                    </select>
-                </div>
-                <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="newStaffIsAdmin" style="width: auto;">
-                    <label for="newStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
-                </div>
-                <button class="btn" id="addStaffBtn">Ekle</button>
-            </div>
-
-            <div class="card">
-                <div class="card-title">İlgili Personel (<span id="staffCount">0</span>)</div>
-                <div class="staff-list" id="staffList"></div>
-            </div>
-        </div>
-
-        <!-- VARDİYALAR -->
-        <div id="shifts" class="tab-content">
-            <div class="card">
-                <div class="card-title">Vardiya Planlama</div>
-                <div class="input-group">
-                    <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="week" id="weekDate" style="flex: 1;">
-                        <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki</button>
-                    </div>
-                </div>
-                <div id="shiftTable"></div>
-                <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Kaydet</button>
-            </div>
-
-            <div class="card">
-                <div class="card-title">Kayıtlı Planlar</div>
-                <div id="savedShifts"></div>
-            </div>
-        </div>
-
-        <!-- RANDEVULAR -->
-        <div id="appointments" class="tab-content">
-            <div class="card">
-                <div class="card-title">Randevular</div>
-                <div class="input-group" style="max-width: 250px;">
-                    <input type="week" id="filterWeek" style="flex: 1;" placeholder="-- . hafta, ----">
-                </div>
-                <div id="appointmentsList"></div>
-            </div>
-        </div>
-
-        <!-- Personel Düzenleme Modal -->
-        <div id="editStaffModal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">Personel Düzenle</div>
-                <div class="input-group">
-                    <label for="editStaffName">İsim</label>
-                    <input type="text" id="editStaffName">
-                </div>
-                <div class="input-group">
-                    <label for="editStaffPhone">Telefon</label>
-                    <input type="tel" id="editStaffPhone">
-                </div>
-                <div class="input-group">
-                    <label for="editStaffEmail">E-posta</label>
-                    <input type="email" id="editStaffEmail">
-                </div>
-                <div class="input-group">
-                    <label for="editStaffRole">Rol</label>
-                    <select id="editStaffRole">
-                        <option value="sales">Satış</option>
-                        <option value="management">Yönetim</option>
-                        <option value="reception">Resepsiyon</option>
-                        <option value="service">Teknik Servis</option>
-                    </select>
-                </div>
-                <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="editStaffIsAdmin" style="width: auto;">
-                    <label for="editStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelEditStaffBtn">İptal</button>
-                    <button class="btn" id="saveEditStaffBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelWhatsAppSettingsBtn">İptal</button>
+                    <button class="btn" id="saveWhatsAppSettingsBtn">Kaydet</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Randevu Düzenleme Modal -->
-    <div id="editAppointmentModal" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-content">
-            <div class="modal-body">
-                <h3 style="margin-bottom: 20px;">Randevu Düzenle</h3>
-
-                <!-- Tarih Seçimi -->
-                <div class="input-group">
-                    <label for="editAppointmentDate">Tarih</label>
-                    <input type="date" id="editAppointmentDate">
-                </div>
-
-                <!-- Saat Seçimi -->
-                <div class="input-group">
-                    <label for="editAppointmentTime">Saat</label>
-                    <select id="editAppointmentTime">
-                        <option value="">-- Seçin --</option>
-                        <option value="11:00">11:00</option>
-                        <option value="12:00">12:00</option>
-                        <option value="13:00">13:00</option>
-                        <option value="14:00">14:00</option>
-                        <option value="15:00">15:00</option>
-                        <option value="16:00">16:00</option>
-                        <option value="17:00">17:00</option>
-                        <option value="18:00">18:00</option>
-                        <option value="19:00">19:00</option>
-                        <option value="20:00">20:00</option>
-                    </select>
-                </div>
-
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
-                    <button class="btn" id="saveEditAppointmentBtn" disabled>Kaydet</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- İlgili Personel Atama Modal -->
-    <div id="assignStaffModal" class="modal">
-        <div class="modal-overlay"></div>
-        <div class="modal-content">
-            <div class="modal-body">
-                <h3 style="margin-bottom: 20px;">İlgili Personel Ata</h3>
-                <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
-                    <!-- Randevu bilgileri buraya dinamik olarak eklenecek -->
-                </div>
-                <div class="input-group">
-                    <label for="assignStaffSelect">Personel Seçin</label>
-                    <select id="assignStaffSelect">
-                        <option value="">-- Seçin --</option>
-                        <!-- Personel listesi dinamik olarak eklenecek -->
-                    </select>
-                </div>
-                <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
-                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Date Utility Functions -->
+    <!-- Scripts -->
     <script type="module" src="date-utils.ts"></script>
-    <!-- Güvenlik Helper Fonksiyonları -->
     <script type="module" src="security-helpers.ts"></script>
-    <!-- API Service -->
     <script type="module" src="api-service.ts"></script>
-    <!-- Admin Authentication -->
     <script type="module" src="admin-auth.ts"></script>
-
     <script type="module" src="admin-panel.ts"></script>
 </body>
 </html>

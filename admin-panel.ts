@@ -42,6 +42,66 @@ const UI = {
         showAlertSafe(message, type, 'alertContainer');
     },
 
+    /**
+     * Switch main tab (Randevu, Bildirim, Team, Apps)
+     */
+    switchMainTab(tabName: string) {
+        // Deactivate all main tabs
+        document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.main-tab-content').forEach(c => c.classList.remove('active'));
+
+        // Activate selected main tab
+        const selectedTab = document.querySelector(`.main-tab[data-maintab="${tabName}"]`);
+        const selectedContent = document.getElementById(tabName);
+
+        selectedTab?.classList.add('active');
+        selectedContent?.classList.add('active');
+    },
+
+    /**
+     * Switch sub tab within a main tab
+     */
+    switchSubTab(mainTabId: string, subTabName: string) {
+        const mainContent = document.getElementById(mainTabId);
+        if (!mainContent) return;
+
+        // Deactivate all sub tabs within this main tab
+        mainContent.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+        mainContent.querySelectorAll('.sub-tab-content').forEach(c => c.classList.remove('active'));
+
+        // Activate selected sub tab
+        const selectedTab = mainContent.querySelector(`.sub-tab[data-subtab="${subTabName}"]`);
+        const selectedContent = document.getElementById(subTabName);
+
+        selectedTab?.classList.add('active');
+        selectedContent?.classList.add('active');
+
+        // Load appointments when switching to appointments sub-tab
+        if (subTabName === 'appointments') {
+            loadAppointments();
+        }
+    },
+
+    /**
+     * Switch inner tab within a sub tab (WhatsApp, Mail)
+     */
+    switchInnerTab(subTabId: string, innerTabName: string) {
+        const subContent = document.getElementById(subTabId);
+        if (!subContent) return;
+
+        // Deactivate all inner tabs within this sub tab
+        subContent.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+        subContent.querySelectorAll('.inner-tab-content').forEach(c => c.classList.remove('active'));
+
+        // Activate selected inner tab
+        const selectedTab = subContent.querySelector(`.inner-tab[data-innertab="${innerTabName}"]`);
+        const selectedContent = document.getElementById(innerTabName);
+
+        selectedTab?.classList.add('active');
+        selectedContent?.classList.add('active');
+    },
+
+    // Legacy method for backward compatibility
     switchTab(tabName: string) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -202,12 +262,12 @@ async function startApp(): Promise<void> {
         // Setup randevu oluştur butonları
         setupCreateAppointmentButtons();
 
-        // Hide loading overlay and show tabs
+        // Hide loading overlay and show main tabs
         const loadingOverlay = document.getElementById('loadingOverlay');
-        const tabs = document.querySelector('.tabs') as HTMLElement;
+        const mainTabs = document.querySelector('.main-tabs') as HTMLElement;
 
         if (loadingOverlay) loadingOverlay.style.display = 'none';
-        if (tabs) tabs.style.display = 'flex';
+        if (mainTabs) mainTabs.style.display = 'flex';
 
     } catch (error) {
         console.error('Admin panel başlatma hatası:', error);
@@ -217,9 +277,51 @@ async function startApp(): Promise<void> {
 }
 
 /**
- * Setup tab switching
+ * Setup hierarchical tab switching (main-tabs > sub-tabs > inner-tabs)
  */
 function setupTabs(): void {
+    // Main tabs (Randevu, Bildirim, Team, Apps)
+    document.querySelectorAll('.main-tab').forEach(tab => {
+        tab.addEventListener('click', function(this: HTMLElement) {
+            const tabName = this.dataset.maintab;
+            if (tabName) {
+                UI.switchMainTab(tabName);
+            }
+        });
+    });
+
+    // Sub tabs (within each main tab)
+    document.querySelectorAll('.sub-tab').forEach(tab => {
+        tab.addEventListener('click', function(this: HTMLElement) {
+            // Skip disabled tabs
+            if (this.classList.contains('disabled')) return;
+
+            const subTabName = this.dataset.subtab;
+            // Find parent main-tab-content
+            const mainContent = this.closest('.main-tab-content');
+            const mainTabId = mainContent?.id;
+
+            if (subTabName && mainTabId) {
+                UI.switchSubTab(mainTabId, subTabName);
+            }
+        });
+    });
+
+    // Inner tabs (WhatsApp, Mail)
+    document.querySelectorAll('.inner-tab').forEach(tab => {
+        tab.addEventListener('click', function(this: HTMLElement) {
+            const innerTabName = this.dataset.innertab;
+            // Find parent sub-tab-content
+            const subContent = this.closest('.sub-tab-content');
+            const subTabId = subContent?.id;
+
+            if (innerTabName && subTabId) {
+                UI.switchInnerTab(subTabId, innerTabName);
+            }
+        });
+    });
+
+    // Legacy: Support for old .tab class (backward compatibility)
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', function(this: HTMLElement) {
             const tabName = this.dataset.tab;
