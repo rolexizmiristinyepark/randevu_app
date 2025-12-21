@@ -68,10 +68,8 @@ async function load(): Promise<void> {
 
     // Clear and show loading
     container.textContent = '';
-    const loadingMsg = getCreateElement()('p', {
-        style: { textAlign: 'center', padding: '20px' }
-    }, 'Yükleniyor...');
-    container.appendChild(loadingMsg);
+    const loadingSpinner = getCreateElement()('div', { className: 'loading-spinner' });
+    container.appendChild(loadingSpinner);
 
     // Calculate date range from week value
     let startDate: Date;

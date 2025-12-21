@@ -386,6 +386,15 @@ function showContainerMessage(container: HTMLElement, text: string, isError: boo
     container.appendChild(p);
 }
 
+function showContainerLoading(container: HTMLElement): void {
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner';
+    container.appendChild(spinner);
+}
+
 /**
  * Load WhatsApp templates list
  */
@@ -394,7 +403,7 @@ async function loadTemplates(): Promise<void> {
     if (!container) return;
 
     // Show loading
-    showContainerMessage(container, 'Yükleniyor...');
+    showContainerLoading(container);
 
     try {
         const response = await ApiService.call('getWhatsAppTemplates', {}) as ApiResponse<WhatsAppTemplate[]>;

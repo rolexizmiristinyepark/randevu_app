@@ -1066,10 +1066,9 @@ function clearContainer(container: HTMLElement | null): void {
 function showContainerLoading(container: HTMLElement | null): void {
     if (!container) return;
     clearContainer(container);
-    const p = document.createElement('p');
-    p.style.cssText = 'color: #888; font-size: 13px;';
-    p.textContent = 'Yükleniyor...';
-    container.appendChild(p);
+    const spinner = document.createElement('div');
+    spinner.className = 'loading-spinner';
+    container.appendChild(spinner);
 }
 
 /**
