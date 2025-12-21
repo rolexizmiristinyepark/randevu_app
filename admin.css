@@ -222,12 +222,12 @@
         }
 
         .link-card-name {
-            font-family: 'Playfair Display', serif;
-            font-weight: 400;
-            font-size: 18px;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 500;
+            font-size: 16px;
             color: #1A1A2E;
             margin-bottom: 16px;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
 
         .link-card-url {
