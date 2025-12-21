@@ -632,18 +632,18 @@ function openStaffLink(type: string, id: string): void {
 async function loadProfileLinks(): Promise<void> {
     try {
         const response = await fetch((window as any).CONFIG.APPS_SCRIPT_URL + '?action=getStaff');
-        const data = await response.json();
+        const result = await response.json();
 
-        console.log('[loadProfileLinks] Staff data:', data.staff);
+        // API returns { success: true, data: [...] }
+        const staffList = result.data || result.staff || [];
 
-        if (data.success && data.staff) {
+        if (result.success && staffList.length > 0) {
             // Özel Müşteri = role: management
             const managementList: Array<{ id: string; name: string }> = [];
             // Personel = role: sales
             const salesList: Array<{ id: string; name: string }> = [];
 
-            data.staff.forEach((s: any) => {
-                console.log(`[loadProfileLinks] ${s.name}: role=${s.role}, active=${s.active}`);
+            staffList.forEach((s: any) => {
                 if (!s.active) return;
                 if (s.role === 'management') {
                     managementList.push({ id: s.id, name: s.name });
@@ -651,9 +651,6 @@ async function loadProfileLinks(): Promise<void> {
                     salesList.push({ id: s.id, name: s.name });
                 }
             });
-
-            console.log('[loadProfileLinks] Management:', managementList);
-            console.log('[loadProfileLinks] Sales:', salesList);
 
             displayVipLinks(managementList);
             displayStaffLinks(salesList);
