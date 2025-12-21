@@ -80,15 +80,13 @@
                 <div class="card">
                     <div class="card-title">Randevu Profili Seç</div>
                     <div class="profile-selection" style="display: flex; gap: 15px; margin-top: 15px;">
-                        <button class="btn" id="selectManuelBtn" style="flex: 1;">
-                            <strong>Mağaza</strong><br>
-                            <small style="font-weight: 300;">Yönetim randevusu</small>
-                        </button>
-                        <button class="btn" id="selectYonetimBtn" style="flex: 1;">
-                            <strong>Yönetim</strong><br>
-                            <small style="font-weight: 300;">Mağaza randevusu</small>
-                        </button>
+                        <button class="btn btn-secondary profile-select-btn" id="selectManuelBtn">Mağaza</button>
+                        <button class="btn btn-secondary profile-select-btn" id="selectYonetimBtn">Yönetim</button>
                     </div>
+                </div>
+                <!-- Randevu akışı burada gösterilecek -->
+                <div id="appointmentFlowContainer" style="display: none; margin-top: 20px;">
+                    <iframe id="appointmentFlowFrame" style="width: 100%; min-height: 600px; border: 1px solid #E8E8E8; border-radius: 4px;"></iframe>
                 </div>
             </div>
 

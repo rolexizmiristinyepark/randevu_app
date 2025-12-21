@@ -184,6 +184,31 @@
             font-size: 11px;
         }
 
+        /* Profile Select Buttons */
+        .profile-select-btn {
+            flex: 1;
+            padding: 14px 24px;
+            font-weight: 400;
+            font-size: 13px;
+            background: #FAFAFA;
+            border: 1px solid #E8E8E8;
+            color: #1A1A2E;
+        }
+
+        .profile-select-btn:hover {
+            background: #F5F5F5;
+            border-color: #C9A55A;
+            color: #1A1A2E;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .profile-select-btn.active {
+            background: #fff;
+            border-color: #C9A55A;
+            box-shadow: 0 0 0 1px #C9A55A;
+        }
+
         /* Link Cards Grid - Rolex Luxury Style */
         .link-cards-grid {
             display: grid;

@@ -573,11 +573,28 @@ function setupCreateAppointmentButtons(): void {
 }
 
 /**
- * Randevu formunu aynı sekmede aç
+ * Randevu akışını iframe içinde göster
  */
 function openAppointmentForm(code: 'b' | 'm'): void {
     const baseUrl = (window as any).CONFIG.BASE_URL;
-    window.location.href = baseUrl + '#' + code;
+    const container = document.getElementById('appointmentFlowContainer');
+    const iframe = document.getElementById('appointmentFlowFrame') as HTMLIFrameElement;
+
+    if (container && iframe) {
+        // Aktif butonu işaretle
+        document.querySelectorAll('.profile-select-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        const activeBtn = code === 'b' ? 'selectManuelBtn' : 'selectYonetimBtn';
+        document.getElementById(activeBtn)?.classList.add('active');
+
+        // Iframe'i göster ve URL'i ayarla
+        iframe.src = baseUrl + '#' + code;
+        container.style.display = 'block';
+
+        // Scroll to iframe
+        container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
 }
 
 /**
