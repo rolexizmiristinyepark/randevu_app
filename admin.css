@@ -500,6 +500,36 @@
             background-color: #F9F9F9;
         }
 
+        /* Week input with custom placeholder */
+        .week-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        .week-input-wrapper input[type="week"] {
+            min-width: 160px;
+            font-size: 13px;
+            color: transparent;
+        }
+
+        .week-input-wrapper input[type="week"].has-value {
+            color: #1A1A2E;
+        }
+
+        .week-input-wrapper .week-placeholder {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+            color: #757575;
+            pointer-events: none;
+        }
+
+        .week-input-wrapper input[type="week"].has-value + .week-placeholder {
+            display: none;
+        }
+
         /* Randevu düzenleme - Saat slotları */
         .time-slot-btn {
             padding: 12px 8px;

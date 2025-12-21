@@ -423,6 +423,10 @@ function setupWeekFilter(): void {
         const hasValue = !!filterWeek?.value;
         if (clearBtn) clearBtn.style.display = hasValue ? 'inline-block' : 'none';
         if (filterLabel) filterLabel.textContent = formatWeekLabel(filterWeek?.value || '');
+        // Toggle has-value class for placeholder visibility
+        if (filterWeek) {
+            filterWeek.classList.toggle('has-value', hasValue);
+        }
     };
 
     // Week picker click handler
