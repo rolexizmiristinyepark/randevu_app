@@ -115,6 +115,9 @@ export function displayAvailableStaff(): void {
     // v3.8: vardiyaKontrolu=false ise tüm personeller müsait görünsün
     const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
 
+    // v3.9: Önceden seçili staff'ı hatırla (gün değiştiğinde korunması için)
+    const previouslySelectedStaff = state.get('selectedStaff');
+
     filteredStaff.forEach((staff: Staff) => {
         if (!staff.active) return;
 
@@ -126,6 +129,11 @@ export function displayAvailableStaff(): void {
 
         const card = document.createElement('div');
         card.className = 'staff-card' + (!isWorking ? ' unavailable' : '');
+
+        // v3.9: Önceden seçili staff'ı işaretle
+        if (previouslySelectedStaff && String(staff.id) === String(previouslySelectedStaff) && isWorking) {
+            card.classList.add('selected');
+        }
 
         // Safe DOM manipulation - XSS protection
         const nameDiv = createElement('div', { className: 'staff-name' });
@@ -142,6 +150,24 @@ export function displayAvailableStaff(): void {
 
         staffList.appendChild(card);
     });
+
+    // v3.9: Önceden seçili ve hala müsait staff varsa, saat section'ını da göster
+    if (previouslySelectedStaff) {
+        const selectedStaffData = filteredStaff.find((s: Staff) => String(s.id) === String(previouslySelectedStaff) && s.active);
+        if (selectedStaffData) {
+            const shiftType = dayShiftsForDate[selectedStaffData.id];
+            const isWorking = vardiyaKontrolu ? !!shiftType : true;
+            if (isWorking) {
+                const effectiveShiftType = vardiyaKontrolu ? (shiftType || 'full') : 'full';
+                state.set('selectedShiftType', effectiveShiftType);
+                // Saat section'ını göster
+                import('./TimeSelectorComponent').then(({ displayAvailableTimeSlots }) => {
+                    displayAvailableTimeSlots();
+                    revealSection('timeSection');
+                });
+            }
+        }
+    }
 }
 
 // ==================== STAFF SELECTION ====================
