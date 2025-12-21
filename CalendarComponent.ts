@@ -183,27 +183,33 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
     const specificStaffId = state.get('specificStaffId');
     const dayShifts = state.get('dayShifts');
     const googleCalendarEvents = state.get('googleCalendarEvents');
+    const profilAyarlari = state.get('profilAyarlari');
 
     // NEW: All days available for management appointments
     if (selectedAppointmentType === 'management') {
         return { available: true };
     }
 
-    // Shift check
-    if (specificStaffId && specificStaffId !== '0') {
-        // Normal staff link - check only that staff's shift
-        // v3.6: Support both numeric IDs and secure string IDs
-        const shifts = dayShifts[dateStr];
-        const staffHasShift = shifts && (shifts[specificStaffId] || shifts[parseInt(specificStaffId)]);
+    // v3.8: vardiyaKontrolu=false ise vardiya kontrolünü atla, tüm günler müsait
+    const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
 
-        if (!staffHasShift) {
-            return { available: false, reason: 'İlgili çalışan bu gün müsait değil' };
-        }
-    } else {
-        // General link or staff=0 - check if any staff has shift
-        const hasShifts = dayShifts[dateStr] && Object.keys(dayShifts[dateStr]).length > 0;
-        if (!hasShifts) {
-            return { available: false, reason: 'Çalışan yok' };
+    // Shift check (vardiyaKontrolu true ise)
+    if (vardiyaKontrolu) {
+        if (specificStaffId && specificStaffId !== '0') {
+            // Normal staff link - check only that staff's shift
+            // v3.6: Support both numeric IDs and secure string IDs
+            const shifts = dayShifts[dateStr];
+            const staffHasShift = shifts && (shifts[specificStaffId] || shifts[parseInt(specificStaffId)]);
+
+            if (!staffHasShift) {
+                return { available: false, reason: 'İlgili çalışan bu gün müsait değil' };
+            }
+        } else {
+            // General link or staff=0 - check if any staff has shift
+            const hasShifts = dayShifts[dateStr] && Object.keys(dayShifts[dateStr]).length > 0;
+            if (!hasShifts) {
+                return { available: false, reason: 'Çalışan yok' };
+            }
         }
     }
 
@@ -296,10 +302,16 @@ export async function selectDay(dateStr: string): Promise<void> {
         return;
     }
 
+    // v3.8: vardiyaKontrolu kontrolü
+    const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
+
     // v3.6: staffFilter === 'self' - auto-select staff from URL ID, hide staff section
     if (staffFilter === 'self' && specificStaffId && specificStaffId !== '0') {
         state.set('selectedStaff', specificStaffId); // Use secure ID from URL (string)
-        const shiftType = dayShifts[dateStr]?.[specificStaffId] || dayShifts[dateStr]?.[parseInt(specificStaffId)] || 'full';
+        // v3.8: vardiyaKontrolu=false ise tüm slotlar için 'full' kullan
+        const shiftType = vardiyaKontrolu
+            ? (dayShifts[dateStr]?.[specificStaffId] || dayShifts[dateStr]?.[parseInt(specificStaffId)] || 'full')
+            : 'full';
         state.set('selectedShiftType', shiftType);
         const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
         displayAvailableTimeSlots();
@@ -309,6 +321,38 @@ export async function selectDay(dateStr: string): Promise<void> {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
         return;
+    }
+
+    // v3.7: staffFilter === 'user' - auto-select logged-in admin's staff, hide staff section
+    // Not: iframe'de AdminAuth erişilemez, app.ts'te URL parametresinden selectedStaff ayarlanmış olmalı
+    if (staffFilter === 'user') {
+        // Önce state'teki selectedStaff'ı kontrol et (iframe için app.ts'te ayarlanmış olabilir)
+        let userStaffId = state.get('selectedStaff');
+
+        // Fallback: iframe dışında (doğrudan customer form) AdminAuth dene
+        if (!userStaffId) {
+            const currentUser = (window as any).AdminAuth?.getCurrentUser?.();
+            userStaffId = currentUser?.id;
+            if (userStaffId) {
+                state.set('selectedStaff', userStaffId);
+            }
+        }
+
+        if (userStaffId) {
+            // v3.8: vardiyaKontrolu=false ise tüm slotlar için 'full' kullan
+            const shiftType = vardiyaKontrolu
+                ? (dayShifts[dateStr]?.[userStaffId] || dayShifts[dateStr]?.[parseInt(userStaffId)] || 'full')
+                : 'full';
+            state.set('selectedShiftType', shiftType);
+            const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
+            displayAvailableTimeSlots();
+            revealSection('timeSection');
+            hideSection('staffSection');
+            hideSection('detailsSection');
+            const submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) submitBtn.style.display = 'none';
+            return;
+        }
     }
 
     // NEW: For staff=0 and management appointment, go directly to time selection

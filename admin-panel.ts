@@ -15,6 +15,7 @@ import { initSettingsManager } from './admin/settings-manager';
 import { initWhatsAppManager, loadSentMessages, loadReceivedMessages } from './admin/whatsapp-manager';
 import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
+import { setupAllModalCloseHandlers } from './ui-utils';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -277,6 +278,9 @@ async function startApp(): Promise<void> {
 
         // Setup randevu oluştur butonları
         setupCreateAppointmentButtons();
+
+        // Setup modal close handlers (overlay click to close)
+        setupAllModalCloseHandlers();
 
         // Hide loading overlay and show main tabs + content
         const loadingOverlay = document.getElementById('loadingOverlay');
@@ -582,6 +586,7 @@ function setupCreateAppointmentButtons(): void {
 
 /**
  * Randevu akışını iframe içinde göster
+ * v3.7: staffFilter='user' desteği - giriş yapan admin'in ID'sini iframe'e geçir
  */
 function openAppointmentForm(code: 'b' | 'm'): void {
     const baseUrl = (window as any).CONFIG.BASE_URL;
@@ -600,9 +605,13 @@ function openAppointmentForm(code: 'b' | 'm'): void {
         iframe.src = 'about:blank';
         container.style.display = 'block';
 
+        // v3.7: Giriş yapan admin'in staff ID'sini al (staffFilter='user' için)
+        const currentUser = AdminAuth.getCurrentUser();
+        const autoStaffParam = currentUser?.id ? `?autoStaff=${currentUser.id}` : '';
+
         // Kısa gecikme ile yeni src ayarla
         setTimeout(() => {
-            iframe.src = baseUrl + '#' + code;
+            iframe.src = baseUrl + autoStaffParam + '#' + code;
         }, 50);
 
         // Scroll to iframe

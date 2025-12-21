@@ -701,6 +701,7 @@
                         <label for="editProfilStaffFilter">Personel Filtresi</label>
                         <select id="editProfilStaffFilter">
                             <option value="self">Self (URL'deki ID)</option>
+                            <option value="user">Giriş Yapan Kullanıcı</option>
                             <option value="role:sales">Sadece Satış</option>
                             <option value="role:management">Sadece Yönetim</option>
                             <option value="none">Hiçbiri (Admin Atar)</option>
@@ -714,6 +715,14 @@
                             <option value="withtoday">Bugün ve Sonrası</option>
                             <option value="withouttoday">Yarın ve Sonrası</option>
                         </select>
+                    </div>
+
+                    <div class="input-group" style="display: flex; justify-content: flex-start;">
+                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                            <input type="checkbox" id="editProfilVardiyaKontrolu" checked>
+                            <span>Vardiya Kontrolü</span>
+                            <small style="color: #757575; font-weight: normal;">(Kapalıysa tüm günler/slotlar müsait)</small>
+                        </label>
                     </div>
 
                     <div class="input-group">

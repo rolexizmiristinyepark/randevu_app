@@ -215,6 +215,21 @@ export function setupModalCloseHandlers(modalId: string, cancelBtnId?: string): 
         cancelBtn?.addEventListener('click', () => closeModal(modalId));
     }
 }
+
+/**
+ * Setup close handlers for all modals (overlay click to close)
+ * Call this once on app initialization
+ */
+export function setupAllModalCloseHandlers(): void {
+    document.querySelectorAll('.modal').forEach(modal => {
+        const overlay = modal.querySelector('.modal-overlay');
+        if (overlay) {
+            overlay.addEventListener('click', () => {
+                modal.classList.remove('active');
+            });
+        }
+    });
+}
 //#endregion
 
 //#region Confirmation Dialog

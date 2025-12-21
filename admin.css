@@ -204,9 +204,9 @@
         }
 
         .profile-select-btn.active {
-            background: #fff;
+            background: #F5F5F5;
             border-color: #C9A55A;
-            box-shadow: 0 0 0 1px #C9A55A;
+            color: #1A1A2E;
         }
 
         /* Link Cards Grid - Rolex Luxury Style */
@@ -554,6 +554,19 @@
 
         input[type="week"]:hover {
             background-color: #F9F9F9;
+        }
+
+        /* Checkbox stilleri - Rolex tasarım */
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #C9A55A;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"]:focus {
+            outline: 2px solid #C9A55A;
+            outline-offset: 2px;
         }
 
         /* Week filter row - responsive */

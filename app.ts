@@ -162,10 +162,21 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         // v3.5: staffFilter kontrolü
         // - none: Personel seçimi gösterilmez, admin sonradan atar
-        // - self: URL'deki personel otomatik seçilir, personel seçimi gösterilmez
+        // - self/user: URL'deki personel otomatik seçilir, personel seçimi gösterilmez
         // - all/role:sales/role:management: Personel listesi gösterilir (filtreleme StaffSelectorComponent'te)
-        if (profilAyarlari.staffFilter === 'none' || profilAyarlari.staffFilter === 'self') {
+        if (profilAyarlari.staffFilter === 'none' || profilAyarlari.staffFilter === 'self' || profilAyarlari.staffFilter === 'user') {
             hideSection('staffSection');
+        }
+
+        // v3.7: staffFilter='user' için autoStaff URL parametresi kontrolü
+        // Admin panelinden açılan iframe'de giriş yapan kullanıcının ID'si geçirilir
+        if (profilAyarlari.staffFilter === 'user') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const autoStaffId = urlParams.get('autoStaff');
+            if (autoStaffId) {
+                state.set('selectedStaff', autoStaffId);
+                state.set('autoStaffFromAdmin', true); // İşaretçi: admin panelden geliyor
+            }
         }
 
     }
@@ -222,6 +233,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         const staff = staffMembers.find((s: any) => s.id === profileInfo.data?.id);
         if (staff) {
             state.set('selectedStaff', staff.id);
+        }
+    }
+
+    // v3.7: staffFilter='user' ise başlığa kullanıcı adını ekle
+    if (profilAyarlari?.staffFilter === 'user' && state.get('selectedStaff')) {
+        const staffMembers = state.get('staffMembers');
+        const selectedStaffId = state.get('selectedStaff');
+        const staff = staffMembers.find((s: any) => String(s.id) === String(selectedStaffId));
+        if (staff) {
+            const header = document.getElementById('staffHeader');
+            if (header) {
+                // Mevcut profil başlığına kullanıcı adı ekle
+                const currentText = header.textContent || '';
+                header.textContent = `${currentText} - ${staff.name}`;
+            }
         }
     }
 

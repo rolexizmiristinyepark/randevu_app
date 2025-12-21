@@ -21,6 +21,7 @@ interface ProfilAyari {
     allowedTypes: string[];
     staffFilter: string;
     takvimFiltresi: 'onlytoday' | 'withtoday' | 'withouttoday';
+    vardiyaKontrolu: boolean;    // v3.8: true=vardiyaya göre, false=tüm günler müsait
 }
 
 type ProfilAyarlari = Record<string, ProfilAyari>;
@@ -105,6 +106,7 @@ function renderTable(): void {
                     <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Profil</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Kod</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">ID Kontrol</th>
+                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Vardiya</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Slot Max</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Günlük T/G</th>
                     <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">P.Başı T/G</th>
@@ -122,6 +124,7 @@ function renderTable(): void {
         if (!p) continue;
 
         const staffLabel = p.staffFilter === 'self' ? 'Self (URL ID)' :
+                          p.staffFilter === 'user' ? 'Giriş Yapan Kullanıcı' :
                           p.staffFilter === 'role:sales' ? 'Satış' :
                           p.staffFilter === 'role:management' ? 'Yönetim' :
                           p.staffFilter === 'none' ? 'Admin Atar' : p.staffFilter;
@@ -131,6 +134,7 @@ function renderTable(): void {
                 <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${PROFIL_LABELS[key] || key}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${CODE_LABELS[p.code] || '#' + p.code}</code></td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrol ? '✓' : '-'}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.vardiyaKontrolu !== false ? '✓' : '-'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxSlotAppointment}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyDelivery || '∞'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyPerStaff || '∞'}</td>
@@ -178,6 +182,7 @@ function openEditModal(key: string): void {
     (document.getElementById('editProfilMaxDailyPerStaff') as HTMLSelectElement).value = String(p.maxDailyPerStaff || 0);
     (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value = p.staffFilter;
     (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value = p.takvimFiltresi || 'withtoday';
+    (document.getElementById('editProfilVardiyaKontrolu') as HTMLInputElement).checked = p.vardiyaKontrolu !== false; // default true
 
     // Set allowed types checkboxes
     const typeCheckboxes = document.querySelectorAll('.profil-type-checkbox') as NodeListOf<HTMLInputElement>;
@@ -220,6 +225,7 @@ async function saveProfilAyari(): Promise<void> {
 
     const staffFilter = (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value;
     const takvimFiltresi = (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value;
+    const vardiyaKontrolu = (document.getElementById('editProfilVardiyaKontrolu') as HTMLInputElement).checked;
 
     const updates = {
         // sameDayBooking takvimFiltresi'nden türetiliyor: onlytoday/withtoday = true, withouttoday = false
@@ -232,6 +238,7 @@ async function saveProfilAyari(): Promise<void> {
         assignByAdmin: staffFilter === 'none',  // Admin atar = Personel filtresi "none" ise
         staffFilter: staffFilter,
         takvimFiltresi: takvimFiltresi,
+        vardiyaKontrolu: vardiyaKontrolu,  // v3.8: Vardiya kontrolü
         allowedTypes: allowedTypes
     };
 

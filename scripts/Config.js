@@ -276,6 +276,7 @@ const SHIFT_SLOT_FILTERS = {
  * - takvimFiltresi: Takvim filtresi (onlytoday, withtoday, withouttoday)
  * - defaultType: Varsayılan randevu türü (boşsa müşteri seçer)
  * - showTypeSelection: Varsayılan tür varsa seçimi göster mi (true: göster, false: gizle)
+ * - vardiyaKontrolu: Vardiya kontrolü (true: vardiyaya göre, false: tüm günler/slotlar müsait)
  */
 /**
  * PROFIL_AYARLARI v3.3
@@ -309,7 +310,8 @@ const PROFIL_AYARLARI = {
     showCalendar: true,
     takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
-    showTypeSelection: true
+    showTypeSelection: true,
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
   // #s/{id} - Personel linki (idKontrol: true)
   personel: {
@@ -328,7 +330,8 @@ const PROFIL_AYARLARI = {
     showCalendar: true,
     takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
-    showTypeSelection: true
+    showTypeSelection: true,
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
   // #v/{id} - VIP linki (idKontrol: true)
   vip: {
@@ -347,7 +350,8 @@ const PROFIL_AYARLARI = {
     showCalendar: true,
     takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
-    showTypeSelection: true
+    showTypeSelection: true,
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
   // #b - Boutique/Mağaza (idKontrol: false)
   boutique: {
@@ -365,7 +369,8 @@ const PROFIL_AYARLARI = {
     showCalendar: true,
     takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
-    showTypeSelection: true
+    showTypeSelection: true,
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
   // #m - Yönetim (idKontrol: false)
   yonetim: {
@@ -383,7 +388,8 @@ const PROFIL_AYARLARI = {
     showCalendar: true,
     takvimFiltresi: 'withtoday',
     defaultType: '',  // Müşteri seçer
-    showTypeSelection: true
+    showTypeSelection: true,
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
   // #w - Walk-in/Günlük (idKontrol: false)
   gunluk: {
@@ -399,7 +405,8 @@ const PROFIL_AYARLARI = {
     allowedTypes: ['meeting'],
     staffFilter: 'none',  // Personel seçimi yok, admin atar
     showCalendar: false,
-    takvimFiltresi: 'onlytoday'
+    takvimFiltresi: 'onlytoday',
+    vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   }
 };
 
@@ -509,7 +516,8 @@ var ProfilAyarlariService = {
       var allowedFields = [
         'sameDayBooking', 'maxSlotAppointment', 'slotGrid',
         'maxDailyPerStaff', 'maxDailyDelivery', 'duration',
-        'assignByAdmin', 'allowedTypes', 'staffFilter', 'showCalendar', 'takvimFiltresi', 'defaultType', 'showTypeSelection'
+        'assignByAdmin', 'allowedTypes', 'staffFilter', 'showCalendar', 'takvimFiltresi', 'defaultType', 'showTypeSelection',
+        'vardiyaKontrolu'  // v3.8: Vardiya kontrolü ayarı
       ];
 
       for (var field in updates) {

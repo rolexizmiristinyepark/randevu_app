@@ -41,11 +41,13 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     // Check required parameters
     const profilAyarlari = state.get('profilAyarlari');
     const staffFilter = profilAyarlari?.staffFilter || 'all';
+    const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
 
     // Don't check shifts for:
     // - VIP links (staff will be assigned later)
     // - staffFilter === 'none' (admin will assign staff later)
-    if (isManagementLink || staffFilter === 'none') {
+    // - vardiyaKontrolu === false (all slots available regardless of shifts)
+    if (isManagementLink || staffFilter === 'none' || !vardiyaKontrolu) {
         if (!selectedDate || !selectedAppointmentType) {
             container.textContent = 'Lütfen önce tarih ve randevu türü seçin.';
             return;
@@ -254,6 +256,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         // DEBUG: slotGrid için linkType kontrolü
         console.log('DEBUG getDailySlots:', { currentProfile, linkType, selectedDate, selectedShiftType });
 
+        // v3.8: vardiyaKontrolu=false ise tüm çalışma saatlerini getir (shiftType='full')
+        const effectiveShiftType = vardiyaKontrolu ? selectedShiftType : 'full';
+
         const [dayStatusResult, slotsResult] = await Promise.all([
             apiCall('getDayStatus', {
                 date: selectedDate,
@@ -261,7 +266,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             }),
             apiCall('getDailySlots', {
                 date: selectedDate,
-                shiftType: selectedShiftType,
+                shiftType: effectiveShiftType,
                 linkType: linkType
             })
         ]);

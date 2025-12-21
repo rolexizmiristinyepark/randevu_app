@@ -112,11 +112,17 @@ export function displayAvailableStaff(): void {
 
     const dayShiftsForDate = dayShifts[selectedDate!] || {};
 
+    // v3.8: vardiyaKontrolu=false ise tüm personeller müsait görünsün
+    const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
+
     filteredStaff.forEach((staff: Staff) => {
         if (!staff.active) return;
 
         const shiftType = dayShiftsForDate[staff.id];
-        const isWorking = !!shiftType;
+        // v3.8: vardiyaKontrolu=false ise tüm personeller müsait
+        const isWorking = vardiyaKontrolu ? !!shiftType : true;
+        // v3.8: vardiyaKontrolu=false ise 'full' kullan
+        const effectiveShiftType = vardiyaKontrolu ? (shiftType || 'full') : 'full';
 
         const card = document.createElement('div');
         card.className = 'staff-card' + (!isWorking ? ' unavailable' : '');
@@ -128,7 +134,7 @@ export function displayAvailableStaff(): void {
 
         if (isWorking) {
             // ⚡ PERFORMANCE: Async handler for dynamic imports
-            card.addEventListener('click', (e) => void selectStaff(staff.id, shiftType, e));
+            card.addEventListener('click', (e) => void selectStaff(staff.id, effectiveShiftType, e));
         } else {
             card.style.opacity = '0.5';
             card.style.cursor = 'not-allowed';

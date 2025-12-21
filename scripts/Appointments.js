@@ -497,7 +497,7 @@ const AppointmentService = {
         : `${sanitizedCustomerName} - ${sanitizedStaffName} / ${appointmentTypeLabel}`;
 
       // Event açıklaması
-      const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: ${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
+      const description = `Müşteri: ${sanitizedCustomerName}\nTelefon: +${sanitizedCustomerPhone}\nE-posta: ${sanitizedCustomerEmail}\nNot: ${sanitizedCustomerNote}`;
 
       // RACE CONDITION PROTECTION
       let event;
@@ -1129,7 +1129,7 @@ function createAppointment(params) {
 Randevu Detayları:
 ─────────────────
 Müşteri: ${sanitizedCustomerName}
-Telefon: ${sanitizedCustomerPhone}
+Telefon: +${sanitizedCustomerPhone}
 E-posta: ${sanitizedCustomerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
 İlgili: ${sanitizedStaffName}
 Konu: ${appointmentTypeLabel}

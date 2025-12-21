@@ -126,7 +126,7 @@ const NotificationService = {
         <p style="line-height: 1.8; font-weight: 400;">${config.CHANGE_CONTACT_INFO}</p>
 
         <p style="margin-top: 20px; line-height: 1.8; font-weight: 400;">
-          <span style="font-weight: 400;">Tel:</span> ${safeStaffPhone}<br>
+          <span style="font-weight: 400;">Tel:</span> ${safeStaffPhone ? '+' + safeStaffPhone : ''}<br>
           <span style="font-weight: 400;">E-posta:</span> ${safeStaffEmail}
         </p>
 
@@ -186,13 +186,13 @@ function generateCustomerICS(data) {
   const appointmentTypeName = CONFIG.ICS_TEMPLATES.CUSTOMER_TYPES[appointmentType] ||
     CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
-  // Event başlığı: İzmir İstinyepark Rolex - İlgili (Görüşme Türü)
-  const summary = `İzmir İstinyepark Rolex - ${staffName} (${appointmentTypeName})`;
+  // Event başlığı: Rolex İzmir İstinyepark - Personel Ad Soyad / Randevu Türü
+  const summary = `Rolex İzmir İstinyepark - ${staffName} / ${appointmentTypeName}`;
 
   // Description - DİNAMİK YAPI: Randevu türüne göre farklı hatırlatmalar
   let description = `${CONFIG.ICS_TEMPLATES.SECTION_TITLE}\\n\\n`;
   description += `${CONFIG.ICS_TEMPLATES.LABELS.CONTACT_PERSON}: ${staffName}\\n`;
-  description += `${CONFIG.ICS_TEMPLATES.LABELS.CONTACT}: ${staffPhone || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}\\n`;
+  description += `${CONFIG.ICS_TEMPLATES.LABELS.CONTACT}: ${staffPhone ? '+' + staffPhone : CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}\\n`;
   description += `${CONFIG.ICS_TEMPLATES.LABELS.EMAIL}: ${staffEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}\\n`;
   description += `${CONFIG.ICS_TEMPLATES.LABELS.DATE}: ${formattedDate}\\n`;
   description += `${CONFIG.ICS_TEMPLATES.LABELS.TIME}: ${time}\\n`;
