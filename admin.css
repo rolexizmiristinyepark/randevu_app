@@ -500,14 +500,23 @@
             background-color: #F9F9F9;
         }
 
+        /* Week filter row - responsive */
+        .week-filter-row {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
         /* Week input with custom placeholder */
         .week-input-wrapper {
             position: relative;
-            display: inline-block;
+            flex: 1;
+            min-width: 0;
         }
 
         .week-input-wrapper input[type="week"] {
-            min-width: 160px;
+            width: 100%;
             font-size: 13px;
             color: transparent;
         }
@@ -528,6 +537,13 @@
 
         .week-input-wrapper input[type="week"].has-value + .week-placeholder {
             display: none;
+        }
+
+        .week-filter-label {
+            font-size: 12px;
+            color: #999;
+            white-space: nowrap;
+            flex-shrink: 0;
         }
 
         /* Randevu düzenleme - Saat slotları */
