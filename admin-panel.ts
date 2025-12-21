@@ -374,6 +374,67 @@ function setupLinks(): void {
 
     const management3LinkInput = document.getElementById('management3Link') as HTMLInputElement;
     if (management3LinkInput) management3LinkInput.value = (window as any).CONFIG.BASE_URL + '#hmk';
+
+    // Render static links (Diğer)
+    renderStaticLinks();
+}
+
+/**
+ * Render static links (Diğer section)
+ */
+function renderStaticLinks(): void {
+    const container = document.getElementById('staticLinksGrid');
+    if (!container) return;
+
+    const staticLinks = [
+        { name: 'Genel', code: 'g' },
+        { name: 'Günlük', code: 'w' },
+        { name: 'Butik', code: 'b' },
+        { name: 'Yönetim', code: 'm' }
+    ];
+
+    staticLinks.forEach(link => {
+        container.appendChild(createStaticLinkCard(link.name, link.code));
+    });
+}
+
+/**
+ * Create a static link card element
+ */
+function createStaticLinkCard(name: string, code: string): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'link-card';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'link-card-name';
+    nameDiv.textContent = name;
+
+    const urlDiv = document.createElement('div');
+    urlDiv.className = 'link-card-url';
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    urlDiv.textContent = `${baseUrl}#${code}`;
+
+    const btnsDiv = document.createElement('div');
+    btnsDiv.className = 'link-card-btns';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'link-btn';
+    copyBtn.textContent = 'Kopyala';
+    copyBtn.addEventListener('click', () => copyProfileLink(code));
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'link-btn link-btn-primary';
+    openBtn.textContent = 'Aç';
+    openBtn.addEventListener('click', () => openProfileLink(code));
+
+    btnsDiv.appendChild(copyBtn);
+    btnsDiv.appendChild(openBtn);
+
+    card.appendChild(nameDiv);
+    card.appendChild(urlDiv);
+    card.appendChild(btnsDiv);
+
+    return card;
 }
 
 /**
@@ -573,6 +634,8 @@ async function loadProfileLinks(): Promise<void> {
         const response = await fetch((window as any).CONFIG.APPS_SCRIPT_URL + '?action=getStaff');
         const data = await response.json();
 
+        console.log('[loadProfileLinks] Staff data:', data.staff);
+
         if (data.success && data.staff) {
             // Özel Müşteri = role: management
             const managementList: Array<{ id: string; name: string }> = [];
@@ -580,6 +643,7 @@ async function loadProfileLinks(): Promise<void> {
             const salesList: Array<{ id: string; name: string }> = [];
 
             data.staff.forEach((s: any) => {
+                console.log(`[loadProfileLinks] ${s.name}: role=${s.role}, active=${s.active}`);
                 if (!s.active) return;
                 if (s.role === 'management') {
                     managementList.push({ id: s.id, name: s.name });
@@ -587,6 +651,9 @@ async function loadProfileLinks(): Promise<void> {
                     salesList.push({ id: s.id, name: s.name });
                 }
             });
+
+            console.log('[loadProfileLinks] Management:', managementList);
+            console.log('[loadProfileLinks] Sales:', salesList);
 
             displayVipLinks(managementList);
             displayStaffLinks(salesList);
