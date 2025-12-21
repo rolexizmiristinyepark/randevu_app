@@ -184,63 +184,91 @@
             font-size: 11px;
         }
 
-        /* Link Cards Grid */
+        /* Link Cards Grid - Rolex Luxury Style */
         .link-cards-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
         }
 
         .link-card {
-            background: #FAFAFA;
-            border: 1px solid #E8E8E8;
-            border-radius: 4px;
-            padding: 14px;
+            background: #fff;
+            border: none;
+            border-radius: 0;
+            padding: 24px 28px;
+            position: relative;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(26, 26, 46, 0.04);
+        }
+
+        .link-card::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: linear-gradient(180deg, #C9A55A 0%, #D4B76A 100%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .link-card:hover {
+            box-shadow: 0 8px 32px rgba(26, 26, 46, 0.08);
+        }
+
+        .link-card:hover::before {
+            opacity: 1;
         }
 
         .link-card-name {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 500;
-            font-size: 14px;
+            font-family: 'Playfair Display', serif;
+            font-weight: 400;
+            font-size: 18px;
             color: #1A1A2E;
-            margin-bottom: 8px;
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
         }
 
         .link-card-url {
-            font-size: 12px;
+            font-size: 11px;
             color: #757575;
-            background: #fff;
-            border: 1px solid #E8E8E8;
-            border-radius: 3px;
-            padding: 8px 10px;
-            margin-bottom: 10px;
+            background: #F8F8F8;
+            border: none;
+            border-radius: 0;
+            padding: 12px 14px;
+            margin-bottom: 20px;
             word-break: break-all;
-            font-family: monospace;
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 400;
+            letter-spacing: 0.3px;
         }
 
         .link-card-btns {
             display: flex;
             justify-content: flex-end;
-            gap: 6px;
+            gap: 12px;
         }
 
         .link-btn {
-            padding: 5px 12px;
-            font-size: 11px;
+            padding: 10px 20px;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 10px;
             font-weight: 500;
-            border: 1px solid #E8E8E8;
-            border-radius: 3px;
-            background: #fff;
+            border: 1px solid #E0E0E0;
+            border-radius: 0;
+            background: transparent;
             color: #1A1A2E;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1.5px;
         }
 
         .link-btn:hover {
             border-color: #C9A55A;
-            background: #FAFAFA;
+            color: #C9A55A;
+            background: transparent;
         }
 
         .link-btn-primary {
@@ -250,8 +278,9 @@
         }
 
         .link-btn-primary:hover {
-            background: #2a2a4e;
-            border-color: #2a2a4e;
+            background: #C9A55A;
+            border-color: #C9A55A;
+            color: #fff;
         }
 
         .staff-list {
@@ -487,77 +516,31 @@
             .staff-actions {
                 flex-direction: column;
             }
-        }
 
-        /* Link Grid Layout */
-        .link-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 15px;
-            margin-top: 15px;
-        }
-
-        .link-card {
-            background: #FAFAFA;
-            border: 1px solid #E8E8E8;
-            border-radius: 4px;
-            overflow: hidden;
-            transition: all 0.3s ease;
-        }
-
-        .link-card:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-            transform: translateY(-2px);
-        }
-
-        .link-card-header {
-            background: white;
-            padding: 12px 15px;
-            font-size: 12px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-            color: #1A1A2E;
-            border-bottom: 1px solid #E8E8E8;
-        }
-
-        .link-card-body {
-            padding: 15px;
-        }
-
-        .link-input {
-            width: 100%;
-            padding: 10px 12px;
-            background: white;
-            border: 1px solid #E8E8E8;
-            border-radius: 2px;
-            font-size: 11px;
-            color: #757575;
-            margin-bottom: 10px;
-            font-family: 'Courier New', monospace;
-        }
-
-        .link-actions {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-
-        /* Responsive Grid */
-        @media (max-width: 768px) {
-            .link-grid {
+            /* Link cards responsive */
+            .link-cards-grid {
                 grid-template-columns: 1fr;
+                gap: 16px;
             }
-        }
 
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .link-grid {
-                grid-template-columns: repeat(2, 1fr);
+            .link-card {
+                padding: 20px 22px;
             }
-        }
 
-        @media (min-width: 1025px) {
-            .link-grid {
-                grid-template-columns: repeat(3, 1fr);
+            .link-card-name {
+                font-size: 16px;
+                margin-bottom: 12px;
+            }
+
+            .link-card-url {
+                padding: 10px 12px;
+                font-size: 10px;
+                margin-bottom: 16px;
+            }
+
+            .link-btn {
+                padding: 8px 16px;
+                font-size: 9px;
             }
         }
 
