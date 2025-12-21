@@ -21,7 +21,7 @@
  * @namespace SessionAuthService
  */
 const SessionAuthService = {
-  SESSION_DURATION: 10 * 60 * 1000, // 10 dakika (ms)
+  SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 saat (ms)
 
   /**
    * Login islemi

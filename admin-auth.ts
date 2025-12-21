@@ -15,8 +15,8 @@ const SESSION_KEYS = {
     ENCRYPTION_KEY_CACHE: '_enc_key_cache'
 };
 
-// Session duration (10 minutes)
-const SESSION_DURATION = 10 * 60 * 1000;
+// Session duration (24 hours)
+const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 saat
 
 /**
  * Encryption key olusturur - gelismis guvenlik
