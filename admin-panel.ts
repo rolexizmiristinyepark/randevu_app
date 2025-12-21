@@ -49,16 +49,22 @@ const UI = {
      * Switch main tab (Randevu, Bildirim, Team, Apps)
      */
     switchMainTab(tabName: string) {
-        // Deactivate all main tabs
+        // Deactivate all main tabs and hide content
         document.querySelectorAll('.main-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.main-tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.main-tab-content').forEach(c => {
+            c.classList.remove('active');
+            (c as HTMLElement).style.display = 'none';
+        });
 
-        // Activate selected main tab
+        // Activate selected main tab and show content
         const selectedTab = document.querySelector(`.main-tab[data-maintab="${tabName}"]`);
         const selectedContent = document.getElementById(tabName);
 
         selectedTab?.classList.add('active');
-        selectedContent?.classList.add('active');
+        if (selectedContent) {
+            selectedContent.classList.add('active');
+            selectedContent.style.display = 'block';
+        }
     },
 
     /**
@@ -272,12 +278,14 @@ async function startApp(): Promise<void> {
         // Setup randevu oluştur butonları
         setupCreateAppointmentButtons();
 
-        // Hide loading overlay and show main tabs
+        // Hide loading overlay and show main tabs + content
         const loadingOverlay = document.getElementById('loadingOverlay');
         const mainTabs = document.querySelector('.main-tabs') as HTMLElement;
+        const activeContent = document.querySelector('.main-tab-content.active') as HTMLElement;
 
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (mainTabs) mainTabs.style.display = 'flex';
+        if (activeContent) activeContent.style.display = 'block';
 
     } catch (error) {
         console.error('Admin panel başlatma hatası:', error);
