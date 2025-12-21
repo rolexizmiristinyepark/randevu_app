@@ -26,6 +26,27 @@ const getUI = () => window.UI;
 const getCreateElement = () => window.createElement;
 
 /**
+ * v3.9: Türkçe karakter normalizasyonu
+ * Farklı Unicode İ/ı varyantlarını standart Türkçe karakterlere çevirir
+ * Örn: Latin Extended-B İ (U+0130) → Turkish İ
+ */
+function normalizeTurkishChars(text: string): string {
+    if (!text) return text;
+    return text
+        // İ varyantları (dotted capital I)
+        .replace(/\u0130/g, 'İ')  // Latin Capital Letter I With Dot Above
+        .replace(/İ/g, 'İ')      // Normalize any other İ variants
+        // ı varyantları (dotless lowercase i)
+        .replace(/\u0131/g, 'ı')  // Latin Small Letter Dotless I
+        // Diğer Türkçe karakterler
+        .replace(/Ş/g, 'Ş').replace(/ş/g, 'ş')
+        .replace(/Ğ/g, 'Ğ').replace(/ğ/g, 'ğ')
+        .replace(/Ü/g, 'Ü').replace(/ü/g, 'ü')
+        .replace(/Ö/g, 'Ö').replace(/ö/g, 'ö')
+        .replace(/Ç/g, 'Ç').replace(/ç/g, 'ç');
+}
+
+/**
  * Initialize Appointment Manager module
  */
 export async function initAppointmentManager(store: DataStore): Promise<void> {
@@ -404,7 +425,16 @@ function render(appointments: any[]): void {
             const staffId = apt.extendedProperties?.private?.staffId;
             const staff = dataStore.staff.find(s => s.id === staffId);
             const phone = apt.extendedProperties?.private?.customerPhone || '-';
-            const customerName = apt.summary?.replace('Randevu: ', '') || 'İsimsiz';
+            // v3.9: customerName tag'den al, yoksa summary'den parse et (eski randevular için fallback)
+            let customerName = apt.extendedProperties?.private?.customerName || '';
+            if (!customerName && apt.summary) {
+                // Eski format: "CustomerName - StaffName / Type" veya "CustomerName (Type)"
+                const match = apt.summary.match(/^([^-(\n]+?)(?:\s*[-(/]|$)/);
+                customerName = match ? match[1].trim() : apt.summary;
+            }
+            customerName = customerName || 'İsimsiz';
+            // v3.9: Türkçe karakter normalizasyonu (İ/ı sorunları için)
+            customerName = normalizeTurkishChars(customerName);
             const customerNote = apt.extendedProperties?.private?.customerNote || '';
             const isVipLink = apt.extendedProperties?.private?.isVipLink === 'true';
 

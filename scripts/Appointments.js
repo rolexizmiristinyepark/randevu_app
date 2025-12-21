@@ -45,6 +45,7 @@ const AppointmentService = {
       extendedProperties: {
         private: event.getTag('staffId') ? {
           staffId: event.getTag('staffId'),
+          customerName: event.getTag('customerName') || '',  // v3.9: Müşteri adı
           customerPhone: event.getTag('customerPhone'),
           customerEmail: event.getTag('customerEmail'),
           customerNote: event.getTag('customerNote') || '',
@@ -1147,6 +1148,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
 
         // Ek bilgileri tag olarak ekle (extendedProperties yerine) - sanitized değerleri kullan
         calEvent.setTag('staffId', String(staffId));
+        calEvent.setTag('customerName', sanitizedCustomerName);  // v3.9: Müşteri adı tag olarak sakla
         calEvent.setTag('customerPhone', sanitizedCustomerPhone);
         calEvent.setTag('customerEmail', sanitizedCustomerEmail);
         calEvent.setTag('customerNote', sanitizedCustomerNote || '');
