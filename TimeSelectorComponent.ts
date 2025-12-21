@@ -94,17 +94,26 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 }
 
                 // Half hour slot if slotGrid is 30
-                if (slotGrid === 30 && hour < 20) {
-                    const halfTimeStr = `${hour}:30`;
-                    // Skip past times if today
-                    if (isToday && (hour < currentHour || (hour === currentHour && 30 <= currentMinute))) {
-                        continue;
+                // v3.9: Duration'a göre son slot belirlenir (21:00'da bitmeli)
+                // duration=30 → 20:30 slot göster (21:00'da biter)
+                // duration=60 → 20:30 slot gösterme (21:30'da biterdi)
+                if (slotGrid === 30) {
+                    const duration = profilAyarlari?.duration || 60;
+                    const slotEndMinutes = (hour * 60 + 30) + duration; // :30 slotunun bitiş zamanı
+                    const workEndMinutes = 21 * 60; // 21:00 = 1260 dakika
+
+                    if (slotEndMinutes <= workEndMinutes) {
+                        const halfTimeStr = `${hour}:30`;
+                        // Skip past times if today
+                        if (isToday && (hour < currentHour || (hour === currentHour && 30 <= currentMinute))) {
+                            continue;
+                        }
+                        const halfBtn = document.createElement('div');
+                        halfBtn.className = 'slot-btn';
+                        halfBtn.textContent = halfTimeStr;
+                        halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
+                        container.appendChild(halfBtn);
                     }
-                    const halfBtn = document.createElement('div');
-                    halfBtn.className = 'slot-btn';
-                    halfBtn.textContent = halfTimeStr;
-                    halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
-                    container.appendChild(halfBtn);
                 }
             }
 

@@ -58,17 +58,22 @@ const SlotService = {
       });
 
       // Yarım saat slotu (slotGrid 30dk ise)
-      if (interval === 30 && hour < 20) { // 20:30 ekleme, son slot 20:00
+      // v3.9: 20:30 slot eklendi (21:00'da biter, mesai saati içinde)
+      // duration=30 varsayılıyor, 20:30+30dk = 21:00 ✓
+      if (interval === 30 && hour <= 20) {
         const halfStart = new Date(`${date}T${String(hour).padStart(2, '0')}:30:00`);
         const halfEnd = new Date(halfStart);
         halfEnd.setMinutes(halfEnd.getMinutes() + interval);
 
-        slots.push({
-          start: halfStart.toISOString(),
-          end: halfEnd.toISOString(),
-          hour: hour,
-          time: `${String(hour).padStart(2, '0')}:30`
-        });
+        // 21:00'dan sonra biten slotları ekleme
+        if (halfEnd.getHours() <= 21 && (halfEnd.getHours() < 21 || halfEnd.getMinutes() === 0)) {
+          slots.push({
+            start: halfStart.toISOString(),
+            end: halfEnd.toISOString(),
+            hour: hour,
+            time: `${String(hour).padStart(2, '0')}:30`
+          });
+        }
       }
     });
 
