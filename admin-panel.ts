@@ -377,31 +377,55 @@ function setupLinks(): void {
 }
 
 /**
- * Setup week filter for appointments (set to current week)
+ * Setup week filter for appointments
+ * Varsayılan: Bugün ve sonrası (boş)
+ * Kullanıcı hafta seçerse: O hafta gösterilir
  */
 function setupWeekFilter(): void {
-    const today = new Date();
-    const year = today.getFullYear();
-    const firstDayOfYear = new Date(year, 0, 1);
-    const pastDaysOfYear = (today.getTime() - firstDayOfYear.getTime()) / 86400000;
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-
     const filterWeek = document.getElementById('filterWeek') as HTMLInputElement;
-    if (filterWeek) {
-        filterWeek.value = `${year}-W${String(weekNumber).padStart(2, '0')}`;
-    }
+    const clearBtn = document.getElementById('clearWeekFilter') as HTMLButtonElement;
+    const filterLabel = document.getElementById('filterLabel') as HTMLSpanElement;
 
-    // Add week picker click handler
+    // Hafta formatını güzel göster
+    const formatWeekLabel = (weekValue: string): string => {
+        if (!weekValue) return 'Bugün ve sonrası';
+        const [year, week] = weekValue.split('-W');
+        return `${week}. hafta, ${year}`;
+    };
+
+    // UI güncelle
+    const updateFilterUI = () => {
+        const hasValue = !!filterWeek?.value;
+        if (clearBtn) clearBtn.style.display = hasValue ? 'inline-block' : 'none';
+        if (filterLabel) filterLabel.textContent = formatWeekLabel(filterWeek?.value || '');
+    };
+
+    // Week picker click handler
     filterWeek?.addEventListener('click', function(this: HTMLInputElement) {
         try {
             if ('showPicker' in this && typeof this.showPicker === 'function') {
                 this.showPicker();
             }
         } catch (error) {
-            // showPicker not supported, continue with normal behavior
-            console.log('showPicker not supported');
+            // showPicker not supported
         }
     });
+
+    // Week change handler - UI güncelle
+    filterWeek?.addEventListener('change', updateFilterUI);
+
+    // Clear button handler
+    clearBtn?.addEventListener('click', () => {
+        if (filterWeek) {
+            filterWeek.value = '';
+            updateFilterUI();
+            // Trigger change event to reload appointments
+            filterWeek.dispatchEvent(new Event('change'));
+        }
+    });
+
+    // Initial UI state
+    updateFilterUI();
 }
 
 /**

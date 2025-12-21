@@ -124,8 +124,10 @@
             <div id="appointments" class="sub-tab-content">
                 <div class="card">
                     <div class="card-title">Randevu Listesi</div>
-                    <div class="input-group" style="max-width: 250px;">
-                        <input type="week" id="filterWeek" style="flex: 1;" placeholder="-- . hafta, ----">
+                    <div class="input-group" style="max-width: 400px; display: flex; gap: 8px; align-items: center;">
+                        <input type="week" id="filterWeek" style="flex: 1;" title="Hafta seçin">
+                        <button type="button" id="clearWeekFilter" class="btn btn-small btn-secondary" style="display: none;" title="Filtreyi temizle">✕</button>
+                        <span id="filterLabel" style="font-size: 12px; color: #757575; white-space: nowrap;">Bugün ve sonrası</span>
                     </div>
                     <div id="appointmentsList"></div>
                 </div>
