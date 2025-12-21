@@ -228,9 +228,9 @@
         }
 
         .link-btn {
-            padding: 7px 16px;
+            padding: 8px 18px;
             font-family: 'Montserrat', sans-serif;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 400;
             border: 1px solid #E0E0E0;
             background: transparent;
@@ -511,8 +511,8 @@
             }
 
             .link-btn {
-                padding: 6px 14px;
-                font-size: 9px;
+                padding: 7px 16px;
+                font-size: 10px;
             }
         }
 
