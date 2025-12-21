@@ -22,7 +22,10 @@ const StringUtils: IStringUtils = {
     toTitleCase(str) {
         if (!str) return str;
         return str
-            .toLowerCase()
+            // v3.9: Türkçe İ/I desteği için toLocaleLowerCase kullan
+            // toLowerCase() İ'yi yanlış çeviriyor: İ → i̇ (combining dot)
+            // toLocaleLowerCase('tr-TR') doğru çeviriyor: İ → i
+            .toLocaleLowerCase('tr-TR')
             .split(' ')
             .map(word => word.charAt(0).toLocaleUpperCase('tr-TR') + word.slice(1))
             .join(' ');

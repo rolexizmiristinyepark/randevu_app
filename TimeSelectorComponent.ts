@@ -308,8 +308,6 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         const isToday = selectedDate === todayStr;
         const currentHour = today.getHours();
         const currentMinute = today.getMinutes();
-        const specificStaffId = state.get('specificStaffId');
-        const isStaff0 = specificStaffId === '0';
 
         // If no available hours, show info
         if (availableHours.length === 0) {
@@ -322,8 +320,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
         // Render slots
         slots.forEach((slot: any) => {
-            // staff=0 + today + past time, skip
-            if (isStaff0 && isToday) {
+            // v3.9: Bugün için geçmiş saatleri filtrele (tüm durumlar için)
+            // Önceden sadece staff=0 için yapılıyordu, şimdi isToday ise her zaman kontrol
+            if (isToday) {
                 const [slotHour, slotMinute] = slot.time.split(':').map(Number);
                 if (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute)) {
                     return; // Past slot, don't show
