@@ -191,6 +191,11 @@
             gap: 16px;
         }
 
+        /* Tek kalan son kart tüm genişliği kaplasın */
+        .link-cards-grid .link-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1;
+        }
+
         .link-card {
             background: #fff;
             border: 1px solid #E8E8E8;
