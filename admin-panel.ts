@@ -378,19 +378,44 @@ function setupLinks(): void {
 
 /**
  * Setup week filter for appointments
- * Varsayılan: Bugün ve sonrası (boş)
- * Kullanıcı hafta seçerse: O hafta gösterilir
+ * Varsayılan: Bugün ve sonrası (boş) - Bugün tarihi gösterilir
+ * Kullanıcı hafta seçerse: Pazartesi - Pazar tarih aralığı gösterilir
  */
 function setupWeekFilter(): void {
     const filterWeek = document.getElementById('filterWeek') as HTMLInputElement;
     const clearBtn = document.getElementById('clearWeekFilter') as HTMLButtonElement;
     const filterLabel = document.getElementById('filterLabel') as HTMLSpanElement;
 
-    // Hafta formatını güzel göster
+    const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                       'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+
+    // Tarihi "21 Aralık 2025" formatında göster
+    const formatDate = (date: Date): string => {
+        return `${date.getDate()} ${MONTHS_TR[date.getMonth()]} ${date.getFullYear()}`;
+    };
+
+    // Hafta değerinden Pazartesi ve Pazar tarihlerini hesapla
+    const getWeekDates = (weekValue: string): { monday: Date; sunday: Date } => {
+        const [year, week] = weekValue.split('-W').map(Number);
+        // ISO hafta - 1 Ocak'tan itibaren hesapla
+        const jan4 = new Date(year, 0, 4); // 4 Ocak her zaman 1. haftada
+        const dayOfWeek = jan4.getDay() || 7; // Pazar = 7
+        const monday = new Date(jan4);
+        monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
+        const sunday = new Date(monday);
+        sunday.setDate(monday.getDate() + 6);
+        return { monday, sunday };
+    };
+
+    // Label formatını belirle
     const formatWeekLabel = (weekValue: string): string => {
-        if (!weekValue) return 'Bugün ve sonrası';
-        const [year, week] = weekValue.split('-W');
-        return `${week}. hafta, ${year}`;
+        if (!weekValue) {
+            // Boşken bugün tarihi göster
+            return formatDate(new Date());
+        }
+        // Hafta seçilince tarih aralığı göster
+        const { monday, sunday } = getWeekDates(weekValue);
+        return `${formatDate(monday)} - ${formatDate(sunday)}`;
     };
 
     // UI güncelle
