@@ -194,7 +194,7 @@
         .link-card {
             background: #fff;
             border: 1px solid #E8E8E8;
-            padding: 12px 16px;
+            padding: 14px 18px;
             transition: border-color 0.2s ease;
         }
 
@@ -205,17 +205,17 @@
         .link-card-name {
             font-family: 'Montserrat', sans-serif;
             font-weight: 400;
-            font-size: 13px;
+            font-size: 14px;
             color: #1A1A2E;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
 
         .link-card-url {
-            font-size: 10px;
+            font-size: 11px;
             color: #757575;
             background: #F9F9F9;
-            padding: 8px 10px;
-            margin-bottom: 10px;
+            padding: 9px 11px;
+            margin-bottom: 12px;
             word-break: break-all;
             font-family: 'Montserrat', sans-serif;
             font-weight: 400;
@@ -228,7 +228,7 @@
         }
 
         .link-btn {
-            padding: 6px 14px;
+            padding: 7px 16px;
             font-family: 'Montserrat', sans-serif;
             font-size: 10px;
             font-weight: 400;
@@ -494,24 +494,24 @@
             /* Link cards responsive */
             .link-cards-grid {
                 grid-template-columns: 1fr;
-                gap: 12px;
+                gap: 14px;
             }
 
             .link-card {
-                padding: 10px 14px;
+                padding: 12px 16px;
             }
 
             .link-card-name {
-                font-size: 12px;
+                font-size: 13px;
             }
 
             .link-card-url {
-                font-size: 9px;
-                padding: 6px 8px;
+                font-size: 10px;
+                padding: 8px 10px;
             }
 
             .link-btn {
-                padding: 5px 12px;
+                padding: 6px 14px;
                 font-size: 9px;
             }
         }
