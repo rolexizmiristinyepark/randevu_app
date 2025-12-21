@@ -596,9 +596,14 @@ function openAppointmentForm(code: 'b' | 'm'): void {
         const activeBtn = code === 'b' ? 'selectManuelBtn' : 'selectYonetimBtn';
         document.getElementById(activeBtn)?.classList.add('active');
 
-        // Iframe'i göster ve URL'i ayarla
-        iframe.src = baseUrl + '#' + code;
+        // Iframe'i sıfırla ve yeni URL'i ayarla (zorla reload)
+        iframe.src = 'about:blank';
         container.style.display = 'block';
+
+        // Kısa gecikme ile yeni src ayarla
+        setTimeout(() => {
+            iframe.src = baseUrl + '#' + code;
+        }, 50);
 
         // Scroll to iframe
         container.scrollIntoView({ behavior: 'smooth', block: 'start' });
