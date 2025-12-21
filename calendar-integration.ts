@@ -75,12 +75,29 @@ function prepareAppointmentData() {
     const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
         CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-    const title = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
+    // v3.9: İlgili atanmadıysa farklı başlık göster
+    const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı';
+    let title: string;
+    if (isStaffAssigned) {
+        title = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
+    } else {
+        title = `Rolex İzmir İstinyepark - ${appointmentTypeName} Randevusu`;
+    }
+
+    // v3.9: Telefon numarasına + ekle (yoksa)
+    const formatPhone = (phone: string | undefined) => {
+        if (!phone) return 'Belirtilmedi';
+        const cleaned = phone.replace(/\D/g, '');
+        return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+    };
 
     let details = 'RANDEVU BİLGİLERİ\n\n';
-    details += `İlgili: ${appointment.staffName}\n`;
-    details += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\n`;
-    details += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\n`;
+    // v3.9: İlgili atanmadıysa İlgili satırını gösterme
+    if (isStaffAssigned) {
+        details += `İlgili: ${appointment.staffName}\n`;
+        details += `İletişim: ${formatPhone(appointment.staffPhone)}\n`;
+        details += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\n`;
+    }
     details += `Tarih: ${new Date(appointment.date).toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' })}\n`;
     details += `Saat: ${appointment.time}\n`;
     details += `Konu: ${appointmentTypeName}\n`;
@@ -466,15 +483,31 @@ export function generateICS(startDate: Date, endDate: Date): string {
         const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
             CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-        summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
+        // v3.9: İlgili atanmadıysa farklı başlık göster
+        const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı';
+        if (isStaffAssigned) {
+            summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
+        } else {
+            summary = `Rolex İzmir İstinyepark - ${appointmentTypeName} Randevusu`;
+        }
 
         const appointmentDate = new Date(appointment.date);
         const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
         const formattedDate = appointmentDate.toLocaleDateString('tr-TR', options);
 
-        description += `İlgili: ${appointment.staffName}\\n`;
-        description += `İletişim: ${appointment.staffPhone || 'Belirtilmedi'}\\n`;
-        description += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\\n`;
+        // v3.9: Telefon numarasına + ekle (yoksa)
+        const formatPhone = (phone: string | undefined) => {
+            if (!phone) return 'Belirtilmedi';
+            const cleaned = phone.replace(/\D/g, '');
+            return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
+        };
+
+        // v3.9: İlgili atanmadıysa İlgili satırını gösterme
+        if (isStaffAssigned) {
+            description += `İlgili: ${appointment.staffName}\\n`;
+            description += `İletişim: ${formatPhone(appointment.staffPhone)}\\n`;
+            description += `E-posta: ${appointment.staffEmail || 'Belirtilmedi'}\\n`;
+        }
         description += `Tarih: ${formattedDate}\\n`;
         description += `Saat: ${appointment.time}\\n`;
         description += `Konu: ${appointmentTypeName}\\n`;
