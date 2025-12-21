@@ -574,18 +574,22 @@ async function loadProfileLinks(): Promise<void> {
         const data = await response.json();
 
         if (data.success && data.staff) {
-            const vipList: Array<{ id: string; name: string }> = [];
-            const staffList: Array<{ id: string; name: string }> = [];
+            // Özel Müşteri = role: management
+            const managementList: Array<{ id: string; name: string }> = [];
+            // Personel = role: sales
+            const salesList: Array<{ id: string; name: string }> = [];
 
             data.staff.forEach((s: any) => {
-                if (s.isVip) {
-                    vipList.push({ id: s.id, name: s.name });
+                if (!s.active) return;
+                if (s.role === 'management') {
+                    managementList.push({ id: s.id, name: s.name });
+                } else if (s.role === 'sales') {
+                    salesList.push({ id: s.id, name: s.name });
                 }
-                staffList.push({ id: s.id, name: s.name });
             });
 
-            displayVipLinks(vipList);
-            displayStaffLinks(staffList);
+            displayVipLinks(managementList);
+            displayStaffLinks(salesList);
         }
     } catch (error) {
         console.error('Profile links yüklenemedi:', error);
@@ -593,7 +597,7 @@ async function loadProfileLinks(): Promise<void> {
 }
 
 /**
- * Display VIP links
+ * Display VIP links (Management role)
  */
 function displayVipLinks(vipList: Array<{ id: string; name: string }>): void {
     const container = document.getElementById('vipLinksGrid');
@@ -605,44 +609,22 @@ function displayVipLinks(vipList: Array<{ id: string; name: string }>): void {
 
     if (vipList.length === 0) {
         const emptyP = document.createElement('p');
-        emptyP.style.cssText = 'color:#666;font-size:14px;';
-        emptyP.textContent = 'VIP personeli bulunmuyor';
+        emptyP.style.cssText = 'color:#999;font-size:13px;';
+        emptyP.textContent = 'Yönetim personeli bulunmuyor';
         container.appendChild(emptyP);
         return;
     }
 
+    // Grid layout
+    container.className = 'link-cards-grid';
+
     vipList.forEach(vip => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:10px;';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = 'flex:0 0 120px;font-weight:500;';
-        nameSpan.textContent = vip.name;
-
-        const codeEl = document.createElement('code');
-        codeEl.style.cssText = 'flex:1;font-size:13px;color:#666;';
-        codeEl.textContent = `#v/${vip.id}`;
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn btn-small btn-secondary';
-        copyBtn.textContent = 'Kopyala';
-        copyBtn.addEventListener('click', () => copyStaffLink('v', vip.id));
-
-        const openBtn = document.createElement('button');
-        openBtn.className = 'btn btn-small';
-        openBtn.textContent = 'Aç';
-        openBtn.addEventListener('click', () => openStaffLink('v', vip.id));
-
-        row.appendChild(nameSpan);
-        row.appendChild(codeEl);
-        row.appendChild(copyBtn);
-        row.appendChild(openBtn);
-        container.appendChild(row);
+        container.appendChild(createLinkCard(vip.name, 'v', vip.id));
     });
 }
 
 /**
- * Display Staff links
+ * Display Staff links (Sales role)
  */
 function displayStaffLinks(staffList: Array<{ id: string; name: string }>): void {
     const container = document.getElementById('staffLinks');
@@ -654,40 +636,57 @@ function displayStaffLinks(staffList: Array<{ id: string; name: string }>): void
 
     if (staffList.length === 0) {
         const emptyP = document.createElement('p');
-        emptyP.style.cssText = 'color:#666;font-size:14px;';
-        emptyP.textContent = 'Personel bulunmuyor';
+        emptyP.style.cssText = 'color:#999;font-size:13px;';
+        emptyP.textContent = 'Satış personeli bulunmuyor';
         container.appendChild(emptyP);
         return;
     }
 
+    // Grid layout
+    container.className = 'link-cards-grid';
+
     staffList.forEach(s => {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:10px;background:#f9f9f9;border-radius:8px;margin-bottom:10px;';
-
-        const nameSpan = document.createElement('span');
-        nameSpan.style.cssText = 'flex:0 0 120px;font-weight:500;';
-        nameSpan.textContent = s.name;
-
-        const codeEl = document.createElement('code');
-        codeEl.style.cssText = 'flex:1;font-size:13px;color:#666;';
-        codeEl.textContent = `#s/${s.id}`;
-
-        const copyBtn = document.createElement('button');
-        copyBtn.className = 'btn btn-small btn-secondary';
-        copyBtn.textContent = 'Kopyala';
-        copyBtn.addEventListener('click', () => copyStaffLink('s', s.id));
-
-        const openBtn = document.createElement('button');
-        openBtn.className = 'btn btn-small';
-        openBtn.textContent = 'Aç';
-        openBtn.addEventListener('click', () => openStaffLink('s', s.id));
-
-        row.appendChild(nameSpan);
-        row.appendChild(codeEl);
-        row.appendChild(copyBtn);
-        row.appendChild(openBtn);
-        container.appendChild(row);
+        container.appendChild(createLinkCard(s.name, 's', s.id));
     });
+}
+
+/**
+ * Create a link card element
+ */
+function createLinkCard(name: string, type: string, id: string): HTMLElement {
+    const card = document.createElement('div');
+    card.className = 'link-card';
+
+    const nameDiv = document.createElement('div');
+    nameDiv.className = 'link-card-name';
+    nameDiv.textContent = name;
+
+    const urlDiv = document.createElement('div');
+    urlDiv.className = 'link-card-url';
+    const baseUrl = (window as any).CONFIG.BASE_URL;
+    urlDiv.textContent = `${baseUrl}#${type}/${id}`;
+
+    const btnsDiv = document.createElement('div');
+    btnsDiv.className = 'link-card-btns';
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'link-btn';
+    copyBtn.textContent = 'Kopyala';
+    copyBtn.addEventListener('click', () => copyStaffLink(type, id));
+
+    const openBtn = document.createElement('button');
+    openBtn.className = 'link-btn link-btn-primary';
+    openBtn.textContent = 'Aç';
+    openBtn.addEventListener('click', () => openStaffLink(type, id));
+
+    btnsDiv.appendChild(copyBtn);
+    btnsDiv.appendChild(openBtn);
+
+    card.appendChild(nameDiv);
+    card.appendChild(urlDiv);
+    card.appendChild(btnsDiv);
+
+    return card;
 }
 //#endregion
 

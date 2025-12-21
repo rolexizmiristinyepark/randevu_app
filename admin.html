@@ -53,51 +53,47 @@
             <div id="links" class="sub-tab-content active">
                 <!-- Sabit Profil Linkleri -->
                 <div class="card">
-                    <div class="card-title">Sabit Linkler (ID Kontrol Yok)</div>
-                    <div class="links-grid" style="display: grid; gap: 15px; margin-top: 15px;">
-                        <!-- #g - Genel -->
-                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                            <span style="flex: 0 0 100px; font-weight: 500;">Genel</span>
-                            <code style="flex: 1; font-size: 13px; color: #666;">#g</code>
-                            <button class="btn btn-small btn-secondary" data-copy-profile="g">Kopyala</button>
-                            <button class="btn btn-small" data-open-profile="g">Aç</button>
+                    <div class="card-title">Sabit Linkler</div>
+                    <div class="link-cards-grid" style="margin-top: 12px;">
+                        <div class="static-link-row">
+                            <span class="static-link-name">Genel</span>
+                            <span class="static-link-code">#g</span>
+                            <button class="link-btn" data-copy-profile="g">Kopyala</button>
+                            <button class="link-btn link-btn-primary" data-open-profile="g">Aç</button>
                         </div>
-                        <!-- #w - Walk-in -->
-                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                            <span style="flex: 0 0 100px; font-weight: 500;">Günlük</span>
-                            <code style="flex: 1; font-size: 13px; color: #666;">#w</code>
-                            <button class="btn btn-small btn-secondary" data-copy-profile="w">Kopyala</button>
-                            <button class="btn btn-small" data-open-profile="w">Aç</button>
+                        <div class="static-link-row">
+                            <span class="static-link-name">Günlük</span>
+                            <span class="static-link-code">#w</span>
+                            <button class="link-btn" data-copy-profile="w">Kopyala</button>
+                            <button class="link-btn link-btn-primary" data-open-profile="w">Aç</button>
                         </div>
-                        <!-- #b - Boutique -->
-                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                            <span style="flex: 0 0 100px; font-weight: 500;">Butik</span>
-                            <code style="flex: 1; font-size: 13px; color: #666;">#b</code>
-                            <button class="btn btn-small btn-secondary" data-copy-profile="b">Kopyala</button>
-                            <button class="btn btn-small" data-open-profile="b">Aç</button>
+                        <div class="static-link-row">
+                            <span class="static-link-name">Butik</span>
+                            <span class="static-link-code">#b</span>
+                            <button class="link-btn" data-copy-profile="b">Kopyala</button>
+                            <button class="link-btn link-btn-primary" data-open-profile="b">Aç</button>
                         </div>
-                        <!-- #m - Management -->
-                        <div class="link-row" style="display: flex; align-items: center; gap: 10px; padding: 10px; background: #f9f9f9; border-radius: 8px;">
-                            <span style="flex: 0 0 100px; font-weight: 500;">Yönetim</span>
-                            <code style="flex: 1; font-size: 13px; color: #666;">#m</code>
-                            <button class="btn btn-small btn-secondary" data-copy-profile="m">Kopyala</button>
-                            <button class="btn btn-small" data-open-profile="m">Aç</button>
+                        <div class="static-link-row">
+                            <span class="static-link-name">Yönetim</span>
+                            <span class="static-link-code">#m</span>
+                            <button class="link-btn" data-copy-profile="m">Kopyala</button>
+                            <button class="link-btn link-btn-primary" data-open-profile="m">Aç</button>
                         </div>
                     </div>
                 </div>
 
-                <!-- VIP Linkleri -->
+                <!-- Özel Müşteri Linkleri (Management) -->
                 <div class="card">
-                    <div class="card-title">Özel Müşteri Linkleri (#v/{id})</div>
-                    <div id="vipLinksGrid" style="margin-top: 15px;">
+                    <div class="card-title">Özel Müşteri Linkleri</div>
+                    <div id="vipLinksGrid" style="margin-top: 12px;">
                         <!-- Dinamik yüklenecek -->
                     </div>
                 </div>
 
-                <!-- Personel Linkleri -->
+                <!-- Personel Linkleri (Sales) -->
                 <div class="card">
-                    <div class="card-title">Personel Linkleri (#s/{id})</div>
-                    <div id="staffLinks" style="margin-top: 15px;">
+                    <div class="card-title">Personel Linkleri</div>
+                    <div id="staffLinks" style="margin-top: 12px;">
                         <!-- Dinamik yüklenecek -->
                     </div>
                 </div>
