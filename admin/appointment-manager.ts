@@ -326,10 +326,12 @@ async function saveAssignedStaff(): Promise<void> {
     ButtonAnimator.start(btn);
 
     try {
+        console.log('[assignStaff] Sending:', { eventId: currentAssigningAppointment.id, staffId, staffIdType: typeof staffId });
         const result = await ApiService.call('assignStaffToAppointment', {
             eventId: currentAssigningAppointment.id,
             staffId: staffId
         });
+        console.log('[assignStaff] Result:', result);
 
         if (result.success) {
             ButtonAnimator.success(btn, false);
@@ -340,10 +342,12 @@ async function saveAssignedStaff(): Promise<void> {
             }, 800);
         } else {
             ButtonAnimator.error(btn);
-            getUI().showAlert('Atama hatası: ' + result.error, 'error');
+            const debugInfo = (result as any).debug ? ` (debug: ${JSON.stringify((result as any).debug)})` : '';
+            getUI().showAlert('Atama hatası: ' + result.error + debugInfo, 'error');
         }
     } catch (error) {
         ButtonAnimator.error(btn);
+        console.error('[assignStaff] Error:', error);
         getUI().showAlert('Atama hatası', 'error');
     }
 }

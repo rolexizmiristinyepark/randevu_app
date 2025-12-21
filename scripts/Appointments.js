@@ -372,6 +372,8 @@ const AppointmentService = {
    */
   assignStaff: function(eventId, staffId) {
     try {
+      log.info('[assignStaff] eventId:', eventId, 'staffId:', staffId, 'type:', typeof staffId);
+
       const calendar = CalendarService.getCalendar();
       const event = calendar.getEventById(eventId);
 
@@ -379,12 +381,13 @@ const AppointmentService = {
         return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
       }
 
-      // Staff bilgilerini al
-      const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id == staffId);
+      // Staff bilgilerini StaffService'den al (Sheet-based)
+      const allStaff = StaffService.getAll();
+      log.info('[assignStaff] staff count:', allStaff?.length, 'staffIds:', allStaff?.map(s => s.id).join(', '));
+      const staff = allStaff.find(s => s.id == staffId);
 
       if (!staff) {
-        return { success: false, error: 'Personel bulunamadı' };
+        return { success: false, error: 'Personel bulunamadı', debug: { staffId, staffIdType: typeof staffId, availableIds: allStaff?.map(s => s.id) } };
       }
 
       // Event tag'ini güncelle
