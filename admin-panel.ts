@@ -375,25 +375,23 @@ function setupLinks(): void {
     const management3LinkInput = document.getElementById('management3Link') as HTMLInputElement;
     if (management3LinkInput) management3LinkInput.value = (window as any).CONFIG.BASE_URL + '#hmk';
 
-    // Render static links (Diğer)
-    renderStaticLinks();
+    // Render quick links (Genel, Günlük)
+    renderQuickLinks();
 }
 
 /**
- * Render static links (Diğer section)
+ * Render quick links (Genel, Günlük - başlıksız)
  */
-function renderStaticLinks(): void {
-    const container = document.getElementById('staticLinksGrid');
+function renderQuickLinks(): void {
+    const container = document.getElementById('quickLinksGrid');
     if (!container) return;
 
-    const staticLinks = [
+    const quickLinks = [
         { name: 'Genel', code: 'g' },
-        { name: 'Günlük', code: 'w' },
-        { name: 'Butik', code: 'b' },
-        { name: 'Yönetim', code: 'm' }
+        { name: 'Günlük', code: 'w' }
     ];
 
-    staticLinks.forEach(link => {
+    quickLinks.forEach(link => {
         container.appendChild(createStaticLinkCard(link.name, link.code));
     });
 }
