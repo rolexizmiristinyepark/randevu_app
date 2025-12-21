@@ -141,7 +141,7 @@ const AppointmentService = {
       
       // Staff bilgisini al
       const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id === String(staffId));
+      const staff = data.staff.find(s => s.id == staffId);
 
       event.deleteEvent();
       log.info('Randevu silindi:', eventId);
@@ -288,7 +288,7 @@ const AppointmentService = {
           
           // Staff bilgisini al
           const data = StorageService.getData();
-          const staff = data.staff.find(s => s.id === String(staffId));
+          const staff = data.staff.find(s => s.id == staffId);
           
           const eventData = {
             eventId: eventId,
@@ -381,7 +381,7 @@ const AppointmentService = {
 
       // Staff bilgilerini al
       const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id === String(staffId));
+      const staff = data.staff.find(s => s.id == staffId);
 
       if (!staff) {
         return { success: false, error: 'Personel bulunamadı' };
@@ -1181,7 +1181,7 @@ Bu randevu otomatik olarak oluşturulmuştur.
     const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
     // Staff bilgisini çek (data zaten yukarıda çekildi)
-    const staff = data.staff.find(s => s.id === String(staffId));
+    const staff = data.staff.find(s => s.id == staffId);
     const staffPhone = staff?.phone ?? '';
     const staffEmail = staff?.email ?? '';
 

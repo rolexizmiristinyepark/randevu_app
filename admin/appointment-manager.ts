@@ -258,19 +258,32 @@ function openAssignStaffModal(appointment: any): void {
     // Fill appointment info
     const start = new Date(appointment.start.dateTime || appointment.start.date);
     const customerName = appointment.summary?.replace('Randevu: ', '') || 'İsimsiz';
+    const customerNote = appointment.extendedProperties?.private?.customerNote || '';
     const dateStr = start.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
     const infoDiv = document.getElementById('assignStaffInfo');
     if (infoDiv) {
-        // 🔒 SECURITY: escapeHtml() ile XSS koruması
-        infoDiv.innerHTML = `
-            <div style="font-size: 13px; line-height: 1.8; color: #757575;">
-                <div><span style="color: #1A1A2E; font-weight: 500;">Müşteri:</span> ${escapeHtml(customerName)}</div>
-                <div><span style="color: #1A1A2E; font-weight: 500;">Tarih:</span> ${escapeHtml(dateStr)}</div>
-                <div><span style="color: #1A1A2E; font-weight: 500;">Saat:</span> ${escapeHtml(timeStr)}</div>
-            </div>
-        `;
+        // 🔒 SECURITY: DOM tabanlı güvenli render
+        infoDiv.textContent = '';
+        const container = getCreateElement()('div', { style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' } });
+
+        const createRow = (label: string, value: string) => {
+            const row = getCreateElement()('div');
+            const labelSpan = getCreateElement()('span', { style: { color: '#1A1A2E', fontWeight: '500' } }, label);
+            row.appendChild(labelSpan);
+            row.appendChild(document.createTextNode(value));
+            return row;
+        };
+
+        container.appendChild(createRow('Müşteri: ', customerName));
+        container.appendChild(createRow('Tarih: ', dateStr));
+        container.appendChild(createRow('Saat: ', timeStr));
+        if (customerNote) {
+            container.appendChild(createRow('Not: ', customerNote));
+        }
+
+        infoDiv.appendChild(container);
     }
 
     // Populate staff dropdown
