@@ -56,7 +56,7 @@ export interface ProfileData {
   type?: string;
 }
 
-// v3.5: Profil ayarları interface (simplified - only bugun/hepsi for calendar)
+// v3.9: Profil ayarları interface (tamamen profil bazlı çalışma)
 export interface ProfilAyarlari {
   sameDayBooking: boolean;
   maxSlotAppointment: number;
@@ -66,9 +66,12 @@ export interface ProfilAyarlari {
   duration: number;
   assignByAdmin: boolean;
   allowedTypes: string[];
-  staffFilter: string;
+  staffFilter: string;  // 'all' | 'specific' | 'none'
   showCalendar: boolean;
   takvimFiltresi: 'onlytoday' | 'withtoday' | 'withouttoday';
+  vardiyaKontrolu: boolean;  // v3.8: Vardiya kontrolü
+  idKontrolu: boolean;       // v3.9: URL'den personel ID alınsın mı?
+  slotLimit: number;         // v3.9: Saatte max randevu sayısı
 }
 
 export interface AppState {
@@ -88,10 +91,8 @@ export interface AppState {
   allAppointments: Record<string, Appointment[]>;
   googleCalendarEvents: Record<string, CalendarEvent[]>;
 
-  // URL state (legacy - keeping for backward compatibility)
+  // v3.9: Personel ID (profilAyarlari.idKontrolu === true ise URL'den alınır)
   specificStaffId: string | null;
-  managementLevel: number | null; // 1, 2, 3 for HK, OK, HMK
-  isManagementLink: boolean;
 
   // v3.2 Profile state
   currentProfile: ProfilType;
@@ -133,8 +134,6 @@ class StateManager {
       allAppointments: {},
       googleCalendarEvents: {},
       specificStaffId: null,
-      managementLevel: null,
-      isManagementLink: false,
       // v3.2 Profile state
       currentProfile: 'genel',
       profileId: null,

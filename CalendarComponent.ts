@@ -112,10 +112,11 @@ export function renderCalendar(): void {
     today.setHours(0, 0, 0, 0);
     const specificStaffId = state.get('specificStaffId');
     const selectedAppointmentType = state.get('selectedAppointmentType');
-    const isManagementLink = state.get('isManagementLink');
+    // v3.9: Tüm mantık profil ayarlarına göre çalışır
     const profilAyarlari = state.get('profilAyarlari');
     const takvimFiltresi = profilAyarlari?.takvimFiltresi || 'withtoday';
     const sameDayBooking = profilAyarlari?.sameDayBooking ?? true;
+    const assignByAdmin = profilAyarlari?.assignByAdmin === true;
 
     for (let day = 1; day <= daysInMonth; day++) {
         const dayEl = document.createElement('div');
@@ -148,8 +149,12 @@ export function renderCalendar(): void {
             continue;
         }
 
-        // Past days - allow today for staff=0, management appointments, management links, sameDayBooking or withtoday filter
-        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || isManagementLink || sameDayBooking || takvimFiltresi === 'withtoday';
+        // v3.9: Bugün seçimi profil ayarlarına göre (isManagementLink kaldırıldı)
+        // - staff=0 veya management appointment
+        // - assignByAdmin=true (backend personel atayacak)
+        // - sameDayBooking=true
+        // - takvimFiltresi='withtoday'
+        const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || assignByAdmin || sameDayBooking || takvimFiltresi === 'withtoday';
         if (date < today || (isToday && !allowToday)) {
             dayEl.classList.add('past');
         } else {
@@ -276,10 +281,12 @@ export async function selectDay(dateStr: string): Promise<void> {
     state.set('selectedDate', dateStr);
     const specificStaffId = state.get('specificStaffId');
     const selectedAppointmentType = state.get('selectedAppointmentType');
-    const isManagementLink = state.get('isManagementLink');
     const dayShifts = state.get('dayShifts');
+    // v3.9: Tüm mantık profil ayarlarına göre çalışır
     const profilAyarlari = state.get('profilAyarlari');
     const staffFilter = profilAyarlari?.staffFilter || 'all';
+    const assignByAdmin = profilAyarlari?.assignByAdmin === true;
+    const idKontrolu = profilAyarlari?.idKontrolu === true;
 
     // ⚡ PERFORMANCE: Only update previous and new selected elements (reduce reflow)
     const prev = document.querySelector('.calendar-day.selected');
@@ -380,25 +387,24 @@ export async function selectDay(dateStr: string): Promise<void> {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
     }
-    // Show staff selection (general link) - NOT for management links
-    else if (!specificStaffId && !isManagementLink) {
+    // v3.9: assignByAdmin=true ise personel seçimi atla, direkt saat seçimine git
+    else if (assignByAdmin) {
+        state.set('selectedShiftType', 'full'); // Tüm saatler
+        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
+        displayAvailableTimeSlots();
+        hideSection('staffSection');
+        revealSection('timeSection');
+        hideSection('detailsSection');
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) submitBtn.style.display = 'none';
+    }
+    // Personel seçimi göster (staffFilter === 'all' ve specificStaffId yok)
+    else if (!specificStaffId && staffFilter === 'all') {
         // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
         const { displayAvailableStaff } = await import('./StaffSelectorComponent');
         displayAvailableStaff();
         revealSection('staffSection');
         hideSection('timeSection');
-        hideSection('detailsSection');
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn) submitBtn.style.display = 'none';
-    }
-    // Management link - go directly to time selection
-    else if (isManagementLink) {
-        state.set('selectedShiftType', 'management'); // Placeholder shift type for VIP links
-        // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
-        const { displayAvailableTimeSlots } = await import('./TimeSelectorComponent');
-        displayAvailableTimeSlots();
-        hideSection('staffSection');
-        revealSection('timeSection');
         hideSection('detailsSection');
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';

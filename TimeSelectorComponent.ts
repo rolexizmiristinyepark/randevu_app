@@ -6,7 +6,7 @@
  */
 
 import { state } from './StateManager';
-import { revealSection, hideSection } from './UIManager';
+import { revealSection, hideSection, showAlert } from './UIManager';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
 
@@ -35,19 +35,20 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     const selectedDate = state.get('selectedDate');
     const selectedShiftType = state.get('selectedShiftType');
     const selectedAppointmentType = state.get('selectedAppointmentType');
-    const isManagementLink = state.get('isManagementLink');
-    const managementLevel = state.get('managementLevel');
 
-    // Check required parameters
+    // v3.9: Tüm mantık profil ayarlarına göre çalışır (link bazlı değil)
     const profilAyarlari = state.get('profilAyarlari');
     const staffFilter = profilAyarlari?.staffFilter || 'all';
     const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
+    const assignByAdmin = profilAyarlari?.assignByAdmin === true;
 
-    // Don't check shifts for:
-    // - VIP links (staff will be assigned later)
-    // - staffFilter === 'none' (admin will assign staff later)
-    // - vardiyaKontrolu === false (all slots available regardless of shifts)
-    if (isManagementLink || staffFilter === 'none' || !vardiyaKontrolu) {
+    // Vardiya kontrolü olmayan durumlar:
+    // - staffFilter === 'none' (admin personel atayacak)
+    // - vardiyaKontrolu === false (tüm slotlar vardiyadan bağımsız)
+    // - assignByAdmin === true (admin personel atayacak)
+    const skipShiftCheck = staffFilter === 'none' || !vardiyaKontrolu || assignByAdmin;
+
+    if (skipShiftCheck) {
         if (!selectedDate || !selectedAppointmentType) {
             container.textContent = 'Lütfen önce tarih ve randevu türü seçin.';
             return;
@@ -124,20 +125,26 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
                 container.appendChild(infoDiv);
             }
+
+            // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+            renderAlternateBookingButtons(container);
             return;
         }
 
-        // VIP links (hk, ok, hmk) - Special logic for ALL appointment types
-        if (isManagementLink) {
-            // Spinner already visible, API call in progress...
+        // v3.9: assignByAdmin=true ise slot müsaitliğini backend'den al
+        // Saatte birden fazla randevu olabilir (slotLimit kontrolü)
+        if (assignByAdmin) {
+            const slotLimit = profilAyarlari?.slotLimit || 2;
+            const slotGrid = profilAyarlari?.slotGrid || 60;
 
-            // Get all VIP appointments from backend for this day
-            const appointmentsResult = await apiCall('getManagementSlotAvailability', {
+            // Backend'den slot müsaitliğini al
+            const availabilityResult = await apiCall('getSlotAvailability', {
                 date: selectedDate,
-                managementLevel: managementLevel
+                slotGrid: slotGrid,
+                slotLimit: slotLimit
             });
 
-            if (!appointmentsResult.success) {
+            if (!availabilityResult.success) {
                 const errorDiv = document.createElement('div');
                 errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
                 errorDiv.textContent = 'Müsait saatler yüklenemedi';
@@ -145,10 +152,10 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 return;
             }
 
-            const { slots } = appointmentsResult.data as any;
+            const { slots } = availabilityResult.data as any;
 
-            // Clear spinner, render slots
-            container.innerHTML = '';
+            // Clear spinner with DOM method
+            while (container.firstChild) container.removeChild(container.firstChild);
 
             // Check if today - to filter past times
             const today = new Date();
@@ -159,7 +166,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             const currentHour = today.getHours();
             const currentMinute = today.getMinutes();
 
-            // Remove duplicate slots (20:00 can appear twice)
+            // Remove duplicate slots
             const uniqueSlots: any[] = [];
             const seenTimes = new Set<string>();
             slots.forEach((slot: any) => {
@@ -171,11 +178,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
             // Render slots
             uniqueSlots.forEach((slot: any) => {
-                // For VIP links, only show full hours (filter out half hours)
                 const [slotHour, slotMinute] = slot.time.split(':').map(Number);
-                if (slotMinute !== 0) {
-                    return; // Half hour slot, don't show (VIP links use 1-hour slots)
-                }
 
                 // If today and past time, skip
                 if (isToday) {
@@ -187,18 +190,18 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 const btn = document.createElement('div');
 
                 if (slot.available) {
-                    // ✅ AVAILABLE - Less than 2 appointments in this slot
+                    // ✅ AVAILABLE - Less than slotLimit appointments
                     btn.className = 'slot-btn';
                     btn.textContent = slot.time;
-                    if (slot.count === 1) {
-                        btn.title = `Bu saatte 1 randevu var (2. randevu olabilir)`;
+                    if (slot.count > 0) {
+                        btn.title = `Bu saatte ${slot.count} randevu var`;
                     }
                     btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
                 } else {
-                    // ❌ FULL - Already 2 appointments in this slot
+                    // ❌ FULL - Already at slotLimit
                     btn.className = 'slot-btn disabled';
                     btn.textContent = slot.time;
-                    btn.title = 'Bu saat dolu (2 randevu)';
+                    btn.title = `Bu saat dolu (${slotLimit} randevu)`;
                     btn.style.opacity = '0.4';
                     btn.style.cursor = 'not-allowed';
                     btn.setAttribute('aria-disabled', 'true');
@@ -206,14 +209,17 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
                 container.appendChild(btn);
             });
+
+            // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+            renderAlternateBookingButtons(container);
             return;
         }
 
         // Normal management appointment (Management type selected from staff=0)
         if (selectedAppointmentType === 'management') {
-            container.innerHTML = '';
+            while (container.firstChild) container.removeChild(container.firstChild);
 
-            // Normal management appointment (selected from staff=0) - all hours available (with half hours)
+            // Management appointment - all hours available (with half hours)
             const managementSlots: { time: string }[] = [];
 
             // All hours and half hours from 10:00 to 20:00
@@ -250,20 +256,17 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
                 container.appendChild(btn);
             });
+
+            // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+            renderAlternateBookingButtons(container);
             return;
         }
 
-        // ⭐ NEW: getDayStatus endpoint - all business rules at once
-        // v3.5: linkType parametresi profil bazlı slotGrid kullanımı için eklendi
-        const currentProfile = state.get('currentProfile');
-        const linkType = currentProfile === 'gunluk' ? 'walkin' :
-                         currentProfile === 'vip' ? 'vip' :
-                         currentProfile === 'personel' ? 'staff' :
-                         currentProfile === 'boutique' ? 'boutique' :
-                         currentProfile === 'yonetim' ? 'management' : 'general';
+        // v3.9: Profil ayarlarından slotGrid al (linkType kaldırıldı)
+        const slotGrid = profilAyarlari?.slotGrid || 60;
 
-        // DEBUG: slotGrid için linkType kontrolü
-        console.log('DEBUG getDailySlots:', { currentProfile, linkType, selectedDate, selectedShiftType });
+        // DEBUG: slotGrid kontrolü
+        console.log('DEBUG getDailySlots:', { slotGrid, selectedDate, selectedShiftType });
 
         // v3.8: vardiyaKontrolu=false ise tüm çalışma saatlerini getir (shiftType='full')
         const effectiveShiftType = vardiyaKontrolu ? selectedShiftType : 'full';
@@ -276,7 +279,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             apiCall('getDailySlots', {
                 date: selectedDate,
                 shiftType: effectiveShiftType,
-                linkType: linkType
+                slotGrid: slotGrid  // v3.9: linkType yerine doğrudan slotGrid gönder
             })
         ]);
 
@@ -315,6 +318,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
             infoDiv.textContent = 'Bu gün için müsait saat bulunmamaktadır.';
             container.appendChild(infoDiv);
+
+            // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+            renderAlternateBookingButtons(container);
             return;
         }
 
@@ -349,11 +355,94 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             container.appendChild(btn);
         });
 
+        // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+        renderAlternateBookingButtons(container);
+
     } catch (error) {
         log.error('displayAvailableTimeSlots error:', error);
         logError(error, { context: 'displayAvailableTimeSlots', date: selectedDate, shiftType: selectedShiftType });
         container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Saatler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.</div>';
     }
+}
+
+// ==================== ALTERNATE BOOKING BUTTONS ====================
+
+/**
+ * Render alternate booking buttons for 'onlytoday' profile
+ * Shows "Randevu Al" and "Linki Paylaş" buttons
+ */
+function renderAlternateBookingButtons(container: HTMLElement): void {
+    const profilAyarlari = state.get('profilAyarlari');
+    const takvimFiltresi = profilAyarlari?.takvimFiltresi;
+
+    // Only show for 'onlytoday' profiles
+    if (takvimFiltresi !== 'onlytoday') return;
+
+    // Create button container - same row, responsive stacking
+    const buttonContainer = document.createElement('div');
+    buttonContainer.className = 'alternate-booking-container';
+    buttonContainer.style.cssText = `
+        grid-column: 1/-1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 20px;
+        justify-content: center;
+    `;
+
+    // Button 1: Randevu Al (opens general link in new tab)
+    const bookBtn = document.createElement('button');
+    bookBtn.type = 'button';
+    bookBtn.className = 'btn btn-auto';
+    bookBtn.textContent = 'Randevu Al';
+    bookBtn.addEventListener('click', () => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const generalLink = baseUrl + '#g';
+        window.open(generalLink, '_blank');
+    });
+    buttonContainer.appendChild(bookBtn);
+
+    // Button 2: Linki Paylaş (copies to clipboard)
+    const shareBtn = document.createElement('button');
+    shareBtn.type = 'button';
+    shareBtn.className = 'btn btn-auto';
+    shareBtn.textContent = 'Linki Paylaş';
+    shareBtn.addEventListener('click', async () => {
+        const baseUrl = window.location.origin + window.location.pathname;
+        const generalLink = baseUrl + '#g';
+
+        try {
+            await navigator.clipboard.writeText(generalLink);
+            showAlert('Link kopyalandı!', 'success');
+
+            // Visual feedback - dark background like active state
+            const originalText = shareBtn.textContent;
+            shareBtn.textContent = 'Kopyalandı!';
+            shareBtn.style.background = '#1A1A2E';
+            shareBtn.style.color = '#FAFAFA';
+            shareBtn.style.borderColor = '#1A1A2E';
+
+            setTimeout(() => {
+                shareBtn.textContent = originalText;
+                shareBtn.style.background = '';
+                shareBtn.style.color = '';
+                shareBtn.style.borderColor = '';
+            }, 2000);
+        } catch (err) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = generalLink;
+            textArea.style.cssText = 'position: fixed; left: -9999px;';
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            showAlert('Link kopyalandı!', 'success');
+        }
+    });
+    buttonContainer.appendChild(shareBtn);
+
+    container.appendChild(buttonContainer);
 }
 
 // ==================== TIME SLOT SELECTION ====================
@@ -363,21 +452,21 @@ export async function displayAvailableTimeSlots(): Promise<void> {
  */
 export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
     state.set('selectedTime', timeStr);
-    const isManagementLink = state.get('isManagementLink');
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const selectedStaff = state.get('selectedStaff');
+
+    // v3.9: Tüm mantık profil ayarlarına göre çalışır
     const profilAyarlari = state.get('profilAyarlari');
     const staffFilter = profilAyarlari?.staffFilter || 'all';
+    const assignByAdmin = profilAyarlari?.assignByAdmin === true;
 
     // ⚡ PERFORMANCE: Only update previous selected element (reduce reflow)
     const prev = document.querySelector('.slot-btn.selected');
     if (prev) prev.classList.remove('selected');
     element.classList.add('selected');
 
-    // staffFilter === 'none' - Walk-in customers, go directly to form
-    if (staffFilter === 'none') {
-        // No staff assigned, admin will assign later
-        hideSection('staffSection');
+    // Helper: Form bölümlerini göster
+    const showFormSections = () => {
         revealSection('detailsSection');
         const kvkkContainer = document.getElementById('kvkkContainer');
         if (kvkkContainer) kvkkContainer.style.display = 'block';
@@ -386,48 +475,26 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
         // Only show submit if Turnstile already verified
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
-        return;
-    }
+    };
 
-    // Management link (hk, ok, hmk) - go directly to form
-    if (isManagementLink) {
-        // No staff selection, backend will randomly assign
-        state.set('selectedStaff', -1); // Placeholder: Backend will randomly assign
+    // v3.9: Personel seçimi atlanacak durumlar (profil ayarlarına göre)
+    // - staffFilter === 'none': Müşteri geldi, personel yok
+    // - assignByAdmin === true: Backend rastgele atayacak
+    // - Management randevusu (staff=0'dan seçilmiş)
+    const skipStaffSelection = staffFilter === 'none' ||
+                                assignByAdmin ||
+                                (selectedAppointmentType === 'management' && selectedStaff === 0);
 
-        // Show form directly
-        revealSection('detailsSection');
-        const kvkkContainer1 = document.getElementById('kvkkContainer');
-        if (kvkkContainer1) kvkkContainer1.style.display = 'block';
-        const turnstileContainer = document.getElementById('turnstileContainer');
-        if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
-
-        // Keep staff section hidden
+    if (skipStaffSelection) {
+        // assignByAdmin ise backend rastgele atayacak
+        if (assignByAdmin) {
+            state.set('selectedStaff', -1); // Placeholder: Backend will randomly assign
+        }
         hideSection('staffSection');
-    }
-    // Manual appointment management (staff=0) - go directly to form
-    else if (selectedAppointmentType === 'management' && selectedStaff === 0) {
-        // HK/OK already selected (from inline buttons), show form directly
-        hideSection('staffSection');
-        revealSection('detailsSection');
-        const kvkkContainer2 = document.getElementById('kvkkContainer');
-        if (kvkkContainer2) kvkkContainer2.style.display = 'block';
-        const turnstileContainer = document.getElementById('turnstileContainer');
-        if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        showFormSections();
     } else {
-        revealSection('detailsSection');
-        const kvkkContainer3 = document.getElementById('kvkkContainer');
-        if (kvkkContainer3) kvkkContainer3.style.display = 'block';
-        const turnstileContainer = document.getElementById('turnstileContainer');
-        if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
-        const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        // Normal akış: Form göster
+        showFormSections();
     }
 }
 

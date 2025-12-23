@@ -9,7 +9,7 @@ import { ButtonAnimator } from '../button-utils';
 // Profil ayarları interface
 interface ProfilAyari {
     code: string;
-    idKontrol: boolean;
+    idKontrolu: boolean;         // v3.9: URL'den personel ID alınsın mı?
     expectedRole?: string;
     sameDayBooking: boolean;
     maxSlotAppointment: number;
@@ -133,7 +133,7 @@ function renderTable(): void {
             <tr>
                 <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${PROFIL_LABELS[key] || key}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${CODE_LABELS[p.code] || '#' + p.code}</code></td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrol ? '✓' : '-'}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrolu ? '✓' : '-'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.vardiyaKontrolu !== false ? '✓' : '-'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxSlotAppointment}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyDelivery || '∞'}</td>
@@ -183,6 +183,7 @@ function openEditModal(key: string): void {
     (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value = p.staffFilter;
     (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value = p.takvimFiltresi || 'withtoday';
     (document.getElementById('editProfilVardiyaKontrolu') as HTMLInputElement).checked = p.vardiyaKontrolu !== false; // default true
+    (document.getElementById('editProfilIdKontrolu') as HTMLInputElement).checked = p.idKontrolu === true; // v3.9: ID kontrolü
 
     // Set allowed types checkboxes
     const typeCheckboxes = document.querySelectorAll('.profil-type-checkbox') as NodeListOf<HTMLInputElement>;
@@ -226,6 +227,7 @@ async function saveProfilAyari(): Promise<void> {
     const staffFilter = (document.getElementById('editProfilStaffFilter') as HTMLSelectElement).value;
     const takvimFiltresi = (document.getElementById('editProfilTakvimFiltresi') as HTMLSelectElement).value;
     const vardiyaKontrolu = (document.getElementById('editProfilVardiyaKontrolu') as HTMLInputElement).checked;
+    const idKontrolu = (document.getElementById('editProfilIdKontrolu') as HTMLInputElement).checked;  // v3.9
 
     const updates = {
         // sameDayBooking takvimFiltresi'nden türetiliyor: onlytoday/withtoday = true, withouttoday = false
@@ -239,6 +241,7 @@ async function saveProfilAyari(): Promise<void> {
         staffFilter: staffFilter,
         takvimFiltresi: takvimFiltresi,
         vardiyaKontrolu: vardiyaKontrolu,  // v3.8: Vardiya kontrolü
+        idKontrolu: idKontrolu,            // v3.9: ID kontrolü
         allowedTypes: allowedTypes
     };
 

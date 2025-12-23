@@ -72,9 +72,10 @@ async function handleFormSubmit(): Promise<void> {
     const selectedStaff = state.get('selectedStaff');
     const selectedTime = state.get('selectedTime');
     const selectedShiftType = state.get('selectedShiftType');
-    const isManagementLink = state.get('isManagementLink');
-    const managementLevel = state.get('managementLevel');
     const staffMembers = state.get('staffMembers');
+    // v3.9: Profil ayarlarına göre çalışır (isManagementLink kaldırıldı)
+    const profilAyarlari = state.get('profilAyarlari');
+    const assignByAdmin = profilAyarlari?.assignByAdmin === true;
 
     // KVKK consent check
     const kvkkConsent = document.getElementById('kvkkConsent') as HTMLInputElement;
@@ -100,8 +101,7 @@ async function handleFormSubmit(): Promise<void> {
         return;
     }
 
-    // NEW: selectedStaff can be -1 (management link random), 0 (normal management), positive number (staff), or null (staffFilter === 'none')
-    const profilAyarlari = state.get('profilAyarlari');
+    // NEW: selectedStaff can be -1 (assignByAdmin random), 0 (normal management), positive number (staff), or null (staffFilter === 'none')
     const staffFilter = profilAyarlari?.staffFilter || 'all';
 
     // staffFilter === 'none' allows null staff (admin assigns later)
@@ -130,8 +130,8 @@ async function handleFormSubmit(): Promise<void> {
     // v3.6: staffId artık 8-karakterli secure ID (string) olabilir
     let assignedStaffId: string | number | null = selectedStaff;
 
-    // If management link (hk, ok, hmk) - don't assign staff, admin will assign
-    if (isManagementLink) {
+    // v3.9: assignByAdmin=true ise personel atama, admin atayacak
+    if (assignByAdmin) {
         // Create appointment without staff assignment
         assignedStaffId = null;
         staffName = 'Atanmadı'; // Placeholder
@@ -153,13 +153,10 @@ async function handleFormSubmit(): Promise<void> {
         staffName = staff.name;
     }
 
-    // v3.2: Link type from profile state
+    // v3.9: Profil adını gönder (linkType kaldırıldı)
     const currentProfile = state.get('currentProfile');
-    const linkType = currentProfile === 'gunluk' ? 'walkin' :
-                     currentProfile === 'vip' ? 'vip' :
-                     currentProfile === 'personel' ? 'staff' : 'general';
 
-    console.log('DEBUG: currentProfile=', currentProfile, 'linkType=', linkType, 'staffId=', assignedStaffId);
+    console.log('DEBUG: currentProfile=', currentProfile, 'staffId=', assignedStaffId, 'assignByAdmin=', assignByAdmin);
 
     try {
         const result = await apiCall('createAppointment', {
@@ -173,11 +170,10 @@ async function handleFormSubmit(): Promise<void> {
             customerNote: note,
             shiftType: selectedShiftType,
             appointmentType: selectedAppointmentType,
-            duration: state.get('profilAyarlari')?.duration || 60,
+            duration: profilAyarlari?.duration || 60,
             turnstileToken: turnstileToken,  // Bot protection token
-            managementLevel: managementLevel,  // Management link level (1, 2, 3 or null)
-            isVipLink: isManagementLink,  // VIP link flag (#hk, #ok, #hmk) - legacy
-            linkType: linkType,  // v3.2: Link type (general, staff, vip, walkin)
+            profil: currentProfile,  // v3.9: Profil adı
+            assignByAdmin: assignByAdmin,  // v3.9: Admin atama flag
             kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
         });
 

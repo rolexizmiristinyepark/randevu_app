@@ -27,15 +27,18 @@ const ValidationService = {
    * Validate appointment reservation against all business rules
    * CORE validation with race condition protection
    * v3.5: Tüm kurallar profil ayarlarından alınır
-   * @param {Object} payload - {date, hour, appointmentType, staffId, isVipLink, linkType}
+   * @param {Object} payload - {date, hour, appointmentType, staffId, profil, isVipLink, linkType}
    * @returns {{valid: boolean, error?: string, isDayMaxed?: boolean, suggestAlternatives?: boolean}}
    */
   validateReservation: function(payload) {
-    const { date, hour, appointmentType, staffId, isVipLink, linkType } = payload;
+    // v3.9: profil parametresi eklendi (yeni sistem), linkType legacy uyumluluk için
+    const { date, hour, appointmentType, staffId, profil, isVipLink, linkType } = payload;
 
     try {
-      // v3.5: Profil ayarlarını al - tüm kurallar buradan
-      const profilAyarlari = getProfilAyarlariByLinkType(linkType);
+      // v3.9: Önce profil'den al, yoksa linkType'tan (legacy uyumluluk)
+      const profilAyarlari = profil
+        ? ProfilAyarlariService.get(profil)
+        : getProfilAyarlariByLinkType(linkType);
 
       log.info('RAW profilAyarlari:', JSON.stringify(profilAyarlari));
 
@@ -43,7 +46,7 @@ const ValidationService = {
       const maxDailyDelivery = profilAyarlari?.maxDailyDelivery || 3;
 
       log.info('Validation with profile settings:', {
-        linkType,
+        profil: profil || linkType,
         maxSlotAppointment,
         maxDailyDelivery,
         profilKey: profilAyarlari?.code

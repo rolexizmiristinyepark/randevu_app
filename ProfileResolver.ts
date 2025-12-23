@@ -136,16 +136,21 @@ function saveToState(info: ProfileInfo): void {
   state.set('profileCode', info.code);
   state.set('profileAyarlar', info.ayarlar);
 
-  // v3.6: Set specificStaffId for staff links (#s/{id}, #v/{id})
-  if (info.staffData?.id) {
+  // v3.9: idKontrolu profil ayarına göre personel ID set et
+  // Link kodu kontrolü yerine profil ayarları kullanılır
+  const idKontrolu = (info.ayarlar as any)?.idKontrolu === true;
+
+  if (idKontrolu && info.staffData?.id) {
+    // Profil ayarlarında idKontrolu=true VE staffData var
     state.set('specificStaffId', info.staffData.id);
     state.set('linkedStaffId', info.staffData.id);
     state.set('linkedStaffName', info.staffData.name);
     state.set('linkedStaffRole', info.staffData.role);
-  } else if (info.staffId) {
-    // Fallback: Use URL staffId if staffData not available
+  } else if (idKontrolu && info.staffId) {
+    // Fallback: staffData yok ama URL'de ID var
     state.set('specificStaffId', info.staffId);
   }
+  // idKontrolu=false ise specificStaffId set edilmez
 }
 
 /**

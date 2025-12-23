@@ -477,49 +477,49 @@ label {
     font-weight: 500;
 }
 
-.btn {
-    width: 100%;
-    padding: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s;
-    margin-top: 10px;
-}
+/* ===========================================
+   BUTTON STATE FEEDBACK
+   =========================================== */
 
-.btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
-}
-
-.btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Button Loading State */
+/* Loading State */
 .btn.loading {
-    opacity: 0.7;
-    cursor: wait;
     pointer-events: none;
-    position: relative;
+    color: transparent !important;
 }
 
 .btn.loading::after {
     content: '';
-    display: inline-block;
-    width: 14px;
-    height: 14px;
-    margin-left: 8px;
-    border: 2px solid rgba(255,255,255,0.3);
-    border-top-color: #FAFAFA;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 18px;
+    height: 18px;
+    margin: -9px 0 0 -9px;
+    border: 2px solid #E8E8E8;
+    border-top-color: #C9A55A;
     border-radius: 50%;
-    animation: spin 0.6s linear infinite;
-    vertical-align: middle;
+    animation: spin 0.8s linear infinite;
+}
+
+/* Success State - like selected slot */
+.btn.success {
+    background: #1A1A2E !important;
+    border-color: #1A1A2E !important;
+    pointer-events: none;
+    color: white !important;
+}
+
+/* Error State */
+.btn.error {
+    border-color: #C62828 !important;
+    pointer-events: none;
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
 }
 
 .alert {
@@ -598,34 +598,59 @@ label {
     to { transform: rotate(360deg); }
 }
 
-/* Submit button */
+/* ===========================================
+   BUTTON DESIGN SYSTEM
+   Slot button style - consistent across app
+   =========================================== */
+
 .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
     width: 100%;
-    padding: 12px 30px;
-    background: #1A1A2E;
-    color: #FAFAFA;
-    border: none;
+    padding: 14px 32px;
+    background: white;
+    color: #2C2C2C;
+    border: 1px solid #E8E8E8;
     border-radius: 2px;
-    font-size: 11px;
-    letter-spacing: 2px;
+    font-size: 13px;
+    letter-spacing: 0.5px;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: 300;
     cursor: pointer;
     transition: all 0.3s ease;
     font-family: 'Montserrat', sans-serif;
     margin-top: 20px;
+    position: relative;
+    overflow: hidden;
 }
 
+/* Hover: Light bg + gold border */
 .btn:hover {
-    background: #2C2C3E;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(26, 26, 46, 0.3);
+    background: #FAFAFA;
+    border-color: #C9A55A;
+}
+
+/* Active/Pressed: Dark background */
+.btn:active {
+    background: #1A1A2E;
+    color: white;
+    border-color: #1A1A2E;
+}
+
+/* Focus state */
+.btn:focus {
+    outline: none;
+    border-color: #C9A55A;
 }
 
 .btn:disabled {
-    opacity: 0.6;
+    opacity: 0.35;
     cursor: not-allowed;
-    transform: none;
+    background: #FAFAFA;
+    pointer-events: none;
+    color: #BDBDBD;
 }
 
 /* Alert Container - Fixed pozisyon, her zaman görünür */
@@ -743,25 +768,18 @@ label {
     margin-top: 15px;
 }
 
-.btn-secondary {
-    width: 100%;
-    padding: 12px 30px;
-    background: transparent;
-    color: #1A1A2E;
-    border: 2px solid #1A1A2E;
-    border-radius: 2px;
+/* ===========================================
+   BUTTON SIZE VARIANTS
+   =========================================== */
+
+.btn-small {
+    padding: 10px 20px;
     font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    font-family: 'Montserrat', sans-serif;
 }
 
-.btn-secondary:hover {
-    background: #1A1A2E;
-    color: #FAFAFA;
+.btn-auto {
+    width: auto;
+    margin-top: 0;
 }
 
 /* Calendar Selection Modal */
@@ -1030,10 +1048,11 @@ label {
     .calendar-modal-content { padding: 30px 25px; }
 
     /* KVKK Checkbox Mobile */
-    .kvkk-consent { padding: 0 12px; margin: 15px 0; height: 60px; }
-    .kvkk-consent .checkbox-container { gap: 10px; font-size: 13px; }
-    .kvkk-consent .checkmark { width: 28px; height: 28px; }
-    .kvkk-consent .checkmark::after { width: 7px; height: 12px; border-width: 0 2.5px 2.5px 0; }
+    .kvkk-consent { padding: 0; margin: 12px 0; }
+    .kvkk-consent .checkbox-container { gap: 8px; }
+    .kvkk-consent .checkmark { width: 20px; height: 20px; }
+    .kvkk-consent .checkmark::after { width: 4px; height: 9px; }
+    .kvkk-consent .consent-text { font-size: 11px; }
 }
 
 /* ==================== YÖNETİM SUB-OPTIONS (HK/OK BUTONLARI) ==================== */
@@ -1118,14 +1137,11 @@ label {
     margin-bottom: 10px;
 }
 
-/* ==================== KVKK Consent Checkbox (Turnstile Style) ==================== */
+/* ==================== KVKK Consent Checkbox ==================== */
 .kvkk-consent {
-    margin: 20px 0;
-    padding: 0 15px;
-    background: #FAFAFA;
-    border-radius: 4px;
-    border: 1px solid #E0E0E0;
-    height: 65px;
+    margin: 15px 0;
+    padding: 0;
+    background: transparent;
     display: flex;
     align-items: center;
 }
@@ -1134,15 +1150,13 @@ label {
     display: flex;
     align-items: center;
     cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-    gap: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    gap: 10px;
     text-transform: none;
     letter-spacing: normal;
     position: relative;
     user-select: none;
-    width: 100%;
-    height: 100%;
 }
 
 /* Native checkbox'ı gizle */
@@ -1154,80 +1168,69 @@ label {
     width: 0;
 }
 
-/* Turnstile tarzı özel checkbox - Yuvarlak */
+/* Checkbox */
 .kvkk-consent .checkmark {
     position: relative;
     flex-shrink: 0;
-    width: 30px;
-    height: 30px;
+    width: 22px;
+    height: 22px;
     background: #fff;
-    border: 2px solid #CBCBCB;
+    border: 1px solid #CBCBCB;
     border-radius: 50%;
-    transition: background 0.2s ease, border-color 0.2s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
 }
 
-/* Hover durumu */
 .kvkk-consent .checkbox-container:hover .checkmark {
-    border-color: #999;
+    border-color: #C9A55A;
 }
 
-/* Tik işareti - tam ortada */
+/* Tik işareti */
 .kvkk-consent .checkmark::after {
     content: '';
     position: absolute;
     opacity: 0;
-    width: 7px;
-    height: 13px;
+    width: 5px;
+    height: 10px;
     border: solid white;
-    border-width: 0 3px 3px 0;
+    border-width: 0 2px 2px 0;
     transform: rotate(45deg) translate(-1px, -1px);
     transition: opacity 0.2s ease;
 }
 
-/* Checkbox seçildiğinde - Turnstile yeşili */
+/* Seçildiğinde */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark {
-    background: #028127;
-    border-color: #028127;
+    background: #1A1A2E;
+    border-color: #1A1A2E;
 }
 
-/* Tik işaretini göster */
 .kvkk-consent .checkbox-container input:checked ~ .checkmark::after {
     opacity: 1;
 }
 
 .kvkk-consent .consent-text {
-    color: #333;
-    font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-    font-weight: 400;
-    font-size: 14px;
+    color: #757575;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 300;
+    font-size: 12px;
     line-height: 1.4;
 }
 
 .kvkk-consent .consent-text a {
-    color: #0066CC;
-    text-decoration: none;
-    font-weight: 500;
-}
-
-.kvkk-consent .consent-text a:hover {
+    color: #1A1A2E;
     text-decoration: underline;
+    font-weight: 400;
 }
 
-/* Checkbox validation error state */
-.kvkk-consent.error {
-    border-color: #8B0000;
-    background: #fef2f2;
-}
-
+/* Error state */
 .kvkk-consent.error .checkmark {
-    border-color: #8B0000;
+    border-color: #C62828;
 }
 
 .kvkk-consent.error .consent-text {
-    color: #7f1d1d;
+    color: #C62828;
 }
 
 /* ==================== INTL-TEL-INPUT CUSTOMIZATION ==================== */

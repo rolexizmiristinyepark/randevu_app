@@ -145,42 +145,57 @@
             box-shadow: 0 0 0 2px rgba(201, 165, 90, 0.1);
         }
 
+        /* ===========================================
+           BUTTON DESIGN SYSTEM
+           Slot button style - consistent across app
+           =========================================== */
+
         .btn {
-            padding: 12px 28px;
-            background: #1A1A2E;
-            color: #FAFAFA;
-            border: 1px solid #1A1A2E;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 32px;
+            background: white;
+            color: #2C2C2C;
+            border: 1px solid #E8E8E8;
             border-radius: 2px;
-            font-size: 12px;
-            font-weight: 400;
-            letter-spacing: 1.5px;
+            font-size: 13px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
             font-family: 'Montserrat', sans-serif;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn:hover {
-            background: #C9A55A;
-            border-color: #C9A55A;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(201, 165, 90, 0.2);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #1A1A2E;
-            border-color: #E8E8E8;
-        }
-
-        .btn-secondary:hover {
             background: #FAFAFA;
             border-color: #C9A55A;
-            color: #1A1A2E;
+        }
+
+        .btn:active {
+            background: #1A1A2E;
+            color: white;
+            border-color: #1A1A2E;
+        }
+
+        .btn:focus {
+            outline: none;
+            border-color: #C9A55A;
+        }
+
+        .btn:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            background: #FAFAFA;
+            color: #BDBDBD;
         }
 
         .btn-small {
-            padding: 8px 16px;
+            padding: 10px 20px;
             font-size: 11px;
         }
 

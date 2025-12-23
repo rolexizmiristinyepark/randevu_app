@@ -289,15 +289,15 @@ const SHIFT_SLOT_FILTERS = {
  * - #s/{id} → personel (staff)
  * - #v/{id} → vip
  *
- * idKontrol:
+ * idKontroluu:
  * - false: Sadece profil kodu yeterli (#w, #g, #b, #m)
  * - true: Personel ID gerekli ve kontrol edilir (#s/{id}, #v/{id})
  */
 const PROFIL_AYARLARI = {
-  // #g - Genel link (idKontrol: false)
+  // #g - Genel link (idKontroluu: false)
   genel: {
     code: 'g',
-    idKontrol: false,
+    idKontroluu: false,
     sameDayBooking: false,
     maxSlotAppointment: 1,
     slotGrid: 60,
@@ -313,10 +313,10 @@ const PROFIL_AYARLARI = {
     showTypeSelection: true,
     vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
-  // #s/{id} - Personel linki (idKontrol: true)
+  // #s/{id} - Personel linki (idKontrolu: true)
   personel: {
     code: 's',
-    idKontrol: true,
+    idKontrolu: true,
     expectedRole: 'sales',
     sameDayBooking: false,
     maxSlotAppointment: 1,
@@ -333,10 +333,10 @@ const PROFIL_AYARLARI = {
     showTypeSelection: true,
     vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
-  // #v/{id} - VIP linki (idKontrol: true)
+  // #v/{id} - VIP linki (idKontrolu: true)
   vip: {
     code: 'v',
-    idKontrol: true,
+    idKontrolu: true,
     expectedRole: 'management',
     sameDayBooking: true,
     maxSlotAppointment: 2,
@@ -353,10 +353,10 @@ const PROFIL_AYARLARI = {
     showTypeSelection: true,
     vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
-  // #b - Boutique/Mağaza (idKontrol: false)
+  // #b - Boutique/Mağaza (idKontrolu: false)
   boutique: {
     code: 'b',
-    idKontrol: false,
+    idKontrolu: false,
     sameDayBooking: true,
     maxSlotAppointment: 2,
     slotGrid: 30,
@@ -372,10 +372,10 @@ const PROFIL_AYARLARI = {
     showTypeSelection: true,
     vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
-  // #m - Yönetim (idKontrol: false)
+  // #m - Yönetim (idKontrolu: false)
   yonetim: {
     code: 'm',
-    idKontrol: false,
+    idKontrolu: false,
     sameDayBooking: true,
     maxSlotAppointment: 2,
     slotGrid: 60,
@@ -391,10 +391,10 @@ const PROFIL_AYARLARI = {
     showTypeSelection: true,
     vardiyaKontrolu: true  // v3.8: true=vardiyaya göre, false=tüm günler/slotlar müsait
   },
-  // #w - Walk-in/Günlük (idKontrol: false)
+  // #w - Walk-in/Günlük (idKontrolu: false)
   gunluk: {
     code: 'w',
-    idKontrol: false,
+    idKontrolu: false,
     sameDayBooking: true,
     maxSlotAppointment: 2,
     slotGrid: 30,
