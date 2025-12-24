@@ -435,7 +435,6 @@ function render(appointments: any[]): void {
             // v3.9: Türkçe karakter normalizasyonu (İ/ı sorunları için)
             customerName = normalizeTurkishChars(customerName);
             const customerNote = apt.extendedProperties?.private?.customerNote || '';
-            const isVipLink = apt.extendedProperties?.private?.isVipLink === 'true';
 
             // Appointment card container
             const aptCard = getCreateElement()('div', {
@@ -524,11 +523,17 @@ function render(appointments: any[]): void {
             buttonsDiv.appendChild(editBtn);
             buttonsDiv.appendChild(cancelBtn);
 
-            // Assign staff button - only for VIP links (#hk, #ok, #hmk) without assigned staff
+            // Assign staff button - show based on profile's assignByAdmin setting
             const staffName = staff?.name || '-';
             const hasNoStaff = !staffId || !staff || staffName === 'Atanmadı' || staffName === '-';
 
-            if (isVipLink && hasNoStaff) {
+            // v3.9: Profil ayarlarından assignByAdmin kontrolü
+            // Sadece profilde assignByAdmin=true ise buton göster
+            const appointmentProfil = apt.extendedProperties?.private?.profil || '';
+            const profilAyari = dataStore.profilAyarlari[appointmentProfil];
+            const showAssignButton = profilAyari?.assignByAdmin === true;
+
+            if (showAssignButton && hasNoStaff) {
                 const assignBtn = getCreateElement()('button', {
                     className: 'btn btn-small',
                     style: {

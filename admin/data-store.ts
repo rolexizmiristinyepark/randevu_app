@@ -22,13 +22,34 @@ export interface Settings {
     maxDaily: number;
 }
 
+export interface ProfilAyari {
+    code: string;
+    idKontrolu: boolean;
+    expectedRole?: string;
+    sameDayBooking: boolean;
+    maxSlotAppointment: number;
+    slotGrid: number;
+    maxDailyPerStaff: number;
+    maxDailyDelivery: number;
+    duration: number;
+    assignByAdmin: boolean;
+    allowedTypes: string[];
+    staffFilter: string;
+    takvimFiltresi: 'onlytoday' | 'withtoday' | 'withouttoday';
+    vardiyaKontrolu: boolean;
+}
+
+export type ProfilAyarlari = Record<string, ProfilAyari>;
+
 export interface DataStore {
     staff: StaffMember[];
     shifts: Record<string, any>;
     settings: Settings;
+    profilAyarlari: ProfilAyarlari;
     loadStaff: () => Promise<void>;
     loadShifts: () => Promise<void>;
     loadSettings: () => Promise<void>;
+    loadProfilAyarlari: () => Promise<void>;
 }
 
 /**
@@ -39,6 +60,7 @@ export function initDataStore(): DataStore {
         staff: [],
         shifts: {},
         settings: { interval: 60, maxDaily: 4 },
+        profilAyarlari: {},
 
         async loadStaff() {
             try {
@@ -66,6 +88,18 @@ export function initDataStore(): DataStore {
             } catch (error) {
                 console.error('Ayarlar yüklenemedi:', error);
                 logError(error, { context: 'loadSettings' });
+            }
+        },
+
+        async loadProfilAyarlari() {
+            try {
+                const response = await apiCall('getAllProfilAyarlari');
+                if (response.success && response.data) {
+                    this.profilAyarlari = response.data as ProfilAyarlari;
+                }
+            } catch (error) {
+                console.error('Profil ayarları yüklenemedi:', error);
+                logError(error, { context: 'loadProfilAyarlari' });
             }
         }
     };

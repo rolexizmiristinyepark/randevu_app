@@ -251,6 +251,9 @@ async function startApp(): Promise<void> {
         // Initialize data store
         const dataStore = initDataStore();
 
+        // Load profile settings first (needed for appointment manager)
+        await dataStore.loadProfilAyarlari();
+
         // Initialize all manager modules
         await initStaffManager(dataStore);
         await initShiftManager(dataStore);
