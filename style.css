@@ -653,6 +653,22 @@ label {
     color: #BDBDBD;
 }
 
+/* Randevuyu Onayla butonu - Koyu ton */
+#submitBtn {
+    background: #1A1A2E;
+    color: white;
+    border-color: #1A1A2E;
+}
+
+#submitBtn:hover {
+    background: #2C2C3E;
+    border-color: #C9A55A;
+}
+
+#submitBtn:active {
+    background: #0F0F1A;
+}
+
 /* Alert Container - Fixed pozisyon, her zaman görünür */
 #alertContainer {
     position: fixed;
