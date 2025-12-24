@@ -207,7 +207,11 @@ const LockServiceWrapper = {
    * }, LockServiceWrapper.TIMEOUTS.APPOINTMENT_CREATE);
    */
   withLock: function(fn, timeout = this.TIMEOUTS.DEFAULT, maxRetries = 3) {
-    const lock = LockService.getScriptLock();
+    // ⚠️ PERFORMANCE: getDocumentLock() kullanılıyor (getScriptLock() yerine)
+    // - getScriptLock(): Tüm script için global lock - tüm kullanıcıları bloklar
+    // - getDocumentLock(): Sadece bu spreadsheet için lock - daha iyi parallelism
+    // Bu uygulama tek bir spreadsheet kullandığı için DocumentLock yeterli
+    const lock = LockService.getDocumentLock();
     let lastError = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {

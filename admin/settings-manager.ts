@@ -51,7 +51,8 @@ const DEFAULT_VARIABLE_OPTIONS: Record<string, string> = {
 
 // ==================== MODULE STATE ====================
 
-let dataStore: DataStore;
+// Note: dataStore assigned for future use (currently settings loaded directly via API)
+let _dataStore: DataStore;
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -65,7 +66,7 @@ const getUI = () => window.UI;
  * Initialize Settings Manager module
  */
 export async function initSettingsManager(store: DataStore): Promise<void> {
-    dataStore = store;
+    _dataStore = store;
     setupEventListeners();
     setupTemplatesEventListeners();
 

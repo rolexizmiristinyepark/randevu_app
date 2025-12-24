@@ -11,12 +11,6 @@ interface ApiResponse<T = unknown> {
     error?: string;
 }
 
-/** API Service configuration */
-interface Config {
-    APPS_SCRIPT_URL: string;
-    [key: string]: unknown;
-}
-
 /** Protected action types */
 type ProtectedAction =
     | 'addStaff'
@@ -144,147 +138,135 @@ const ApiService = {
      * ✅ Public actions GET kullanır (performans)
      * @private
      */
-    _makeRequest<T = unknown>(
+    async _makeRequest<T = unknown>(
         action: ApiAction,
         params: Record<string, unknown> = {},
         apiKey: string | null = null
     ): Promise<ApiResponse<T>> {
-        return new Promise(async (resolve, reject) => {
-            try {
-                // 🔒 GÜVENLİK: Hardcoded URL kaldırıldı - Environment variable ZORUNLU
-                // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
-                let appsScriptUrl: string | null = null;
+        try {
+            // 🔒 GÜVENLİK: Hardcoded URL kaldırıldı - Environment variable ZORUNLU
+            // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
+            let appsScriptUrl: string | null = null;
 
-                // 1. Try global CONFIG (set after initConfig)
-                if (typeof window !== 'undefined' && (window as any).CONFIG?.APPS_SCRIPT_URL) {
-                    appsScriptUrl = (window as any).CONFIG.APPS_SCRIPT_URL;
-                }
-                // 2. Try globalThis CONFIG
-                else if (typeof (globalThis as any).CONFIG?.APPS_SCRIPT_URL !== 'undefined') {
-                    appsScriptUrl = (globalThis as any).CONFIG.APPS_SCRIPT_URL;
-                }
-                // 3. Try environment variable (for initial config load)
-                else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL && import.meta.env.VITE_APPS_SCRIPT_URL !== 'undefined' && import.meta.env.VITE_APPS_SCRIPT_URL !== '') {
-                    appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
-                }
+            // 1. Try global CONFIG (set after initConfig)
+            if (typeof window !== 'undefined' && (window as any).CONFIG?.APPS_SCRIPT_URL) {
+                appsScriptUrl = (window as any).CONFIG.APPS_SCRIPT_URL;
+            }
+            // 2. Try globalThis CONFIG
+            else if (typeof (globalThis as any).CONFIG?.APPS_SCRIPT_URL !== 'undefined') {
+                appsScriptUrl = (globalThis as any).CONFIG.APPS_SCRIPT_URL;
+            }
+            // 3. Try environment variable (for initial config load)
+            else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL && import.meta.env.VITE_APPS_SCRIPT_URL !== 'undefined' && import.meta.env.VITE_APPS_SCRIPT_URL !== '') {
+                appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+            }
 
-                // Final validation - no fallback, environment variable is REQUIRED
-                if (!appsScriptUrl || !appsScriptUrl.startsWith('https://')) {
-                    const errorMsg = 'APPS_SCRIPT_URL yapılandırılmamış. .env dosyasında VITE_APPS_SCRIPT_URL tanımlayın.';
-                    console.error('❌ API Hatası:', errorMsg);
-                    reject(new Error(errorMsg));
-                    return;
-                }
+            // Final validation - no fallback, environment variable is REQUIRED
+            if (!appsScriptUrl || !appsScriptUrl.startsWith('https://')) {
+                const errorMsg = 'APPS_SCRIPT_URL yapılandırılmamış. .env dosyasında VITE_APPS_SCRIPT_URL tanımlayın.';
+                console.error('❌ API Hatası:', errorMsg);
+                throw new Error(errorMsg);
+            }
 
-                // DEBUG logging kaldirildi - production'da URL loglama guvenlik riski olusturabilir
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 saniye timeout
+            let response: Response;
 
-                let response: Response;
+            // 🔒 GÜVENLİK: Protected actions için POST + JSON body kullan
+            const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
 
-                // 🔒 GÜVENLİK: Protected actions için POST + JSON body kullan
-                // API key URL'de ASLA görünmez (browser history, server logs güvenli)
-                const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
+            if (isProtectedAction && apiKey) {
+                // POST + JSON Body - API key guvenli (URL'de gorunmez)
+                const requestBody = {
+                    action,
+                    apiKey,
+                    ...params
+                };
 
-                if (isProtectedAction && apiKey) {
-                    // POST + JSON Body - API key guvenli (URL'de gorunmez)
-                    // API key bilgisi loglanmiyor - guvenlik icin
-                    const requestBody = {
-                        action,
-                        apiKey,
-                        ...params
-                    };
+                response = await fetch(appsScriptUrl, {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    signal: controller.signal,
+                    headers: {
+                        'Content-Type': 'text/plain',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify(requestBody)
+                });
+            } else {
+                // ✅ GET - Public actions (API key yok)
+                const queryParams = new URLSearchParams();
+                queryParams.append('action', action);
 
-                    response = await fetch(appsScriptUrl, {
-                        method: 'POST',
-                        mode: 'cors',
-                        credentials: 'omit',
-                        signal: controller.signal,
-                        headers: {
-                            'Content-Type': 'text/plain', // Google Apps Script CORS için
-                            'Accept': 'application/json'
-                        },
-                        body: JSON.stringify(requestBody)
-                    });
-                } else {
-                    // ✅ GET - Public actions (API key yok)
-                    const queryParams = new URLSearchParams();
-                    queryParams.append('action', action);
-
-                    for (const [key, value] of Object.entries(params)) {
-                        if (value !== undefined && value !== null) {
-                            queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
-                        }
-                    }
-
-                    const url = `${appsScriptUrl}?${queryParams.toString()}`;
-
-                    response = await fetch(url, {
-                        method: 'GET',
-                        mode: 'cors',
-                        credentials: 'omit',
-                        signal: controller.signal,
-                        headers: {
-                            'Accept': 'application/json'
-                        }
-                    });
-                }
-
-                clearTimeout(timeoutId);
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                // JSON response'u parse et
-                const data = await response.json() as ApiResponse<T>;
-
-                // Zod validation (gradual adoption - warn but don't fail)
-                const validationSchema = ApiService.VALIDATION_MAP[action as keyof typeof ApiService.VALIDATION_MAP];
-                if (validationSchema) {
-                    try {
-                        const validatedData = validateApiResponse(
-                            validationSchema as any,
-                            data,
-                            action
-                        );
-                        resolve(validatedData as ApiResponse<T>);
-                        return;
-                    } catch (validationError) {
-                        // Log validation error but continue with unvalidated data (backward compatibility)
-                        console.warn(`[Validation Warning] ${action} validation failed:`, validationError);
-                        console.warn('Continuing with unvalidated data for backward compatibility');
+                for (const [key, value] of Object.entries(params)) {
+                    if (value !== undefined && value !== null) {
+                        queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
                     }
                 }
 
-                // Başarılı response kontrolü (fallback for non-validated or failed validation)
-                if (data && typeof data === 'object') {
-                    // Session expired veya auth hatası kontrolü
-                    if (!data.success && (data as any).requiresAuth) {
-                        console.warn('[API] Session expired or auth failed:', (data as any).debug, (data as any).sessionDebug);
-                        // NOT: clearSession yapmıyoruz çünkü paralel API çağrıları var
-                        // Kullanıcı zaten login modal'ı görecek
-                    }
-                    resolve(data);
-                } else {
-                    throw new Error('Geçersiz API yanıtı');
-                }
+                const url = `${appsScriptUrl}?${queryParams.toString()}`;
 
-            } catch (error) {
-                if (error instanceof Error) {
-                    if (error.name === 'AbortError') {
-                        reject(new Error('Timeout - API cevap vermedi'));
-                    } else if (error.message.includes('Failed to fetch')) {
-                        reject(new Error('API bağlantısı kurulamadı. CORS veya ağ hatası.'));
-                    } else {
-                        reject(error);
+                response = await fetch(url, {
+                    method: 'GET',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    signal: controller.signal,
+                    headers: {
+                        'Accept': 'application/json'
                     }
-                } else {
-                    reject(new Error('Unknown error'));
+                });
+            }
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            // JSON response'u parse et
+            const data = await response.json() as ApiResponse<T>;
+
+            // Zod validation (gradual adoption - warn but don't fail)
+            const validationSchema = ApiService.VALIDATION_MAP[action as keyof typeof ApiService.VALIDATION_MAP];
+            if (validationSchema) {
+                try {
+                    const validatedData = validateApiResponse(
+                        validationSchema as any,
+                        data,
+                        action
+                    );
+                    return validatedData as ApiResponse<T>;
+                } catch (validationError) {
+                    console.warn(`[Validation Warning] ${action} validation failed:`, validationError);
+                    console.warn('Continuing with unvalidated data for backward compatibility');
                 }
             }
-        });
+
+            // Başarılı response kontrolü
+            if (data && typeof data === 'object') {
+                if (!data.success && (data as any).requiresAuth) {
+                    console.warn('[API] Session expired or auth failed');
+                }
+                return data;
+            } else {
+                throw new Error('Geçersiz API yanıtı');
+            }
+
+        } catch (error) {
+            if (error instanceof Error) {
+                if (error.name === 'AbortError') {
+                    throw new Error('Timeout - API cevap vermedi');
+                } else if (error.message.includes('Failed to fetch')) {
+                    throw new Error('API bağlantısı kurulamadı. CORS veya ağ hatası.');
+                } else {
+                    throw error;
+                }
+            } else {
+                throw new Error('Unknown error');
+            }
+        }
     },
 
     testApiKey(apiKey: string): Promise<ApiResponse> {

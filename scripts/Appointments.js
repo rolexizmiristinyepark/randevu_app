@@ -128,6 +128,10 @@ const AppointmentService = {
       const calendar = CalendarService.getCalendar();
       const event = calendar.getEventById(eventId);
       if (!event) {
+        SheetStorageService.addAuditLog('APPOINTMENT_DELETE_FAILED', {
+          reason: 'NOT_FOUND',
+          eventId: eventId
+        });
         return { success: false, error: CONFIG.ERROR_MESSAGES.APPOINTMENT_NOT_FOUND };
       }
 
@@ -146,6 +150,15 @@ const AppointmentService = {
 
       event.deleteEvent();
       log.info('Randevu silindi:', eventId);
+
+      // Audit log
+      SheetStorageService.addAuditLog('APPOINTMENT_DELETED', {
+        eventId: eventId,
+        customerName: customerName,
+        customerPhone: SecurityService.maskPhone ? SecurityService.maskPhone(customerPhone) : customerPhone,
+        staffId: staffId,
+        appointmentType: appointmentType
+      });
 
       // WhatsApp Flow tetikle - RANDEVU_IPTAL
       try {
@@ -176,6 +189,11 @@ const AppointmentService = {
       return { success: true, message: CONFIG.SUCCESS_MESSAGES.APPOINTMENT_DELETED };
     } catch (error) {
       log.error('deleteAppointment hatası:', error);
+      SheetStorageService.addAuditLog('APPOINTMENT_DELETE_FAILED', {
+        reason: 'ERROR',
+        eventId: eventId,
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   },
@@ -648,22 +666,16 @@ const AvailabilityService = {
       );
       const isDeliveryMaxed = isDeliveryOrShipping ? this.getDeliveryCount(date) >= 3 : false;
 
-      const availableHours = [];
-      const unavailableHours = [];
-
-      SLOT_UNIVERSE.forEach(hour => {
-        if (SlotService.isSlotFree(date, hour)) {
-          availableHours.push(hour);
-        } else {
-          unavailableHours.push(hour);
-        }
-      });
+      // ⚠️ PERFORMANCE: N+1 query yerine TEK batch çağrı kullan
+      // Önceki: SLOT_UNIVERSE.forEach → isSlotFree() → getEvents() (N çağrı)
+      // Şimdi: getSlotStatusBatch() → getEvents() (1 çağrı)
+      const batchResult = SlotService.getSlotStatusBatch(date, SLOT_UNIVERSE);
 
       return {
         success: true,
         isDeliveryMaxed,
-        availableHours,
-        unavailableHours,
+        availableHours: batchResult.available,
+        unavailableHours: batchResult.occupied,
         deliveryCount: this.getDeliveryCount(date)
       };
     } catch (error) {
@@ -833,120 +845,311 @@ const AvailabilityService = {
   }
 };
 
+// ==================== APPOINTMENT CREATION HELPERS ====================
+// Bu helper fonksiyonlar createAppointment()'ı daha okunabilir yapar
+
 /**
- * Main appointment creation function
- * Handles validation, security checks, calendar creation, and notifications
- * FULL IMPLEMENTATION - Restored from Kod.js.backup
+ * Security checks (Turnstile & Rate Limiting)
+ * @param {Object} params - Request parameters
+ * @returns {{success: boolean, error?: string}} Validation result
+ * @private
  */
-function createAppointment(params) {
+function _validateSecurity(params) {
+  const { turnstileToken, customerPhone, customerEmail } = params;
+
+  // 1. Cloudflare Turnstile bot kontrolü
+  const turnstileResult = SecurityService.verifyTurnstileToken(turnstileToken);
+  if (!turnstileResult.success) {
+    log.warn('Turnstile doğrulama başarısız:', turnstileResult.error);
+    return {
+      success: false,
+      error: turnstileResult.error || 'Robot kontrolü başarısız oldu. Lütfen sayfayı yenileyin.'
+    };
+  }
+
+  // 2. Rate limiting - IP veya fingerprint bazlı
+  const identifier = customerPhone + '_' + customerEmail;
+  const rateLimit = SecurityService.checkRateLimit(identifier);
+
+  if (!rateLimit.allowed) {
+    const waitMinutes = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
+    log.warn('Rate limit aşıldı:', identifier, rateLimit);
+    return {
+      success: false,
+      error: `Çok fazla istek gönderdiniz. Lütfen ${waitMinutes} dakika sonra tekrar deneyin.`
+    };
+  }
+
+  log.info('Rate limit OK - Kalan istek:', rateLimit.remaining);
+  return { success: true };
+}
+
+/**
+ * Input validation and sanitization
+ * @param {Object} params - Request parameters
+ * @returns {{success: boolean, error?: string, sanitized?: Object}} Validation result
+ * @private
+ */
+function _validateInputs(params) {
+  const {
+    date, time, staffId, staffName, customerName, customerPhone,
+    customerEmail, customerNote, appointmentType, duration,
+    profil, assignByAdmin, isVipLink, linkType
+  } = params;
+
+  // Date validation (YYYY-MM-DD format)
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
+  }
+
+  // Time validation (HH:MM format)
+  if (!time || !/^\d{2}:\d{2}$/.test(time)) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_TIME_FORMAT };
+  }
+
+  // Customer name validation
+  if (!customerName || typeof customerName !== 'string' || customerName.trim().length === 0) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_NAME_REQUIRED };
+  }
+
+  // Customer phone validation
+  if (!customerPhone || typeof customerPhone !== 'string' || customerPhone.trim().length === 0) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_PHONE_REQUIRED };
+  }
+
+  // Email validation (optional but if provided must be valid)
+  if (customerEmail && !Utils.isValidEmail(customerEmail)) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
+  }
+
+  // Appointment type validation
+  const validTypes = Object.values(CONFIG.APPOINTMENT_TYPES);
+  if (!appointmentType || !validTypes.includes(appointmentType)) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_APPOINTMENT_TYPE };
+  }
+
+  // Duration validation
+  const durationNum = parseInt(duration);
+  if (isNaN(durationNum) || durationNum < VALIDATION.INTERVAL_MIN || durationNum > VALIDATION.INTERVAL_MAX) {
+    return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
+  }
+
+  // Staff ID validation (profil bazlı)
+  const profilAyarlari = profil
+    ? ProfilAyarlariService.get(profil)
+    : getProfilAyarlariByLinkType(linkType);
+  const staffFilter = profilAyarlari?.staffFilter || 'all';
+  const staffOptional = staffFilter === 'none' || assignByAdmin === true || isVipLink;
+
+  log.info('Staff validation:', { profil, staffFilter, staffId, staffOptional, assignByAdmin });
+  if (!staffId && !staffOptional) {
+    return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
+  }
+
+  // Sanitize inputs
+  const sanitized = {
+    customerName: Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH)),
+    customerPhone: Utils.sanitizePhone(customerPhone),
+    customerEmail: customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '',
+    customerNote: customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '',
+    staffName: staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '',
+    durationNum,
+    profilAyarlari
+  };
+
+  return { success: true, sanitized };
+}
+
+/**
+ * Build calendar event title based on profile
+ * @param {Object} params - Title parameters
+ * @returns {string} Event title
+ * @private
+ */
+function _buildEventTitle(params) {
+  const { customerName, staffName, profil, appointmentType } = params;
+  const hasStaff = staffName && staffName.trim() !== '';
+  const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
+
+  if (profil === 'vip') {
+    return hasStaff
+      ? `${customerName} - ${staffName} (VIP) / ${appointmentTypeLabel}`
+      : `${customerName} (VIP) / ${appointmentTypeLabel}`;
+  } else if (profil === 'gunluk') {
+    return hasStaff
+      ? `${customerName} - ${staffName} (Walk-in) / ${appointmentTypeLabel}`
+      : `${customerName} (Walk-in) / ${appointmentTypeLabel}`;
+  } else if (profil === 'yonetim' || appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
+    return hasStaff
+      ? `${customerName} - ${staffName} / Yönetim`
+      : `${customerName} (Yönetim)`;
+  } else if (profil === 'boutique') {
+    return hasStaff
+      ? `${customerName} - ${staffName} (Mağaza) / ${appointmentTypeLabel}`
+      : `${customerName} (Mağaza) / ${appointmentTypeLabel}`;
+  } else {
+    return hasStaff
+      ? `${customerName} - ${staffName} / ${appointmentTypeLabel}`
+      : `${customerName} (${appointmentTypeLabel})`;
+  }
+}
+
+/**
+ * Send all notification emails (customer, staff, admin)
+ * @param {Object} params - Notification parameters
+ * @private
+ */
+function _sendNotifications(params) {
+  const {
+    customerName, customerPhone, customerEmail, customerNote,
+    staffId, staffName, staffPhone, staffEmail,
+    date, time, formattedDate, appointmentType, durationNum, data
+  } = params;
+
+  const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
+
+  // E-posta bildirimi - Müşteriye
+  if (customerEmail) {
+    try {
+      const icsContent = generateCustomerICS({
+        staffName,
+        staffPhone,
+        staffEmail,
+        date,
+        time,
+        duration: durationNum,
+        appointmentType,
+        customerNote,
+        formattedDate
+      });
+
+      const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+
+      MailApp.sendEmail({
+        to: customerEmail,
+        subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
+        name: CONFIG.COMPANY_NAME,
+        replyTo: staffEmail || CONFIG.ADMIN_EMAIL,
+        htmlBody: NotificationService.getCustomerEmailTemplate({
+          customerName,
+          formattedDate,
+          time,
+          serviceName,
+          staffName,
+          customerNote,
+          staffPhone,
+          staffEmail,
+          appointmentType
+        }),
+        attachments: [icsBlob]
+      });
+    } catch (emailError) {
+      log.error('Müşteri e-postası gönderilemedi:', emailError);
+    }
+  }
+
+  // E-posta bildirimi - Çalışana ve Admin
   try {
-    const {
-      date,
-      time,
-      staffId,
+    const staffEmailBody = NotificationService.getStaffEmailTemplate({
       staffName,
       customerName,
       customerPhone,
       customerEmail,
+      formattedDate,
+      time,
+      serviceName,
+      customerNote
+    });
+
+    // Çalışana gönder
+    const staff = data.staff.find(s => s.id == staffId);
+    if (staff && staff.email) {
+      MailApp.sendEmail({
+        to: staff.email,
+        subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${customerName}`,
+        name: CONFIG.COMPANY_NAME,
+        htmlBody: staffEmailBody
+      });
+    }
+
+    // Admin'e gönder
+    MailApp.sendEmail({
+      to: CONFIG.ADMIN_EMAIL,
+      subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${customerName}`,
+      name: CONFIG.COMPANY_NAME,
+      htmlBody: staffEmailBody
+    });
+
+  } catch (staffEmailError) {
+    log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
+  }
+}
+
+/**
+ * Trigger WhatsApp flow for appointment event
+ * @param {Object} params - Flow parameters
+ * @private
+ */
+function _triggerWhatsAppFlow(params) {
+  const { event, customerName, customerPhone, customerEmail, customerNote,
+          staffId, staffName, formattedDate, time, appointmentType, profil, assignByAdmin } = params;
+
+  try {
+    const eventData = {
+      eventId: event.getId(),
+      customerName,
+      customerPhone,
+      customerEmail,
       customerNote,
-      shiftType,
+      staffId,
+      staffName,
+      appointmentDate: formattedDate,
+      appointmentTime: time,
       appointmentType,
-      duration,
-      turnstileToken,
-      // v3.9: Yeni parametreler (profil bazlı çalışma)
-      profil,           // Profil adı (genel, vip, personel, gunluk, yonetim, boutique)
-      assignByAdmin,    // Admin personel atayacak mı?
-      // Legacy parametreler (geriye uyumluluk için)
-      managementLevel,
-      isVipLink,
-      linkType
+      profil: profil || 'genel',
+      assignByAdmin: assignByAdmin || false
+    };
+
+    log.info('[FLOW] Calling triggerFlowForEvent with:', JSON.stringify({
+      trigger: 'RANDEVU_OLUŞTUR',
+      profil: eventData.profil,
+      customerName: eventData.customerName,
+      staffId: eventData.staffId
+    }));
+
+    const flowResult = triggerFlowForEvent('RANDEVU_OLUŞTUR', eventData);
+    log.info('[FLOW] triggerFlowForEvent result:', JSON.stringify(flowResult));
+  } catch (flowError) {
+    log.error('[FLOW] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);
+    // Flow hatası ana işlemi etkilemesin
+  }
+}
+
+/**
+ * Main appointment creation function (REFACTORED)
+ * Uses helper functions for better readability and maintainability
+ */
+function createAppointment(params) {
+  try {
+    const {
+      date, time, staffId, appointmentType, duration, shiftType,
+      profil, assignByAdmin, isVipLink, linkType
     } = params;
 
-    // ===== SECURITY CHECKS =====
-    // 1. Cloudflare Turnstile bot kontrolü
-    const turnstileResult = SecurityService.verifyTurnstileToken(turnstileToken);
-    if (!turnstileResult.success) {
-      log.warn('Turnstile doğrulama başarısız:', turnstileResult.error);
-      return {
-        success: false,
-        error: turnstileResult.error || 'Robot kontrolü başarısız oldu. Lütfen sayfayı yenileyin.'
-      };
+    // ===== STEP 1: SECURITY CHECKS =====
+    const securityResult = _validateSecurity(params);
+    if (!securityResult.success) {
+      return securityResult;
     }
 
-    // 2. Rate limiting - IP veya fingerprint bazlı
-    const identifier = customerPhone + '_' + customerEmail; // Basit bir identifier
-    const rateLimit = SecurityService.checkRateLimit(identifier);
-
-    if (!rateLimit.allowed) {
-      const waitMinutes = Math.ceil((rateLimit.resetTime - Date.now()) / 60000);
-      log.warn('Rate limit aşıldı:', identifier, rateLimit);
-      return {
-        success: false,
-        error: `Çok fazla istek gönderdiniz. Lütfen ${waitMinutes} dakika sonra tekrar deneyin.`
-      };
+    // ===== STEP 2: INPUT VALIDATION & SANITIZATION =====
+    const inputResult = _validateInputs(params);
+    if (!inputResult.success) {
+      return inputResult;
     }
 
-    log.info('Rate limit OK - Kalan istek:', rateLimit.remaining);
-
-    // ===== VALIDATION =====
-    // Date validation (YYYY-MM-DD format)
-    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_DATE_FORMAT };
-    }
-
-    // Time validation (HH:MM format)
-    if (!time || !/^\d{2}:\d{2}$/.test(time)) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_TIME_FORMAT };
-    }
-
-    // Customer name validation
-    if (!customerName || typeof customerName !== 'string' || customerName.trim().length === 0) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_NAME_REQUIRED };
-    }
-
-    // Customer phone validation
-    if (!customerPhone || typeof customerPhone !== 'string' || customerPhone.trim().length === 0) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.CUSTOMER_PHONE_REQUIRED };
-    }
-
-    // Email validation (optional but if provided must be valid)
-    if (customerEmail && !Utils.isValidEmail(customerEmail)) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_EMAIL };
-    }
-
-    // Appointment type validation
-    const validTypes = Object.values(CONFIG.APPOINTMENT_TYPES);
-    if (!appointmentType || !validTypes.includes(appointmentType)) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.INVALID_APPOINTMENT_TYPE };
-    }
-
-    // Duration validation
-    const durationNum = parseInt(duration);
-    if (isNaN(durationNum) || durationNum < VALIDATION.INTERVAL_MIN || durationNum > VALIDATION.INTERVAL_MAX) {
-      return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
-    }
-
-    // Staff ID validation
-    // v3.9: Profil ayarına göre staffId zorunluluğu belirlenir
-    // staffFilter === 'none' ise staffId null olabilir (admin sonra atar)
-    // assignByAdmin === true ise staffId null olabilir (admin/backend atar)
-    // Legacy: isVipLink ise de staffId null olabilir
-    const profilAyarlari = profil
-      ? ProfilAyarlariService.get(profil)  // v3.9: Doğrudan profil adından al
-      : getProfilAyarlariByLinkType(linkType);  // Legacy: linkType'tan al
-    const staffFilter = profilAyarlari?.staffFilter || 'all';
-    const staffOptional = staffFilter === 'none' || assignByAdmin === true || isVipLink;
-    log.info('Staff validation:', { profil, staffFilter, staffId, staffOptional, assignByAdmin });
-    if (!staffId && !staffOptional) {
-      return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
-    }
-
-    // Sanitize inputs
-    const sanitizedCustomerName = Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH));
-    const sanitizedCustomerPhone = Utils.sanitizePhone(customerPhone);
-    const sanitizedCustomerEmail = customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '';
-    const sanitizedCustomerNote = customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '';
-    const sanitizedStaffName = staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '';
+    const { sanitized } = inputResult;
+    const { customerName, customerPhone, customerEmail, customerNote, staffName, durationNum, profilAyarlari } = sanitized;
 
     // StorageService.getData() - tek seferlik çağrı (DRY prensibi)
     const data = StorageService.getData();
@@ -1005,18 +1208,31 @@ function createAppointment(params) {
         const { startDate, endDate } = DateUtils.getDateRange(date);
         const allEventsToday = calendar.getEvents(startDate, endDate);
 
+        // 🔍 DEBUG: O günün tüm randevularını logla
+        log.info('DEBUG: All events today:', allEventsToday.map(e => ({
+          title: e.getTitle(),
+          start: e.getStartTime().toISOString(),
+          end: e.getEndTime().toISOString()
+        })));
+        log.info('DEBUG: New appointment:', { date, time, newStart, newEnd, durationNum });
+
         // Çakışan randevuları filtrele (epoch-minute ile)
         const overlappingEvents = allEventsToday.filter(event => {
           const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
           const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
 
           // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
-          return DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
+          const isOverlapping = DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
+          log.info('DEBUG: Overlap check:', {
+            eventTitle: event.getTitle(),
+            eventStart, eventEnd, newStart, newEnd, isOverlapping
+          });
+          return isOverlapping;
         });
 
         const overlappingCount = overlappingEvents.length;
 
-        log.info('Overlapping check:', { overlappingCount, maxSlotAppointment });
+        log.info('DEBUG: Overlapping result:', { overlappingCount, maxSlotAppointment, willBlock: overlappingCount >= maxSlotAppointment });
 
         // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları her zaman çakışabilir
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
@@ -1063,59 +1279,21 @@ function createAppointment(params) {
           }
         }
 
-        // Event başlığı - sanitized değerleri kullan
+        // Event başlığı - helper function kullan
+        const title = _buildEventTitle({ customerName, staffName, profil, appointmentType });
         const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
 
-        // ========== TAKVİM BAŞLIK FORMATI (v3.9) ==========
-        // Personel varsa:    Müşteri Adı - İlgili (Tag) / Randevu Türü
-        // Personel yoksa:    Müşteri Adı (Randevu Türü)
-        // Tag'ler: VIP, Walk-in, Yönetim (profil bazlı)
-
-        // v3.9: Profil bazlı çalışma - linkType ve managementLevel kaldırıldı
-        // Profil kodları: g=genel, v=vip, p=personel, w=gunluk, y=yonetim, b=boutique
-
-        let title = '';
-        const hasStaff = sanitizedStaffName && sanitizedStaffName.trim() !== '';
-
-        // v3.9: Profil bazlı tag belirleme
-        if (profil === 'vip') {
-          // VIP profili
-          title = hasStaff
-            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (VIP) / ${appointmentTypeLabel}`
-            : `${sanitizedCustomerName} (VIP) / ${appointmentTypeLabel}`;
-        } else if (profil === 'gunluk') {
-          // Günlük müşteri (Walk-in)
-          title = hasStaff
-            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (Walk-in) / ${appointmentTypeLabel}`
-            : `${sanitizedCustomerName} (Walk-in) / ${appointmentTypeLabel}`;
-        } else if (profil === 'yonetim' || appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
-          // Yönetim randevusu
-          title = hasStaff
-            ? `${sanitizedCustomerName} - ${sanitizedStaffName} / Yönetim`
-            : `${sanitizedCustomerName} (Yönetim)`;
-        } else if (profil === 'boutique') {
-          // Mağaza profili
-          title = hasStaff
-            ? `${sanitizedCustomerName} - ${sanitizedStaffName} (Mağaza) / ${appointmentTypeLabel}`
-            : `${sanitizedCustomerName} (Mağaza) / ${appointmentTypeLabel}`;
-        } else {
-          // Genel ve Personel profilleri - personel yoksa sadece müşteri + randevu türü
-          title = hasStaff
-            ? `${sanitizedCustomerName} - ${sanitizedStaffName} / ${appointmentTypeLabel}`
-            : `${sanitizedCustomerName} (${appointmentTypeLabel})`;
-        }
-
-        // Event açıklaması - sanitized değerleri kullan
+        // Event açıklaması
         const description = `
 Randevu Detayları:
 ─────────────────
-Müşteri: ${sanitizedCustomerName}
-Telefon: +${sanitizedCustomerPhone}
-E-posta: ${sanitizedCustomerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
-İlgili: ${sanitizedStaffName}
+Müşteri: ${customerName}
+Telefon: +${customerPhone}
+E-posta: ${customerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
+İlgili: ${staffName}
 Konu: ${appointmentTypeLabel}
 
-${sanitizedCustomerNote ? 'Not: ' + sanitizedCustomerNote : ''}
+${customerNote ? 'Not: ' + customerNote : ''}
 
 Bu randevu otomatik olarak oluşturulmuştur.
         `.trim();
@@ -1127,14 +1305,12 @@ Bu randevu otomatik olarak oluşturulmuştur.
         });
 
         // ⚠️ ATOMICITY FIX: Tag ekleme hata verirse event'i sil (v3.9.1)
-        // Bu sayede retry'da "slot dolu" hatası oluşmaz
         try {
-          // Ek bilgileri tag olarak ekle (extendedProperties yerine) - sanitized değerleri kullan
           calEvent.setTag('staffId', String(staffId));
-          calEvent.setTag('customerName', sanitizedCustomerName);  // v3.9: Müşteri adı tag olarak sakla
-          calEvent.setTag('customerPhone', sanitizedCustomerPhone);
-          calEvent.setTag('customerEmail', sanitizedCustomerEmail);
-          calEvent.setTag('customerNote', sanitizedCustomerNote || '');
+          calEvent.setTag('customerName', customerName);
+          calEvent.setTag('customerPhone', customerPhone);
+          calEvent.setTag('customerEmail', customerEmail);
+          calEvent.setTag('customerNote', customerNote || '');
           calEvent.setTag('shiftType', shiftType);
           calEvent.setTag('appointmentType', appointmentType);
           // v3.9: Profil bazlı çalışma - linkType yerine profil
@@ -1177,128 +1353,29 @@ Bu randevu otomatik olarak oluşturulmuştur.
       return event; // Error object'i hemen return et, email gönderme
     }
 
-    // Lock serbest bırakıldı - Email gönderme ve diğer işlemler lock dışında devam edebilir
+    // Lock serbest bırakıldı - Notifications lock dışında devam eder
 
-    // Tarih formatla (7 Ekim 2025, Salı) - DateUtils kullan
+    // Tarih formatla ve staff bilgisini al
     const formattedDate = DateUtils.toTurkishDate(date);
-    const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
-
-    // Staff bilgisini çek (data zaten yukarıda çekildi)
     const staff = data.staff.find(s => s.id == staffId);
     const staffPhone = staff?.phone ?? '';
     const staffEmail = staff?.email ?? '';
 
-    // E-posta bildirimi - Müşteriye (sanitized değerleri kullan)
-    if (sanitizedCustomerEmail) {
-      try {
-        // ICS dosyası oluştur
-        const icsContent = generateCustomerICS({
-          staffName: sanitizedStaffName,
-          staffPhone,
-          staffEmail,
-          date,
-          time,
-          duration: durationNum,
-          appointmentType,
-          customerNote: sanitizedCustomerNote,
-          formattedDate
-        });
-
-        // ICS dosyasını blob olarak oluştur
-        const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
-
-        MailApp.sendEmail({
-          to: sanitizedCustomerEmail,
-          subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
-          name: CONFIG.COMPANY_NAME,
-          replyTo: staffEmail || CONFIG.ADMIN_EMAIL,
-          htmlBody: NotificationService.getCustomerEmailTemplate({
-            customerName: sanitizedCustomerName,
-            formattedDate,
-            time,
-            serviceName,
-            staffName: sanitizedStaffName,
-            customerNote: sanitizedCustomerNote,
-            staffPhone,
-            staffEmail,
-            appointmentType    // YENİ: Dinamik içerik için
-          }),
-          attachments: [icsBlob]
-        });
-      } catch (emailError) {
-        log.error('Müşteri e-postası gönderilemedi:', emailError);
-      }
-    }
-
-    // E-posta bildirimi - Çalışana ve Admin (sanitized değerleri kullan)
-    try {
-      const staffEmailBody = NotificationService.getStaffEmailTemplate({
-        staffName: sanitizedStaffName,
-        customerName: sanitizedCustomerName,
-        customerPhone: sanitizedCustomerPhone,
-        customerEmail: sanitizedCustomerEmail,
-        formattedDate,
-        time,
-        serviceName,
-        customerNote: sanitizedCustomerNote
-      });
-
-      // Çalışana gönder
-      if (staff && staff.email) {
-        MailApp.sendEmail({
-          to: staff.email,
-          subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${sanitizedCustomerName}`,
-          name: CONFIG.COMPANY_NAME,
-          htmlBody: staffEmailBody
-        });
-      }
-
-      // Admin'e gönder
-      MailApp.sendEmail({
-        to: CONFIG.ADMIN_EMAIL,
-        subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${sanitizedCustomerName}`,
-        name: CONFIG.COMPANY_NAME,
-        htmlBody: staffEmailBody
-      });
-
-    } catch (staffEmailError) {
-      log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
-    }
+    // ===== STEP 5: SEND NOTIFICATIONS =====
+    _sendNotifications({
+      customerName, customerPhone, customerEmail, customerNote,
+      staffId, staffName, staffPhone, staffEmail,
+      date, time, formattedDate, appointmentType, durationNum, data
+    });
 
     // ⭐ Cache invalidation: Version increment
     VersionService.incrementDataVersion();
 
-    // WhatsApp Flow tetikle - RANDEVU_OLUŞTUR
-    try {
-      // v3.9: Profil bazlı çalışma - doğrudan profil kullan
-      const eventData = {
-        eventId: event.getId(),
-        customerName: sanitizedCustomerName,
-        customerPhone: sanitizedCustomerPhone,
-        customerEmail: sanitizedCustomerEmail,
-        customerNote: sanitizedCustomerNote,
-        staffId: staffId,
-        staffName: sanitizedStaffName,
-        appointmentDate: formattedDate,
-        appointmentTime: time,
-        appointmentType: appointmentType,
-        profil: profil || 'genel',  // v3.9: Profil adı
-        assignByAdmin: assignByAdmin || false
-      };
-
-      log.info('[FLOW] Calling triggerFlowForEvent with:', JSON.stringify({
-        trigger: 'RANDEVU_OLUŞTUR',
-        profil: eventData.profil,
-        customerName: eventData.customerName,
-        staffId: eventData.staffId
-      }));
-
-      const flowResult = triggerFlowForEvent('RANDEVU_OLUŞTUR', eventData);
-      log.info('[FLOW] triggerFlowForEvent result:', JSON.stringify(flowResult));
-    } catch (flowError) {
-      log.error('[FLOW] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);
-      // Flow hatası ana işlemi etkilemesin
-    }
+    // ===== STEP 6: TRIGGER WHATSAPP FLOW =====
+    _triggerWhatsAppFlow({
+      event, customerName, customerPhone, customerEmail, customerNote,
+      staffId, staffName, formattedDate, time, appointmentType, profil, assignByAdmin
+    });
 
     return {
       success: true,

@@ -560,6 +560,197 @@ const DataRetentionService = {
   }
 };
 
+// ==================== KVKK UNUTULMA HAKKI (Right to be Forgotten) ====================
+/**
+ * KVKK Madde 7 - Unutulma Hakkı implementasyonu
+ * Müşteri talebinde kişisel verilerin silinmesi
+ */
+const KVKKRightsService = {
+  /**
+   * Müşteri verilerini tamamen sil (Unutulma Hakkı)
+   * KVKK Madde 7: "Kişisel verilerin silinmesi, yok edilmesi veya anonim hale getirilmesi"
+   *
+   * @param {string} customerPhone - Müşteri telefon numarası
+   * @returns {{success: boolean, deletedAppointments: number, deletedMessages: number, error?: string}}
+   */
+  forgetCustomer: function(customerPhone) {
+    try {
+      if (!customerPhone) {
+        return { success: false, error: 'Telefon numarası zorunludur' };
+      }
+
+      // Telefonu normalize et
+      const normalizedPhone = customerPhone.replace(/\D/g, '');
+      const results = {
+        deletedAppointments: 0,
+        deletedMessages: 0,
+        deletedFromSheets: 0
+      };
+
+      // 1. Calendar'dan randevuları sil/anonimleştir
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      if (calendar) {
+        const startDate = new Date('2020-01-01');
+        const endDate = new Date('2030-12-31');
+        const events = calendar.getEvents(startDate, endDate);
+
+        events.forEach(event => {
+          const phoneTag = event.getTag('customerPhone') || '';
+          const normalizedTag = phoneTag.replace(/\D/g, '');
+
+          if (normalizedTag === normalizedPhone || normalizedTag.endsWith(normalizedPhone)) {
+            // Etkinliği anonimleştir (yasal kayıt gereksinimi için tamamen silmiyoruz)
+            event.setTitle('[KVKK-Silindi] Anonimleştirilmiş Randevu');
+            event.setDescription('[KVKK Unutulma Hakkı Talebi - ' + new Date().toISOString() + ']');
+            event.setTag('customerPhone', '[Silindi]');
+            event.setTag('customerEmail', '[Silindi]');
+            event.setTag('customerName', '[Silindi]');
+            event.setTag('customerNote', '');
+            results.deletedAppointments++;
+          }
+        });
+      }
+
+      // 2. MESSAGE_LOG sheet'ten mesajları anonimleştir
+      try {
+        const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+        const msgSheet = ss.getSheetByName('MESSAGE_LOG');
+        if (msgSheet) {
+          const data = msgSheet.getDataRange().getValues();
+          for (let i = 1; i < data.length; i++) {
+            const rowPhone = String(data[i][1] || '').replace(/\D/g, '');
+            if (rowPhone === normalizedPhone || rowPhone.endsWith(normalizedPhone)) {
+              // Telefon numarasını ve mesaj içeriğini anonimleştir
+              msgSheet.getRange(i + 1, 2).setValue('[KVKK-Silindi]');
+              msgSheet.getRange(i + 1, 3).setValue('[Anonimleştirildi]');
+              results.deletedMessages++;
+            }
+          }
+        }
+      } catch (sheetError) {
+        log.warn('MESSAGE_LOG cleanup error:', sheetError);
+      }
+
+      // 3. Diğer sheet'lerden müşteri verilerini temizle
+      try {
+        const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+        const customerSheet = ss.getSheetByName('Randevular');
+        if (customerSheet) {
+          const data = customerSheet.getDataRange().getValues();
+          for (let i = 1; i < data.length; i++) {
+            // Telefon sütununu kontrol et (sütun indexi projeye göre değişebilir)
+            const rowPhone = String(data[i][2] || '').replace(/\D/g, '');
+            if (rowPhone === normalizedPhone || rowPhone.endsWith(normalizedPhone)) {
+              // Müşteri bilgilerini anonimleştir
+              customerSheet.getRange(i + 1, 2).setValue('[KVKK-Silindi]'); // İsim
+              customerSheet.getRange(i + 1, 3).setValue('[Silindi]'); // Telefon
+              results.deletedFromSheets++;
+            }
+          }
+        }
+      } catch (sheetError) {
+        log.warn('Randevular sheet cleanup error:', sheetError);
+      }
+
+      log.info('KVKK Unutulma Hakkı uygulandı', {
+        phone: normalizedPhone.substring(0, 4) + '****', // PII maskeleme
+        results: results
+      });
+
+      return {
+        success: true,
+        ...results
+      };
+
+    } catch (error) {
+      log.error('KVKK forgetCustomer error:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Müşteri verilerini dışa aktar (Veri Taşınabilirliği)
+   * KVKK Madde 11/ğ: "Kişisel verilerin aktarıldığı üçüncü kişileri bilme"
+   *
+   * @param {string} customerPhone - Müşteri telefon numarası
+   * @returns {{success: boolean, data?: object, error?: string}}
+   */
+  exportCustomerData: function(customerPhone) {
+    try {
+      if (!customerPhone) {
+        return { success: false, error: 'Telefon numarası zorunludur' };
+      }
+
+      const normalizedPhone = customerPhone.replace(/\D/g, '');
+      const exportData = {
+        exportDate: new Date().toISOString(),
+        phone: customerPhone,
+        appointments: [],
+        messages: []
+      };
+
+      // 1. Calendar'dan randevuları al
+      const calendar = CalendarApp.getCalendarById(CONFIG.CALENDAR_ID);
+      if (calendar) {
+        const startDate = new Date('2020-01-01');
+        const endDate = new Date('2030-12-31');
+        const events = calendar.getEvents(startDate, endDate);
+
+        events.forEach(event => {
+          const phoneTag = event.getTag('customerPhone') || '';
+          const normalizedTag = phoneTag.replace(/\D/g, '');
+
+          if (normalizedTag === normalizedPhone || normalizedTag.endsWith(normalizedPhone)) {
+            exportData.appointments.push({
+              date: event.getStartTime().toISOString(),
+              title: event.getTitle(),
+              type: event.getTag('appointmentType') || '',
+              staff: event.getTag('staffName') || '',
+              status: event.getTag('status') || 'confirmed'
+            });
+          }
+        });
+      }
+
+      // 2. MESSAGE_LOG'dan mesajları al (sadece metadata, içerik değil)
+      try {
+        const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+        const msgSheet = ss.getSheetByName('MESSAGE_LOG');
+        if (msgSheet) {
+          const data = msgSheet.getDataRange().getValues();
+          for (let i = 1; i < data.length; i++) {
+            const rowPhone = String(data[i][1] || '').replace(/\D/g, '');
+            if (rowPhone === normalizedPhone || rowPhone.endsWith(normalizedPhone)) {
+              exportData.messages.push({
+                date: data[i][0],
+                type: data[i][3] || 'unknown',
+                status: data[i][4] || 'sent'
+              });
+            }
+          }
+        }
+      } catch (sheetError) {
+        log.warn('MESSAGE_LOG export error:', sheetError);
+      }
+
+      log.info('KVKK veri dışa aktarımı', {
+        phone: normalizedPhone.substring(0, 4) + '****',
+        appointmentCount: exportData.appointments.length,
+        messageCount: exportData.messages.length
+      });
+
+      return {
+        success: true,
+        data: exportData
+      };
+
+    } catch (error) {
+      log.error('KVKK exportCustomerData error:', error);
+      return { success: false, error: error.toString() };
+    }
+  }
+};
+
 /**
  * Haftalık KVKK temizlik trigger fonksiyonu
  * Google Apps Script Trigger: Edit > Triggers > Add Trigger

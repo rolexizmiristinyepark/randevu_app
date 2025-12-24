@@ -48,44 +48,73 @@ interface Config extends DynamicConfig {
     VERSION: string;
 }
 
-// ✅ FALLBACK VALUES - Production değerleri (son çare olarak kullanılır)
-const FALLBACK_CONFIG = {
-    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbyv2AJ9bHkXPFfK7QGPI-cX6ISjI15eLDNAcacpYBzuYqQr4N7p3OC6p6c85hcGwFOG0g/exec',
-    BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
-    TURNSTILE_SITE_KEY: '0x4AAAAAACDJXoobV68BNCME',
-    DEBUG: false,
-    VERSION: '1.0.0'
-};
+// Backend API response format for config
+interface BackendShiftConfig {
+    start: string;  // "11:00" format
+    end: string;    // "21:00" format
+    label?: string;
+}
+
+interface BackendConfigResponse {
+    shifts?: Record<string, BackendShiftConfig>;
+    appointmentHours?: AppointmentHours;
+    maxDailyDeliveryAppointments?: number;
+    appointmentTypeLabels?: Record<string, string>;
+    companyName?: string;
+    companyLocation?: string;
+}
+
+// ⚠️ NO FALLBACK VALUES - Environment variables are REQUIRED
+// This prevents accidental exposure of production URLs in source code
+// If env vars are missing, the app will show a clear error message
 
 /**
  * Load and validate environment configuration
- * ✅ IMPROVED: Falls back to hardcoded values if env vars are missing
+ * ⚠️ SECURITY: Environment variables are REQUIRED - no hardcoded fallbacks
  */
 function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string; TURNSTILE_SITE_KEY: string } {
-    // Try to get from environment variables first
-    let APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
-    let BASE_URL = import.meta.env.VITE_BASE_URL;
-    let TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
-    let DEBUG = import.meta.env.VITE_DEBUG === 'true';
-    let VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
+    const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
+    const BASE_URL = import.meta.env.VITE_BASE_URL;
+    const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    const DEBUG = import.meta.env.VITE_DEBUG === 'true';
+    const VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
-    // ✅ FALLBACK: If env vars are missing, use hardcoded production values
+    // Collect missing required variables
+    const missingVars: string[] = [];
+
     if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'undefined' || APPS_SCRIPT_URL === '') {
-        console.warn('⚠️ VITE_APPS_SCRIPT_URL not found in env, using fallback');
-        APPS_SCRIPT_URL = FALLBACK_CONFIG.APPS_SCRIPT_URL;
+        missingVars.push('VITE_APPS_SCRIPT_URL');
     }
 
     if (!BASE_URL || BASE_URL === 'undefined' || BASE_URL === '') {
-        console.warn('⚠️ VITE_BASE_URL not found in env, using fallback');
-        BASE_URL = FALLBACK_CONFIG.BASE_URL;
+        missingVars.push('VITE_BASE_URL');
     }
 
     if (!TURNSTILE_SITE_KEY || TURNSTILE_SITE_KEY === 'undefined' || TURNSTILE_SITE_KEY === '') {
-        console.warn('⚠️ VITE_TURNSTILE_SITE_KEY not found in env, using fallback');
-        TURNSTILE_SITE_KEY = FALLBACK_CONFIG.TURNSTILE_SITE_KEY;
+        missingVars.push('VITE_TURNSTILE_SITE_KEY');
     }
 
-    // Final validation
+    // Check for missing variables - show error in UI
+    if (missingVars.length > 0) {
+        const errorMsg = `❌ Missing required environment variables: ${missingVars.join(', ')}. Check your .env file.`;
+        console.error(errorMsg);
+
+        // Show error to user in UI (non-blocking)
+        if (typeof document !== 'undefined') {
+            const alertContainer = document.getElementById('alertContainer');
+            if (alertContainer) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'background:#fee;border:1px solid #c00;padding:20px;margin:20px;border-radius:8px;color:#c00;text-align:center;';
+                errorDiv.textContent = 'Yapılandırma Hatası: Uygulama düzgün yapılandırılmamış. Lütfen sistem yöneticisiyle iletişime geçin.';
+                alertContainer.appendChild(errorDiv);
+            }
+        }
+
+        // Throw error to prevent app from running with invalid config
+        throw new Error(errorMsg);
+    }
+
+    // Validation for existing values
     const errors: string[] = [];
 
     if (!APPS_SCRIPT_URL.startsWith('https://')) {
@@ -97,13 +126,12 @@ function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; D
     }
 
     if (errors.length > 0) {
-        console.error('❌ Configuration errors:', errors);
-        // Don't throw - use fallback values instead
+        const errorMsg = `❌ Configuration validation errors: ${errors.join(', ')}`;
+        console.error(errorMsg);
+        throw new Error(errorMsg);
     }
 
-    // Log configuration source
-    const isUsingFallback = APPS_SCRIPT_URL === FALLBACK_CONFIG.APPS_SCRIPT_URL;
-    console.log(`🔧 Config loaded from: ${isUsingFallback ? 'FALLBACK (hardcoded)' : 'Environment variables'}`);
+    console.log('🔧 Config loaded from environment variables');
 
     return {
         APPS_SCRIPT_URL,
@@ -198,14 +226,14 @@ function saveToCache(config: DynamicConfig): void {
 
 /**
  * Transform backend config response to frontend format
- * @param {any} backendConfig - Config from backend API
+ * @param {BackendConfigResponse} backendConfig - Config from backend API
  * @returns {DynamicConfig} Transformed config
  */
-function transformBackendConfig(backendConfig: any): DynamicConfig {
+function transformBackendConfig(backendConfig: BackendConfigResponse): DynamicConfig {
     // Transform shifts from backend format to frontend format
     const shifts: Record<string, ShiftConfig> = {};
     for (const [key, value] of Object.entries(backendConfig.shifts || {})) {
-        const shift = value as any;
+        const shift = value as BackendShiftConfig;
         shifts[key] = {
             start: parseInt(shift.start.split(':')[0]),
             end: parseInt(shift.end.split(':')[0]),

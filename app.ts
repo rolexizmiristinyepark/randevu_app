@@ -3,7 +3,7 @@
 
 // Import base layer components
 import { state } from './StateManager';
-import { revealSection, hideSection, showAlert, hideAlert, showLoading, ModalUtils } from './UIManager';
+import { revealSection, hideSection, ModalUtils } from './UIManager';
 
 // Import flow components
 import { selectAppointmentType, selectManagementContact } from './TypeSelectorComponent';
@@ -21,7 +21,7 @@ import { initConfig, checkAndInvalidateCache } from './config-loader';
 import { debounce } from './performance-utils';
 
 // Import profile resolver (v3.2 - unified ?id=xxx format)
-import { initProfileFromURL, applyProfileUI, showInvalidIdError, ProfilInfo } from './ProfileResolver';
+import { initProfileFromURL, applyProfileUI, showInvalidIdError } from './ProfileResolver';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
 // ⭐ NEW: Config loaded dynamically from backend API

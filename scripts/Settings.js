@@ -60,14 +60,25 @@ const SettingsService = {
       // Lock ile getData → modify → saveData atomik yap
       return LockServiceWrapper.withLock(() => {
         const data = StorageService.getData();
+        const oldSettings = { ...data.settings };
         data.settings = {
           interval: interval,
           maxDaily: maxDaily
         };
         StorageService.saveData(data);
+
+        // Audit log
+        SheetStorageService.addAuditLog('SETTINGS_UPDATED', {
+          oldSettings: oldSettings,
+          newSettings: data.settings
+        });
+
         return { success: true, data: data.settings };
       });
     } catch (error) {
+      SheetStorageService.addAuditLog('SETTINGS_UPDATE_FAILED', {
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   }

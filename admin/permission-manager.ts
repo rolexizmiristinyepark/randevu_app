@@ -187,11 +187,8 @@ function hideRestrictedSubTabs(): void {
         (mailTab as HTMLElement)?.style.setProperty('display', 'none');
     }
 
-    // Message sub-tab
-    if (!userPermissions.canView.has('message')) {
-        const messageTab = document.querySelector('.sub-tab[data-subtab="message"]');
-        // Don't hide, just keep disabled
-    }
+    // Message sub-tab - kept visible but disabled if user can't view
+    // No action needed here as tabs are already in correct state
 
     // If user can only view WhatsApp messages, switch to messages tab by default
     if (!userPermissions.isAdmin && userPermissions.canView.has('whatsappMessages')) {

@@ -404,9 +404,9 @@ function createSuccessPageSafe(dateStr: string, timeStr: string, staffName: stri
 
     successContainer.appendChild(details);
 
-    // Takvime ekle butonu
+    // Takvime ekle butonu - global button design
     const calendarBtn = createElement('button', {
-        className: 'btn-secondary',
+        className: 'btn',
         id: 'addToCalendarBtn'
     }, 'Takvime Ekle');
 

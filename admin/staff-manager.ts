@@ -9,7 +9,7 @@ import { ErrorUtils } from '../error-utils';
 import { ButtonAnimator } from '../button-utils';
 import { formatPhoneForDisplay } from '../security-helpers';
 import { initPhoneInput, getPhoneNumber, setPhoneNumber, destroyPhoneInput } from '../phone-input';
-import type { DataStore, StaffMember } from './data-store';
+import type { DataStore } from './data-store';
 
 // Module-scoped variables
 let dataStore: DataStore;

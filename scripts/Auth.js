@@ -14,6 +14,119 @@
  * - Security.js (log)
  */
 
+// ==================== BRUTE FORCE PROTECTION ====================
+/**
+ * Brute force saldırılarına karşı koruma
+ * CacheService kullanarak IP/email bazlı rate limiting
+ */
+const BruteForceProtection = {
+  MAX_ATTEMPTS: 5,              // Maksimum başarısız deneme
+  LOCKOUT_DURATION: 15 * 60,    // Kilitleme süresi (saniye) - 15 dakika
+  ATTEMPT_WINDOW: 5 * 60,       // Deneme penceresi (saniye) - 5 dakika
+
+  /**
+   * Cache key oluştur
+   * @param {string} email - E-posta adresi
+   * @returns {string} Cache key
+   */
+  getCacheKey: function(email) {
+    // Email'i normalize et ve hash'le (PII koruma)
+    const normalizedEmail = (email || '').toLowerCase().trim();
+    const hash = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.MD5,
+      normalizedEmail,
+      Utilities.Charset.UTF_8
+    ).map(function(b) {
+      return ('0' + (b & 0xFF).toString(16)).slice(-2);
+    }).join('');
+    return 'login_attempts_' + hash;
+  },
+
+  /**
+   * Giriş denemesini kontrol et
+   * @param {string} email - E-posta adresi
+   * @returns {{allowed: boolean, remainingAttempts?: number, lockoutSeconds?: number}}
+   */
+  checkAttempt: function(email) {
+    const cache = CacheService.getScriptCache();
+    const key = this.getCacheKey(email);
+    const data = cache.get(key);
+
+    if (!data) {
+      return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS };
+    }
+
+    try {
+      const attempts = JSON.parse(data);
+
+      // Lockout aktif mi kontrol et
+      if (attempts.lockedUntil) {
+        const now = new Date().getTime();
+        if (now < attempts.lockedUntil) {
+          const lockoutSeconds = Math.ceil((attempts.lockedUntil - now) / 1000);
+          log.warn('Login blocked - lockout active', { email: email, lockoutSeconds: lockoutSeconds });
+          return { allowed: false, lockoutSeconds: lockoutSeconds };
+        }
+        // Lockout süresi dolmuş, reset
+        cache.remove(key);
+        return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS };
+      }
+
+      // Deneme sayısını kontrol et
+      if (attempts.count >= this.MAX_ATTEMPTS) {
+        log.warn('Login blocked - max attempts reached', { email: email });
+        return { allowed: false, lockoutSeconds: this.LOCKOUT_DURATION };
+      }
+
+      return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS - attempts.count };
+    } catch (e) {
+      // Parse hatası - reset
+      cache.remove(key);
+      return { allowed: true, remainingAttempts: this.MAX_ATTEMPTS };
+    }
+  },
+
+  /**
+   * Başarısız giriş denemesini kaydet
+   * @param {string} email - E-posta adresi
+   */
+  recordFailedAttempt: function(email) {
+    const cache = CacheService.getScriptCache();
+    const key = this.getCacheKey(email);
+    const data = cache.get(key);
+
+    let attempts = { count: 0 };
+    if (data) {
+      try {
+        attempts = JSON.parse(data);
+      } catch (e) {
+        attempts = { count: 0 };
+      }
+    }
+
+    attempts.count++;
+
+    // Maksimum denemeye ulaşıldıysa lockout uygula
+    if (attempts.count >= this.MAX_ATTEMPTS) {
+      attempts.lockedUntil = new Date().getTime() + (this.LOCKOUT_DURATION * 1000);
+      log.warn('Account locked due to failed attempts', { email: email, lockoutMinutes: this.LOCKOUT_DURATION / 60 });
+    }
+
+    // Cache'e kaydet
+    cache.put(key, JSON.stringify(attempts), this.ATTEMPT_WINDOW);
+  },
+
+  /**
+   * Başarılı giriş sonrası kayıtları temizle
+   * @param {string} email - E-posta adresi
+   */
+  clearAttempts: function(email) {
+    const cache = CacheService.getScriptCache();
+    const key = this.getCacheKey(email);
+    cache.remove(key);
+  }
+};
+
 // ==================== SESSION AUTH SERVICE ====================
 /**
  * Session-based authentication service
@@ -24,10 +137,10 @@ const SessionAuthService = {
   SESSION_DURATION: 24 * 60 * 60 * 1000, // 24 saat (ms)
 
   /**
-   * Login islemi
+   * Login islemi (Brute Force korumalı)
    * @param {string} email - E-posta adresi
    * @param {string} password - Sifre
-   * @returns {{success: boolean, token?: string, staff?: Object, expiresAt?: number, error?: string}}
+   * @returns {{success: boolean, token?: string, staff?: Object, expiresAt?: number, error?: string, lockoutSeconds?: number}}
    */
   login: function(email, password) {
     try {
@@ -35,25 +148,47 @@ const SessionAuthService = {
         return { success: false, error: 'E-posta ve sifre zorunludur' };
       }
 
+      // ⚠️ SECURITY: Brute force kontrolü
+      var bruteCheck = BruteForceProtection.checkAttempt(email);
+      if (!bruteCheck.allowed) {
+        const lockoutMinutes = Math.ceil(bruteCheck.lockoutSeconds / 60);
+        return {
+          success: false,
+          error: 'Cok fazla basarisiz deneme. ' + lockoutMinutes + ' dakika sonra tekrar deneyin.',
+          lockoutSeconds: bruteCheck.lockoutSeconds
+        };
+      }
+
       // Email ile personeli bul
       var staff = StaffService.getByEmail(email);
 
       if (!staff) {
+        BruteForceProtection.recordFailedAttempt(email);
         log.warn('Login basarisiz - email bulunamadi', { email: email });
+        // ✅ AUDIT: Başarısız giriş denemesi
+        SheetStorageService.addAuditLog('LOGIN_FAILED', { reason: 'EMAIL_NOT_FOUND', email: SecurityService.maskEmail(email) });
         return { success: false, error: 'Gecersiz e-posta veya sifre' };
       }
 
       if (!staff.active) {
+        BruteForceProtection.recordFailedAttempt(email);
         log.warn('Login basarisiz - hesap pasif', { email: email });
+        // ✅ AUDIT: Pasif hesap girişi
+        SheetStorageService.addAuditLog('LOGIN_FAILED', { reason: 'ACCOUNT_INACTIVE', staffId: staff.id });
         return { success: false, error: 'Hesabiniz pasif durumda' };
       }
 
-      // Sifre kontrolu
-      var hashedInput = StaffService.hashPassword(password);
-      if (hashedInput !== staff.password) {
+      // Şifre kontrolü (salt'lı ve legacy destekli)
+      if (!StaffService.verifyPassword(password, staff.password)) {
+        BruteForceProtection.recordFailedAttempt(email);
         log.warn('Login basarisiz - yanlis sifre', { email: email });
+        // ✅ AUDIT: Yanlış şifre
+        SheetStorageService.addAuditLog('LOGIN_FAILED', { reason: 'WRONG_PASSWORD', staffId: staff.id });
         return { success: false, error: 'Gecersiz e-posta veya sifre' };
       }
+
+      // Başarılı giriş - deneme sayacını temizle
+      BruteForceProtection.clearAttempts(email);
 
       // Session token uret
       var sessionToken = Utilities.getUuid();
@@ -74,6 +209,8 @@ const SessionAuthService = {
       this.saveSessions(sessions);
 
       log.info('Login basarili', { email: email, staffId: staff.id });
+      // ✅ AUDIT: Başarılı giriş
+      SheetStorageService.addAuditLog('LOGIN_SUCCESS', { staffId: staff.id, staffName: staff.name }, staff.id);
 
       return {
         success: true,
@@ -161,9 +298,14 @@ const SessionAuthService = {
     try {
       var sessions = this.getSessions();
       if (sessions[token]) {
+        var sessionData = sessions[token];
+        var staffId = sessionData.staff ? sessionData.staff.id : null;
         delete sessions[token];
         this.saveSessions(sessions);
         log.info('Logout basarili', { token: token.substring(0, 8) + '...' });
+        SheetStorageService.addAuditLog('LOGOUT', {
+          staffId: staffId
+        }, staffId);
       }
       return { success: true };
     } catch (error) {
@@ -182,6 +324,10 @@ const SessionAuthService = {
       var result = StaffService.resetPassword(email);
 
       if (!result.success) {
+        SheetStorageService.addAuditLog('PASSWORD_RESET_FAILED', {
+          reason: result.error || 'UNKNOWN',
+          email: SecurityService.maskEmail(email)
+        });
         return result;
       }
 
@@ -203,13 +349,27 @@ const SessionAuthService = {
         });
 
         log.info('Sifre sifirlama e-postasi gonderildi', { email: email });
+        SheetStorageService.addAuditLog('PASSWORD_RESET_SUCCESS', {
+          staffId: result.staffId,
+          email: SecurityService.maskEmail(email)
+        }, result.staffId);
         return { success: true, message: 'Yeni sifre e-posta adresinize gonderildi' };
       } catch (e) {
         log.error('Sifre sifirlama e-postasi gonderilemedi', e);
+        SheetStorageService.addAuditLog('PASSWORD_RESET_FAILED', {
+          reason: 'EMAIL_SEND_FAILED',
+          email: SecurityService.maskEmail(email),
+          error: e.message
+        });
         return { success: false, error: 'E-posta gonderilemedi: ' + e.message };
       }
     } catch (error) {
       log.error('Sifre sifirlama hatasi', error);
+      SheetStorageService.addAuditLog('PASSWORD_RESET_FAILED', {
+        reason: 'SYSTEM_ERROR',
+        email: SecurityService.maskEmail(email),
+        error: error.toString()
+      });
       return { success: false, error: 'Sifre sifirlama islemi basarisiz' };
     }
   },
@@ -225,12 +385,19 @@ const SessionAuthService = {
     try {
       var sessionResult = this.validateSession(token);
       if (!sessionResult.valid) {
+        SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+          reason: 'INVALID_SESSION'
+        });
         return { success: false, error: 'Gecersiz session' };
       }
 
       return StaffService.changePassword(sessionResult.staff.id, oldPassword, newPassword);
     } catch (error) {
       log.error('Sifre degistirme hatasi', error);
+      SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+        reason: 'AUTH_ERROR',
+        error: error.toString()
+      });
       return { success: false, error: 'Sifre degistirme islemi basarisiz' };
     }
   },

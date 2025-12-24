@@ -1,10 +1,12 @@
 /**
  * PROFILE SETTINGS MANAGER - Profil Ayarları Yönetimi
  * v3.4: Dinamik profil ayarları düzenleme (simplified - defaultType/showTypeSelection removed)
+ * v3.5: XSS koruması - escapeHtml ile güvenli HTML oluşturma
  */
 
 import { apiCall } from '../api-service';
 import { ButtonAnimator } from '../button-utils';
+import { escapeHtml } from '../security-helpers';
 
 // Profil ayarları interface
 interface ProfilAyari {
@@ -123,26 +125,35 @@ function renderTable(): void {
         const p = profilAyarlari[key];
         if (!p) continue;
 
+        // ⚠️ XSS KORUMASI: Tüm değerler escapeHtml ile sanitize edilir
         const staffLabel = p.staffFilter === 'self' ? 'Self (URL ID)' :
                           p.staffFilter === 'user' ? 'Giriş Yapan Kullanıcı' :
                           p.staffFilter === 'role:sales' ? 'Satış' :
                           p.staffFilter === 'role:management' ? 'Yönetim' :
-                          p.staffFilter === 'none' ? 'Admin Atar' : p.staffFilter;
+                          p.staffFilter === 'none' ? 'Admin Atar' : escapeHtml(p.staffFilter);
+
+        const safeKey = escapeHtml(key);
+        const safeCode = escapeHtml(CODE_LABELS[p.code] || '#' + p.code);
+        const safeSlotGrid = escapeHtml(String(p.slotGrid));
+        const safeDuration = escapeHtml(String(p.duration));
+        const safeMaxSlot = escapeHtml(String(p.maxSlotAppointment));
+        const safeMaxDaily = p.maxDailyDelivery ? escapeHtml(String(p.maxDailyDelivery)) : '∞';
+        const safeMaxPerStaff = p.maxDailyPerStaff ? escapeHtml(String(p.maxDailyPerStaff)) : '∞';
 
         html += `
             <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${PROFIL_LABELS[key] || key}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${CODE_LABELS[p.code] || '#' + p.code}</code></td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${escapeHtml(PROFIL_LABELS[key] || key)}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${safeCode}</code></td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrolu ? '✓' : '-'}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.vardiyaKontrolu !== false ? '✓' : '-'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxSlotAppointment}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyDelivery || '∞'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.maxDailyPerStaff || '∞'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.slotGrid}dk</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.duration}dk</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxSlot}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxDaily}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxPerStaff}</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeSlotGrid}dk</td>
+                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeDuration}dk</td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${staffLabel}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
-                    <button class="btn btn-small" data-action="edit" data-profil="${key}">Düzenle</button>
+                    <button class="btn btn-small" data-action="edit" data-profil="${safeKey}">Düzenle</button>
                 </td>
             </tr>
         `;

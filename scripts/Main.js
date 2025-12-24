@@ -506,30 +506,28 @@ function doPost(e) {
         var isAuthorized = false;
 
         if (apiKey) {
-          // Session token mı yoksa API key mi?
-          log.info('[AUTH-DEBUG] Checking auth for action: ' + action + ', token prefix: ' + (apiKey ? apiKey.substring(0, 8) : 'null'));
+          // Session token veya API key ile yetkilendirme
+          log.debug('[AUTH] Checking auth for action: ' + action);
           var sessionResult = SessionAuthService.validateSession(apiKey);
-          log.info('[AUTH-DEBUG] Session validation result: ' + JSON.stringify(sessionResult));
           if (sessionResult.valid) {
-            log.info('[AUTH-DEBUG] Session token valid!');
+            log.debug('[AUTH] Session valid');
             isAuthorized = true;
           } else if (AuthService.validateApiKey(apiKey)) {
-            log.info('[AUTH-DEBUG] API key valid!');
+            log.debug('[AUTH] API key valid');
             isAuthorized = true;
           } else {
-            log.warn('[AUTH-DEBUG] Neither session nor API key valid');
+            log.warn('[AUTH] Authorization failed for action: ' + action);
           }
         } else {
-          log.warn('[AUTH-DEBUG] No apiKey provided for protected action: ' + action);
+          log.warn('[AUTH] No token for protected action: ' + action);
         }
 
         if (!isAuthorized) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
-            requiresAuth: true,
-            debug: sessionResult ? sessionResult.error : 'no apiKey provided',
-            sessionDebug: sessionResult?.debug || null
+            requiresAuth: true
+            // ⚠️ SECURITY: Debug info removed - was exposing session validation details
           };
         } else {
           // Auth geçerli, handler'ı çalıştır

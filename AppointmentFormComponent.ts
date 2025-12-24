@@ -9,11 +9,11 @@ import { state, Staff } from './StateManager';
 import { showAlert } from './UIManager';
 import { showSuccessPage } from './SuccessPageComponent';
 import { StringUtils } from './string-utils';
-import { ButtonUtils, ButtonAnimator } from './button-utils';
+import { ButtonAnimator } from './button-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
 import { sanitizeName, sanitizeEmail, sanitizeInput } from './security-helpers';
-import { initPhoneInput, getPhoneNumber, isPhoneValid } from './phone-input';
+import { initPhoneInput, getPhoneNumber } from './phone-input';
 
 // ==================== TURNSTILE RESET ====================
 

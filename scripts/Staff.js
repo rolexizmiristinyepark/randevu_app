@@ -185,11 +185,54 @@ const StaffService = {
   },
 
   /**
-   * Şifre hash'leme (SHA-256)
-   * @param {string} plainPassword - Düz metin şifre
-   * @returns {string} SHA-256 hash (hex)
+   * Rastgele salt üret (16 byte = 32 hex karakter)
+   * @returns {string} Hex formatında salt
    */
-  hashPassword: function(plainPassword) {
+  generateSalt: function() {
+    var bytes = [];
+    for (var i = 0; i < 16; i++) {
+      bytes.push(Math.floor(Math.random() * 256));
+    }
+    return bytes.map(function(b) {
+      return ('0' + (b & 0xFF).toString(16)).slice(-2);
+    }).join('');
+  },
+
+  /**
+   * Şifre hash'leme (SHA-256 + Salt)
+   * ⚠️ SECURITY: Salt ile hash - rainbow table saldırılarına karşı koruma
+   * @param {string} plainPassword - Düz metin şifre
+   * @param {string} [salt] - Opsiyonel salt (yoksa yeni üretilir)
+   * @returns {string} Format: "hash:salt" veya sadece hash (legacy uyumluluk)
+   */
+  hashPassword: function(plainPassword, salt) {
+    // Salt yoksa yeni üret
+    if (!salt) {
+      salt = this.generateSalt();
+    }
+
+    // Password + Salt birleştir ve hash'le
+    var saltedPassword = plainPassword + salt;
+    var hash = Utilities.computeDigest(
+      Utilities.DigestAlgorithm.SHA_256,
+      saltedPassword,
+      Utilities.Charset.UTF_8
+    );
+    var hashHex = hash.map(function(b) {
+      return ('0' + (b & 0xFF).toString(16)).slice(-2);
+    }).join('');
+
+    // Yeni format: hash:salt
+    return hashHex + ':' + salt;
+  },
+
+  /**
+   * Legacy hash (salt'sız) - sadece eski şifreleri doğrulamak için
+   * @deprecated Yeni şifreler için hashPassword() kullanın
+   * @param {string} plainPassword - Düz metin şifre
+   * @returns {string} SHA-256 hash (hex) - salt'sız
+   */
+  hashPasswordLegacy: function(plainPassword) {
     var hash = Utilities.computeDigest(
       Utilities.DigestAlgorithm.SHA_256,
       plainPassword,
@@ -198,6 +241,40 @@ const StaffService = {
     return hash.map(function(b) {
       return ('0' + (b & 0xFF).toString(16)).slice(-2);
     }).join('');
+  },
+
+  /**
+   * Şifre doğrulama (salt'lı ve legacy destekli)
+   * @param {string} plainPassword - Düz metin şifre
+   * @param {string} storedHash - Kaydedilmiş hash (hash:salt veya sadece hash)
+   * @returns {boolean} Doğrulama sonucu
+   */
+  verifyPassword: function(plainPassword, storedHash) {
+    if (!storedHash || !plainPassword) return false;
+
+    // Yeni format: hash:salt
+    if (storedHash.includes(':')) {
+      var parts = storedHash.split(':');
+      var hash = parts[0];
+      var salt = parts[1];
+
+      // Salt ile hash'le ve karşılaştır
+      var saltedPassword = plainPassword + salt;
+      var computedHash = Utilities.computeDigest(
+        Utilities.DigestAlgorithm.SHA_256,
+        saltedPassword,
+        Utilities.Charset.UTF_8
+      );
+      var computedHashHex = computedHash.map(function(b) {
+        return ('0' + (b & 0xFF).toString(16)).slice(-2);
+      }).join('');
+
+      return computedHashHex === hash;
+    }
+
+    // Legacy format: sadece hash (salt'sız)
+    var legacyHash = this.hashPasswordLegacy(plainPassword);
+    return legacyHash === storedHash;
   },
 
   /**
@@ -365,6 +442,12 @@ const StaffService = {
       ]);
 
       log.info('Yeni personel eklendi', { id: id, name: validation.name });
+      SheetStorageService.addAuditLog('STAFF_CREATED', {
+        staffId: id,
+        name: validation.name,
+        email: SecurityService.maskEmail(validation.email),
+        role: data.role || 'sales'
+      });
 
       return {
         success: true,
@@ -373,6 +456,9 @@ const StaffService = {
       };
     } catch (error) {
       log.error('Personel ekleme hatası', error);
+      SheetStorageService.addAuditLog('STAFF_CREATE_FAILED', {
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   },
@@ -413,13 +499,26 @@ const StaffService = {
           }
 
           log.info('Personel güncellendi', { id: id });
+          SheetStorageService.addAuditLog('STAFF_UPDATED', {
+            staffId: id,
+            updatedFields: Object.keys(data).filter(function(k) { return data[k] !== undefined; })
+          });
           return { success: true };
         }
       }
 
+      SheetStorageService.addAuditLog('STAFF_UPDATE_FAILED', {
+        reason: 'STAFF_NOT_FOUND',
+        staffId: id
+      });
       return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
     } catch (error) {
       log.error('Personel güncelleme hatası', error);
+      SheetStorageService.addAuditLog('STAFF_UPDATE_FAILED', {
+        reason: 'ERROR',
+        staffId: id,
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   },
@@ -492,27 +591,48 @@ const StaffService = {
       for (var i = 1; i < data.length; i++) {
         if (String(data[i][this.COLUMNS.ID]) === String(staffId)) {
           var currentHash = data[i][this.COLUMNS.PASSWORD];
-          var oldHash = this.hashPassword(oldPassword);
 
-          if (currentHash !== oldHash) {
+          // Eski şifre kontrolü (salt'lı ve legacy destekli)
+          if (!this.verifyPassword(oldPassword, currentHash)) {
+            SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+              reason: 'WRONG_OLD_PASSWORD',
+              staffId: staffId
+            }, staffId);
             return { success: false, error: 'Mevcut şifre hatalı' };
           }
 
           if (newPassword.length < 6) {
+            SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+              reason: 'PASSWORD_TOO_SHORT',
+              staffId: staffId
+            }, staffId);
             return { success: false, error: 'Yeni şifre en az 6 karakter olmalı' };
           }
 
+          // Yeni şifre için salt'lı hash oluştur
           var newHash = this.hashPassword(newPassword);
           sheet.getRange(i + 1, this.COLUMNS.PASSWORD + 1).setValue(newHash);
 
           log.info('Şifre değiştirildi', { staffId: staffId });
+          SheetStorageService.addAuditLog('PASSWORD_CHANGE_SUCCESS', {
+            staffId: staffId
+          }, staffId);
           return { success: true };
         }
       }
 
+      SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+        reason: 'STAFF_NOT_FOUND',
+        staffId: staffId
+      });
       return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
     } catch (error) {
       log.error('Şifre değiştirme hatası', error);
+      SheetStorageService.addAuditLog('PASSWORD_CHANGE_FAILED', {
+        reason: 'ERROR',
+        staffId: staffId,
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   },
@@ -832,9 +952,19 @@ const ShiftService = {
           data.shifts[date] = shiftsData[date];
         });
         StorageService.saveData(data);
+
+        // Audit log - vardiya değişiklikleri
+        SheetStorageService.addAuditLog('SHIFTS_UPDATED', {
+          datesModified: Object.keys(shiftsData),
+          shiftsCount: Object.keys(shiftsData).length
+        });
+
         return { success: true };
       });
     } catch (error) {
+      SheetStorageService.addAuditLog('SHIFTS_UPDATE_FAILED', {
+        error: error.toString()
+      });
       return { success: false, error: error.toString() };
     }
   },

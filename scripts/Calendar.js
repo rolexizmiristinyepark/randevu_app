@@ -123,6 +123,69 @@ const SlotService = {
       log.error('getSlotAppointmentCount error:', error);
       return 999; // Hata durumunda safe side: çok dolu kabul et
     }
+  },
+
+  /**
+   * ⚠️ PERFORMANCE: Tüm gün slotlarını TEK API çağrısı ile kontrol et
+   * N+1 query problemini çözer - getDayStatus için optimize edildi
+   *
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {Array<number>} hours - Kontrol edilecek saatler (örn: [11,12,13,...,20])
+   * @returns {{available: Array<number>, occupied: Array<number>, countByHour: Object<number, number>}}
+   */
+  getSlotStatusBatch: function(date, hours) {
+    try {
+      const calendar = CalendarService.getCalendar();
+
+      // Günün başı ve sonu
+      const dayStart = new Date(`${date}T00:00:00`);
+      const dayEnd = new Date(`${date}T23:59:59`);
+
+      // TEK API ÇAĞRISI - tüm gün eventlerini al
+      const allEvents = calendar.getEvents(dayStart, dayEnd);
+
+      // Event'leri saatlere göre grupla
+      const countByHour = {};
+      hours.forEach(h => { countByHour[h] = 0; });
+
+      allEvents.forEach(event => {
+        const eventStart = event.getStartTime();
+        const eventHour = eventStart.getHours();
+
+        // Sadece istenen saatlerdeki eventleri say
+        if (countByHour.hasOwnProperty(eventHour)) {
+          countByHour[eventHour]++;
+        }
+      });
+
+      // Available ve occupied listelerini oluştur
+      const available = [];
+      const occupied = [];
+
+      hours.forEach(h => {
+        if (countByHour[h] === 0) {
+          available.push(h);
+        } else {
+          occupied.push(h);
+        }
+      });
+
+      return {
+        available: available,
+        occupied: occupied,
+        countByHour: countByHour,
+        totalEvents: allEvents.length
+      };
+    } catch (error) {
+      log.error('getSlotStatusBatch error:', error);
+      // Hata durumunda tüm slotları dolu kabul et
+      return {
+        available: [],
+        occupied: hours,
+        countByHour: hours.reduce((acc, h) => { acc[h] = 999; return acc; }, {}),
+        error: error.toString()
+      };
+    }
   }
 };
 

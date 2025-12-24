@@ -84,7 +84,8 @@ const HATIRLATMA_ZAMAN_LABELS: Record<string, string> = {
 
 // ==================== MODULE STATE ====================
 
-let dataStore: DataStore;
+// Note: dataStore assigned for future use
+let _dataStore: DataStore;
 let flows: WhatsAppFlow[] = [];
 let templates: WhatsAppTemplate[] = [];
 
@@ -144,7 +145,7 @@ function copyVariableToClipboard(varName: string, element: HTMLElement): void {
  * Initialize WhatsApp Manager module
  */
 export async function initWhatsAppManager(store: DataStore): Promise<void> {
-    dataStore = store;
+    _dataStore = store;
     setupEventListeners();
 
     // Initial data load
@@ -990,7 +991,7 @@ export async function loadReceivedMessages(): Promise<void> {
 /**
  * Render messages list
  */
-function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], type: 'sent' | 'received'): void {
+function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _type: 'sent' | 'received'): void {
     clearContainer(container);
 
     if (messages.length === 0) {

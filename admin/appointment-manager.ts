@@ -6,8 +6,7 @@
 import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
 import { TimeUtils } from '../time-utils';
-import { ButtonUtils, ButtonAnimator } from '../button-utils';
-import { escapeHtml } from '../security-helpers';
+import { ButtonAnimator } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // Module-scoped variables
