@@ -398,8 +398,9 @@ export async function selectDay(dateStr: string): Promise<void> {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
     }
-    // Personel seçimi göster (staffFilter === 'all' ve specificStaffId yok)
-    else if (!specificStaffId && staffFilter === 'all') {
+    // v3.9: Personel seçimi göster (staffFilter === 'all' ise her zaman)
+    // URL'deki autoStaff parametresi bu profil ayarını geçersiz kılamaz
+    else if (staffFilter === 'all') {
         // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
         const { displayAvailableStaff } = await import('./StaffSelectorComponent');
         displayAvailableStaff();
@@ -408,7 +409,7 @@ export async function selectDay(dateStr: string): Promise<void> {
         hideSection('detailsSection');
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
-    } else {
+    } else if (specificStaffId) {
         // Normal staff link (staff=1, staff=2, etc.) - go directly to time selection
         state.set('selectedStaff', parseInt(specificStaffId!));
         // v3.9: vardiyaKontrolu=false ise vardiya kontrolü atla, 'full' kullan
