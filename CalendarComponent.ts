@@ -398,9 +398,11 @@ export async function selectDay(dateStr: string): Promise<void> {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
     }
-    // v3.9: Personel seçimi göster (staffFilter === 'all' ise her zaman)
-    // URL'deki autoStaff parametresi bu profil ayarını geçersiz kılamaz
-    else if (staffFilter === 'all') {
+    // v3.9: Personel seçimi göster
+    // - staffFilter === 'all': Tüm personeller
+    // - staffFilter === 'role:xxx': Belirli role sahip personeller (örn: 'role:management')
+    // URL'deki autoStaff parametresi bu profil ayarlarını geçersiz kılamaz
+    else if (staffFilter === 'all' || staffFilter.startsWith('role:')) {
         // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
         const { displayAvailableStaff } = await import('./StaffSelectorComponent');
         displayAvailableStaff();
