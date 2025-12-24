@@ -411,7 +411,10 @@ export async function selectDay(dateStr: string): Promise<void> {
     } else {
         // Normal staff link (staff=1, staff=2, etc.) - go directly to time selection
         state.set('selectedStaff', parseInt(specificStaffId!));
-        const shiftType = dayShifts[dateStr]?.[parseInt(specificStaffId!)];
+        // v3.9: vardiyaKontrolu=false ise vardiya kontrolü atla, 'full' kullan
+        const shiftType = vardiyaKontrolu
+            ? dayShifts[dateStr]?.[parseInt(specificStaffId!)]
+            : 'full';
         if (shiftType) {
             state.set('selectedShiftType', shiftType);
             // ⚡ PERFORMANCE: Dynamic import for better tree-shaking and code splitting
