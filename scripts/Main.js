@@ -229,7 +229,17 @@ const ACTION_HANDLERS = {
   'resetProfilAyarlari': () => ProfilAyarlariService.reset(),
 
   // Slot Universe & Business Rules
-  'getDayStatus': (e) => AvailabilityService.getDayStatus(e.parameter.date, e.parameter.appointmentType),
+  // v3.9.4: profil parametresinden maxSlotAppointment al
+  'getDayStatus': (e) => {
+    let maxSlotAppointment = 1; // default
+    if (e.parameter.profil) {
+      const profilAyarlari = ProfilAyarlariService.get(e.parameter.profil);
+      maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
+    } else if (e.parameter.maxSlotAppointment) {
+      maxSlotAppointment = parseInt(e.parameter.maxSlotAppointment) || 1;
+    }
+    return AvailabilityService.getDayStatus(e.parameter.date, e.parameter.appointmentType, maxSlotAppointment);
+  },
   'getDailySlots': (e) => {
     // linkType varsa profil ayarlarından slotGrid'i al
     let slotGrid = 60;

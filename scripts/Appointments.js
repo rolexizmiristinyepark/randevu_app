@@ -654,11 +654,14 @@ const AvailabilityService = {
 
   /**
    * Get day status for UI (available/unavailable hours, delivery limits)
+   * v3.9.4: maxSlotAppointment desteği - profil ayarına göre slot doluluk kontrolü
+   *
    * @param {string} date - Date in YYYY-MM-DD format
    * @param {string} appointmentType - Optional appointment type for delivery limit check
+   * @param {number} maxSlotAppointment - Slot başı max randevu (default: 1, 0=sınırsız)
    * @returns {{success: boolean, isDeliveryMaxed: boolean, availableHours: Array<number>, unavailableHours: Array<number>, deliveryCount: number}}
    */
-  getDayStatus: function(date, appointmentType = null) {
+  getDayStatus: function(date, appointmentType = null, maxSlotAppointment = 1) {
     try {
       const isDeliveryOrShipping = (
         appointmentType === 'delivery' || appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY ||
@@ -669,14 +672,18 @@ const AvailabilityService = {
       // ⚠️ PERFORMANCE: N+1 query yerine TEK batch çağrı kullan
       // Önceki: SLOT_UNIVERSE.forEach → isSlotFree() → getEvents() (N çağrı)
       // Şimdi: getSlotStatusBatch() → getEvents() (1 çağrı)
-      const batchResult = SlotService.getSlotStatusBatch(date, SLOT_UNIVERSE);
+      // v3.9.4: maxSlotAppointment parametresi eklendi
+      const batchResult = SlotService.getSlotStatusBatch(date, SLOT_UNIVERSE, maxSlotAppointment);
+
+      log.info('getDayStatus called:', { date, appointmentType, maxSlotAppointment, availableCount: batchResult.available.length });
 
       return {
         success: true,
         isDeliveryMaxed,
         availableHours: batchResult.available,
         unavailableHours: batchResult.occupied,
-        deliveryCount: this.getDeliveryCount(date)
+        deliveryCount: this.getDeliveryCount(date),
+        maxSlotAppointment: maxSlotAppointment
       };
     } catch (error) {
       log.error('getDayStatus error:', error);

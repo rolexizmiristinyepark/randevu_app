@@ -132,9 +132,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         }
 
         // v3.9: assignByAdmin=true ise slot müsaitliğini backend'den al
-        // Saatte birden fazla randevu olabilir (slotLimit kontrolü)
+        // v3.9.4: slotLimit → maxSlotAppointment düzeltmesi
         if (assignByAdmin) {
-            const slotLimit = profilAyarlari?.slotLimit || 2;
+            const slotLimit = profilAyarlari?.maxSlotAppointment || 2;  // v3.9.4: doğru alan adı
             const slotGrid = profilAyarlari?.slotGrid || 60;
 
             // Backend'den slot müsaitliğini al
@@ -264,9 +264,12 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
         // v3.9: Profil ayarlarından slotGrid al (linkType kaldırıldı)
         const slotGrid = profilAyarlari?.slotGrid || 60;
+        // v3.9.4: maxSlotAppointment profil ayarından al
+        const maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
+        const profilCode = profilAyarlari?.code || 'g';
 
-        // DEBUG: slotGrid kontrolü
-        console.log('DEBUG getDailySlots:', { slotGrid, selectedDate, selectedShiftType });
+        // DEBUG: slotGrid ve maxSlotAppointment kontrolü
+        console.log('DEBUG getDailySlots:', { slotGrid, maxSlotAppointment, profilCode, selectedDate, selectedShiftType });
 
         // v3.8: vardiyaKontrolu=false ise tüm çalışma saatlerini getir (shiftType='full')
         const effectiveShiftType = vardiyaKontrolu ? selectedShiftType : 'full';
@@ -274,7 +277,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         const [dayStatusResult, slotsResult] = await Promise.all([
             apiCall('getDayStatus', {
                 date: selectedDate,
-                appointmentType: selectedAppointmentType
+                appointmentType: selectedAppointmentType,
+                maxSlotAppointment: maxSlotAppointment  // v3.9.4: profil ayarından maxSlotAppointment
             }),
             apiCall('getDailySlots', {
                 date: selectedDate,

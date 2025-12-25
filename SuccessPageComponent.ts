@@ -80,9 +80,10 @@ export async function handleCalendarAction(event: Event): Promise<void> {
                 break;
         }
     } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
         log.error('Calendar integration loading error:', error);
         logError(error, { context: 'handleCalendarAction', buttonId: (event.target as HTMLElement).id });
-        alert('Takvim entegrasyonu yüklenirken bir hata oluştu. Lütfen tekrar deneyin.');
+        alert(`Takvim hatası: ${errorMsg}`);
     }
 }
 

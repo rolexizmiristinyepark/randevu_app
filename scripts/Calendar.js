@@ -129,11 +129,17 @@ const SlotService = {
    * ⚠️ PERFORMANCE: Tüm gün slotlarını TEK API çağrısı ile kontrol et
    * N+1 query problemini çözer - getDayStatus için optimize edildi
    *
+   * v3.9.4: maxSlotAppointment desteği eklendi
+   * maxSlotAppointment = 0 → sınırsız (hepsi available)
+   * maxSlotAppointment = 1 → saat başı 1 randevu (eski davranış)
+   * maxSlotAppointment = 2 → saat başı 2 randevu
+   *
    * @param {string} date - Date in YYYY-MM-DD format
    * @param {Array<number>} hours - Kontrol edilecek saatler (örn: [11,12,13,...,20])
+   * @param {number} maxSlotAppointment - Slot başı max randevu sayısı (default: 1)
    * @returns {{available: Array<number>, occupied: Array<number>, countByHour: Object<number, number>}}
    */
-  getSlotStatusBatch: function(date, hours) {
+  getSlotStatusBatch: function(date, hours, maxSlotAppointment = 1) {
     try {
       const calendar = CalendarService.getCalendar();
 
@@ -162,19 +168,28 @@ const SlotService = {
       const available = [];
       const occupied = [];
 
+      // v3.9.4: maxSlotAppointment'a göre kontrol
+      // maxSlotAppointment = 0 → sınırsız, hepsi available
+      // maxSlotAppointment > 0 → count < maxSlotAppointment ise available
       hours.forEach(h => {
-        if (countByHour[h] === 0) {
+        if (maxSlotAppointment === 0) {
+          // Sınırsız - hepsi available
+          available.push(h);
+        } else if (countByHour[h] < maxSlotAppointment) {
           available.push(h);
         } else {
           occupied.push(h);
         }
       });
 
+      log.info('getSlotStatusBatch result:', { date, maxSlotAppointment, available: available.length, occupied: occupied.length });
+
       return {
         available: available,
         occupied: occupied,
         countByHour: countByHour,
-        totalEvents: allEvents.length
+        totalEvents: allEvents.length,
+        maxSlotAppointment: maxSlotAppointment
       };
     } catch (error) {
       log.error('getSlotStatusBatch error:', error);
