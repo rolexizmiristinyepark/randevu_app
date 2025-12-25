@@ -961,7 +961,8 @@ function _validateInputs(params) {
 }
 
 /**
- * Build calendar event title based on profile
+ * Build calendar event title - GLOBAL FORMAT for all profiles
+ * Format: Müşteri AdSoyad - İlgili (Randevu Profili) / Randevu Türü
  * @param {Object} params - Title parameters
  * @returns {string} Event title
  * @private
@@ -971,26 +972,22 @@ function _buildEventTitle(params) {
   const hasStaff = staffName && staffName.trim() !== '';
   const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
 
-  if (profil === 'vip') {
-    return hasStaff
-      ? `${customerName} - ${staffName} (VIP) / ${appointmentTypeLabel}`
-      : `${customerName} (VIP) / ${appointmentTypeLabel}`;
-  } else if (profil === 'gunluk') {
-    return hasStaff
-      ? `${customerName} - ${staffName} (Walk-in) / ${appointmentTypeLabel}`
-      : `${customerName} (Walk-in) / ${appointmentTypeLabel}`;
-  } else if (profil === 'yonetim' || appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT || appointmentType === 'management') {
-    return hasStaff
-      ? `${customerName} - ${staffName} / Yönetim`
-      : `${customerName} (Yönetim)`;
-  } else if (profil === 'boutique') {
-    return hasStaff
-      ? `${customerName} - ${staffName} (Mağaza) / ${appointmentTypeLabel}`
-      : `${customerName} (Mağaza) / ${appointmentTypeLabel}`;
+  // Profil görüntüleme isimleri
+  const profilLabels = {
+    genel: 'Genel',
+    personel: 'Personel',
+    vip: 'VIP',
+    boutique: 'Mağaza',
+    yonetim: 'Yönetim',
+    gunluk: 'Walk-in'
+  };
+  const profilLabel = profilLabels[profil] || profil || 'Genel';
+
+  // TEK GLOBAL FORMAT: Müşteri - İlgili (Profil) / Tür
+  if (hasStaff) {
+    return `${customerName} - ${staffName} (${profilLabel}) / ${appointmentTypeLabel}`;
   } else {
-    return hasStaff
-      ? `${customerName} - ${staffName} / ${appointmentTypeLabel}`
-      : `${customerName} (${appointmentTypeLabel})`;
+    return `${customerName} (${profilLabel}) / ${appointmentTypeLabel}`;
   }
 }
 
