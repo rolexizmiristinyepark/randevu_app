@@ -289,15 +289,15 @@ const SHIFT_SLOT_FILTERS = {
  * - #s/{id} → personel (staff)
  * - #v/{id} → vip
  *
- * idKontroluu:
+ * idKontrolu:
  * - false: Sadece profil kodu yeterli (#w, #g, #b, #m)
  * - true: Personel ID gerekli ve kontrol edilir (#s/{id}, #v/{id})
  */
 const PROFIL_AYARLARI = {
-  // #g - Genel link (idKontroluu: false)
+  // #g - Genel link (idKontrolu: false)
   genel: {
     code: 'g',
-    idKontroluu: false,
+    idKontrolu: false,
     sameDayBooking: false,
     maxSlotAppointment: 1,
     slotGrid: 60,
@@ -517,7 +517,8 @@ var ProfilAyarlariService = {
         'sameDayBooking', 'maxSlotAppointment', 'slotGrid',
         'maxDailyPerStaff', 'maxDailyDelivery', 'duration',
         'assignByAdmin', 'allowedTypes', 'staffFilter', 'showCalendar', 'takvimFiltresi', 'defaultType', 'showTypeSelection',
-        'vardiyaKontrolu'  // v3.8: Vardiya kontrolü ayarı
+        'vardiyaKontrolu',  // v3.8: Vardiya kontrolü ayarı
+        'idKontrolu'        // v3.9: URL'den personel ID alınsın mı
       ];
 
       for (var field in updates) {
