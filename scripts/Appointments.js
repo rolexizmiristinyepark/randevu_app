@@ -695,6 +695,96 @@ const AvailabilityService = {
   },
 
   /**
+   * v3.9.12: Get slot availability with count for each time slot
+   * Used by staffFilter=none and assignByAdmin profiles
+   * Returns per-slot availability based on slotLimit
+   *
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {number} slotGrid - Slot duration in minutes (30 or 60)
+   * @param {number} slotLimit - Max appointments per slot (0 = unlimited)
+   * @returns {{success: boolean, data: {slots: Array<{time: string, available: boolean, count: number}>}}}
+   */
+  getSlotAvailability: function(date, slotGrid = 60, slotLimit = 1) {
+    try {
+      const calendar = CalendarService.getCalendar();
+
+      // Get all events for the day
+      const dayStart = new Date(`${date}T00:00:00`);
+      const dayEnd = new Date(`${date}T23:59:59`);
+      const allEvents = calendar.getEvents(dayStart, dayEnd);
+
+      // Generate all possible slots based on slotGrid
+      const slots = [];
+      const duration = slotGrid; // Assume duration = slotGrid for overlap calculation
+
+      for (let hour = 11; hour <= 20; hour++) {
+        // Full hour slot
+        const fullSlotTime = `${hour}:00`;
+        const fullSlotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:00:00`);
+        const fullSlotEnd = new Date(fullSlotStart.getTime() + duration * 60000);
+
+        // Count overlapping events for this slot
+        const fullSlotCount = allEvents.filter(event => {
+          const eventStart = event.getStartTime();
+          const eventEnd = event.getEndTime();
+          // Check overlap: not (slotEnd <= eventStart || slotStart >= eventEnd)
+          return !(fullSlotEnd <= eventStart || fullSlotStart >= eventEnd);
+        }).length;
+
+        slots.push({
+          time: fullSlotTime,
+          hour: hour,
+          available: slotLimit === 0 || fullSlotCount < slotLimit,
+          count: fullSlotCount
+        });
+
+        // Half hour slot if slotGrid is 30
+        if (slotGrid === 30) {
+          // Check if half slot would end before 21:00
+          const halfSlotEnd = new Date(`${date}T${String(hour).padStart(2, '0')}:30:00`);
+          halfSlotEnd.setMinutes(halfSlotEnd.getMinutes() + duration);
+
+          const workEnd = new Date(`${date}T21:00:00`);
+
+          if (halfSlotEnd <= workEnd) {
+            const halfSlotTime = `${hour}:30`;
+            const halfSlotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:30:00`);
+
+            // Count overlapping events for this slot
+            const halfSlotCount = allEvents.filter(event => {
+              const eventStart = event.getStartTime();
+              const eventEnd = event.getEndTime();
+              // Check overlap
+              return !(halfSlotEnd <= eventStart || halfSlotStart >= eventEnd);
+            }).length;
+
+            slots.push({
+              time: halfSlotTime,
+              hour: hour,
+              available: slotLimit === 0 || halfSlotCount < slotLimit,
+              count: halfSlotCount
+            });
+          }
+        }
+      }
+
+      log.info('getSlotAvailability result:', { date, slotGrid, slotLimit, totalSlots: slots.length, availableSlots: slots.filter(s => s.available).length });
+
+      return {
+        success: true,
+        data: { slots }
+      };
+
+    } catch (error) {
+      log.error('getSlotAvailability error:', error);
+      return {
+        success: false,
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR
+      };
+    }
+  },
+
+  /**
    * Check time slot availability (FULL VERSION WITH ALL BUSINESS RULES)
    * NOTE: This is a large method that implements complex availability logic
    * Due to length constraints, only core structure shown here

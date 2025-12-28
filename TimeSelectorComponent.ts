@@ -62,12 +62,30 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
     try {
         // staffFilter === 'none' - Walk-in customers, show all slots (admin assigns staff later)
+        // v3.9.12: Backend'den slot müsaitliği al (maxSlotAppointment kontrolü için)
         if (staffFilter === 'none') {
+            const slotGrid = profilAyarlari?.slotGrid || 60;
+            const maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
+
+            // v3.9.12: Backend'den slot müsaitliği al
+            const availabilityResult = await apiCall('getSlotAvailability', {
+                date: selectedDate,
+                slotGrid: slotGrid,
+                slotLimit: maxSlotAppointment
+            });
+
             // Clear spinner
             while (container.firstChild) container.removeChild(container.firstChild);
 
-            // v3.6: Profil ayarlarından slotGrid al
-            const slotGrid = profilAyarlari?.slotGrid || 60;
+            if (!availabilityResult.success) {
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                errorDiv.textContent = 'Müsait saatler yüklenemedi';
+                container.appendChild(errorDiv);
+                return;
+            }
+
+            const { slots } = availabilityResult.data as any;
 
             // Generate slots for today based on slotGrid
             const today = new Date();
@@ -78,60 +96,52 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             const currentHour = today.getHours();
             const currentMinute = today.getMinutes();
 
-            // v3.9.11: Debug log
-            log.log('[TimeSlots] staffFilter=none', { selectedDate, todayStr, isToday, currentHour, currentMinute, slotGrid });
+            // v3.9.12: Debug log
+            log.log('[TimeSlots] staffFilter=none', { selectedDate, todayStr, isToday, currentHour, currentMinute, slotGrid, maxSlotAppointment, slotsCount: slots?.length });
 
-            // Generate slots from 11:00 to 20:00 based on slotGrid
-            for (let hour = 11; hour <= 20; hour++) {
-                // Full hour slot
-                const timeStr = `${hour}:00`;
-                const slotMinute = 0;
+            // v3.9.12: Count available future slots
+            let availableFutureSlotsCount = 0;
 
-                // v3.9.11: Skip past times if today (fixed condition)
-                // Slot geçmiş ise: slotHour < currentHour VEYA (slotHour === currentHour VE slotMinute <= currentMinute)
-                const isSlotPast = isToday && (hour < currentHour || (hour === currentHour && slotMinute <= currentMinute));
+            // Render slots from backend (with availability info)
+            slots.forEach((slot: any) => {
+                const [slotHour, slotMinute] = slot.time.split(':').map(Number);
 
-                if (!isSlotPast) {
-                    const btn = document.createElement('div');
+                // Skip past times if today
+                if (isToday && (slotHour < currentHour || (slotHour === currentHour && slotMinute <= currentMinute))) {
+                    return;
+                }
+
+                const btn = document.createElement('div');
+
+                if (slot.available) {
+                    // ✅ AVAILABLE
                     btn.className = 'slot-btn';
-                    btn.textContent = timeStr;
-                    btn.addEventListener('click', () => selectTimeSlot(timeStr, btn));
-                    container.appendChild(btn);
-                }
-
-                // Half hour slot if slotGrid is 30
-                // v3.9: Duration'a göre son slot belirlenir (21:00'da bitmeli)
-                // duration=30 → 20:30 slot göster (21:00'da biter)
-                // duration=60 → 20:30 slot gösterme (21:30'da biterdi)
-                if (slotGrid === 30) {
-                    const duration = profilAyarlari?.duration || 60;
-                    const slotEndMinutes = (hour * 60 + 30) + duration; // :30 slotunun bitiş zamanı
-                    const workEndMinutes = 21 * 60; // 21:00 = 1260 dakika
-
-                    if (slotEndMinutes <= workEndMinutes) {
-                        const halfTimeStr = `${hour}:30`;
-                        const halfSlotMinute = 30;
-                        // v3.9.11: Skip past times if today (fixed condition)
-                        const isHalfSlotPast = isToday && (hour < currentHour || (hour === currentHour && halfSlotMinute <= currentMinute));
-
-                        if (!isHalfSlotPast) {
-                            const halfBtn = document.createElement('div');
-                            halfBtn.className = 'slot-btn';
-                            halfBtn.textContent = halfTimeStr;
-                            halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
-                            container.appendChild(halfBtn);
-                        }
+                    btn.textContent = slot.time;
+                    if (slot.count > 0) {
+                        btn.title = `Bu saatte ${slot.count} randevu var`;
                     }
+                    btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                    availableFutureSlotsCount++;
+                } else {
+                    // ❌ FULL - Disabled
+                    btn.className = 'slot-btn disabled';
+                    btn.textContent = slot.time;
+                    btn.title = `Bu saat dolu (${maxSlotAppointment} randevu)`;
+                    btn.style.opacity = '0.4';
+                    btn.style.cursor = 'not-allowed';
+                    btn.setAttribute('aria-disabled', 'true');
                 }
-            }
 
-            // v3.9.11: If no slots available (all past) - show only alternate buttons for onlytoday profiles
+                container.appendChild(btn);
+            });
+
+            // v3.9.12: If no slots available (all past or full) - show alternate buttons for onlytoday profiles
             const takvimFiltresi = profilAyarlari?.takvimFiltresi;
-            if (container.children.length === 0) {
+            if (container.children.length === 0 || availableFutureSlotsCount === 0) {
                 if (takvimFiltresi === 'onlytoday') {
                     // Sadece alternatif butonları göster (hata mesajı yok)
                     renderAlternateBookingButtons(container, true);
-                } else {
+                } else if (container.children.length === 0) {
                     const infoDiv = document.createElement('div');
                     infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
                     infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';

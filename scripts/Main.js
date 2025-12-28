@@ -273,6 +273,12 @@ const ACTION_HANDLERS = {
       slots: SlotService.getDailySlots(e.parameter.date, e.parameter.shiftType || 'full', slotGrid)
     };
   },
+  // v3.9.12: Slot availability endpoint - per-slot availability for staffFilter=none and assignByAdmin
+  'getSlotAvailability': (e) => {
+    const slotGrid = parseInt(e.parameter.slotGrid) || 60;
+    const slotLimit = parseInt(e.parameter.slotLimit) || 1;
+    return AvailabilityService.getSlotAvailability(e.parameter.date, slotGrid, slotLimit);
+  },
   'validateReservation': (e) => ValidationService.validateReservation({
     date: e.parameter.date,
     hour: parseInt(e.parameter.hour),
