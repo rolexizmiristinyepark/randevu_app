@@ -223,8 +223,27 @@ const ACTION_HANDLERS = {
   }),
   'getAllProfilAyarlari': () => ({ success: true, data: ProfilAyarlariService.getAll() }),
   'updateProfilAyarlari': (e) => {
-    var updates = e.parameter.updates ? JSON.parse(e.parameter.updates) : {};
-    return ProfilAyarlariService.update(e.parameter.profil, updates);
+    try {
+      // Validate profil parameter
+      if (!e.parameter.profil) {
+        return { success: false, error: 'Profil parametresi gerekli' };
+      }
+
+      // Parse updates - handle both string and object
+      var updates = {};
+      if (e.parameter.updates) {
+        if (typeof e.parameter.updates === 'string') {
+          updates = JSON.parse(e.parameter.updates);
+        } else {
+          updates = e.parameter.updates;
+        }
+      }
+
+      return ProfilAyarlariService.update(e.parameter.profil, updates);
+    } catch (parseError) {
+      log.error('updateProfilAyarlari parse hatası:', parseError);
+      return { success: false, error: 'Geçersiz veri formatı: ' + parseError.message };
+    }
   },
   'resetProfilAyarlari': () => ProfilAyarlariService.reset(),
 
@@ -565,8 +584,9 @@ function doPost(e) {
       log.error(`[${errorId}] doPost handler error:`, handlerError);
       response = {
         success: false,
-        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
-        errorId: errorId
+        error: DEBUG ? `DEBUG: ${handlerError.message || handlerError.toString()}` : CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId,
+        debugStack: DEBUG ? (handlerError.stack || '').substring(0, 500) : undefined
       };
     }
 
@@ -582,8 +602,9 @@ function doPost(e) {
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
-        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
-        errorId: errorId
+        error: DEBUG ? `DEBUG MAIN: ${mainError.message || mainError.toString()}` : CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId,
+        debugStack: DEBUG ? (mainError.stack || '').substring(0, 500) : undefined
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }

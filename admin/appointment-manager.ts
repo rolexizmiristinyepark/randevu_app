@@ -51,6 +51,9 @@ function normalizeTurkishChars(text: string): string {
 export async function initAppointmentManager(store: DataStore): Promise<void> {
     dataStore = store;
     setupEventListeners();
+
+    // v3.9.10: Profil ayarlarını yükle (İlgili Ata butonu için)
+    await dataStore.loadProfilAyarlari();
 }
 
 /**
@@ -525,13 +528,16 @@ function render(appointments: any[]): void {
 
             // Assign staff button - show based on profile's assignByAdmin setting
             const staffName = staff?.name || '-';
-            const hasNoStaff = !staffId || !staff || staffName === 'Atanmadı' || staffName === '-';
+            const hasNoStaff = !staffId || !staff || staffName === 'Atanacak' || staffName === 'Atanmadı' || staffName === '-';
 
             // v3.9: Profil ayarlarından assignByAdmin kontrolü
             // Sadece profilde assignByAdmin=true ise buton göster
             const appointmentProfil = apt.extendedProperties?.private?.profil || '';
             const profilAyari = dataStore.profilAyarlari[appointmentProfil];
             const showAssignButton = profilAyari?.assignByAdmin === true;
+
+            // DEBUG
+            console.log('[AssignBtn]', { appointmentProfil, profilAyari, showAssignButton, hasNoStaff, staffName, staffId });
 
             if (showAssignButton && hasNoStaff) {
                 const assignBtn = getCreateElement()('button', {

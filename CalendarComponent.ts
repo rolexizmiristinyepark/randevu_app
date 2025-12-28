@@ -155,8 +155,43 @@ export function renderCalendar(): void {
         // - sameDayBooking=true
         // - takvimFiltresi='withtoday'
         const allowToday = specificStaffId === '0' || selectedAppointmentType === 'management' || assignByAdmin || sameDayBooking || takvimFiltresi === 'withtoday';
-        if (date < today || (isToday && !allowToday)) {
+
+        // v3.9.11: withtoday profilleri için bugün tüm slotlar geçmişse bugünü bloke et
+        let todayAllSlotsPast = false;
+        if (isToday && takvimFiltresi === 'withtoday') {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const slotGrid = profilAyarlari?.slotGrid || 60;
+            const duration = profilAyarlari?.duration || 60;
+
+            // Son slot saatini hesapla
+            // slotGrid=60: son slot 20:00 (21:00'da biter)
+            // slotGrid=30 && duration=30: son slot 20:30 (21:00'da biter)
+            // slotGrid=30 && duration=60: son slot 20:00 (21:00'da biter)
+            let lastSlotHour = 20;
+            let lastSlotMinute = 0;
+
+            if (slotGrid === 30) {
+                const slotEndMinutes = (20 * 60 + 30) + duration; // 20:30 slotunun bitiş zamanı
+                const workEndMinutes = 21 * 60; // 21:00 = 1260 dakika
+                if (slotEndMinutes <= workEndMinutes) {
+                    lastSlotMinute = 30; // 20:30 slotu müsait
+                }
+            }
+
+            // Tüm slotlar geçmiş mi kontrol et (son slot bile geçmiş ise)
+            // slotMinute <= currentMinute koşulu ile uyumlu
+            if (currentHour > lastSlotHour || (currentHour === lastSlotHour && currentMinute >= lastSlotMinute)) {
+                todayAllSlotsPast = true;
+            }
+        }
+
+        if (date < today || (isToday && !allowToday) || (isToday && todayAllSlotsPast)) {
             dayEl.classList.add('past');
+            if (isToday && todayAllSlotsPast) {
+                dayEl.title = 'Bugün için müsait slot kalmamıştır';
+            }
         } else {
             // Check availability
             const availability = checkDayAvailability(dateStr);

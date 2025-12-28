@@ -271,7 +271,10 @@ async function saveProfilAyari(): Promise<void> {
             }, 1000);
         } else {
             ButtonAnimator.error(saveBtn);
-            getUI().showAlert(`${response.error || 'Güncelleme başarısız'}`, 'error');
+            // errorId varsa debug için göster
+            const errorMsg = response.error || 'Güncelleme başarısız';
+            const errorId = (response as any).errorId;
+            getUI().showAlert(`${errorMsg}${errorId ? ` (${errorId})` : ''}`, 'error');
         }
     } catch (error) {
         console.error('Profil güncelleme hatası:', error);

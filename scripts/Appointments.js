@@ -169,7 +169,7 @@ const AppointmentService = {
           customerPhone: customerPhone,
           customerEmail: customerEmail,
           staffId: staffId,
-          staffName: staff ? staff.name : 'Atanmadı',
+          staffName: staff ? staff.name : 'Atanacak',
           appointmentDate: Utilities.formatDate(startTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
           appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
           appointmentType: appointmentType,
@@ -311,7 +311,7 @@ const AppointmentService = {
             customerPhone: customerPhone,
             customerEmail: customerEmail,
             staffId: staffId,
-            staffName: staff ? staff.name : 'Atanmadı',
+            staffName: staff ? staff.name : 'Atanacak',
             appointmentDate: Utilities.formatDate(newStartDateTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
             appointmentTime: newTime,
             appointmentType: appointmentType,
@@ -405,7 +405,7 @@ const AppointmentService = {
 
       // Event title'ı güncelle (staff ismini ekle)
       const currentTitle = event.getTitle();
-      const newTitle = currentTitle.replace(/- Atanmadı/, `- ${staff.name}`);
+      const newTitle = currentTitle.replace(/- Atanacak/, `- ${staff.name}`);
       event.setTitle(newTitle);
 
       // Description'ı güncelle (staff bilgilerini ekle)

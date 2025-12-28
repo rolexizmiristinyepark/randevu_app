@@ -168,6 +168,7 @@ const log = {
   error: (...args) => DEBUG && console.error(...args),
   warn: (...args) => DEBUG && console.warn(...args),
   info: (...args) => DEBUG && console.info(...args),
+  debug: (...args) => DEBUG && console.log('[DEBUG]', ...args),  // v3.9.9: debug metodu eklendi
   log: (...args) => DEBUG && console.log(...args),
 
   // PII-safe loggers (SecurityService kullanır)

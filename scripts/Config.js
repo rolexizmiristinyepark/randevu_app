@@ -506,6 +506,12 @@ var ProfilAyarlariService = {
    */
   update: function(profilKey, updates) {
     try {
+      // updates null/undefined kontrolü
+      if (!updates || typeof updates !== 'object') {
+        log.warn('ProfilAyarlari update: updates parametresi geçersiz', { updates: updates, type: typeof updates });
+        updates = {};
+      }
+
       var all = this.getAll();
 
       if (!all[profilKey]) {
@@ -534,7 +540,7 @@ var ProfilAyarlariService = {
       // Global'i de güncelle (runtime için)
       PROFIL_AYARLARI[profilKey] = all[profilKey];
 
-      log.info('Profil ayarı güncellendi', { profil: profilKey, updates: Object.keys(updates) });
+      log.info('Profil ayarı güncellendi', { profil: profilKey, updates: updates ? Object.keys(updates) : [] });
 
       return { success: true, data: all[profilKey] };
     } catch (error) {

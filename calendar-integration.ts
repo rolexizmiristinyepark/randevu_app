@@ -76,7 +76,7 @@ function prepareAppointmentData() {
         CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
     // v3.9: İlgili atanmadıysa farklı başlık göster
-    const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı';
+    const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı' && appointment.staffName !== 'Atanacak';
     let title: string;
     if (isStaffAssigned) {
         title = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
@@ -484,7 +484,7 @@ export function generateICS(startDate: Date, endDate: Date): string {
             CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
         // v3.9: İlgili atanmadıysa farklı başlık göster
-        const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı';
+        const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı' && appointment.staffName !== 'Atanacak';
         if (isStaffAssigned) {
             summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
         } else {

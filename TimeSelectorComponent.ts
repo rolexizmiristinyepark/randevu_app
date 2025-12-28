@@ -78,15 +78,20 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             const currentHour = today.getHours();
             const currentMinute = today.getMinutes();
 
+            // v3.9.11: Debug log
+            log.log('[TimeSlots] staffFilter=none', { selectedDate, todayStr, isToday, currentHour, currentMinute, slotGrid });
+
             // Generate slots from 11:00 to 20:00 based on slotGrid
             for (let hour = 11; hour <= 20; hour++) {
                 // Full hour slot
                 const timeStr = `${hour}:00`;
+                const slotMinute = 0;
 
-                // Skip past times if today
-                if (isToday && (hour < currentHour || (hour === currentHour && 0 <= currentMinute))) {
-                    // Continue to check half hour if slotGrid is 30
-                } else {
+                // v3.9.11: Skip past times if today (fixed condition)
+                // Slot geçmiş ise: slotHour < currentHour VEYA (slotHour === currentHour VE slotMinute <= currentMinute)
+                const isSlotPast = isToday && (hour < currentHour || (hour === currentHour && slotMinute <= currentMinute));
+
+                if (!isSlotPast) {
                     const btn = document.createElement('div');
                     btn.className = 'slot-btn';
                     btn.textContent = timeStr;
@@ -105,25 +110,36 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
                     if (slotEndMinutes <= workEndMinutes) {
                         const halfTimeStr = `${hour}:30`;
-                        // Skip past times if today
-                        if (isToday && (hour < currentHour || (hour === currentHour && 30 <= currentMinute))) {
-                            continue;
+                        const halfSlotMinute = 30;
+                        // v3.9.11: Skip past times if today (fixed condition)
+                        const isHalfSlotPast = isToday && (hour < currentHour || (hour === currentHour && halfSlotMinute <= currentMinute));
+
+                        if (!isHalfSlotPast) {
+                            const halfBtn = document.createElement('div');
+                            halfBtn.className = 'slot-btn';
+                            halfBtn.textContent = halfTimeStr;
+                            halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
+                            container.appendChild(halfBtn);
                         }
-                        const halfBtn = document.createElement('div');
-                        halfBtn.className = 'slot-btn';
-                        halfBtn.textContent = halfTimeStr;
-                        halfBtn.addEventListener('click', () => selectTimeSlot(halfTimeStr, halfBtn));
-                        container.appendChild(halfBtn);
                     }
                 }
             }
 
-            // If no slots available (all past)
+            // v3.9.11: If no slots available (all past) - show only alternate buttons for onlytoday profiles
+            const takvimFiltresi = profilAyarlari?.takvimFiltresi;
             if (container.children.length === 0) {
-                const infoDiv = document.createElement('div');
-                infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
-                infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
-                container.appendChild(infoDiv);
+                if (takvimFiltresi === 'onlytoday') {
+                    // Sadece alternatif butonları göster (hata mesajı yok)
+                    renderAlternateBookingButtons(container, true);
+                } else {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                    infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
+                    container.appendChild(infoDiv);
+                    // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+                    renderAlternateBookingButtons(container);
+                }
+                return;
             }
 
             // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
@@ -166,6 +182,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             const currentHour = today.getHours();
             const currentMinute = today.getMinutes();
 
+            // v3.9.11: Debug log
+            log.log('[TimeSlots] assignByAdmin', { selectedDate, todayStr, isToday, currentHour, currentMinute, slotGrid, slotLimit });
+
             // Remove duplicate slots
             const uniqueSlots: any[] = [];
             const seenTimes = new Set<string>();
@@ -175,6 +194,9 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                     uniqueSlots.push(slot);
                 }
             });
+
+            // v3.9.11: Count available future slots
+            let availableFutureSlotsCount = 0;
 
             // Render slots
             uniqueSlots.forEach((slot: any) => {
@@ -197,6 +219,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                         btn.title = `Bu saatte ${slot.count} randevu var`;
                     }
                     btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                    availableFutureSlotsCount++;
                 } else {
                     // ❌ FULL - Already at slotLimit
                     btn.className = 'slot-btn disabled';
@@ -209,6 +232,21 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
                 container.appendChild(btn);
             });
+
+            // v3.9.11: If no available slots (all past or all full) - handle onlytoday profile
+            const takvimFiltresi = profilAyarlari?.takvimFiltresi;
+            if (container.children.length === 0 || availableFutureSlotsCount === 0) {
+                if (takvimFiltresi === 'onlytoday') {
+                    // Sadece alternatif butonları göster
+                    renderAlternateBookingButtons(container, true);
+                } else if (container.children.length === 0) {
+                    const infoDiv = document.createElement('div');
+                    infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                    infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
+                    container.appendChild(infoDiv);
+                }
+                return;
+            }
 
             // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
             renderAlternateBookingButtons(container);
@@ -316,17 +354,28 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         const currentHour = today.getHours();
         const currentMinute = today.getMinutes();
 
+        // v3.9.11: Debug log
+        log.log('[TimeSlots] normalFlow', { selectedDate, todayStr, isToday, currentHour, currentMinute, slotGrid, availableHours: availableHours.length });
+
         // If no available hours, show info
         if (availableHours.length === 0) {
-            const infoDiv = document.createElement('div');
-            infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
-            infoDiv.textContent = 'Bu gün için müsait saat bulunmamaktadır.';
-            container.appendChild(infoDiv);
-
-            // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
-            renderAlternateBookingButtons(container);
+            const takvimFiltresi = profilAyarlari?.takvimFiltresi;
+            if (takvimFiltresi === 'onlytoday') {
+                // Sadece alternatif butonları göster
+                renderAlternateBookingButtons(container, true);
+            } else {
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                infoDiv.textContent = 'Bu gün için müsait saat bulunmamaktadır.';
+                container.appendChild(infoDiv);
+                // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
+                renderAlternateBookingButtons(container);
+            }
             return;
         }
+
+        // v3.9.11: Count available future slots for onlytoday check
+        let availableFutureSlotsCount = 0;
 
         // Render slots
         slots.forEach((slot: any) => {
@@ -347,6 +396,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
                 btn.className = 'slot-btn';
                 btn.textContent = slot.time;
                 btn.addEventListener('click', () => selectTimeSlot(slot.time, btn));
+                availableFutureSlotsCount++;
             } else {
                 // ❌ FULL - faded, unclickable, aria-disabled
                 btn.className = 'slot-btn slot--disabled';
@@ -358,6 +408,21 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 
             container.appendChild(btn);
         });
+
+        // v3.9.11: If no available future slots - handle onlytoday profile
+        const takvimFiltresi = profilAyarlari?.takvimFiltresi;
+        if (container.children.length === 0 || availableFutureSlotsCount === 0) {
+            if (takvimFiltresi === 'onlytoday') {
+                // Sadece alternatif butonları göster
+                renderAlternateBookingButtons(container, true);
+            } else if (container.children.length === 0) {
+                const infoDiv = document.createElement('div');
+                infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+                infoDiv.textContent = 'Bugün için müsait saat kalmamıştır.';
+                container.appendChild(infoDiv);
+            }
+            return;
+        }
 
         // v3.9: 'onlytoday' profilleri için alternatif randevu butonları
         renderAlternateBookingButtons(container);
@@ -374,13 +439,29 @@ export async function displayAvailableTimeSlots(): Promise<void> {
 /**
  * Render alternate booking buttons for 'onlytoday' profile
  * Shows "Randevu Al" and "Linki Paylaş" buttons
+ * @param container - Container element to append buttons to
+ * @param noSlotsAvailable - If true, shows only buttons (no error message) and hides time section title
  */
-function renderAlternateBookingButtons(container: HTMLElement): void {
+function renderAlternateBookingButtons(container: HTMLElement, noSlotsAvailable: boolean = false): void {
     const profilAyarlari = state.get('profilAyarlari');
     const takvimFiltresi = profilAyarlari?.takvimFiltresi;
 
     // Only show for 'onlytoday' profiles
     if (takvimFiltresi !== 'onlytoday') return;
+
+    // v3.9.11: Tüm slotlar geçmişse, time section başlığını gizle ve bilgi mesajı göster
+    if (noSlotsAvailable) {
+        // Time section heading'i gizle
+        const timeSection = document.getElementById('timeSection');
+        const heading = timeSection?.querySelector('h2');
+        if (heading) heading.style.display = 'none';
+
+        // Bilgi mesajı ekle
+        const infoDiv = document.createElement('div');
+        infoDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #666;';
+        infoDiv.textContent = 'Bugün için randevu slotları dolmuştur. Genel randevu linkini kullanabilirsiniz.';
+        container.appendChild(infoDiv);
+    }
 
     // Create button container - same row, responsive stacking
     const buttonContainer = document.createElement('div');
