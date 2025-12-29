@@ -250,10 +250,11 @@ export function injectButtonAnimationStyles(): void {
         }
 
         /* Spinner - Altın rengi dönen border */
+        /* v3.9.19f: Spinner çapı buton yüksekliğine eşit (44px) */
         .btn-spinner {
             display: inline-block;
-            width: 20px;
-            height: 20px;
+            width: 44px;
+            height: 44px;
             border: 3px solid rgba(201, 165, 90, 0.3);
             border-top-color: #C9A55A;
             border-radius: 50%;

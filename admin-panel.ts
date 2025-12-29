@@ -13,6 +13,7 @@ import { initShiftManager } from './admin/shift-manager';
 import { initAppointmentManager, loadAppointments } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
 import { initWhatsAppManager, loadSentMessages, loadReceivedMessages } from './admin/whatsapp-manager';
+import { initMailManager } from './admin/mail-manager';
 import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
@@ -260,6 +261,7 @@ async function startApp(): Promise<void> {
         await initAppointmentManager(dataStore);
         await initSettingsManager(dataStore);
         await initWhatsAppManager(dataStore);
+        await initMailManager(dataStore);
 
         // Initialize permission manager (applies role-based access control)
         await initPermissionManager(dataStore);

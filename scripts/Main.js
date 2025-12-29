@@ -44,7 +44,10 @@ const SESSION_ADMIN_ACTIONS = [
   // WhatsApp Template CRUD (v3.2)
   'getWhatsAppTemplates', 'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate', 'getWhatsAppVariableOptions',
   // WhatsApp Message Log (v4.0)
-  'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages'
+  'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
+  // Mail Flow & Template CRUD (v3.9.20)
+  'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
+  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -362,7 +365,74 @@ const ACTION_HANDLERS = {
   'getWhatsAppDailyTasks': () => getWhatsAppDailyTasks(),
   'addWhatsAppDailyTask': (e) => addWhatsAppDailyTask(e.parameter),
   'updateWhatsAppDailyTask': (e) => updateWhatsAppDailyTask(e.parameter),
-  'deleteWhatsAppDailyTask': (e) => deleteWhatsAppDailyTask(e.parameter)
+  'deleteWhatsAppDailyTask': (e) => deleteWhatsAppDailyTask(e.parameter),
+
+  // Mail Flow & Template CRUD (v3.9.20)
+  'getMailFlows': () => getMailFlows(),
+  'createMailFlow': (e) => {
+    try {
+      const params = {
+        name: e.parameter.name,
+        description: e.parameter.description,
+        profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : (e.parameter.profiles || []),
+        trigger: e.parameter.trigger,
+        templateId: e.parameter.templateId,
+        active: e.parameter.active !== false && e.parameter.active !== 'false'
+      };
+      return createMailFlow(params);
+    } catch (handlerError) {
+      log.error('[createMailFlow-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'updateMailFlow': (e) => {
+    try {
+      const params = {
+        id: e.parameter.id,
+        name: e.parameter.name,
+        description: e.parameter.description,
+        profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
+        trigger: e.parameter.trigger,
+        templateId: e.parameter.templateId,
+        active: e.parameter.active === true || e.parameter.active === 'true'
+      };
+      return updateMailFlow(params);
+    } catch (handlerError) {
+      log.error('[updateMailFlow-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'deleteMailFlow': (e) => deleteMailFlow({ id: e.parameter.id }),
+
+  'getMailTemplates': () => getMailTemplates(),
+  'createMailTemplate': (e) => {
+    try {
+      const params = {
+        name: e.parameter.name,
+        subject: e.parameter.subject,
+        body: e.parameter.body
+      };
+      return createMailTemplate(params);
+    } catch (handlerError) {
+      log.error('[createMailTemplate-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'updateMailTemplate': (e) => {
+    try {
+      const params = {
+        id: e.parameter.id,
+        name: e.parameter.name,
+        subject: e.parameter.subject,
+        body: e.parameter.body
+      };
+      return updateMailTemplate(params);
+    } catch (handlerError) {
+      log.error('[updateMailTemplate-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'deleteMailTemplate': (e) => deleteMailTemplate({ id: e.parameter.id })
 };
 
 /**

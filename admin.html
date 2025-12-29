@@ -194,22 +194,20 @@
                 <!-- Mail Flow -->
                 <div id="mailFlow" class="inner-tab-content active">
                     <div class="card">
-                        <div class="card-title">Mail Flow Yönetimi</div>
                         <div id="mailFlowList">
-                            <div class="loading-spinner"></div>
+                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz flow tanımlanmamış</p>
                         </div>
-                        <button class="btn" id="addMailFlowBtn" style="margin-top: 15px;">+ Yeni Mail Flow</button>
+                        <button class="btn" id="addMailFlowBtn" style="margin-top: 15px;">+ Yeni Flow</button>
                     </div>
                 </div>
 
                 <!-- Mail Templates -->
                 <div id="mailTemplates" class="inner-tab-content">
                     <div class="card">
-                        <div class="card-title">Mail Şablonları</div>
                         <div id="mailTemplatesList">
-                            <div class="loading-spinner"></div>
+                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz şablon tanımlanmamış</p>
                         </div>
-                        <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ Yeni Mail Şablonu</button>
+                        <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ Yeni Şablon</button>
                     </div>
                 </div>
             </div>
@@ -940,11 +938,11 @@
         <div id="mailFlowModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">Yeni Mail Flow</div>
+                <div class="modal-header">Yeni Flow</div>
                 <div class="modal-body">
                     <div class="input-group">
                         <label for="mailFlowName">Flow Adı</label>
-                        <input type="text" id="mailFlowName" placeholder="Randevu Onay Maili">
+                        <input type="text" id="mailFlowName" placeholder="Randevu Onay">
                     </div>
                     <div class="input-group">
                         <label for="mailFlowDescription">Açıklama</label>
