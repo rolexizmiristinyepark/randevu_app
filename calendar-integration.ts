@@ -16,7 +16,7 @@
 
 import { DateUtils } from './date-utils';
 import { StringUtils } from './string-utils';
-import { APPOINTMENT_TYPE_NAMES } from './calendar-config';
+import { APPOINTMENT_TYPE_NAMES, CALENDAR_CONFIG } from './calendar-config';
 
 // Global scope'tan değişkenleri al (fonksiyon olarak - lazy evaluation)
 const getConfig = () => (window as any).CONFIG || {};
@@ -75,19 +75,22 @@ function prepareAppointmentData() {
     const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
         CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-    // v3.9: İlgili atanmadıysa farklı başlık göster
+    // v3.9.19d: İlgili atanmadıysa farklı başlık göster
+    // Format: Rolex İzmir İstinyepark - Görüşme Randevusu
     const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı' && appointment.staffName !== 'Atanacak';
     let title: string;
     if (isStaffAssigned) {
         title = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
     } else {
-        title = `Rolex İzmir İstinyepark - ${appointmentTypeName} Randevusu`;
+        // v3.9.19d: Sadece tip adı (zaten "Randevusu" içeriyor)
+        title = `Rolex İzmir İstinyepark - ${appointmentTypeName}`;
     }
 
     // v3.9: Telefon numarasına + ekle (yoksa)
-    const formatPhone = (phone: string | undefined) => {
+    const formatPhone = (phone: unknown) => {
         if (!phone) return 'Belirtilmedi';
-        const cleaned = phone.replace(/\D/g, '');
+        const phoneStr = String(phone);
+        const cleaned = phoneStr.replace(/\D/g, '');
         return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
     };
 
@@ -104,7 +107,7 @@ function prepareAppointmentData() {
     if (appointment.customerNote) {
         details += `Ek Bilgi: ${appointment.customerNote}\n`;
     }
-    details += '\nRandevunuza zamanında gelmenizi rica ederiz.\nLütfen kimlik belgenizi yanınızda bulundurun.';
+    details += `\n${CALENDAR_CONFIG.ICS_REMINDERS.ON_TIME}`;
 
     return { appointment, date, endDate, title, details, appointmentTypeName };
 }
@@ -483,12 +486,14 @@ export function generateICS(startDate: Date, endDate: Date): string {
         const appointmentTypeName = (APPOINTMENT_TYPE_NAMES as any)[appointment.appointmentType] ||
             CONFIG.APPOINTMENT_TYPES?.find((t: any) => t.value === appointment.appointmentType)?.name || 'Genel';
 
-        // v3.9: İlgili atanmadıysa farklı başlık göster
+        // v3.9.19d: İlgili atanmadıysa farklı başlık göster
+        // Format: Rolex İzmir İstinyepark - Görüşme Randevusu
         const isStaffAssigned = appointment.staffName && appointment.staffName !== 'Atanmadı' && appointment.staffName !== 'Atanacak';
         if (isStaffAssigned) {
             summary = `İzmir İstinyepark Rolex - ${appointment.staffName} (${appointmentTypeName})`;
         } else {
-            summary = `Rolex İzmir İstinyepark - ${appointmentTypeName} Randevusu`;
+            // v3.9.19d: Sadece tip adı (zaten "Randevusu" içeriyor)
+            summary = `Rolex İzmir İstinyepark - ${appointmentTypeName}`;
         }
 
         const appointmentDate = new Date(appointment.date);
@@ -496,9 +501,10 @@ export function generateICS(startDate: Date, endDate: Date): string {
         const formattedDate = appointmentDate.toLocaleDateString('tr-TR', options);
 
         // v3.9: Telefon numarasına + ekle (yoksa)
-        const formatPhone = (phone: string | undefined) => {
+        const formatPhone = (phone: unknown) => {
             if (!phone) return 'Belirtilmedi';
-            const cleaned = phone.replace(/\D/g, '');
+            const phoneStr = String(phone);
+            const cleaned = phoneStr.replace(/\D/g, '');
             return cleaned.startsWith('+') ? cleaned : `+${cleaned}`;
         };
 
@@ -516,11 +522,11 @@ export function generateICS(startDate: Date, endDate: Date): string {
             description += `Ek Bilgi: ${appointment.customerNote}\\n`;
         }
 
-        description += `\\nRandevunuza zamanında gelmenizi rica ederiz.\\nLütfen kimlik belgenizi yanınızda bulundurun.`;
+        description += `\\n${CALENDAR_CONFIG.ICS_REMINDERS.ON_TIME}`;
 
         // 3 ayrı alarm: 1 gün önce, sabah, 1 saat önce
         alarms = [
-            { trigger: '-P1D', description: 'Yarın randevunuz var. Lütfen kimlik belgenizi yanınızda bulundurun.' },
+            { trigger: '-P1D', description: 'Yarın randevunuz var. Rolex İzmir İstinyepark.' },
             { trigger: '-PT1H', description: '1 saat sonra randevunuz var. Lütfen zamanında gelin.' }
         ];
 

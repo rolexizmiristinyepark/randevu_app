@@ -63,8 +63,8 @@ const PROFILE_LABELS: Record<string, string> = {
     'w': 'Walk-in',
     'b': 'Butik',
     'm': 'Yönetim',
-    's': 'Personel',
-    'v': 'VIP'
+    's': 'Bireysel',
+    'v': 'Özel Müşteri'
 };
 
 const TRIGGER_LABELS: Record<string, string> = {

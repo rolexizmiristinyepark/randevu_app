@@ -492,10 +492,11 @@ label {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 18px;
-    height: 18px;
-    margin: -9px 0 0 -9px;
-    border: 2px solid #E8E8E8;
+    /* v3.9.19e: Spinner boyutu buton yüksekliğine uygun (32px) */
+    width: 32px;
+    height: 32px;
+    margin: -16px 0 0 -16px;
+    border: 3px solid #E8E8E8;
     border-top-color: #C9A55A;
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -584,10 +585,11 @@ label {
 
 .btn-spinner {
     display: inline-block;
-    width: 14px;
-    height: 14px;
+    /* v3.9.19e: Spinner boyutu buton içinde daha görünür (24px) */
+    width: 24px;
+    height: 24px;
     margin-right: 8px;
-    border: 2px solid rgba(255,255,255,0.3);
+    border: 3px solid rgba(255,255,255,0.3);
     border-top-color: #FAFAFA;
     border-radius: 50%;
     animation: spin 0.6s linear infinite;

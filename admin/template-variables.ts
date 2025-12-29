@@ -76,9 +76,9 @@ export const TEMPLATE_VARIABLES: TemplateVariable[] = [
     {
         key: 'randevu_profili',
         label: 'Randevu Profili',
-        description: 'Randevu profili (Genel, Walk-in, Butik, VIP vb.)',
+        description: 'Randevu profili (Genel, Walk-in, Butik, Özel Müşteri vb.)',
         systemField: 'profile',
-        example: 'VIP'
+        example: 'Özel Müşteri'
     },
 
     // ========== PERSONEL BİLGİLERİ ==========

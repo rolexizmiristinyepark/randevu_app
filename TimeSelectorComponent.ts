@@ -270,8 +270,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
             // Management appointment - all hours available (with half hours)
             const managementSlots: { time: string }[] = [];
 
-            // All hours and half hours from 10:00 to 20:00
-            for (let hour = 10; hour <= 20; hour++) {
+            // v3.9.19: Hizmet saatleri 11:00 - 20:30 (çalışma 10-22, hizmet 11-21)
+            for (let hour = 11; hour <= 20; hour++) {
                 managementSlots.push({ time: `${hour}:00` });
                 if (hour < 20) { // Don't add 20:30, end at 20:00
                     managementSlots.push({ time: `${hour}:30` });

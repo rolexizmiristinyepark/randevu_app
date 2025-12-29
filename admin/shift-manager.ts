@@ -128,19 +128,32 @@ function setupEventListeners(): void {
 }
 
 /**
+ * Get ISO 8601 week number
+ * Week 1 is the week containing the first Thursday of the year
+ */
+function getISOWeek(date: Date): { year: number; week: number } {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // Set to nearest Thursday: current date + 4 - current day number (Sunday = 7)
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    // Get first day of ISO week year
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    // Calculate week number
+    const weekNo = Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+    return { year: d.getUTCFullYear(), week: weekNo };
+}
+
+/**
  * Initialize - set current week
  */
 function init(): void {
-    // Set this week (Monday start)
+    // Set this week using ISO 8601 week number
     const today = new Date();
-    const year = today.getFullYear();
-    const firstDayOfYear = new Date(year, 0, 1);
-    const pastDaysOfYear = (today.getTime() - firstDayOfYear.getTime()) / 86400000;
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    const { year, week } = getISOWeek(today);
 
     const weekInput = document.getElementById('weekDate') as HTMLInputElement;
     if (weekInput) {
-        weekInput.value = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        weekInput.value = `${year}-W${String(week).padStart(2, '0')}`;
     }
 
     updateWeekDisplay();
@@ -191,6 +204,19 @@ async function load(): Promise<void> {
 }
 
 /**
+ * Get number of ISO weeks in a year
+ */
+function getWeeksInYear(year: number): number {
+    // A year has 53 weeks if Jan 1 is Thursday or if it's a leap year and Jan 1 is Wednesday
+    const jan1 = new Date(year, 0, 1);
+    const dec31 = new Date(year, 11, 31);
+    const jan1Day = jan1.getDay();
+    const dec31Day = dec31.getDay();
+    // Year has 53 weeks if Thursday is in week 1 or week 53
+    return (jan1Day === 4 || dec31Day === 4) ? 53 : 52;
+}
+
+/**
  * Go to previous week
  */
 function prevWeek(): void {
@@ -199,11 +225,14 @@ function prevWeek(): void {
 
     if (!weekValue) return;
 
-    const [year, week] = weekValue.split('-W');
-    const prevWeekNum = parseInt(week || '0') - 1;
+    const [yearStr, weekStr] = weekValue.split('-W');
+    const year = parseInt(yearStr || '0');
+    const prevWeekNum = parseInt(weekStr || '0') - 1;
 
     if (prevWeekNum < 1) {
-        weekInput.value = `${parseInt(year || '0') - 1}-W52`;
+        const prevYear = year - 1;
+        const weeksInPrevYear = getWeeksInYear(prevYear);
+        weekInput.value = `${prevYear}-W${String(weeksInPrevYear).padStart(2, '0')}`;
     } else {
         weekInput.value = `${year}-W${String(prevWeekNum).padStart(2, '0')}`;
     }
@@ -221,11 +250,13 @@ function nextWeek(): void {
 
     if (!weekValue) return;
 
-    const [year, week] = weekValue.split('-W');
-    const nextWeekNum = parseInt(week || '0') + 1;
+    const [yearStr, weekStr] = weekValue.split('-W');
+    const year = parseInt(yearStr || '0');
+    const nextWeekNum = parseInt(weekStr || '0') + 1;
+    const weeksInYear = getWeeksInYear(year);
 
-    if (nextWeekNum > 52) {
-        weekInput.value = `${parseInt(year || '0') + 1}-W01`;
+    if (nextWeekNum > weeksInYear) {
+        weekInput.value = `${year + 1}-W01`;
     } else {
         weekInput.value = `${year}-W${String(nextWeekNum).padStart(2, '0')}`;
     }

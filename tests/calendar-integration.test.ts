@@ -4,17 +4,17 @@ import { APPOINTMENT_TYPE_NAMES } from '../calendar-config';
 // Test calendar integration logic without module imports
 describe('Calendar Integration Logic', () => {
   describe('Appointment Type Names Configuration', () => {
-    it('should have Turkish names for all appointment types', () => {
-      expect(APPOINTMENT_TYPE_NAMES['delivery']).toBe('Saat Takdimi');
-      expect(APPOINTMENT_TYPE_NAMES['service']).toBe('Servis & Bakım');
-      expect(APPOINTMENT_TYPE_NAMES['consultation']).toBe('Ürün Danışmanlığı');
-      expect(APPOINTMENT_TYPE_NAMES['meeting']).toBe('Genel Görüşme');
-      expect(APPOINTMENT_TYPE_NAMES['management']).toBe('Yönetim');
+    it('should have Turkish names with Randevusu suffix for all appointment types', () => {
+      expect(APPOINTMENT_TYPE_NAMES['delivery']).toBe('Teslim Randevusu');
+      expect(APPOINTMENT_TYPE_NAMES['service']).toBe('Servis Randevusu');
+      expect(APPOINTMENT_TYPE_NAMES['consultation']).toBe('Danışmanlık Randevusu');
+      expect(APPOINTMENT_TYPE_NAMES['meeting']).toBe('Görüşme Randevusu');
+      expect(APPOINTMENT_TYPE_NAMES['management']).toBe('Yönetim Randevusu');
     });
 
     it('should have meeting as alias for general', () => {
-      expect(APPOINTMENT_TYPE_NAMES['meeting']).toBe('Genel Görüşme');
-      expect(APPOINTMENT_TYPE_NAMES['general']).toBe('Genel Görüşme');
+      expect(APPOINTMENT_TYPE_NAMES['meeting']).toBe('Görüşme Randevusu');
+      expect(APPOINTMENT_TYPE_NAMES['general']).toBe('Görüşme Randevusu');
     });
   });
 
@@ -107,24 +107,30 @@ describe('Calendar Integration Logic', () => {
   });
 
   describe('Event Summary (Title) Generation', () => {
-    it('should format customer event title correctly', () => {
-      const title = generateEventTitle('Serdar Benli', 'delivery');
+    it('should format customer event title correctly when staff assigned', () => {
+      const title = generateEventTitle('Serdar Benli', 'delivery', true);
 
-      expect(title).toBe('İzmir İstinyepark Rolex - Serdar Benli (Saat Takdimi)');
+      expect(title).toBe('İzmir İstinyepark Rolex - Serdar Benli (Teslim Randevusu)');
+    });
+
+    it('should format unassigned title correctly', () => {
+      const title = generateEventTitle('', 'meeting', false);
+
+      expect(title).toBe('Rolex İzmir İstinyepark - Görüşme Randevusu');
     });
 
     it('should handle unknown appointment type', () => {
-      const title = generateEventTitle('Serdar Benli', 'unknown');
+      const title = generateEventTitle('Serdar Benli', 'unknown', true);
 
       expect(title).toContain('Serdar Benli');
       expect(title).toContain('(Genel)'); // Fallback
     });
 
     it('should preserve Turkish characters in names', () => {
-      const title = generateEventTitle('Şükran Çiğdem', 'service');
+      const title = generateEventTitle('Şükran Çiğdem', 'service', true);
 
       expect(title).toContain('Şükran Çiğdem');
-      expect(title).toContain('Servis & Bakım');
+      expect(title).toContain('Servis Randevusu');
     });
   });
 
@@ -145,7 +151,7 @@ describe('Calendar Integration Logic', () => {
       expect(description).toContain('E-posta: serdar@rolex.com');
       expect(description).toContain('Tarih: 15 Şubat 2025');
       expect(description).toContain('Saat: 14:00');
-      expect(description).toContain('Konu: Saat Takdimi');
+      expect(description).toContain('Konu: Teslim Randevusu');
       expect(description).toContain('Ek Bilgi: VIP müşteri');
     });
 
@@ -235,9 +241,14 @@ describe('Calendar Integration Logic', () => {
     }
   }
 
-  function generateEventTitle(staffName: string, appointmentType: string): string {
+  function generateEventTitle(staffName: string, appointmentType: string, isStaffAssigned: boolean = true): string {
     const typeName = (APPOINTMENT_TYPE_NAMES as any)[appointmentType] || 'Genel';
-    return `İzmir İstinyepark Rolex - ${staffName} (${typeName})`;
+    if (isStaffAssigned) {
+      return `İzmir İstinyepark Rolex - ${staffName} (${typeName})`;
+    } else {
+      // v3.9.19d: Atanmamış - normal format
+      return `Rolex İzmir İstinyepark - ${typeName}`;
+    }
   }
 
   function generateEventDescription(data: {
@@ -269,7 +280,7 @@ describe('Calendar Integration Logic', () => {
       description += `Ek Bilgi: ${data.customerNote}\\n`;
     }
 
-    description += '\\nRandevunuza zamanında gelmenizi rica ederiz.\\nLütfen kimlik belgenizi yanınızda bulundurun.';
+    description += '\\nRandevunuza zamanında gelmenizi rica ederiz.';
 
     return description;
   }

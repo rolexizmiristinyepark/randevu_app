@@ -307,16 +307,33 @@ function openAssignStaffModal(appointment: any): void {
         infoDiv.appendChild(container);
     }
 
-    // Populate staff dropdown
+    // Populate staff dropdown (mevcut atanmış personeli hariç tut)
     const select = document.getElementById('assignStaffSelect') as HTMLSelectElement;
+    const currentStaffId = appointment.extendedProperties?.private?.staffId;
+    const isChanging = !!currentStaffId;  // Değiştirme mi yoksa ilk atama mı?
+
     if (select) {
         select.innerHTML = '<option value="">-- Seçin --</option>';
 
-        const activeStaff = dataStore.staff.filter(s => s.active && s.role === 'sales');
+        const activeStaff = dataStore.staff.filter(s =>
+            s.active &&
+            s.role === 'sales' &&
+            String(s.id) !== String(currentStaffId)  // Mevcut personeli hariç tut
+        );
         activeStaff.forEach(staff => {
             const option = getCreateElement()('option', { value: staff.id }, staff.name) as HTMLOptionElement;
             select.appendChild(option);
         });
+    }
+
+    // Modal başlık ve buton metnini güncelle
+    const modalHeader = document.querySelector('#assignStaffModal .modal-header');
+    const saveBtn = document.getElementById('saveAssignStaffBtn');
+    if (modalHeader) {
+        modalHeader.textContent = isChanging ? 'İlgili Personel Değiştir' : 'İlgili Personel Ata';
+    }
+    if (saveBtn) {
+        saveBtn.textContent = isChanging ? 'Değiştir' : 'Ata';
     }
 
     // Show modal
@@ -507,9 +524,13 @@ function render(appointments: any[]): void {
                 style: { display: 'flex', flexDirection: 'column', gap: '8px' }
             });
 
+            // Buton genişliği (tüm butonlar aynı genişlikte - "İlgili Değiştir" e göre)
+            const btnWidth = '145px';
+
             // Edit button
             const editBtn = getCreateElement()('button', {
-                className: 'btn btn-small btn-secondary'
+                className: 'btn btn-small btn-secondary',
+                style: { width: btnWidth }
             }, 'Düzenle') as HTMLButtonElement;
             editBtn.addEventListener('click', () => {
                 openEditModal(apt);
@@ -517,7 +538,8 @@ function render(appointments: any[]): void {
 
             // Cancel button
             const cancelBtn = getCreateElement()('button', {
-                className: 'btn btn-small btn-secondary'
+                className: 'btn btn-small btn-secondary',
+                style: { width: btnWidth }
             }, 'İptal Et') as HTMLButtonElement;
             cancelBtn.addEventListener('click', () => {
                 deleteAppointment(apt.id, cancelBtn);
@@ -539,19 +561,38 @@ function render(appointments: any[]): void {
             // DEBUG
             console.log('[AssignBtn]', { appointmentProfil, profilAyari, showAssignButton, hasNoStaff, staffName, staffId });
 
-            if (showAssignButton && hasNoStaff) {
-                const assignBtn = getCreateElement()('button', {
-                    className: 'btn btn-small',
-                    style: {
-                        background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)',
-                        borderColor: '#C9A55A',
-                        color: 'white'
-                    }
-                }, 'İlgili Ata');
-                assignBtn.addEventListener('click', () => {
-                    openAssignStaffModal(apt);
-                });
-                buttonsDiv.appendChild(assignBtn);
+            if (showAssignButton) {
+                if (hasNoStaff) {
+                    // İlgili atanmamış - "İlgili Ata" butonu
+                    const assignBtn = getCreateElement()('button', {
+                        className: 'btn btn-small',
+                        style: {
+                            width: btnWidth,
+                            background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)',
+                            borderColor: '#C9A55A',
+                            color: 'white'
+                        }
+                    }, 'İlgili Ata');
+                    assignBtn.addEventListener('click', () => {
+                        openAssignStaffModal(apt);
+                    });
+                    buttonsDiv.appendChild(assignBtn);
+                } else {
+                    // İlgili atanmış - "İlgili Değiştir" butonu (aynı altın rengi)
+                    const changeBtn = getCreateElement()('button', {
+                        className: 'btn btn-small',
+                        style: {
+                            width: btnWidth,
+                            background: 'linear-gradient(135deg, #C9A55A 0%, #B8944A 100%)',
+                            borderColor: '#C9A55A',
+                            color: 'white'
+                        }
+                    }, 'İlgili Değiştir');
+                    changeBtn.addEventListener('click', () => {
+                        openAssignStaffModal(apt);
+                    });
+                    buttonsDiv.appendChild(changeBtn);
+                }
             }
 
             flexContainer.appendChild(detailsDiv);

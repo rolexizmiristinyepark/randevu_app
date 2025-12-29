@@ -1362,14 +1362,15 @@ const WHATSAPP_VARIABLES = {
         'walkin': 'Walk-in Randevu Sistemi',
         'g': 'Genel Randevu Sistemi',
         'genel': 'Genel Randevu Sistemi',
-        's': 'Personel Randevu Sistemi',
-        'staff': 'Personel Randevu Sistemi',
+        's': 'Bireysel Randevu Sistemi',
+        'staff': 'Bireysel Randevu Sistemi',
+        'personel': 'Bireysel Randevu Sistemi',
         'b': 'Mağaza Randevu Sistemi',
         'boutique': 'Mağaza Randevu Sistemi',
         'm': 'Yönetim Randevu Sistemi',
         'management': 'Yönetim Randevu Sistemi',
-        'vip': 'VIP Randevu Sistemi',
-        'v': 'VIP Randevu Sistemi'
+        'vip': 'Özel Müşteri Randevu Sistemi',
+        'v': 'Özel Müşteri Randevu Sistemi'
       };
       return profileLabels[profile.toLowerCase()] || (profile + ' Randevu Sistemi');
     }

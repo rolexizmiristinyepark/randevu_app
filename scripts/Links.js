@@ -45,8 +45,8 @@ const UrlResolver = {
       ayarlar: ayar
     };
 
-    // idKontrol: true ise personel kontrolü yap
-    if (ayar.idKontrol) {
+    // idKontrolu: true ise personel kontrolü yap
+    if (ayar.idKontrolu) {
       if (!parsed.staffId) {
         return { success: false, error: 'Personel ID gerekli' };
       }
@@ -80,7 +80,7 @@ const UrlResolver = {
     if (!profilAdi) return null;
 
     var ayar = PROFIL_AYARLARI[profilAdi];
-    if (ayar.idKontrol && staffId) {
+    if (ayar.idKontrolu && staffId) {
       return '#' + code + '/' + staffId;
     }
     return '#' + code;

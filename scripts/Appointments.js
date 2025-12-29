@@ -51,8 +51,11 @@ const AppointmentService = {
           customerNote: event.getTag('customerNote') || '',
           shiftType: event.getTag('shiftType'),
           appointmentType: event.getTag('appointmentType'),
-          isVipLink: event.getTag('isVipLink') || 'false'
-        } : {}
+          isVipLink: event.getTag('isVipLink') || 'false',
+          profil: event.getTag('profil') || 'genel'  // v3.9.12: İlgili Ata butonu için
+        } : {
+          profil: event.getTag('profil') || 'genel'  // v3.9.12: staffId olmasa da profil döndür
+        }
       }
     };
   },
@@ -252,26 +255,32 @@ const AppointmentService = {
           }
 
           // 2. TESLİM RANDEVUSU → GÜNLÜK LİMİT KONTROLÜ
+          // v3.9.19: Profil ayarlarından maxDailyDelivery kullan
           if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery') {
-            const data = StorageService.getData();
-            const maxDaily = data.settings?.maxDaily || 4;
+            // Event'in profil tag'ından ayarları al
+            const eventProfil = event.getTag('profil') || 'genel';
+            const eventProfilAyarlari = ProfilAyarlariService.get(eventProfil);
+            const maxDailyDelivery = eventProfilAyarlari?.maxDailyDelivery || 3;
 
-            // O gündeki teslim randevularını say (kendisi hariç)
-            const dayStart = new Date(newDate + 'T00:00:00');
-            const dayEnd = new Date(newDate + 'T23:59:59');
-            const dayEvents = calendar.getEvents(dayStart, dayEnd);
+            // maxDailyDelivery = 0 → sınırsız
+            if (maxDailyDelivery > 0) {
+              // O gündeki teslim randevularını say (kendisi hariç)
+              const dayStart = new Date(newDate + 'T00:00:00');
+              const dayEnd = new Date(newDate + 'T23:59:59');
+              const dayEvents = calendar.getEvents(dayStart, dayEnd);
 
-            const deliveryCount = dayEvents.filter(e => {
-              const type = e.getTag('appointmentType');
-              const id = e.getId();
-              return (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) && id !== eventId;
-            }).length;
+              const deliveryCount = dayEvents.filter(e => {
+                const type = e.getTag('appointmentType');
+                const id = e.getId();
+                return (type === 'delivery' || type === CONFIG.APPOINTMENT_TYPES.DELIVERY) && id !== eventId;
+              }).length;
 
-            if (deliveryCount >= maxDaily) {
-              return {
-                success: false,
-                error: `Bu gün için teslim randevuları dolu (maksimum ${maxDaily}).`
-              };
+              if (deliveryCount >= maxDailyDelivery) {
+                return {
+                  success: false,
+                  error: `Bu gün için teslim randevuları dolu (maksimum ${maxDailyDelivery}).`
+                };
+              }
             }
           }
 
@@ -403,9 +412,37 @@ const AppointmentService = {
       // Event tag'ini güncelle
       event.setTag('staffId', String(staffId));
 
-      // Event title'ı güncelle (staff ismini ekle)
+      // Event title'ı güncelle (staff ismini ekle/değiştir)
+      // Format: "Müşteri (Profil) / Tür" → "Müşteri - Staff (Profil) / Tür"
+      // veya: "Müşteri - EskiStaff (Profil) / Tür" → "Müşteri - YeniStaff (Profil) / Tür"
       const currentTitle = event.getTitle();
-      const newTitle = currentTitle.replace(/- Atanacak/, `- ${staff.name}`);
+      let newTitle;
+
+      // Eski format: "XXX - Atanacak"
+      if (currentTitle.includes('- Atanacak')) {
+        newTitle = currentTitle.replace(/- Atanacak/, `- ${staff.name}`);
+      }
+      // Yeni format staff'lı: "Müşteri - Staff (Profil) / Tür"
+      else if (currentTitle.match(/^(.+?)\s*-\s*(.+?)\s*\(([^)]+)\)\s*\/\s*(.+)$/)) {
+        const match = currentTitle.match(/^(.+?)\s*-\s*(.+?)\s*\(([^)]+)\)\s*\/\s*(.+)$/);
+        const customerName = match[1].trim();
+        // match[2] = eski staff adı (değiştirilecek)
+        const profilLabel = match[3];
+        const appointmentType = match[4].trim();
+        newTitle = `${customerName} - ${staff.name} (${profilLabel}) / ${appointmentType}`;
+      }
+      // Yeni format staff'sız: "Müşteri (Profil) / Tür"
+      else if (currentTitle.match(/^(.+?)\s*\(([^)]+)\)\s*\/\s*(.+)$/)) {
+        const match = currentTitle.match(/^(.+?)\s*\(([^)]+)\)\s*\/\s*(.+)$/);
+        const customerName = match[1].trim();
+        const profilLabel = match[2];
+        const appointmentType = match[3].trim();
+        newTitle = `${customerName} - ${staff.name} (${profilLabel}) / ${appointmentType}`;
+      }
+      // Fallback: staff adını başa ekle
+      else {
+        newTitle = `${staff.name} - ${currentTitle}`;
+      }
       event.setTitle(newTitle);
 
       // Description'ı güncelle (staff bilgilerini ekle)
@@ -882,9 +919,13 @@ const AvailabilityService = {
 
   /**
    * Get slot availability for management appointments (VIP links)
-   * Full implementation in original Kod.js lines 2808-2873
+   * v3.9.19: Profil bazlı maxSlotAppointment kullanımı
+   *
+   * @param {string} date - Date in YYYY-MM-DD format
+   * @param {string} profil - Profile code (personel, vip, etc.)
+   * @returns {{success: boolean, slots: Array}}
    */
-  getManagementSlots: function(date, managementLevel) {
+  getManagementSlots: function(date, profil) {
     try {
       const calendar = CalendarService.getCalendar();
       const startDate = new Date(date + 'T00:00:00');
@@ -892,16 +933,20 @@ const AvailabilityService = {
 
       const events = calendar.getEvents(startDate, endDate);
 
-      // Generate slots: 10:00-20:00 with half-hours
+      // v3.9.19: Profil ayarlarından maxSlotAppointment al (default: 2)
+      const profilAyarlari = profil ? ProfilAyarlariService.get(profil) : null;
+      const maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 2;
+
+      // v3.9.19: Slot aralığı 11:00-20:30 (çalışma 10-22, hizmet 11-21)
       const slots = [];
-      for (let hour = 10; hour <= 20; hour++) {
+      for (let hour = 11; hour <= 20; hour++) {
         slots.push(`${hour}:00`);
         if (hour < 20) {
           slots.push(`${hour}:30`);
         }
       }
 
-      // Count VIP appointments per slot
+      // Count idKontrolu appointments per slot
       const slotCounts = {};
       slots.forEach(slot => { slotCounts[slot] = 0; });
 
@@ -911,25 +956,28 @@ const AvailabilityService = {
         const minutes = eventTime.getMinutes();
         const timeStr = `${hours}:${minutes === 0 ? '00' : minutes}`;
 
-        const isVipLink = event.getTag('isVipLink');
-        const title = event.getTitle();
+        // v3.9.18: Profil tag'ından idKontrolu kontrolü (hardcoded değil)
+        const eventProfil = event.getTag('profil');
+        const eventProfilAyarlari = eventProfil ? ProfilAyarlariService.get(eventProfil) : null;
+        const isIdKontrollu = eventProfilAyarlari?.idKontrolu === true;
 
-        const isVip = isVipLink === 'true' || title.includes('(HK)') || title.includes('(OK)') || title.includes('(HMK)');
-
-        if (isVip && slotCounts.hasOwnProperty(timeStr)) {
+        // idKontrolu=true olan profiller slot limitine dahil edilir
+        if (isIdKontrollu && slotCounts.hasOwnProperty(timeStr)) {
           slotCounts[timeStr]++;
         }
       });
 
+      // v3.9.19: Profil ayarlarından gelen maxSlotAppointment kullan
       const availabilityList = slots.map(slot => ({
         time: slot,
         count: slotCounts[slot],
-        available: slotCounts[slot] < 2  // Max 2 appointments per slot
+        available: maxSlotAppointment === 0 || slotCounts[slot] < maxSlotAppointment
       }));
 
       return {
         success: true,
-        slots: availabilityList
+        slots: availabilityList,
+        maxSlotAppointment: maxSlotAppointment
       };
 
     } catch (error) {
@@ -991,7 +1039,8 @@ function _validateInputs(params) {
   const {
     date, time, staffId, staffName, customerName, customerPhone,
     customerEmail, customerNote, appointmentType, duration,
-    profil, assignByAdmin, isVipLink, linkType
+    profil, assignByAdmin, isVipLink, linkType,
+    linkedStaffId, linkedStaffName  // v3.9.17: Link sahibi bilgisi
   } = params;
 
   // Date validation (YYYY-MM-DD format)
@@ -1026,19 +1075,25 @@ function _validateInputs(params) {
   }
 
   // Duration validation
-  const durationNum = parseInt(duration);
+  // TESLİM randevuları için süre HER ZAMAN 60 dakikadır (profil ayarlarından bağımsız)
+  // Profil ayarlarındaki süre sadece servis, görüşme ve gönderi için geçerlidir
+  const isDelivery = appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY || appointmentType === 'delivery';
+  const durationNum = isDelivery ? 60 : parseInt(duration);
+
   if (isNaN(durationNum) || durationNum < VALIDATION.INTERVAL_MIN || durationNum > VALIDATION.INTERVAL_MAX) {
     return { success: false, error: `Randevu süresi ${VALIDATION.INTERVAL_MIN}-${VALIDATION.INTERVAL_MAX} dakika arasında olmalıdır` };
   }
 
   // Staff ID validation (profil bazlı)
+  // v3.9.19: profilAyarlari'dan direkt okuma (isVipLink legacy kaldırıldı)
   const profilAyarlari = profil
     ? ProfilAyarlariService.get(profil)
     : getProfilAyarlariByLinkType(linkType);
   const staffFilter = profilAyarlari?.staffFilter || 'all';
-  const staffOptional = staffFilter === 'none' || assignByAdmin === true || isVipLink;
+  // staffOptional: staffFilter=none veya profil ayarlarında assignByAdmin=true ise personel zorunlu değil
+  const staffOptional = staffFilter === 'none' || profilAyarlari?.assignByAdmin === true;
 
-  log.info('Staff validation:', { profil, staffFilter, staffId, staffOptional, assignByAdmin });
+  log.info('Staff validation:', { profil, staffFilter, staffId, staffOptional, profilAssignByAdmin: profilAyarlari?.assignByAdmin });
   if (!staffId && !staffOptional) {
     return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_REQUIRED };
   }
@@ -1051,7 +1106,10 @@ function _validateInputs(params) {
     customerNote: customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '',
     staffName: staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '',
     durationNum,
-    profilAyarlari
+    profilAyarlari,
+    // v3.9.17: Link sahibi bilgisi (idKontrolu profiller için başharf gösterimi)
+    linkedStaffId: linkedStaffId || null,
+    linkedStaffName: linkedStaffName ? Utils.toTitleCase(Utils.sanitizeString(linkedStaffName, VALIDATION.STRING_MAX_LENGTH)) : null
   };
 
   return { success: true, sanitized };
@@ -1060,31 +1118,60 @@ function _validateInputs(params) {
 /**
  * Build calendar event title - GLOBAL FORMAT for all profiles
  * Format: Müşteri AdSoyad - İlgili (Randevu Profili) / Randevu Türü
+ * idKontrolu=true: Müşteri - İlgili (Profil - LinkSahibiBaşharf) / Tür
  * @param {Object} params - Title parameters
  * @returns {string} Event title
  * @private
  */
 function _buildEventTitle(params) {
-  const { customerName, staffName, profil, appointmentType } = params;
-  const hasStaff = staffName && staffName.trim() !== '';
+  const { customerName, staffName, profil, appointmentType, profilAyarlari, linkedStaffName } = params;
+  const hasStaff = staffName && staffName.trim() !== '' && staffName !== 'Atanmadı';
   const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
 
   // Profil görüntüleme isimleri
   const profilLabels = {
     genel: 'Genel',
-    personel: 'Personel',
-    vip: 'VIP',
+    personel: 'Bireysel',      // Personel → Bireysel
+    vip: 'Özel Müşteri',       // VIP → Özel Müşteri
     boutique: 'Mağaza',
     yonetim: 'Yönetim',
     gunluk: 'Walk-in'
   };
   const profilLabel = profilLabels[profil] || profil || 'Genel';
 
-  // TEK GLOBAL FORMAT: Müşteri - İlgili (Profil) / Tür
+  // v3.9.17: idKontrolu ayarı profil ayarlarından alınır (hardcoded değil)
+  const isIdKontrollu = profilAyarlari?.idKontrolu === true;
+
+  // İsim'den başharfleri al (örn: "Hakan Kaya" → "HK")
+  const getInitials = (name) => {
+    if (!name) return '';
+    return name.split(' ')
+      .filter(part => part.length > 0)
+      .map(part => part.charAt(0).toUpperCase())
+      .join('');
+  };
+
+  // v3.9.17: idKontrolu için LINK SAHİBİ başharfleri (URL'deki ID'nin sahibi)
+  const linkOwnerInitials = isIdKontrollu && linkedStaffName ? getInitials(linkedStaffName) : null;
+
+  // TEK GLOBAL FORMAT
   if (hasStaff) {
-    return `${customerName} - ${staffName} (${profilLabel}) / ${appointmentTypeLabel}`;
+    if (linkOwnerInitials) {
+      // idKontrolu=true: Müşteri - İlgili (Profil - LinkSahibiBaşharf) / Tür
+      return `${customerName} - ${staffName} (${profilLabel} - ${linkOwnerInitials}) / ${appointmentTypeLabel}`;
+    } else {
+      // Normal: Müşteri - İlgili (Profil) / Tür
+      return `${customerName} - ${staffName} (${profilLabel}) / ${appointmentTypeLabel}`;
+    }
   } else {
-    return `${customerName} (${profilLabel}) / ${appointmentTypeLabel}`;
+    // Staff atanmamış - her zaman "- Atanmadı" göster
+    if (linkOwnerInitials) {
+      // idKontrolu=true, staff yok: Müşteri - Atanmadı (Profil - LinkSahibiBaşharf) / Tür
+      return `${customerName} - Atanmadı (${profilLabel} - ${linkOwnerInitials}) / ${appointmentTypeLabel}`;
+    } else {
+      // Normal, staff yok: Müşteri - Atanmadı (Profil) / Tür
+      return `${customerName} - Atanmadı (${profilLabel}) / ${appointmentTypeLabel}`;
+    }
   }
 }
 
@@ -1243,7 +1330,7 @@ function createAppointment(params) {
     }
 
     const { sanitized } = inputResult;
-    const { customerName, customerPhone, customerEmail, customerNote, staffName, durationNum, profilAyarlari } = sanitized;
+    const { customerName, customerPhone, customerEmail, customerNote, staffName, durationNum, profilAyarlari, linkedStaffId, linkedStaffName } = sanitized;
 
     // StorageService.getData() - tek seferlik çağrı (DRY prensibi)
     const data = StorageService.getData();
@@ -1256,8 +1343,8 @@ function createAppointment(params) {
       hour,
       appointmentType,
       staffId,
-      // v3.9: Profil bazlı çalışma
-      assignByAdmin: assignByAdmin === true || isVipLink,  // Legacy uyumluluk
+      // v3.9.19: Profil ayarlarından assignByAdmin kontrolü
+      assignByAdmin: profilAyarlari?.assignByAdmin === true,
       profil: profil || (linkType ? LINK_TYPE_TO_PROFILE[linkType] : 'genel')
     });
 
@@ -1356,28 +1443,33 @@ function createAppointment(params) {
         const endDateTime = new Date(startDateTime.getTime() + (durationNum * 60 * 1000));
 
         // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
+        // v3.9.19: Profil ayarlarından maxDailyDelivery kullan
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
-          const maxDelivery = data.settings?.maxDaily || 3;
+          const maxDailyDelivery = profilAyarlari?.maxDailyDelivery || 3;
 
-          // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
-          const countResult = AppointmentService.getAppointments(date, {
-            countOnly: true,
-            appointmentType: CONFIG.APPOINTMENT_TYPES.DELIVERY
-          });
+          // maxDailyDelivery = 0 → sınırsız
+          if (maxDailyDelivery > 0) {
+            // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
+            const countResult = AppointmentService.getAppointments(date, {
+              countOnly: true,
+              appointmentType: CONFIG.APPOINTMENT_TYPES.DELIVERY
+            });
 
-          if (countResult.success && countResult.count >= maxDelivery) {
-            return {
-              success: false,
-              error: CONFIG.ERROR_MESSAGES.MAX_DELIVERY_REACHED.replace('{max}', maxDelivery)
-            };
+            if (countResult.success && countResult.count >= maxDailyDelivery) {
+              return {
+                success: false,
+                error: CONFIG.ERROR_MESSAGES.MAX_DELIVERY_REACHED.replace('{max}', maxDailyDelivery)
+              };
+            }
           }
         }
 
         // Event başlığı - helper function kullan
-        const title = _buildEventTitle({ customerName, staffName, profil, appointmentType });
+        const title = _buildEventTitle({ customerName, staffName, profil, appointmentType, profilAyarlari, linkedStaffName });
         const appointmentTypeLabel = CONFIG.APPOINTMENT_TYPE_LABELS[appointmentType] || appointmentType;
 
         // Event açıklaması
+        const createdAt = Utilities.formatDate(new Date(), CONFIG.TIMEZONE, 'dd.MM.yyyy HH:mm');
         const description = `
 Randevu Detayları:
 ─────────────────
@@ -1386,9 +1478,9 @@ Telefon: +${customerPhone}
 E-posta: ${customerEmail || CONFIG.EMAIL_TEMPLATES.COMMON.NOT_SPECIFIED}
 İlgili: ${staffName}
 Konu: ${appointmentTypeLabel}
-
 ${customerNote ? 'Not: ' + customerNote : ''}
 
+Oluşturulma: ${createdAt}
 Bu randevu otomatik olarak oluşturulmuştur.
         `.trim();
 
@@ -1413,6 +1505,9 @@ Bu randevu otomatik olarak oluşturulmuştur.
           // Legacy: Geriye uyumluluk için isVipLink ve linkType korunuyor
           calEvent.setTag('isVipLink', profil === 'vip' ? 'true' : 'false');
           calEvent.setTag('linkType', profil || 'general');  // Legacy mapping
+          // v3.9.17: Link sahibi bilgisi (idKontrolu profiller için)
+          if (linkedStaffId) calEvent.setTag('linkedStaffId', String(linkedStaffId));
+          if (linkedStaffName) calEvent.setTag('linkedStaffName', linkedStaffName);
 
           // ✅ KVKK Açık Rıza Kaydı (Yasal ispat için - ANALIZ_FINAL #2)
           calEvent.setTag('kvkkConsentDate', new Date().toISOString());

@@ -34,8 +34,8 @@ const PROFIL_LABELS: Record<string, string> = {
     gunluk: 'Günlük',
     boutique: 'Butik',
     yonetim: 'Yönetim',
-    personel: 'Personel',
-    vip: 'VIP'
+    personel: 'Bireysel',
+    vip: 'Özel Müşteri'
 };
 
 // Kod mapping

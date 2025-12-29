@@ -287,9 +287,10 @@ const ACTION_HANDLERS = {
   }),
 
   // Yönetim Linki API'leri (hk, ok, hmk)
+  // v3.9.19: profil parametresi ile slot limiti profil ayarlarından alınır
   'getManagementSlotAvailability': (e) => AvailabilityService.getManagementSlots(
     e.parameter.date,
-    parseInt(e.parameter.managementLevel)
+    e.parameter.profil || 'genel'
   ),
   'getAvailableStaffForSlot': (e) => AvailabilityService.getAvailableStaffForSlot(
     e.parameter.date,

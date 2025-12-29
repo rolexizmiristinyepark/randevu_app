@@ -246,9 +246,7 @@ const ApiService = {
 
             // Başarılı response kontrolü
             if (data && typeof data === 'object') {
-                if (!data.success && (data as any).requiresAuth) {
-                    console.warn('[API] Session expired or auth failed');
-                }
+                // Note: requiresAuth is handled by the UI layer, not logged here
                 return data;
             } else {
                 throw new Error('Geçersiz API yanıtı');

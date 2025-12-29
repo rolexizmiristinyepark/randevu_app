@@ -5,14 +5,15 @@
 
 export const CALENDAR_CONFIG = {
     // Appointment type display names (customer-facing)
+    // v3.9.19d: "TYPE Randevusu" formatı
     APPOINTMENT_TYPE_NAMES: {
-        'delivery': 'Saat Takdimi',
-        'service': 'Servis & Bakım',
-        'consultation': 'Ürün Danışmanlığı',
-        'general': 'Genel Görüşme',
-        'meeting': 'Genel Görüşme',      // Alias for 'general'
-        'management': 'Yönetim',
-        'shipping': 'Gönderi'
+        'delivery': 'Teslim Randevusu',
+        'service': 'Servis Randevusu',
+        'consultation': 'Danışmanlık Randevusu',
+        'general': 'Görüşme Randevusu',
+        'meeting': 'Görüşme Randevusu',      // Alias for 'general'
+        'management': 'Yönetim Randevusu',
+        'shipping': 'Gönderi Randevusu'
     },
 
     // ICS file metadata
@@ -36,7 +37,7 @@ export const CALENDAR_CONFIG = {
     // Dynamic reminders based on appointment type
     ICS_REMINDERS: {
         ON_TIME: 'Randevunuza zamanında gelmenizi rica ederiz.',
-        BRING_ID: 'Lütfen kimlik belgenizi yanınızda bulundurun.',
+        BRING_ID: '', // Kaldırıldı - v3.9.19
         BRING_WATCH: 'Lütfen saatinizi ve ilgili belgeleri yanınızda getirin.'
     }
 };

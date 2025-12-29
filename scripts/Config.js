@@ -186,14 +186,16 @@ const CONFIG = {
 
   // ICS Calendar Texts
   // ⚠️ SOURCE OF TRUTH: calendar-config.ts (manuel sync gerekli - Apps Script TS import yapamıyor)
+  // v3.9.19d: "TYPE Randevusu" formatı
   ICS_TEMPLATES: {
     CUSTOMER_TYPES: {
-      delivery: 'Saat Takdimi',
-      service: 'Servis & Bakım',      // Frontend ile sync (Teknik Servis → Servis & Bakım)
-      consultation: 'Ürün Danışmanlığı', // Frontend'den eklendi
-      general: 'Görüşme',       // Frontend'den eklendi
-      meeting: 'Görüşme',       // Alias for 'general'
-      management: 'Yönetim'
+      delivery: 'Teslim Randevusu',
+      service: 'Servis Randevusu',
+      consultation: 'Danışmanlık Randevusu',
+      general: 'Görüşme Randevusu',
+      meeting: 'Görüşme Randevusu',       // Alias for 'general'
+      management: 'Yönetim Randevusu',
+      shipping: 'Gönderi Randevusu'       // YENİ: Gönderi
     },
     SECTION_TITLE: 'RANDEVU BİLGİLERİ',
     LABELS: {
@@ -207,8 +209,8 @@ const CONFIG = {
     },
     REMINDERS: {
       ON_TIME: 'Randevunuza zamanında gelmenizi rica ederiz.',
-      BRING_ID: 'Lütfen kimlik belgenizi yanınızda bulundurun.',
-      BRING_WATCH: 'Lütfen saatinizi ve ilgili belgeleri yanınızda getirin.'  // YENİ
+      BRING_ID: '', // Kaldırıldı - v3.9.19
+      BRING_WATCH: 'Lütfen saatinizi ve ilgili belgeleri yanınızda getirin.'
     },
     CONFIRMED: 'Randevunuz onaylandı',
     PRODID: '-//Rolex İzmir İstinyepark//Randevu Sistemi//TR',

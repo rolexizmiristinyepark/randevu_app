@@ -155,8 +155,11 @@ async function handleFormSubmit(): Promise<void> {
 
     // v3.9: Profil adını gönder (linkType kaldırıldı)
     const currentProfile = state.get('currentProfile');
+    // v3.9.17: idKontrolu profiller için link sahibi bilgisi
+    const linkedStaffId = state.get('linkedStaffId');
+    const linkedStaffName = state.get('linkedStaffName');
 
-    console.log('DEBUG: currentProfile=', currentProfile, 'staffId=', assignedStaffId, 'assignByAdmin=', assignByAdmin);
+    console.log('DEBUG: currentProfile=', currentProfile, 'staffId=', assignedStaffId, 'assignByAdmin=', assignByAdmin, 'linkedStaffId=', linkedStaffId);
 
     try {
         const result = await apiCall('createAppointment', {
@@ -174,6 +177,8 @@ async function handleFormSubmit(): Promise<void> {
             turnstileToken: turnstileToken,  // Bot protection token
             profil: currentProfile,  // v3.9: Profil adı
             assignByAdmin: assignByAdmin,  // v3.9: Admin atama flag
+            linkedStaffId: linkedStaffId,  // v3.9.17: URL'deki ID (link sahibi)
+            linkedStaffName: linkedStaffName,  // v3.9.17: Link sahibinin adı
             kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
         });
 

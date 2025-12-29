@@ -159,21 +159,25 @@ function saveToState(info: ProfileInfo): void {
 export function applyProfileUI(info: ProfileInfo): void {
   const header = document.getElementById('staffHeader');
   if (header) {
-    // Profil tipine göre başlık belirle
+    // v3.9.19f: Profil tipine göre başlık belirle
     let headerText = 'Randevu Sistemi';
     if (info.code === 'v') {
-      // VIP profili - kişi adı gösterilmez
+      // VIP profili (Özel Müşteri)
       headerText = 'Özel Müşteri Randevu Sistemi';
-    } else if (info.code === 's' && info.staffData?.name) {
-      // Staff profili - kişi adı gösterilir
-      headerText = info.staffData.name;
+    } else if (info.code === 's') {
+      // Bireysel profil - URL'deki ID'nin sahibinin adı
+      headerText = info.staffData?.name || 'Randevu Sistemi';
     } else if (info.code === 'b') {
+      // Boutique - admin panelinden oluşturulan (olduğu gibi kalsın)
       headerText = 'Mağaza Randevu Sistemi';
     } else if (info.code === 'm') {
+      // Yönetim - admin panelinden oluşturulan (olduğu gibi kalsın)
       headerText = 'Yönetim Randevu Sistemi';
     } else if (info.code === 'g') {
-      headerText = 'Genel Randevu Sistemi';
+      // Genel profil - sadece "Randevu Sistemi"
+      headerText = 'Randevu Sistemi';
     } else if (info.code === 'w') {
+      // Günlük profil
       headerText = 'Günlük Randevu Sistemi';
     }
     header.textContent = headerText;
