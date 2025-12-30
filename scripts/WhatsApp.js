@@ -1266,135 +1266,32 @@ function formatPhoneNumber(phone) {
   return '+' + digits;
 }
 
-const WHATSAPP_VARIABLES = {
-  // Key: Backend'de kullanılan key
-  // label: Admin panel'de gösterilen isim
-  // getValue: Randevu verisinden değeri alan fonksiyon
-  personel: {
-    label: 'Personel (Ad Soyad)',
-    getValue: function(data) { return data.staffName || data.assignedStaff || ''; }
-  },
-  musteri: {
-    label: 'Müşteri (Ad Soyad)',
-    getValue: function(data) { return data.customerName || ''; }
-  },
-  musteri_tel: {
-    label: 'Müşteri Tel (05XX veya +XX)',
-    getValue: function(data) { return formatPhoneNumber(data.customerPhone); }
-  },
-  musteri_email: {
-    label: 'Müşteri E-posta',
-    getValue: function(data) { return data.customerEmail || ''; }
-  },
-  randevu_tarihi: {
-    label: 'Randevu Tarihi (28 Kasım 2025, Cuma)',
-    getValue: function(data) {
-      var dateStr = data.date || data.appointmentDate;
-      if (!dateStr) return '';
+// WhatsApp değişkenleri artık Variables.js'den gelir (MESSAGE_VARIABLES)
+// Backward compatibility için WHATSAPP_VARIABLES = MESSAGE_VARIABLES referansı
+// Tüm değişkenler: musteri, musteri_tel, musteri_mail, randevu_tarihi, randevu_saati,
+// randevu_ek_bilgi, personel, personel_tel, personel_mail, randevu_turu, randevu_profili
 
-      // Eğer zaten "14 Aralık 2025" formatında geldiyse
-      // Gün adını ekleyerek döndür
-      const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-                             'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-      const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-
-      // "14 Aralık 2025" formatını parse et
-      var parts = String(dateStr).split(' ');
-      if (parts.length >= 3) {
-        var day = parseInt(parts[0]);
-        var monthName = parts[1];
-        var year = parseInt(parts[2]);
-        var monthIndex = turkishMonths.indexOf(monthName);
-
-        if (!isNaN(day) && monthIndex >= 0 && !isNaN(year)) {
-          var d = new Date(year, monthIndex, day);
-          var dayName = days[d.getDay()];
-          return day + ' ' + monthName + ' ' + year + ', ' + dayName;
-        }
-      }
-
-      // Eğer "2025-12-14" formatındaysa
-      if (dateStr.includes('-') && dateStr.length === 10) {
-        var d = new Date(dateStr + 'T00:00:00');
-        if (!isNaN(d.getTime())) {
-          return d.getDate() + ' ' + turkishMonths[d.getMonth()] + ' ' + d.getFullYear() + ', ' + days[d.getDay()];
-        }
-      }
-
-      // Fallback: olduğu gibi döndür
-      return dateStr;
-    }
-  },
-  randevu_saati: {
-    label: 'Randevu Saati',
-    getValue: function(data) { return data.time || data.appointmentTime || ''; }
-  },
-  randevu_turu: {
-    label: 'Randevu Türü (Teslim, Görüşme, Teknik Servis)',
-    getValue: function(data) {
-      var type = data.appointmentType || '';
-      // Randevu türü label'larını dönüştür
-      var typeLabels = {
-        'meeting': 'Görüşme',
-        'gorisme': 'Görüşme',
-        'delivery': 'Teslim',
-        'teslim': 'Teslim',
-        'technical': 'Teknik Servis',
-        'teknik': 'Teknik Servis',
-        'teknik_servis': 'Teknik Servis',
-        'service': 'Teknik Servis',
-        'test': 'Test Randevusu'
-      };
-      return typeLabels[type.toLowerCase()] || type;
-    }
-  },
-  ek_bilgi: {
-    label: 'Ek Bilgi (Müşteri Notu)',
-    getValue: function(data) { return data.customerNote || data.extraInfo || data.description || data.notes || '-'; }
-  },
-  randevu_profili: {
-    label: 'Randevu Profili',
-    getValue: function(data) {
-      var profile = data.profile || data.linkType || '';
-      // Profil kod'larını okunabilir isimlere dönüştür
-      var profileLabels = {
-        'w': 'Walk-in Randevu Sistemi',
-        'walkin': 'Walk-in Randevu Sistemi',
-        'g': 'Genel Randevu Sistemi',
-        'genel': 'Genel Randevu Sistemi',
-        's': 'Bireysel Randevu Sistemi',
-        'staff': 'Bireysel Randevu Sistemi',
-        'personel': 'Bireysel Randevu Sistemi',
-        'b': 'Mağaza Randevu Sistemi',
-        'boutique': 'Mağaza Randevu Sistemi',
-        'm': 'Yönetim Randevu Sistemi',
-        'management': 'Yönetim Randevu Sistemi',
-        'vip': 'Özel Müşteri Randevu Sistemi',
-        'v': 'Özel Müşteri Randevu Sistemi'
-      };
-      return profileLabels[profile.toLowerCase()] || (profile + ' Randevu Sistemi');
-    }
-  },
-  personel_tel: {
-    label: 'Personel Telefonu (05XX)',
-    getValue: function(data) { return formatPhoneNumber(data.staffPhone); }
-  },
-  personel_email: {
-    label: 'Personel E-posta',
-    getValue: function(data) { return data.staffEmail || ''; }
-  }
+// Eski key'leri yeni key'lere map et (backward compatibility)
+const WHATSAPP_VARIABLE_KEY_MAP = {
+  'musteri_email': 'musteri_mail',
+  'ek_bilgi': 'randevu_ek_bilgi',
+  'personel_email': 'personel_mail'
 };
+
+// WHATSAPP_VARIABLES artık MESSAGE_VARIABLES'ı kullanır
+function getWhatsAppVariable(key, data) {
+  // Eski key'i yeni key'e çevir
+  var actualKey = WHATSAPP_VARIABLE_KEY_MAP[key] || key;
+  return getVariableValue(actualKey, data);
+}
 
 /**
  * Değişken listesini admin panel formatında döndür
  * Admin panel bu fonksiyonu çağırarak değişken listesini alır
+ * Artık merkezi MESSAGE_VARIABLES kullanılır
  */
 function getWhatsAppVariableOptions() {
-  const options = {};
-  for (var key in WHATSAPP_VARIABLES) {
-    options[key] = WHATSAPP_VARIABLES[key].label;
-  }
-  return { success: true, data: options };
+  return getMessageVariables();
 }
 
 // ==================== WHATSAPP TEMPLATE SERVICE (v4.0) ====================
@@ -1441,13 +1338,12 @@ const WhatsAppTemplateService = {
   },
 
   /**
-   * Randevu verilerinden değişken değerini al (global sistemden)
+   * Randevu verilerinden değişken değerini al (Variables.js'den)
    */
   getVariableValue: function(variableKey, appointmentData) {
-    if (WHATSAPP_VARIABLES[variableKey] && WHATSAPP_VARIABLES[variableKey].getValue) {
-      return WHATSAPP_VARIABLES[variableKey].getValue(appointmentData);
-    }
-    return '';
+    // Eski key'leri yeni key'lere map et (backward compatibility)
+    var actualKey = WHATSAPP_VARIABLE_KEY_MAP[variableKey] || variableKey;
+    return getVariableValue(actualKey, appointmentData);
   },
 
   /**
@@ -1668,13 +1564,14 @@ const WhatsAppTemplateService = {
    */
   _sanitizeVariables: function(variables) {
     const sanitized = {};
-    const allowedKeys = Object.keys(WHATSAPP_VARIABLES);
-    
+    // MESSAGE_VARIABLES (Variables.js) + eski key'ler
+    const allowedKeys = Object.keys(MESSAGE_VARIABLES).concat(Object.keys(WHATSAPP_VARIABLE_KEY_MAP));
+
     for (const key in variables) {
       if (variables.hasOwnProperty(key)) {
         const sanitizedKey = this._sanitizeInput(key);
         const sanitizedValue = this._sanitizeInput(variables[key]);
-        
+
         // Sadece bilinen variable key'leri kabul et
         if (allowedKeys.includes(sanitizedValue)) {
           sanitized[sanitizedKey] = sanitizedValue;

@@ -64,6 +64,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 let _dataStore: DataStore;
 let flows: MailFlow[] = [];
 let templates: MailTemplate[] = [];
+let messageVariables: Record<string, string> = {}; // { key: label }
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -86,7 +87,8 @@ export async function initMailManager(store: DataStore): Promise<void> {
     // Initial data load
     await Promise.all([
         loadFlows(),
-        loadTemplates()
+        loadTemplates(),
+        loadMessageVariables()
     ]);
 }
 
@@ -504,6 +506,62 @@ async function loadTemplates(): Promise<void> {
     } catch (error) {
         logError(error, { action: 'loadMailTemplates' });
         showContainerEmpty(container, 'Henüz şablon tanımlanmamış');
+    }
+}
+
+/**
+ * Load message variables from backend (Variables.js)
+ */
+async function loadMessageVariables(): Promise<void> {
+    try {
+        const response = await ApiService.call('getMessageVariables', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            messageVariables = response.data;
+            populateMailVariablesContainer();
+        }
+    } catch (error) {
+        logError(error, { action: 'loadMessageVariables' });
+    }
+}
+
+/**
+ * Populate the mail variables container with clickable variable buttons
+ */
+function populateMailVariablesContainer(): void {
+    const container = document.getElementById('mailVariablesContainer');
+    if (!container) return;
+
+    // Clear existing children safely
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    for (const [key, label] of Object.entries(messageVariables)) {
+        const code = document.createElement('code');
+        code.style.cssText = 'padding: 4px 8px; background: #F5F5F0; border-radius: 4px; font-size: 12px; cursor: pointer; display: inline-block;';
+        code.setAttribute('data-var', `{{${key}}}`);
+        code.setAttribute('title', label);
+        code.textContent = `{{${key}}}`;
+
+        // Click to copy
+        code.addEventListener('click', () => {
+            const varText = `{{${key}}}`;
+            navigator.clipboard.writeText(varText).then(() => {
+                getUI().showAlert(`${varText} kopyalandı`, 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textarea = document.createElement('textarea');
+                textarea.value = varText;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                getUI().showAlert(`${varText} kopyalandı`, 'success');
+            });
+        });
+
+        container.appendChild(code);
     }
 }
 

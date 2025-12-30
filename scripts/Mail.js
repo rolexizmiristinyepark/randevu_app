@@ -18,19 +18,8 @@
 const MAIL_FLOW_SHEET = 'MAIL_FLOWS';
 const MAIL_TEMPLATE_SHEET = 'MAIL_TEMPLATES';
 
-// Değişken placeholder'lar - {{VARIABLE_NAME}} formatında
-const MAIL_VARIABLES = {
-  'ISIM': 'Müşteri Adı',
-  'SOYISIM': 'Müşteri Soyadı',
-  'TARIH': 'Randevu Tarihi',
-  'SAAT': 'Randevu Saati',
-  'TELEFON': 'Telefon',
-  'EMAIL': 'E-posta',
-  'PERSONEL': 'Personel Adı',
-  'MAGAZA': 'Mağaza Adı',
-  'RANDEVU_TIP': 'Randevu Türü',
-  'NOT': 'Müşteri Notu'
-};
+// Değişkenler Variables.js'den gelir (MESSAGE_VARIABLES)
+// Mail şablonlarında {{musteri}}, {{randevu_tarihi}} vb. kullanılır
 
 // Trigger türleri
 const MAIL_TRIGGERS = {
@@ -295,9 +284,9 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         continue;
       }
 
-      // Variable'ları değiştir
-      const subject = replaceMailVariables(template.subject, appointmentData);
-      const body = replaceMailVariables(template.body, appointmentData);
+      // Variable'ları değiştir (Variables.js'den)
+      const subject = replaceMessageVariables(template.subject, appointmentData);
+      const body = replaceMessageVariables(template.body, appointmentData);
 
       // Mail gönder
       const email = appointmentData.email || appointmentData.customerEmail;
@@ -329,44 +318,7 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
   }
 }
 
-/**
- * Şablon içindeki değişkenleri gerçek değerlerle değiştir
- */
-function replaceMailVariables(text, data) {
-  if (!text) return '';
-
-  let result = text;
-
-  // {{VARIABLE}} formatındaki tüm değişkenleri değiştir
-  result = result.replace(/\{\{ISIM\}\}/g, data.customerName || data.name || '');
-  result = result.replace(/\{\{SOYISIM\}\}/g, data.customerSurname || data.surname || '');
-  result = result.replace(/\{\{TARIH\}\}/g, formatDateTurkish(data.date) || '');
-  result = result.replace(/\{\{SAAT\}\}/g, data.time || data.startTime || '');
-  result = result.replace(/\{\{TELEFON\}\}/g, data.phone || data.customerPhone || '');
-  result = result.replace(/\{\{EMAIL\}\}/g, data.email || data.customerEmail || '');
-  result = result.replace(/\{\{PERSONEL\}\}/g, data.staffName || data.linkedStaffName || '');
-  result = result.replace(/\{\{MAGAZA\}\}/g, CONFIG.STORE_NAME || 'Rolex Boutique');
-  result = result.replace(/\{\{RANDEVU_TIP\}\}/g, data.appointmentType || data.type || '');
-  result = result.replace(/\{\{NOT\}\}/g, data.note || data.customerNote || '');
-
-  return result;
-}
-
-/**
- * Tarihi Türkçe formatla (DD.MM.YYYY)
- */
-function formatDateTurkish(dateStr) {
-  if (!dateStr) return '';
-  try {
-    const date = new Date(dateStr);
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
-  } catch (error) {
-    return dateStr;
-  }
-}
+// Değişken değiştirme: Variables.js'deki replaceMessageVariables() kullanılır
 
 // ==================== HELPER FUNCTIONS ====================
 

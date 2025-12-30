@@ -47,7 +47,9 @@ const SESSION_ADMIN_ACTIONS = [
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   // Mail Flow & Template CRUD (v3.9.20)
   'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
-  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate'
+  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
+  // Merkezi değişkenler (v3.9.22)
+  'getMessageVariables'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -432,7 +434,10 @@ const ACTION_HANDLERS = {
       return { success: false, error: handlerError.toString() };
     }
   },
-  'deleteMailTemplate': (e) => deleteMailTemplate({ id: e.parameter.id })
+  'deleteMailTemplate': (e) => deleteMailTemplate({ id: e.parameter.id }),
+
+  // Merkezi değişkenler (v3.9.22) - Variables.js'den
+  'getMessageVariables': () => getMessageVariables()
 };
 
 /**
