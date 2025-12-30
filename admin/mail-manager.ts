@@ -28,7 +28,7 @@ interface MailFlow {
     name: string;
     description: string;
     profiles: string[];
-    trigger: string; // 'RANDEVU_OLUŞTUR' | 'RANDEVU_İPTAL' | 'HATIRLATMA' etc.
+    triggers: string[]; // ['RANDEVU_OLUŞTUR', 'RANDEVU_İPTAL', etc.]
     templateId: string;
     active: boolean;
 }
@@ -216,9 +216,10 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     profilesSpan.textContent = '📋 ' + profilesText;
     details.appendChild(profilesSpan);
 
-    // Trigger
+    // Triggers
+    const triggersText = flow.triggers.map(t => TRIGGER_LABELS[t] || t).join(', ');
     const triggerSpan = document.createElement('span');
-    triggerSpan.textContent = '⚡ ' + (TRIGGER_LABELS[flow.trigger] || flow.trigger);
+    triggerSpan.textContent = '⚡ ' + triggersText;
     details.appendChild(triggerSpan);
 
     // Template
@@ -272,8 +273,12 @@ function openFlowModal(flowId?: string): void {
 function resetFlowForm(): void {
     (document.getElementById('mailFlowName') as HTMLInputElement).value = '';
     (document.getElementById('mailFlowDescription') as HTMLInputElement).value = '';
-    (document.getElementById('mailFlowTrigger') as HTMLSelectElement).value = 'RANDEVU_OLUŞTUR';
     (document.getElementById('mailFlowEditId') as HTMLInputElement).value = '';
+
+    // Uncheck all trigger checkboxes
+    document.querySelectorAll('input[name="mailFlowTriggers"]').forEach(cb => {
+        (cb as HTMLInputElement).checked = false;
+    });
 
     // Uncheck all profile checkboxes
     document.querySelectorAll('input[name="mailFlowProfiles"]').forEach(cb => {
@@ -293,8 +298,13 @@ function resetFlowForm(): void {
 function populateFlowForm(flow: MailFlow): void {
     (document.getElementById('mailFlowName') as HTMLInputElement).value = flow.name;
     (document.getElementById('mailFlowDescription') as HTMLInputElement).value = flow.description || '';
-    (document.getElementById('mailFlowTrigger') as HTMLSelectElement).value = flow.trigger;
     (document.getElementById('mailFlowTemplates') as HTMLSelectElement).value = flow.templateId || '';
+
+    // Check trigger checkboxes
+    flow.triggers.forEach(trigger => {
+        const checkbox = document.querySelector(`input[name="mailFlowTriggers"][value="${trigger}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
 
     // Check profile checkboxes
     flow.profiles.forEach(profile => {
@@ -338,13 +348,23 @@ async function saveFlow(): Promise<void> {
 
     const name = (document.getElementById('mailFlowName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('mailFlowDescription') as HTMLInputElement).value.trim();
-    const trigger = (document.getElementById('mailFlowTrigger') as HTMLSelectElement).value;
     const templateId = (document.getElementById('mailFlowTemplates') as HTMLSelectElement).value;
     const editId = (document.getElementById('mailFlowEditId') as HTMLInputElement).value;
 
     // Validation
     if (!name) {
         getUI().showAlert('Flow adı gereklidir', 'error');
+        return;
+    }
+
+    // Get selected triggers
+    const triggers: string[] = [];
+    document.querySelectorAll('input[name="mailFlowTriggers"]:checked').forEach(cb => {
+        triggers.push((cb as HTMLInputElement).value);
+    });
+
+    if (triggers.length === 0) {
+        getUI().showAlert('En az bir tetikleyici seçmelisiniz', 'error');
         return;
     }
 
@@ -368,7 +388,7 @@ async function saveFlow(): Promise<void> {
     const flowData: Partial<MailFlow> = {
         name,
         description,
-        trigger,
+        triggers,
         profiles,
         templateId,
         active: true

@@ -949,13 +949,21 @@
                         <input type="text" id="mailFlowDescription" placeholder="Randevu oluşturulduğunda gönderilecek onay">
                     </div>
                     <div class="input-group">
-                        <label for="mailFlowTrigger">Tetikleyici Olay</label>
-                        <select id="mailFlowTrigger">
-                            <option value="RANDEVU_OLUŞTUR">Randevu Oluşturuldu</option>
-                            <option value="RANDEVU_İPTAL">Randevu İptal Edildi</option>
-                            <option value="RANDEVU_GÜNCELLE">Randevu Güncellendi</option>
-                            <option value="HATIRLATMA">Hatırlatma</option>
-                        </select>
+                        <label>Tetikleyici Olaylar</label>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_OLUŞTUR"> Randevu Oluşturuldu
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_İPTAL"> Randevu İptal Edildi
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_GÜNCELLE"> Randevu Güncellendi
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> Hatırlatma
+                            </label>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>Hedef Profiller</label>
@@ -971,6 +979,9 @@
                             </label>
                             <label style="display: flex; align-items: center; gap: 5px;">
                                 <input type="checkbox" name="mailFlowProfiles" value="m"> Yönetim
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowProfiles" value="s"> Bireysel
                             </label>
                             <label style="display: flex; align-items: center; gap: 5px;">
                                 <input type="checkbox" name="mailFlowProfiles" value="v"> VIP

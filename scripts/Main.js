@@ -375,7 +375,7 @@ const ACTION_HANDLERS = {
         name: e.parameter.name,
         description: e.parameter.description,
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : (e.parameter.profiles || []),
-        trigger: e.parameter.trigger,
+        triggers: typeof e.parameter.triggers === 'string' ? JSON.parse(e.parameter.triggers) : (e.parameter.triggers || []),
         templateId: e.parameter.templateId,
         active: e.parameter.active !== false && e.parameter.active !== 'false'
       };
@@ -392,7 +392,7 @@ const ACTION_HANDLERS = {
         name: e.parameter.name,
         description: e.parameter.description,
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
-        trigger: e.parameter.trigger,
+        triggers: typeof e.parameter.triggers === 'string' ? JSON.parse(e.parameter.triggers) : e.parameter.triggers,
         templateId: e.parameter.templateId,
         active: e.parameter.active === true || e.parameter.active === 'true'
       };

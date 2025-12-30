@@ -9,7 +9,7 @@
  * - Flow'a göre mail gönderimi
  *
  * Storage: SheetStorageService kullanır
- * - MAIL_FLOWS sheet'i (id, name, description, profiles, trigger, templateId, active)
+ * - MAIL_FLOWS sheet'i (id, name, description, profiles, triggers, templateId, active)
  * - MAIL_TEMPLATES sheet'i (id, name, subject, body)
  */
 
@@ -56,7 +56,7 @@ function getMailFlows() {
         name: flow.name,
         description: flow.description || '',
         profiles: parseJsonSafe(flow.profiles, []),
-        trigger: flow.trigger,
+        triggers: parseJsonSafe(flow.triggers, []),
         templateId: flow.templateId || '',
         active: flow.active === true || flow.active === 'true'
       }))
@@ -78,7 +78,7 @@ function createMailFlow(params) {
       name: params.name,
       description: params.description || '',
       profiles: JSON.stringify(params.profiles || []),
-      trigger: params.trigger,
+      triggers: JSON.stringify(params.triggers || []),
       templateId: params.templateId || '',
       active: true,
       createdAt: new Date().toISOString()
@@ -111,7 +111,7 @@ function updateMailFlow(params) {
     if (params.name !== undefined) updates.name = params.name;
     if (params.description !== undefined) updates.description = params.description;
     if (params.profiles !== undefined) updates.profiles = JSON.stringify(params.profiles);
-    if (params.trigger !== undefined) updates.trigger = params.trigger;
+    if (params.triggers !== undefined) updates.triggers = JSON.stringify(params.triggers);
     if (params.templateId !== undefined) updates.templateId = params.templateId;
     if (params.active !== undefined) updates.active = params.active;
 
@@ -266,7 +266,9 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     const allFlows = SheetStorageService.getAll(MAIL_FLOW_SHEET);
     const matchingFlows = allFlows.filter(flow => {
       if (!flow.active && flow.active !== 'true') return false;
-      if (flow.trigger !== trigger) return false;
+      // triggers artık bir dizi - trigger bu dizide mi kontrol et
+      const triggers = parseJsonSafe(flow.triggers, []);
+      if (!triggers.includes(trigger)) return false;
       const profiles = parseJsonSafe(flow.profiles, []);
       return profiles.includes(profileCode);
     });
