@@ -65,6 +65,7 @@ let _dataStore: DataStore;
 let flows: MailFlow[] = [];
 let templates: MailTemplate[] = [];
 let messageVariables: Record<string, string> = {}; // Variables.js'den yüklenir
+let lastFocusedField: HTMLInputElement | HTMLTextAreaElement | null = null; // Son focus olan alan
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -111,6 +112,13 @@ function setupEventListeners(): void {
     document.getElementById('cancelMailTemplateBtn')?.addEventListener('click', () => closeModal('mailTemplateModal'));
     document.getElementById('saveMailTemplateBtn')?.addEventListener('click', saveTemplate);
     document.querySelector('#mailTemplateModal .modal-overlay')?.addEventListener('click', () => closeModal('mailTemplateModal'));
+
+    // Track last focused field for variable insertion
+    const subjectField = document.getElementById('mailTemplateSubject') as HTMLInputElement;
+    const bodyField = document.getElementById('mailTemplateBody') as HTMLTextAreaElement;
+
+    subjectField?.addEventListener('focus', () => { lastFocusedField = subjectField; });
+    bodyField?.addEventListener('focus', () => { lastFocusedField = bodyField; });
 
     // Modal close handlers (escape key)
     document.addEventListener('keydown', (e) => {
@@ -544,25 +552,44 @@ function populateMailVariablesContainer(): void {
         code.setAttribute('title', label);
         code.textContent = `{{${key}}}`;
 
-        // Click to copy
+        // Click to insert at cursor position
         code.addEventListener('click', () => {
             const varText = `{{${key}}}`;
-            navigator.clipboard.writeText(varText).then(() => {
-                getUI().showAlert(`${varText} kopyalandı`, 'success');
-            }).catch(() => {
-                // Fallback for older browsers
-                const textarea = document.createElement('textarea');
-                textarea.value = varText;
-                document.body.appendChild(textarea);
-                textarea.select();
-                document.execCommand('copy');
-                document.body.removeChild(textarea);
-                getUI().showAlert(`${varText} kopyalandı`, 'success');
-            });
+            insertVariableAtCursor(varText);
         });
 
         container.appendChild(code);
     }
+}
+
+/**
+ * Insert variable text at cursor position in last focused field
+ */
+function insertVariableAtCursor(varText: string): void {
+    // Default to body field if no field was focused
+    if (!lastFocusedField) {
+        lastFocusedField = document.getElementById('mailTemplateBody') as HTMLTextAreaElement;
+    }
+
+    if (!lastFocusedField) {
+        getUI().showAlert('Lütfen önce bir metin alanına tıklayın', 'error');
+        return;
+    }
+
+    const field = lastFocusedField;
+    const start = field.selectionStart || 0;
+    const end = field.selectionEnd || 0;
+    const currentValue = field.value;
+
+    // Insert at cursor position
+    field.value = currentValue.substring(0, start) + varText + currentValue.substring(end);
+
+    // Move cursor after inserted text
+    const newPos = start + varText.length;
+    field.setSelectionRange(newPos, newPos);
+
+    // Re-focus the field
+    field.focus();
 }
 
 /**
