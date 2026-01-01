@@ -25,7 +25,9 @@ const SheetStorageService = {
     SHIFTS: 'Shifts',
     SETTINGS: 'Settings',
     AUDIT_LOG: 'AuditLog',
-    MESSAGE_LOG: 'MessageLog'
+    MESSAGE_LOG: 'MessageLog',
+    MAIL_FLOWS: 'MAIL_FLOWS',
+    MAIL_TEMPLATES: 'MAIL_TEMPLATES'
   },
 
   // Header tanımları
@@ -34,7 +36,9 @@ const SheetStorageService = {
     SHIFTS: ['date', 'staffId', 'shiftType', 'createdAt'],
     SETTINGS: ['key', 'value', 'updatedAt'],
     AUDITLOG: ['timestamp', 'action', 'data', 'userId'],
-    MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile']
+    MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
+    MAIL_FLOWS: ['id', 'name', 'description', 'profiles', 'triggers', 'templateId', 'active', 'createdAt', 'updatedAt'],
+    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'createdAt', 'updatedAt']
   },
 
   // ==================== INITIALIZATION ====================
@@ -255,6 +259,49 @@ const SheetStorageService = {
     }
 
     return false;
+  },
+
+  // ==================== GENERIC CRUD ALIASES ====================
+  // Mail.js ve diğer modüller için kullanışlı alias'lar
+
+  /**
+   * Bir sheet'teki tüm kayıtları getir
+   * @param {string} sheetName - Sheet adı
+   * @returns {Array<Object>} - Tüm kayıtlar
+   */
+  getAll: function(sheetName) {
+    return this.readAll(sheetName);
+  },
+
+  /**
+   * Yeni kayıt ekle
+   * @param {string} sheetName - Sheet adı
+   * @param {Object} data - Eklenecek veri
+   * @returns {Object} - Eklenen veri
+   */
+  add: function(sheetName, data) {
+    return this.appendRow(sheetName, data);
+  },
+
+  /**
+   * Kayıt güncelle (id bazlı)
+   * @param {string} sheetName - Sheet adı
+   * @param {string} id - Kayıt ID'si
+   * @param {Object} updates - Güncellenecek alanlar
+   * @returns {boolean} - Başarı durumu
+   */
+  update: function(sheetName, id, updates) {
+    return this.updateById(sheetName, 'id', id, updates);
+  },
+
+  /**
+   * Kayıt sil (id bazlı)
+   * @param {string} sheetName - Sheet adı
+   * @param {string} id - Silinecek kayıt ID'si
+   * @returns {boolean} - Başarı durumu
+   */
+  delete: function(sheetName, id) {
+    return this.deleteById(sheetName, 'id', id);
   },
 
   // ==================== STAFF OPERATIONS ====================
