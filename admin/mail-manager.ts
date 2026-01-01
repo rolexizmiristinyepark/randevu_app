@@ -64,7 +64,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 let _dataStore: DataStore;
 let flows: MailFlow[] = [];
 let templates: MailTemplate[] = [];
-let messageVariables: Record<string, string> = {}; // { key: label }
+let messageVariables: Record<string, string> = {}; // Variables.js'den yüklenir
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -636,6 +636,9 @@ function openTemplateModal(templateId?: string): void {
 
     // Reset form
     resetTemplateForm();
+
+    // Değişkenleri göster
+    populateMailVariablesContainer();
 
     // Update modal header
     const header = modal.querySelector('.modal-header');

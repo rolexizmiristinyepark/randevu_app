@@ -47,9 +47,8 @@ const SESSION_ADMIN_ACTIONS = [
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   // Mail Flow & Template CRUD (v3.9.20)
   'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
-  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
-  // Merkezi değişkenler (v3.9.22)
-  'getMessageVariables'
+  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate'
+  // NOT: getMessageVariables auth gerektirmez (read-only)
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
