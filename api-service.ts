@@ -48,7 +48,16 @@ type ProtectedAction =
     | 'createBackup'
     | 'listBackups'
     | 'restoreBackup'
-    | 'assignStaffToAppointment';
+    | 'assignStaffToAppointment'
+    // v3.9.20: Mail Flow & Template CRUD
+    | 'getMailFlows'
+    | 'createMailFlow'
+    | 'updateMailFlow'
+    | 'deleteMailFlow'
+    | 'getMailTemplates'
+    | 'createMailTemplate'
+    | 'updateMailTemplate'
+    | 'deleteMailTemplate';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -86,7 +95,16 @@ const ApiService = {
         'createBackup',                 // v3.5: Manuel yedek oluştur
         'listBackups',                  // v3.5: Yedekleri listele
         'restoreBackup',                // v3.5: Yedek geri yükle
-        'assignStaffToAppointment'      // v3.5: Randevuya personel ata
+        'assignStaffToAppointment',     // v3.5: Randevuya personel ata
+        // v3.9.20: Mail Flow & Template CRUD
+        'getMailFlows',                 // Mail flow listesi
+        'createMailFlow',               // Yeni mail flow
+        'updateMailFlow',               // Mail flow güncelle
+        'deleteMailFlow',               // Mail flow sil
+        'getMailTemplates',             // Mail template listesi
+        'createMailTemplate',           // Yeni mail template
+        'updateMailTemplate',           // Mail template güncelle
+        'deleteMailTemplate'            // Mail template sil
     ] as const,
 
     // Validation map for actions that support Zod validation
