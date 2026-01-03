@@ -51,7 +51,10 @@ const SESSION_ADMIN_ACTIONS = [
   // Mail Info Cards (v3.9.35)
   'getMailInfoCards', 'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
   // Sheet Migration (v3.9.40)
-  'fixMailInfoCardsSheet'
+  'fixMailInfoCardsSheet',
+  // Header Sync (v3.9.47)
+  'syncMailSheetHeaders',
+  'debugMailFlowsHeaders'
   // NOT: getMessageVariables auth gerektirmez (read-only)
 ];
 
@@ -492,6 +495,10 @@ const ACTION_HANDLERS = {
 
   // Sheet Migration (v3.9.40)
   'fixMailInfoCardsSheet': () => SheetStorageService.fixMailInfoCardsSheet(),
+
+  // Header Sync (v3.9.47)
+  'syncMailSheetHeaders': () => syncMailSheetHeaders(),
+  'debugMailFlowsHeaders': () => debugMailFlowsHeaders(),
 
   // Merkezi değişkenler (v3.9.22) - Variables.js'den
   'getMessageVariables': () => getMessageVariables()
