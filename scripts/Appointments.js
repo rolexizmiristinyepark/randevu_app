@@ -465,7 +465,7 @@ const AppointmentService = {
         const customerPhone = event.getTag('customerPhone') || '';
         const customerEmail = event.getTag('customerEmail') || '';
         const appointmentType = event.getTag('appointmentType') || '';
-        const profilTag = event.getTag('profil') || 'genel';  // v3.9: Profil bazlı
+        const profilTag = event.getTag('profil') || 'g';  // Profil bazlı
 
         const eventData = {
           eventId: eventId,
@@ -474,19 +474,56 @@ const AppointmentService = {
           customerEmail: customerEmail,
           staffId: staffId,
           staffName: staff.name,
-          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy'),
+          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
           appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
           appointmentType: appointmentType,
-          profil: profilTag  // v3.9: Profil bazlı
+          profil: profilTag
         };
 
         const flowResult = triggerFlowForEvent('RANDEVU_ATAMA', eventData);
         log.info('RANDEVU_ATAMA flow result:', flowResult);
       } catch (flowError) {
         log.error('RANDEVU_ATAMA flow error:', flowError);
-        // Flow hatası ana işlemi etkilemesin
       }
-      
+
+      // Mail Flow tetikle - ILGILI_ATANDI
+      try {
+        const customerName = event.getTitle().split(' - ')[0] || '';
+        const customerPhone = event.getTag('customerPhone') || '';
+        const customerEmail = event.getTag('customerEmail') || '';
+        const appointmentType = event.getTag('appointmentType') || '';
+        // Profil anahtarını koda çevir
+        const PROFILE_KEY_TO_CODE = {
+          'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
+          'yonetim': 'm', 'personel': 's', 'vip': 'v'
+        };
+        const rawProfil = event.getTag('profil') || 'genel';
+        const profilTag = PROFILE_KEY_TO_CODE[rawProfil] || rawProfil || 'g';
+
+        const mailData = {
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: customerEmail,
+          email: customerEmail,
+          staffId: staffId,
+          staffName: staff.name,
+          linkedStaffName: staff.name,
+          staffPhone: staff.phone || '',
+          staffEmail: staff.email || '',
+          linkedStaffEmail: staff.email || '',
+          formattedDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
+          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
+          time: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
+          appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
+          appointmentType: appointmentType
+        };
+
+        sendMailByTrigger('ILGILI_ATANDI', profilTag, mailData);
+        log.info('[assignStaff] Mail flow tetiklendi:', 'ILGILI_ATANDI', profilTag);
+      } catch (mailFlowError) {
+        log.error('ILGILI_ATANDI mail flow error:', mailFlowError);
+      }
+
       return {
         success: true,
         message: `${staff.name} başarıyla atandı`,
@@ -514,7 +551,8 @@ const AppointmentService = {
       }
 
       const data = StorageService.getData();
-      const staff = data.staff.find(s => s.id == staffId);
+      // StaffService'den tam veri al (phone/email dahil)
+      const staff = StaffService.getById(staffId);
       if (!staff) return { success: false, error: CONFIG.ERROR_MESSAGES.STAFF_NOT_FOUND };
 
       const isManagement = appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT;
@@ -567,46 +605,45 @@ const AppointmentService = {
         };
       }
 
-      // YÖNETİM randevusu değilse ve e-posta varsa, müşteriye e-posta gönder
-      if (!isManagement && sanitizedCustomerEmail && Utils.isValidEmail(sanitizedCustomerEmail)) {
+      // YÖNETİM randevusu değilse, Mail Flow sistemini tetikle
+      if (!isManagement) {
         try {
           const formattedDate = DateUtils.toTurkishDate(date);
-          const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
 
-          const icsContent = generateCustomerICS({
+          // Mail Flow sistemi - RANDEVU_OLUŞTUR
+          const appointmentData = {
+            customerName: sanitizedCustomerName,
+            customerPhone: sanitizedCustomerPhone,
+            customerEmail: sanitizedCustomerEmail,
+            email: sanitizedCustomerEmail,
+            customerNote: sanitizedCustomerNote,
+            notes: sanitizedCustomerNote,
+            staffId: staffId,
             staffName: sanitizedStaffName,
+            linkedStaffName: sanitizedStaffName,
             staffPhone: staff.phone || '',
             staffEmail: staff.email || '',
+            linkedStaffEmail: staff.email || '',
             date,
             time,
-            duration: durationNum,
+            appointmentTime: time,
+            formattedDate,
+            appointmentDate: formattedDate,
             appointmentType,
-            customerNote: sanitizedCustomerNote,
-            formattedDate
-          });
+            duration: durationNum
+          };
 
-          const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+          // Profil anahtarını koda çevir
+          const PROFILE_KEY_TO_CODE = {
+            'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
+            'yonetim': 'm', 'personel': 's', 'vip': 'v'
+          };
+          const profileCode = PROFILE_KEY_TO_CODE[params.profil] || params.profil || 'g';
 
-          MailApp.sendEmail({
-            to: sanitizedCustomerEmail,
-            subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
-            name: CONFIG.COMPANY_NAME,
-            replyTo: staff.email || CONFIG.ADMIN_EMAIL,
-            htmlBody: NotificationService.getCustomerEmailTemplate({
-              customerName: sanitizedCustomerName,
-              formattedDate,
-              time,
-              serviceName,
-              staffName: staff.name,
-              customerNote: sanitizedCustomerNote,
-              staffPhone: staff.phone || '',
-              staffEmail: staff.email || '',
-              appointmentType
-            }),
-            attachments: [icsBlob]
-          });
-        } catch (emailError) {
-          log.error('Manuel randevu e-postası gönderilemedi:', emailError);
+          sendMailByTrigger('RANDEVU_OLUŞTUR', profileCode, appointmentData);
+          log.info('[Manual] Mail flow tetiklendi:', 'RANDEVU_OLUŞTUR', profileCode);
+        } catch (flowError) {
+          log.error('Manuel randevu mail flow hatası:', flowError);
         }
       }
 
@@ -1176,7 +1213,8 @@ function _buildEventTitle(params) {
 }
 
 /**
- * Send all notification emails (customer, staff, admin)
+ * Send all notification emails via Flow system
+ * Mail gönderimi artık tamamen Flow sistemi üzerinden yapılır
  * @param {Object} params - Notification parameters
  * @private
  */
@@ -1184,85 +1222,55 @@ function _sendNotifications(params) {
   const {
     customerName, customerPhone, customerEmail, customerNote,
     staffId, staffName, staffPhone, staffEmail,
-    date, time, formattedDate, appointmentType, durationNum, data
+    date, time, formattedDate, appointmentType, durationNum, data, profil
   } = params;
 
-  const serviceName = CONFIG.SERVICE_NAMES[appointmentType] || appointmentType;
-
-  // E-posta bildirimi - Müşteriye
-  if (customerEmail) {
-    try {
-      const icsContent = generateCustomerICS({
-        staffName,
-        staffPhone,
-        staffEmail,
-        date,
-        time,
-        duration: durationNum,
-        appointmentType,
-        customerNote,
-        formattedDate
-      });
-
-      const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
-
-      MailApp.sendEmail({
-        to: customerEmail,
-        subject: CONFIG.EMAIL_SUBJECTS.CUSTOMER_CONFIRMATION,
-        name: CONFIG.COMPANY_NAME,
-        replyTo: staffEmail || CONFIG.ADMIN_EMAIL,
-        htmlBody: NotificationService.getCustomerEmailTemplate({
-          customerName,
-          formattedDate,
-          time,
-          serviceName,
-          staffName,
-          customerNote,
-          staffPhone,
-          staffEmail,
-          appointmentType
-        }),
-        attachments: [icsBlob]
-      });
-    } catch (emailError) {
-      log.error('Müşteri e-postası gönderilemedi:', emailError);
-    }
-  }
-
-  // E-posta bildirimi - Çalışana ve Admin
+  // Mail Flow sistemini tetikle - RANDEVU_OLUŞTUR
   try {
-    const staffEmailBody = NotificationService.getStaffEmailTemplate({
-      staffName,
+    const appointmentData = {
+      // Müşteri bilgileri
       customerName,
       customerPhone,
       customerEmail,
-      formattedDate,
+      email: customerEmail, // Alternatif key
+      customerNote,
+      notes: customerNote, // Alternatif key
+
+      // Personel bilgileri
+      staffId,
+      staffName,
+      linkedStaffName: staffName, // Alternatif key
+      staffPhone,
+      staffEmail,
+      linkedStaffEmail: staffEmail, // Alternatif key
+
+      // Randevu bilgileri
+      date,
       time,
-      serviceName,
-      customerNote
-    });
+      appointmentTime: time, // Alternatif key
+      formattedDate,
+      appointmentDate: formattedDate, // Alternatif key
+      appointmentType,
+      duration: durationNum
+    };
 
-    // Çalışana gönder
-    const staff = data.staff.find(s => s.id == staffId);
-    if (staff && staff.email) {
-      MailApp.sendEmail({
-        to: staff.email,
-        subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${customerName}`,
-        name: CONFIG.COMPANY_NAME,
-        htmlBody: staffEmailBody
-      });
-    }
+    // Profil anahtarını koda çevir (personel → s, genel → g, vb.)
+    const PROFILE_KEY_TO_CODE = {
+      'genel': 'g',
+      'gunluk': 'w',
+      'boutique': 'b',
+      'yonetim': 'm',
+      'personel': 's',
+      'vip': 'v'
+    };
+    const profileCode = PROFILE_KEY_TO_CODE[profil] || profil || 'g';
 
-    // Admin'e gönder
-    MailApp.sendEmail({
-      to: CONFIG.ADMIN_EMAIL,
-      subject: `${CONFIG.EMAIL_SUBJECTS.STAFF_NOTIFICATION} - ${customerName}`,
-      name: CONFIG.COMPANY_NAME,
-      htmlBody: staffEmailBody
-    });
+    // Flow sisteminden mail gönder
+    sendMailByTrigger('RANDEVU_OLUŞTUR', profileCode, appointmentData);
 
-  } catch (staffEmailError) {
-    log.error('Çalışan/Admin e-postası gönderilemedi:', staffEmailError);
+    log.info('[Notifications] Mail flow tetiklendi:', 'RANDEVU_OLUŞTUR', profileCode);
+  } catch (flowError) {
+    log.error('Mail flow hatası:', flowError);
   }
 }
 
@@ -1544,17 +1552,17 @@ Bu randevu otomatik olarak oluşturulmuştur.
 
     // Lock serbest bırakıldı - Notifications lock dışında devam eder
 
-    // Tarih formatla ve staff bilgisini al
+    // Tarih formatla ve staff bilgisini al (StaffService'den tam veri - phone/email dahil)
     const formattedDate = DateUtils.toTurkishDate(date);
-    const staff = data.staff.find(s => s.id == staffId);
-    const staffPhone = staff?.phone ?? '';
-    const staffEmail = staff?.email ?? '';
+    const staffFull = StaffService.getById(staffId);
+    const staffPhone = staffFull?.phone ?? '';
+    const staffEmail = staffFull?.email ?? '';
 
-    // ===== STEP 5: SEND NOTIFICATIONS =====
+    // ===== STEP 5: SEND NOTIFICATIONS (Mail Flow) =====
     _sendNotifications({
       customerName, customerPhone, customerEmail, customerNote,
       staffId, staffName, staffPhone, staffEmail,
-      date, time, formattedDate, appointmentType, durationNum, data
+      date, time, formattedDate, appointmentType, durationNum, data, profil
     });
 
     // ⭐ Cache invalidation: Version increment

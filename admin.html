@@ -189,6 +189,7 @@
                 <div class="inner-tabs">
                     <div class="inner-tab active" data-innertab="mailFlow">Flow</div>
                     <div class="inner-tab" data-innertab="mailTemplates">Template</div>
+                    <div class="inner-tab" data-innertab="mailInfoCards">Info Card</div>
                 </div>
 
                 <!-- Mail Flow -->
@@ -208,6 +209,16 @@
                             <p style="color: #757575; text-align: center; padding: 20px;">Henüz şablon tanımlanmamış</p>
                         </div>
                         <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ Yeni Şablon</button>
+                    </div>
+                </div>
+
+                <!-- Mail Info Cards -->
+                <div id="mailInfoCards" class="inner-tab-content">
+                    <div class="card">
+                        <div id="mailInfoCardsList">
+                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz info card tanımlanmamış</p>
+                        </div>
+                        <button class="btn" id="addMailInfoCardBtn" style="margin-top: 15px;">+ Yeni Info Card</button>
                     </div>
                 </div>
             </div>
@@ -963,6 +974,9 @@
                             <label style="display: flex; align-items: center; gap: 5px;">
                                 <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> Hatırlatma
                             </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="checkbox" name="mailFlowTriggers" value="ILGILI_ATANDI"> İlgili Atandı
+                            </label>
                         </div>
                     </div>
                     <div class="input-group">
@@ -989,10 +1003,29 @@
                         </div>
                     </div>
                     <div class="input-group">
+                        <label>Mail Gönderilecek Kişi</label>
+                        <div style="display: flex; gap: 20px; margin-top: 8px;">
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="radio" name="mailFlowTarget" value="customer" checked> Müşteri
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px;">
+                                <input type="radio" name="mailFlowTarget" value="staff"> Personel
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
                         <label for="mailFlowTemplates">Kullanılacak Şablon</label>
                         <select id="mailFlowTemplates">
                             <!-- Dinamik yüklenecek -->
                         </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="mailFlowInfoCards">Info Card</label>
+                        <select id="mailFlowInfoCards">
+                            <option value="">Varsayılan (Tüm Alanlar)</option>
+                            <!-- Dinamik yüklenecek -->
+                        </select>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Mailde gösterilecek info card şablonunu seçin</small>
                     </div>
                     <input type="hidden" id="mailFlowEditId" value="">
                 </div>
@@ -1033,6 +1066,50 @@
                 <div class="modal-footer">
                     <button class="btn btn-secondary" id="cancelMailTemplateBtn">İptal</button>
                     <button class="btn" id="saveMailTemplateBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mail Info Card Modal -->
+        <div id="mailInfoCardModal" class="modal">
+            <div class="modal-overlay"></div>
+            <div class="modal-content" style="max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;">
+                <div class="modal-header">Yeni Info Card</div>
+                <div class="modal-body" style="overflow-y: auto; flex: 1;">
+                    <div class="input-group">
+                        <label for="mailInfoCardName">Info Card Adı</label>
+                        <input type="text" id="mailInfoCardName" placeholder="Müşteri Info Card">
+                    </div>
+
+                    <!-- Değişken Seçici - Tıklanabilir Butonlar -->
+                    <div class="input-group">
+                        <label>Değişken Ekle <small style="color: #666;">(Tıklayarak ekleyin)</small></label>
+                        <div id="infoCardVariableChips" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border: 1px solid #E8E8E8; border-radius: 4px; background: #FAFAFA;">
+                            <!-- Değişken butonları buraya eklenecek -->
+                        </div>
+                    </div>
+
+                    <!-- Seçili Alanlar Listesi (Sürükle-Bırak) -->
+                    <div class="input-group">
+                        <label>Seçili Alanlar <small style="color: #666;">(Sıralama için sürükleyin)</small></label>
+                        <div id="infoCardFieldsList" style="border: 1px solid #E8E8E8; border-radius: 4px; min-height: 100px; padding: 10px; background: #FAFAFA;">
+                            <p id="infoCardFieldsEmpty" style="color: #757575; text-align: center; padding: 20px; margin: 0;">Henüz alan seçilmedi</p>
+                        </div>
+                    </div>
+
+                    <!-- Canlı Önizleme -->
+                    <div class="input-group">
+                        <label>Önizleme</label>
+                        <div id="infoCardPreview" style="border-left: 4px solid #C9A55A; border-radius: 4px; padding: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                            <!-- Önizleme burada oluşturulacak -->
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="mailInfoCardEditId" value="">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelMailInfoCardBtn">İptal</button>
+                    <button class="btn" id="saveMailInfoCardBtn">Kaydet</button>
                 </div>
             </div>
         </div>

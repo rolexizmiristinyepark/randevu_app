@@ -57,7 +57,17 @@ type ProtectedAction =
     | 'getMailTemplates'
     | 'createMailTemplate'
     | 'updateMailTemplate'
-    | 'deleteMailTemplate';
+    | 'deleteMailTemplate'
+    // v3.9.35: Mail Info Card CRUD
+    | 'getMailInfoCards'
+    | 'createMailInfoCard'
+    | 'updateMailInfoCard'
+    | 'deleteMailInfoCard'
+    // v3.9.40: Sheet Migration
+    | 'fixMailInfoCardsSheet'
+    // v3.9.47: Header Sync
+    | 'syncMailSheetHeaders'
+    | 'debugMailFlowsHeaders';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -104,7 +114,17 @@ const ApiService = {
         'getMailTemplates',             // Mail template listesi
         'createMailTemplate',           // Yeni mail template
         'updateMailTemplate',           // Mail template güncelle
-        'deleteMailTemplate'            // Mail template sil
+        'deleteMailTemplate',           // Mail template sil
+        // v3.9.35: Mail Info Card CRUD
+        'getMailInfoCards',             // Info card listesi
+        'createMailInfoCard',           // Yeni info card
+        'updateMailInfoCard',           // Info card güncelle
+        'deleteMailInfoCard',           // Info card sil
+        // v3.9.40: Sheet Migration
+        'fixMailInfoCardsSheet',        // Info card sheet'ini düzelt
+        // v3.9.47: Header Sync
+        'syncMailSheetHeaders',         // Mail sheet header'larını senkronize et
+        'debugMailFlowsHeaders'         // MAIL_FLOWS header'larını debug et
     ] as const,
 
     // Validation map for actions that support Zod validation

@@ -47,7 +47,11 @@ const SESSION_ADMIN_ACTIONS = [
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   // Mail Flow & Template CRUD (v3.9.20)
   'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
-  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate'
+  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
+  // Mail Info Cards (v3.9.35)
+  'getMailInfoCards', 'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
+  // Sheet Migration (v3.9.40)
+  'fixMailInfoCardsSheet'
   // NOT: getMessageVariables auth gerektirmez (read-only)
 ];
 
@@ -378,6 +382,8 @@ const ACTION_HANDLERS = {
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : (e.parameter.profiles || []),
         triggers: typeof e.parameter.triggers === 'string' ? JSON.parse(e.parameter.triggers) : (e.parameter.triggers || []),
         templateId: e.parameter.templateId,
+        infoCardId: e.parameter.infoCardId || '',
+        target: e.parameter.target || 'customer',
         active: e.parameter.active !== false && e.parameter.active !== 'false'
       };
       return createMailFlow(params);
@@ -395,6 +401,8 @@ const ACTION_HANDLERS = {
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
         triggers: typeof e.parameter.triggers === 'string' ? JSON.parse(e.parameter.triggers) : e.parameter.triggers,
         templateId: e.parameter.templateId,
+        infoCardId: e.parameter.infoCardId,
+        target: e.parameter.target,
         active: e.parameter.active === true || e.parameter.active === 'true'
       };
       return updateMailFlow(params);
@@ -434,6 +442,56 @@ const ACTION_HANDLERS = {
     }
   },
   'deleteMailTemplate': (e) => deleteMailTemplate({ id: e.parameter.id }),
+
+  // Mail Info Cards (v3.9.35)
+  'getMailInfoCards': () => getMailInfoCards(),
+  'createMailInfoCard': (e) => {
+    try {
+      // fields array veya string olabilir - POST'ta array, GET'te string gelir
+      let fields = [];
+      if (e.parameter.fields) {
+        if (typeof e.parameter.fields === 'string') {
+          fields = JSON.parse(e.parameter.fields);
+        } else {
+          fields = e.parameter.fields; // Zaten array
+        }
+      }
+      const params = {
+        name: e.parameter.name,
+        fields: fields
+      };
+      return createMailInfoCard(params);
+    } catch (handlerError) {
+      log.error('[createMailInfoCard-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'updateMailInfoCard': (e) => {
+    try {
+      // fields array veya string olabilir - POST'ta array, GET'te string gelir
+      let fields = undefined;
+      if (e.parameter.fields !== undefined) {
+        if (typeof e.parameter.fields === 'string') {
+          fields = JSON.parse(e.parameter.fields);
+        } else {
+          fields = e.parameter.fields; // Zaten array
+        }
+      }
+      const params = {
+        id: e.parameter.id,
+        name: e.parameter.name,
+        fields: fields
+      };
+      return updateMailInfoCard(params);
+    } catch (handlerError) {
+      log.error('[updateMailInfoCard-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'deleteMailInfoCard': (e) => deleteMailInfoCard({ id: e.parameter.id }),
+
+  // Sheet Migration (v3.9.40)
+  'fixMailInfoCardsSheet': () => SheetStorageService.fixMailInfoCardsSheet(),
 
   // Merkezi değişkenler (v3.9.22) - Variables.js'den
   'getMessageVariables': () => getMessageVariables()

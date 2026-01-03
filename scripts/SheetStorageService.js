@@ -27,7 +27,8 @@ const SheetStorageService = {
     AUDIT_LOG: 'AuditLog',
     MESSAGE_LOG: 'MessageLog',
     MAIL_FLOWS: 'MAIL_FLOWS',
-    MAIL_TEMPLATES: 'MAIL_TEMPLATES'
+    MAIL_TEMPLATES: 'MAIL_TEMPLATES',
+    MAIL_INFO_CARDS: 'MAIL_INFO_CARDS'
   },
 
   // Header tanımları
@@ -37,8 +38,9 @@ const SheetStorageService = {
     SETTINGS: ['key', 'value', 'updatedAt'],
     AUDITLOG: ['timestamp', 'action', 'data', 'userId'],
     MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
-    MAIL_FLOWS: ['id', 'name', 'description', 'profiles', 'triggers', 'templateId', 'active', 'createdAt', 'updatedAt'],
-    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'createdAt', 'updatedAt']
+    MAIL_FLOWS: ['id', 'name', 'description', 'profiles', 'triggers', 'templateId', 'infoCardId', 'target', 'active', 'createdAt', 'updatedAt'],
+    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'createdAt', 'updatedAt'],
+    MAIL_INFO_CARDS: ['id', 'name', 'fields', 'createdAt', 'updatedAt']
   },
 
   // ==================== INITIALIZATION ====================
@@ -125,6 +127,175 @@ const SheetStorageService = {
     }
   },
 
+  /**
+   * Sheet header'larını HEADERS constant ile senkronize et
+   * Eksik kolonları sheet'in sonuna ekler (mevcut veriyi korur)
+   * @param {string} sheetName - Sheet adı
+   * @returns {{success: boolean, message: string, addedColumns?: string[]}}
+   */
+  syncSheetHeaders: function(sheetName) {
+    try {
+      const ss = this.getSpreadsheet();
+      const sheet = ss.getSheetByName(sheetName);
+
+      if (!sheet) {
+        return { success: false, error: 'Sheet bulunamadı: ' + sheetName };
+      }
+
+      const expectedHeaders = this.HEADERS[sheetName.toUpperCase()] || this.HEADERS[sheetName];
+      if (!expectedHeaders) {
+        return { success: false, error: 'Header tanımı bulunamadı: ' + sheetName };
+      }
+
+      const data = sheet.getDataRange().getValues();
+      if (data.length === 0) {
+        // Boş sheet - tüm header'ları ekle
+        sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+        sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight('bold');
+        sheet.setFrozenRows(1);
+        return { success: true, message: 'Boş sheet\'e header eklendi', addedColumns: expectedHeaders };
+      }
+
+      // Mevcut header'ları al ve trim et
+      const currentHeaders = data[0].map(h => String(h).trim());
+
+      // Eksik header'ları bul
+      const missingHeaders = expectedHeaders.filter(h => !currentHeaders.includes(h));
+
+      if (missingHeaders.length === 0) {
+        return { success: true, message: 'Tüm header\'lar mevcut', addedColumns: [] };
+      }
+
+      // Eksik header'ları sheet'in sonuna ekle
+      const lastCol = currentHeaders.length;
+      missingHeaders.forEach((header, index) => {
+        const colIndex = lastCol + index + 1;
+        // Header'ı ekle
+        sheet.getRange(1, colIndex).setValue(header).setFontWeight('bold');
+
+        // Veri satırları için boş değer ekle
+        if (data.length > 1) {
+          const emptyValues = new Array(data.length - 1).fill(['']);
+          sheet.getRange(2, colIndex, data.length - 1, 1).setValues(emptyValues);
+        }
+      });
+
+      log.info('syncSheetHeaders - Eksik kolonlar eklendi:', { sheetName, missingHeaders });
+      return {
+        success: true,
+        message: missingHeaders.length + ' kolon eklendi: ' + missingHeaders.join(', '),
+        addedColumns: missingHeaders
+      };
+    } catch (error) {
+      log.error('syncSheetHeaders hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Tüm tanımlı sheet'lerin header'larını senkronize et
+   * @returns {{success: boolean, results: Object}}
+   */
+  syncAllSheetHeaders: function() {
+    try {
+      const results = {};
+      const sheetsToSync = ['MAIL_FLOWS', 'MAIL_TEMPLATES', 'MAIL_INFO_CARDS', 'MESSAGELOG'];
+
+      sheetsToSync.forEach(sheetName => {
+        const actualSheetName = this.SHEET_NAMES[sheetName] || sheetName;
+        results[sheetName] = this.syncSheetHeaders(actualSheetName);
+      });
+
+      log.info('syncAllSheetHeaders tamamlandı:', results);
+      return { success: true, results };
+    } catch (error) {
+      log.error('syncAllSheetHeaders hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * Sheet'e header satırı ekle (varolan veriyi kaydırır)
+   * Header olmayan sheet'leri düzeltmek için kullanılır
+   * @param {string} sheetName - Sheet adı
+   * @returns {{success: boolean, message: string}}
+   */
+  ensureHeaders: function(sheetName) {
+    try {
+      const ss = this.getSpreadsheet();
+      const sheet = ss.getSheetByName(sheetName);
+
+      if (!sheet) {
+        return { success: false, error: 'Sheet bulunamadı: ' + sheetName };
+      }
+
+      const expectedHeaders = this.HEADERS[sheetName.toUpperCase()] || this.HEADERS[sheetName];
+      if (!expectedHeaders) {
+        return { success: false, error: 'Header tanımı bulunamadı: ' + sheetName };
+      }
+
+      const data = sheet.getDataRange().getValues();
+      if (data.length === 0) {
+        // Boş sheet - header ekle
+        sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+        sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight('bold');
+        sheet.setFrozenRows(1);
+        return { success: true, message: 'Boş sheet\'e header eklendi' };
+      }
+
+      const firstRow = data[0];
+
+      // İlk satır header mı kontrol et (ilk sütun 'id' mi?)
+      if (firstRow[0] === expectedHeaders[0]) {
+        return { success: true, message: 'Header zaten mevcut' };
+      }
+
+      // Header yok - en üste header satırı ekle
+      sheet.insertRowBefore(1);
+      sheet.getRange(1, 1, 1, expectedHeaders.length).setValues([expectedHeaders]);
+      sheet.getRange(1, 1, 1, expectedHeaders.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+
+      log.info('Header eklendi:', sheetName);
+      return { success: true, message: 'Header satırı eklendi, veri kaydırıldı' };
+    } catch (error) {
+      log.error('ensureHeaders hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
+  /**
+   * MAIL_INFO_CARDS sheet'ini düzelt (header + veri temizliği)
+   * Manuel olarak bir kez çalıştırılmalı
+   * @returns {{success: boolean, message: string}}
+   */
+  fixMailInfoCardsSheet: function() {
+    try {
+      const sheetName = 'MAIL_INFO_CARDS';
+      const ss = this.getSpreadsheet();
+      let sheet = ss.getSheetByName(sheetName);
+
+      if (!sheet) {
+        // Sheet yok, oluştur
+        this.getOrCreateSheet(sheetName);
+        return { success: true, message: 'Sheet oluşturuldu' };
+      }
+
+      // Sheet'i tamamen temizle ve header ekle
+      sheet.clear();
+      const headers = this.HEADERS.MAIL_INFO_CARDS;
+      sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      sheet.setFrozenRows(1);
+
+      log.info('MAIL_INFO_CARDS sheet temizlendi ve header eklendi');
+      return { success: true, message: 'MAIL_INFO_CARDS sheet sıfırlandı. Yeni bilgi kartları oluşturabilirsiniz.' };
+    } catch (error) {
+      log.error('fixMailInfoCardsSheet hatası:', error);
+      return { success: false, error: error.toString() };
+    }
+  },
+
   // ==================== GENERIC CRUD OPERATIONS ====================
 
   /**
@@ -138,7 +309,8 @@ const SheetStorageService = {
 
     if (data.length <= 1) return []; // Sadece header var
 
-    const headers = data[0];
+    // Header'ları trim et (gizli boşlukları temizle)
+    const headers = data[0].map(h => String(h).trim());
     return data.slice(1).map(row => {
       const obj = {};
       headers.forEach((header, index) => {
@@ -201,6 +373,7 @@ const SheetStorageService = {
 
   /**
    * Belirli bir satırı güncelle (id bazlı)
+   * ✅ v3.9.47: Eksik kolonları otomatik ekler (syncSheetHeaders)
    * @param {string} sheetName - Sheet adı
    * @param {string} idColumn - ID kolonu adı
    * @param {*} idValue - Aranacak ID değeri
@@ -209,14 +382,32 @@ const SheetStorageService = {
    */
   updateById: function(sheetName, idColumn, idValue, newData) {
     const sheet = this.getOrCreateSheet(sheetName);
-    const data = sheet.getDataRange().getValues();
+    let data = sheet.getDataRange().getValues();
 
     if (data.length <= 1) return false;
 
-    const headers = data[0];
+    let headers = data[0].map(h => String(h).trim());
     const idColIndex = headers.indexOf(idColumn);
 
     if (idColIndex === -1) return false;
+
+    // ✅ v3.9.47: Eksik kolonları kontrol et ve ekle
+    const newDataKeys = Object.keys(newData);
+    const missingKeys = newDataKeys.filter(key => !headers.includes(key));
+
+    if (missingKeys.length > 0) {
+      log.info('updateById - Eksik kolonlar tespit edildi:', { sheetName, missingKeys });
+
+      // syncSheetHeaders ile eksik kolonları ekle
+      const syncResult = this.syncSheetHeaders(sheetName);
+      if (syncResult.success && syncResult.addedColumns && syncResult.addedColumns.length > 0) {
+        log.info('updateById - Kolonlar eklendi:', syncResult.addedColumns);
+
+        // Sheet verilerini yeniden oku (yeni kolonlarla birlikte)
+        data = sheet.getDataRange().getValues();
+        headers = data[0].map(h => String(h).trim());
+      }
+    }
 
     for (let i = 1; i < data.length; i++) {
       if (String(data[i][idColIndex]) === String(idValue)) {
@@ -226,6 +417,7 @@ const SheetStorageService = {
             sheet.getRange(i + 1, colIndex + 1).setValue(newData[header]);
           }
         });
+        log.info('updateById - Güncelleme başarılı:', { sheetName, idValue, updatedKeys: newDataKeys });
         return true;
       }
     }
@@ -1146,6 +1338,75 @@ function cleanupOldPropertiesData() {
     };
 
   } catch (error) {
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== HEADER SYNC UTILITIES ====================
+
+/**
+ * v3.9.47: Tüm Mail sheet'lerinin header'larını senkronize et
+ * Apps Script editöründen bu fonksiyonu çalıştırarak
+ * eksik kolonları (örn: infoCardId) sheet'lere ekleyebilirsiniz
+ * @returns {{success: boolean, results: Object}}
+ */
+function syncAllMailSheetHeaders() {
+  try {
+    const results = {
+      MAIL_FLOWS: SheetStorageService.syncSheetHeaders('MAIL_FLOWS'),
+      MAIL_TEMPLATES: SheetStorageService.syncSheetHeaders('MAIL_TEMPLATES'),
+      MAIL_INFO_CARDS: SheetStorageService.syncSheetHeaders('MAIL_INFO_CARDS')
+    };
+
+    console.log('syncAllMailSheetHeaders sonuçları:', JSON.stringify(results, null, 2));
+
+    return {
+      success: true,
+      results: results,
+      message: 'Header senkronizasyonu tamamlandı'
+    };
+  } catch (error) {
+    console.error('syncAllMailSheetHeaders hatası:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * v3.9.47: MAIL_FLOWS sheet'inin header'larını kontrol et ve eksikleri listele
+ * Debug için kullanışlı
+ * @returns {{success: boolean, data: Object}}
+ */
+function debugMailFlowsHeaders() {
+  try {
+    const ss = SheetStorageService.getSpreadsheet();
+    const sheet = ss.getSheetByName('MAIL_FLOWS');
+
+    if (!sheet) {
+      return { success: false, error: 'MAIL_FLOWS sheet bulunamadı' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const currentHeaders = data.length > 0 ? data[0].map(h => String(h).trim()) : [];
+    const expectedHeaders = SheetStorageService.HEADERS.MAIL_FLOWS;
+
+    const missing = expectedHeaders.filter(h => !currentHeaders.includes(h));
+    const extra = currentHeaders.filter(h => !expectedHeaders.includes(h) && h !== '');
+
+    const result = {
+      success: true,
+      data: {
+        currentHeaders: currentHeaders,
+        expectedHeaders: expectedHeaders,
+        missingHeaders: missing,
+        extraHeaders: extra,
+        rowCount: data.length - 1 // header hariç
+      }
+    };
+
+    console.log('debugMailFlowsHeaders:', JSON.stringify(result, null, 2));
+    return result;
+  } catch (error) {
+    console.error('debugMailFlowsHeaders hatası:', error);
     return { success: false, error: error.toString() };
   }
 }

@@ -30,6 +30,8 @@ interface MailFlow {
     profiles: string[];
     triggers: string[]; // ['RANDEVU_OLUŞTUR', 'RANDEVU_İPTAL', etc.]
     templateId: string;
+    infoCardId: string; // Info card ID'si
+    target: 'customer' | 'staff'; // customer: müşteri, staff: personel
     active: boolean;
 }
 
@@ -38,6 +40,18 @@ interface MailTemplate {
     name: string;
     subject: string;
     body: string; // HTML content
+}
+
+interface InfoCardField {
+    variable: string;
+    label: string;
+    order: number;
+}
+
+interface MailInfoCard {
+    id: string;
+    name: string;
+    fields: InfoCardField[];
 }
 
 // ==================== CONSTANTS ====================
@@ -56,7 +70,28 @@ const TRIGGER_LABELS: Record<string, string> = {
     'RANDEVU_İPTAL': 'Randevu İptal Edildi',
     'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
     'HATIRLATMA': 'Hatırlatma',
-    'PERSONEL_ATAMA': 'Personel Atandı'
+    'ILGILI_ATANDI': 'İlgili Atandı'
+};
+
+const TARGET_LABELS: Record<string, string> = {
+    'customer': 'Müşteri',
+    'staff': 'Personel'
+};
+
+// Varsayılan alan başlıkları (kısa ve temiz)
+const DEFAULT_FIELD_LABELS: Record<string, string> = {
+    'randevu_tarih': 'Tarih',
+    'randevu_saat': 'Saat',
+    'randevu_turu': 'Konu',
+    'personel': 'İlgili',
+    'randevu_ek_bilgi': 'Ek Bilgi',
+    'magaza': 'Mağaza',
+    'musteri': 'Müşteri',
+    'musteri_tel': 'Telefon',
+    'musteri_mail': 'E-posta',
+    'personel_tel': 'İlgili Tel',
+    'personel_mail': 'İlgili E-posta',
+    'randevu_profili': 'Profil'
 };
 
 // ==================== MODULE STATE ====================
@@ -64,8 +99,93 @@ const TRIGGER_LABELS: Record<string, string> = {
 let _dataStore: DataStore;
 let flows: MailFlow[] = [];
 let templates: MailTemplate[] = [];
+let infoCards: MailInfoCard[] = [];
 let messageVariables: Record<string, string> = {}; // Variables.js'den yüklenir
 let lastFocusedField: HTMLInputElement | HTMLTextAreaElement | null = null; // Son focus olan alan
+let infoCardFields: InfoCardField[] = []; // Modal için aktif field listesi
+
+// ==================== CACHE & RETRY CONFIGURATION ====================
+
+const CACHE_KEYS = {
+    FLOWS: 'mail_flows_cache',
+    TEMPLATES: 'mail_templates_cache',
+    INFO_CARDS: 'mail_info_cards_cache'
+};
+
+const RETRY_CONFIG = {
+    maxRetries: 3,
+    delayMs: 500
+};
+
+/**
+ * Retry mekanizması ile API çağrısı yap
+ * Başarısız olursa cache'ten oku
+ */
+async function fetchWithRetry<T>(
+    action: string,
+    cacheKey: string,
+    retries = RETRY_CONFIG.maxRetries
+): Promise<T[]> {
+    let lastError: Error | null = null;
+
+    for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+            const response = await ApiService.call(action, {}) as ApiResponse<T[]>;
+
+            if (response.success && Array.isArray(response.data)) {
+                // Başarılı - cache'e kaydet (boş dizi de geçerli)
+                try {
+                    localStorage.setItem(cacheKey, JSON.stringify({
+                        data: response.data,
+                        timestamp: Date.now()
+                    }));
+                } catch (e) {
+                    // localStorage hatası - devam et
+                }
+                console.info(`[Mail] ${action} loaded ${response.data.length} items`);
+                return response.data;
+            } else {
+                throw new Error(response.error || 'API error');
+            }
+        } catch (error) {
+            lastError = error instanceof Error ? error : new Error(String(error));
+            console.warn(`[Mail] ${action} attempt ${attempt}/${retries} failed:`, lastError.message);
+
+            if (attempt < retries) {
+                await new Promise(resolve => setTimeout(resolve, RETRY_CONFIG.delayMs * attempt));
+            }
+        }
+    }
+
+    // Tüm denemeler başarısız - cache'ten oku
+    console.warn(`[Mail] ${action} failed after ${retries} attempts, trying cache...`);
+    try {
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            const { data } = JSON.parse(cached);
+            if (Array.isArray(data)) {
+                console.info(`[Mail] Loaded ${data.length} items from cache for ${action}`);
+                return data;
+            }
+        }
+    } catch (e) {
+        // Cache parse hatası
+    }
+
+    // Cache de yoksa hata fırlat
+    throw lastError || new Error(`${action} failed`);
+}
+
+/**
+ * Invalidate cache after successful CRUD operation
+ */
+function invalidateCache(cacheKey: string): void {
+    try {
+        localStorage.removeItem(cacheKey);
+    } catch (e) {
+        // localStorage hatası - devam et
+    }
+}
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -89,8 +209,14 @@ export async function initMailManager(store: DataStore): Promise<void> {
     await Promise.all([
         loadFlows(),
         loadTemplates(),
+        loadInfoCards(),
         loadMessageVariables()
     ]);
+
+    // Debug: Expose data to window for console access
+    (window as any).mailFlows = flows;
+    (window as any).mailTemplates = templates;
+    (window as any).mailInfoCards = infoCards;
 }
 
 /**
@@ -103,6 +229,9 @@ function setupEventListeners(): void {
     // Template button
     document.getElementById('addMailTemplateBtn')?.addEventListener('click', () => openTemplateModal());
 
+    // Info Card button
+    document.getElementById('addMailInfoCardBtn')?.addEventListener('click', () => openInfoCardModal());
+
     // Flow Modal handlers
     document.getElementById('cancelMailFlowBtn')?.addEventListener('click', () => closeModal('mailFlowModal'));
     document.getElementById('saveMailFlowBtn')?.addEventListener('click', saveFlow);
@@ -112,6 +241,11 @@ function setupEventListeners(): void {
     document.getElementById('cancelMailTemplateBtn')?.addEventListener('click', () => closeModal('mailTemplateModal'));
     document.getElementById('saveMailTemplateBtn')?.addEventListener('click', saveTemplate);
     document.querySelector('#mailTemplateModal .modal-overlay')?.addEventListener('click', () => closeModal('mailTemplateModal'));
+
+    // Info Card Modal handlers
+    document.getElementById('cancelMailInfoCardBtn')?.addEventListener('click', () => closeModal('mailInfoCardModal'));
+    document.getElementById('saveMailInfoCardBtn')?.addEventListener('click', saveInfoCard);
+    document.querySelector('#mailInfoCardModal .modal-overlay')?.addEventListener('click', () => closeModal('mailInfoCardModal'));
 
     // Track last focused field for variable insertion
     const subjectField = document.getElementById('mailTemplateSubject') as HTMLInputElement;
@@ -131,25 +265,19 @@ function setupEventListeners(): void {
 // ==================== FLOW MANAGEMENT ====================
 
 /**
- * Load all flows from backend
+ * Load all flows from backend with retry and cache
  */
 async function loadFlows(): Promise<void> {
     const container = document.getElementById('mailFlowList');
     showContainerLoading(container);
 
     try {
-        const response = await ApiService.call('getMailFlows', {}) as ApiResponse<MailFlow[]>;
-
-        if (response.success && response.data) {
-            flows = response.data;
-            renderFlows();
-        } else {
-            // No flows yet - show empty state
-            showContainerEmpty(container, 'Henüz flow tanımlanmamış');
-        }
+        flows = await fetchWithRetry<MailFlow>('getMailFlows', CACHE_KEYS.FLOWS);
+        renderFlows();
     } catch (error) {
         logError(error, { action: 'loadMailFlows' });
-        showContainerEmpty(container, 'Henüz flow tanımlanmamış');
+        // Hata durumunda retry butonlu mesaj göster
+        showContainerError(container, 'Flow\'lar yüklenemedi', loadFlows);
     }
 }
 
@@ -223,20 +351,32 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     // Profiles
     const profilesText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
     const profilesSpan = document.createElement('span');
-    profilesSpan.textContent = '📋 ' + profilesText;
+    profilesSpan.textContent = profilesText;
     details.appendChild(profilesSpan);
 
     // Triggers
     const triggersText = flow.triggers.map(t => TRIGGER_LABELS[t] || t).join(', ');
     const triggerSpan = document.createElement('span');
-    triggerSpan.textContent = '⚡ ' + triggersText;
+    triggerSpan.textContent = triggersText;
     details.appendChild(triggerSpan);
 
     // Template
     const template = templates.find(t => t.id === flow.templateId);
     const templateSpan = document.createElement('span');
-    templateSpan.textContent = '📨 ' + (template?.name || 'Şablon seçilmemiş');
+    templateSpan.textContent = template?.name || 'Şablon seçilmemiş';
     details.appendChild(templateSpan);
+
+    // Info Card
+    const infoCard = infoCards.find(c => c.id === flow.infoCardId);
+    const infoCardSpan = document.createElement('span');
+    infoCardSpan.textContent = infoCard?.name || 'Varsayılan';
+    details.appendChild(infoCardSpan);
+
+    // Target
+    const targetLabel = TARGET_LABELS[flow.target] || 'Müşteri';
+    const targetSpan = document.createElement('span');
+    targetSpan.textContent = targetLabel;
+    details.appendChild(targetSpan);
 
     item.appendChild(header);
     item.appendChild(details);
@@ -260,7 +400,13 @@ function openFlowModal(flowId?: string): void {
         header.textContent = flowId ? 'Flow Düzenle' : 'Yeni Flow';
     }
 
-    // If editing, populate form with existing data
+    // Populate template options FIRST (before setting values)
+    populateTemplateSelect();
+
+    // Populate info card options FIRST (before setting values)
+    populateInfoCardSelect();
+
+    // If editing, populate form with existing data AFTER options are loaded
     if (flowId) {
         const flow = flows.find(f => f.id === flowId);
         if (flow) {
@@ -269,9 +415,6 @@ function openFlowModal(flowId?: string): void {
         const editIdInput = document.getElementById('mailFlowEditId') as HTMLInputElement;
         if (editIdInput) editIdInput.value = flowId;
     }
-
-    // Populate template options
-    populateTemplateSelect();
 
     // Show modal
     modal.classList.add('active');
@@ -295,10 +438,20 @@ function resetFlowForm(): void {
         (cb as HTMLInputElement).checked = false;
     });
 
+    // Reset target to customer (default)
+    const customerRadio = document.querySelector('input[name="mailFlowTarget"][value="customer"]') as HTMLInputElement;
+    if (customerRadio) customerRadio.checked = true;
+
     // Clear template selection
     const templateSelect = document.getElementById('mailFlowTemplates') as HTMLSelectElement;
     if (templateSelect) {
         templateSelect.value = '';
+    }
+
+    // Clear info card selection
+    const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
+    if (infoCardSelect) {
+        infoCardSelect.value = '';
     }
 }
 
@@ -308,7 +461,27 @@ function resetFlowForm(): void {
 function populateFlowForm(flow: MailFlow): void {
     (document.getElementById('mailFlowName') as HTMLInputElement).value = flow.name;
     (document.getElementById('mailFlowDescription') as HTMLInputElement).value = flow.description || '';
-    (document.getElementById('mailFlowTemplates') as HTMLSelectElement).value = flow.templateId || '';
+
+    // Set template select
+    const templateSelect = document.getElementById('mailFlowTemplates') as HTMLSelectElement;
+    if (templateSelect && flow.templateId) {
+        templateSelect.value = flow.templateId;
+        // Verify selection was successful
+        if (templateSelect.value !== flow.templateId) {
+            console.warn('[Mail] Template not found in options:', flow.templateId);
+        }
+    }
+
+    // Set info card select
+    const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
+    if (infoCardSelect && flow.infoCardId) {
+        infoCardSelect.value = flow.infoCardId;
+        // Verify selection was successful
+        if (infoCardSelect.value !== flow.infoCardId) {
+            console.warn('[Mail] Info card not found in options:', flow.infoCardId);
+            console.warn('[Mail] Available options:', Array.from(infoCardSelect.options).map(o => o.value));
+        }
+    }
 
     // Check trigger checkboxes
     flow.triggers.forEach(trigger => {
@@ -321,6 +494,11 @@ function populateFlowForm(flow: MailFlow): void {
         const checkbox = document.querySelector(`input[name="mailFlowProfiles"][value="${profile}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
+
+    // Set target radio button
+    const target = flow.target || 'customer';
+    const targetRadio = document.querySelector(`input[name="mailFlowTarget"][value="${target}"]`) as HTMLInputElement;
+    if (targetRadio) targetRadio.checked = true;
 }
 
 /**
@@ -348,6 +526,41 @@ function populateTemplateSelect(): void {
         option.textContent = template.name;
         select.appendChild(option);
     });
+}
+
+/**
+ * Populate info card select with available info cards
+ */
+function populateInfoCardSelect(): void {
+    const select = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
+    if (!select) return;
+
+    // Store current value before clearing
+    const currentValue = select.value;
+
+    // Clear ALL existing options
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
+    }
+
+    // Add empty/default option
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = 'Varsayılan (info card yok)';
+    select.appendChild(emptyOption);
+
+    // Add info card options
+    infoCards.forEach(card => {
+        const option = document.createElement('option');
+        option.value = card.id;
+        option.textContent = card.name;
+        select.appendChild(option);
+    });
+
+    // Restore previous value if it exists in new options
+    if (currentValue && Array.from(select.options).some(opt => opt.value === currentValue)) {
+        select.value = currentValue;
+    }
 }
 
 /**
@@ -394,6 +607,19 @@ async function saveFlow(): Promise<void> {
         return;
     }
 
+    // Get selected target
+    const targetRadio = document.querySelector('input[name="mailFlowTarget"]:checked') as HTMLInputElement;
+    const target = (targetRadio?.value as 'customer' | 'staff') || 'customer';
+
+    // Get selected info card
+    const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
+    const infoCardId = infoCardSelect?.value || '';
+
+    // Debug: Log what we're saving
+    console.log('[Mail] Saving flow with infoCardId:', infoCardId);
+    console.log('[Mail] Select element value:', infoCardSelect?.value);
+    console.log('[Mail] Select selectedIndex:', infoCardSelect?.selectedIndex);
+
     // Build flow data
     const flowData: Partial<MailFlow> = {
         name,
@@ -401,6 +627,8 @@ async function saveFlow(): Promise<void> {
         triggers,
         profiles,
         templateId,
+        infoCardId,
+        target,
         active: true
     };
 
@@ -502,18 +730,11 @@ async function loadTemplates(): Promise<void> {
     showContainerLoading(container);
 
     try {
-        const response = await ApiService.call('getMailTemplates', {}) as ApiResponse<MailTemplate[]>;
-
-        if (response.success && response.data) {
-            templates = response.data;
-            renderTemplates();
-        } else {
-            // No templates yet - show empty state
-            showContainerEmpty(container, 'Henüz şablon tanımlanmamış');
-        }
+        templates = await fetchWithRetry<MailTemplate>('getMailTemplates', CACHE_KEYS.TEMPLATES);
+        renderTemplates();
     } catch (error) {
         logError(error, { action: 'loadMailTemplates' });
-        showContainerEmpty(container, 'Henüz şablon tanımlanmamış');
+        showContainerError(container, 'Şablonlar yüklenemedi', loadTemplates);
     }
 }
 
@@ -800,6 +1021,484 @@ async function deleteTemplate(templateId: string): Promise<void> {
     }
 }
 
+// ==================== INFO CARD MANAGEMENT ====================
+
+/**
+ * Load all info cards from backend
+ */
+async function loadInfoCards(): Promise<void> {
+    const container = document.getElementById('mailInfoCardsList');
+    showContainerLoading(container);
+
+    try {
+        infoCards = await fetchWithRetry<MailInfoCard>('getMailInfoCards', CACHE_KEYS.INFO_CARDS);
+        renderInfoCards();
+    } catch (error) {
+        logError(error, { action: 'loadMailInfoCards' });
+        showContainerError(container, 'Info card\'lar yüklenemedi', loadInfoCards);
+    }
+}
+
+/**
+ * Render info cards in container
+ */
+function renderInfoCards(): void {
+    const container = document.getElementById('mailInfoCardsList');
+    if (!container) return;
+
+    clearContainer(container);
+
+    if (infoCards.length === 0) {
+        showContainerEmpty(container, 'Henüz info card tanımlanmamış');
+        return;
+    }
+
+    infoCards.forEach(card => {
+        const item = createInfoCardItem(card);
+        container.appendChild(item);
+    });
+}
+
+/**
+ * Create an info card item element
+ */
+function createInfoCardItem(card: MailInfoCard): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'info-card-item';
+    item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+
+    // Left: Name
+    const name = document.createElement('strong');
+    name.style.color = '#1A1A2E';
+    name.textContent = card.name;
+
+    // Right: Actions
+    const right = document.createElement('div');
+    right.style.cssText = 'display: flex; gap: 8px;';
+
+    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editInfoCard(card.id));
+    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteInfoCard(card.id));
+    deleteBtn.style.color = '#C62828';
+
+    right.appendChild(editBtn);
+    right.appendChild(deleteBtn);
+
+    header.appendChild(name);
+    header.appendChild(right);
+
+    // Details - Fields
+    const details = document.createElement('div');
+    details.style.cssText = 'font-size: 12px; color: #757575;';
+
+    const fieldsText = card.fields.map(f => f.label).join(', ');
+    details.textContent = '📝 ' + (fieldsText || 'Alan yok');
+
+    item.appendChild(header);
+    item.appendChild(details);
+
+    return item;
+}
+
+/**
+ * Open info card modal
+ */
+function openInfoCardModal(cardId?: string): void {
+    const modal = document.getElementById('mailInfoCardModal');
+    if (!modal) return;
+
+    // Reset form
+    resetInfoCardForm();
+
+    // Update modal header
+    const header = modal.querySelector('.modal-header');
+    if (header) {
+        header.textContent = cardId ? 'Info Card Düzenle' : 'Yeni Info Card';
+    }
+
+    // Populate variable chips
+    populateVariableChips();
+
+    // If editing, populate form with existing data
+    if (cardId) {
+        const card = infoCards.find(c => c.id === cardId);
+        if (card) {
+            populateInfoCardForm(card);
+        }
+        const editIdInput = document.getElementById('mailInfoCardEditId') as HTMLInputElement;
+        if (editIdInput) editIdInput.value = cardId;
+    }
+
+    // Show modal
+    modal.classList.add('active');
+}
+
+/**
+ * Reset info card form
+ */
+function resetInfoCardForm(): void {
+    (document.getElementById('mailInfoCardName') as HTMLInputElement).value = '';
+    (document.getElementById('mailInfoCardEditId') as HTMLInputElement).value = '';
+
+    // Clear fields list
+    infoCardFields = [];
+    renderInfoCardFields();
+    updateInfoCardPreview();
+}
+
+/**
+ * Populate info card form with existing data
+ */
+function populateInfoCardForm(card: MailInfoCard): void {
+    (document.getElementById('mailInfoCardName') as HTMLInputElement).value = card.name;
+
+    // Set fields
+    infoCardFields = [...card.fields].sort((a, b) => a.order - b.order);
+    populateVariableChips(); // Re-render chips to show which are selected
+    renderInfoCardFields();
+    updateInfoCardPreview();
+}
+
+/**
+ * Populate variable chips - clickable buttons for adding variables
+ */
+function populateVariableChips(): void {
+    const container = document.getElementById('infoCardVariableChips');
+    if (!container) return;
+
+    // Clear existing chips
+    container.innerHTML = '';
+
+    // Add variable chips
+    for (const [key, label] of Object.entries(messageVariables)) {
+        // Check if already added
+        const isAdded = infoCardFields.some(f => f.variable === key);
+
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'variable-chip';
+        chip.dataset.variable = key;
+        chip.textContent = label;
+        chip.style.cssText = `
+            padding: 6px 12px;
+            border: 1px solid ${isAdded ? '#E8E8E8' : '#C9A55A'};
+            border-radius: 20px;
+            background: ${isAdded ? '#F5F5F0' : 'white'};
+            color: ${isAdded ? '#999' : '#1A1A2E'};
+            font-size: 13px;
+            cursor: ${isAdded ? 'default' : 'pointer'};
+            transition: all 0.2s ease;
+            ${isAdded ? 'text-decoration: line-through;' : ''}
+        `;
+
+        if (!isAdded) {
+            chip.addEventListener('mouseenter', () => {
+                chip.style.background = '#C9A55A';
+                chip.style.color = 'white';
+            });
+            chip.addEventListener('mouseleave', () => {
+                chip.style.background = 'white';
+                chip.style.color = '#1A1A2E';
+            });
+            chip.addEventListener('click', () => addInfoCardFieldFromChip(key));
+        }
+
+        container.appendChild(chip);
+    }
+}
+
+/**
+ * Add field from chip click
+ */
+function addInfoCardFieldFromChip(variable: string): void {
+    // Check if already added
+    if (infoCardFields.some(f => f.variable === variable)) {
+        return;
+    }
+
+    // Get label - use short default labels
+    const label = DEFAULT_FIELD_LABELS[variable] || messageVariables[variable] || variable;
+
+    // Add field
+    infoCardFields.push({
+        variable,
+        label,
+        order: infoCardFields.length
+    });
+
+    // Re-render chips (to show as disabled) and fields
+    populateVariableChips();
+    renderInfoCardFields();
+    updateInfoCardPreview();
+}
+
+
+/**
+ * Render info card fields list
+ */
+function renderInfoCardFields(): void {
+    const container = document.getElementById('infoCardFieldsList');
+    const emptyMsg = document.getElementById('infoCardFieldsEmpty');
+
+    if (!container) return;
+
+    // Clear container
+    clearContainer(container);
+
+    if (infoCardFields.length === 0) {
+        // Show empty message
+        const p = document.createElement('p');
+        p.id = 'infoCardFieldsEmpty';
+        p.style.cssText = 'color: #757575; text-align: center; padding: 20px; margin: 0;';
+        p.textContent = 'Henüz alan seçilmedi';
+        container.appendChild(p);
+        return;
+    }
+
+    // Create sortable list
+    infoCardFields.forEach((field, index) => {
+        const item = document.createElement('div');
+        item.className = 'info-card-field-item';
+        item.draggable = true;
+        item.dataset.index = String(index);
+        item.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: white; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 8px; cursor: move;';
+
+        // Left: Drag handle + Label input
+        const left = document.createElement('div');
+        left.style.cssText = 'display: flex; align-items: center; gap: 10px; flex: 1;';
+
+        const dragHandle = document.createElement('span');
+        dragHandle.textContent = '⋮⋮';
+        dragHandle.style.cssText = 'color: #999; cursor: move;';
+
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = field.label;
+        labelInput.style.cssText = 'flex: 1; padding: 6px 10px; border: 1px solid #E8E8E8; border-radius: 4px; font-size: 13px;';
+        labelInput.placeholder = 'Başlık';
+        labelInput.addEventListener('input', () => {
+            infoCardFields[index].label = labelInput.value;
+            updateInfoCardPreview();
+        });
+
+        const varBadge = document.createElement('code');
+        varBadge.textContent = `{{${field.variable}}}`;
+        varBadge.style.cssText = 'padding: 3px 6px; background: #F5F5F0; border-radius: 3px; font-size: 11px; color: #666;';
+
+        left.appendChild(dragHandle);
+        left.appendChild(labelInput);
+        left.appendChild(varBadge);
+
+        // Right: Delete button
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.textContent = '✕';
+        deleteBtn.style.cssText = 'background: none; border: none; color: #C62828; cursor: pointer; font-size: 16px; padding: 5px 10px;';
+        deleteBtn.addEventListener('click', () => {
+            infoCardFields.splice(index, 1);
+            // Update order
+            infoCardFields.forEach((f, i) => f.order = i);
+            populateVariableChips(); // Re-enable chip
+            renderInfoCardFields();
+            updateInfoCardPreview();
+        });
+
+        item.appendChild(left);
+        item.appendChild(deleteBtn);
+
+        // Drag events
+        item.addEventListener('dragstart', (e) => {
+            e.dataTransfer?.setData('text/plain', String(index));
+            item.style.opacity = '0.5';
+        });
+
+        item.addEventListener('dragend', () => {
+            item.style.opacity = '1';
+        });
+
+        item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            item.style.borderColor = '#C9A55A';
+        });
+
+        item.addEventListener('dragleave', () => {
+            item.style.borderColor = '#E8E8E8';
+        });
+
+        item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.style.borderColor = '#E8E8E8';
+
+            const fromIndex = parseInt(e.dataTransfer?.getData('text/plain') || '0', 10);
+            const toIndex = index;
+
+            if (fromIndex !== toIndex) {
+                // Reorder
+                const [removed] = infoCardFields.splice(fromIndex, 1);
+                infoCardFields.splice(toIndex, 0, removed);
+
+                // Update order
+                infoCardFields.forEach((f, i) => f.order = i);
+
+                renderInfoCardFields();
+                updateInfoCardPreview();
+            }
+        });
+
+        container.appendChild(item);
+    });
+}
+
+/**
+ * Update info card preview
+ */
+function updateInfoCardPreview(): void {
+    const preview = document.getElementById('infoCardPreview');
+    if (!preview) return;
+
+    if (infoCardFields.length === 0) {
+        preview.innerHTML = '<p style="color: #757575; text-align: center; padding: 30px; margin: 0;">Alan ekleyerek önizlemeyi görün</p>';
+        return;
+    }
+
+    // Generate preview HTML (same style as mail info box - image 104)
+    let rowsHtml = '';
+    infoCardFields.forEach(field => {
+        // Örnek değerler
+        let exampleValue = '';
+        switch (field.variable) {
+            case 'randevu_tarih': exampleValue = '31 Aralık 2025, Çarşamba'; break;
+            case 'randevu_saat': exampleValue = '12:00'; break;
+            case 'randevu_turu': exampleValue = 'Görüşme'; break;
+            case 'personel': exampleValue = 'Atanmadı'; break;
+            case 'personel_tel': exampleValue = '+90 532 123 4567'; break;
+            case 'personel_mail': exampleValue = 'personel@example.com'; break;
+            case 'magaza': exampleValue = 'Rolex İzmir İstinyepark'; break;
+            case 'randevu_ek_bilgi': exampleValue = 'özel müşteri test 1'; break;
+            case 'musteri': exampleValue = 'Ahmet Yılmaz'; break;
+            case 'musteri_tel': exampleValue = '+90 532 987 6543'; break;
+            case 'musteri_mail': exampleValue = 'ahmet@example.com'; break;
+            case 'randevu_profili': exampleValue = 'VIP'; break;
+            default: exampleValue = '{{' + field.variable + '}}';
+        }
+
+        rowsHtml += `
+            <div style="display: flex; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
+                <div style="width: 120px; color: #666666; font-size: 14px; flex-shrink: 0;">${escapeHtml(field.label)}</div>
+                <div style="color: #1a1a1a; font-size: 14px;">${escapeHtml(exampleValue)}</div>
+            </div>
+        `;
+    });
+
+    // Preview container already has border-left via HTML style
+    preview.innerHTML = `
+        <h2 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+        ${rowsHtml}
+    `;
+}
+
+/**
+ * Escape HTML characters
+ */
+function escapeHtml(str: string): string {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+/**
+ * Save info card to backend
+ */
+async function saveInfoCard(): Promise<void> {
+    const saveBtn = document.getElementById('saveMailInfoCardBtn') as HTMLButtonElement;
+
+    const name = (document.getElementById('mailInfoCardName') as HTMLInputElement).value.trim();
+    const editId = (document.getElementById('mailInfoCardEditId') as HTMLInputElement).value;
+
+    // Validation
+    if (!name) {
+        getUI().showAlert('Info card adı gereklidir', 'error');
+        return;
+    }
+
+    if (infoCardFields.length === 0) {
+        getUI().showAlert('En az bir alan eklemelisiniz', 'error');
+        return;
+    }
+
+    // Build data - fields'ı array olarak gönder, backend stringify edecek
+    const cardData = {
+        name,
+        fields: infoCardFields  // Array olarak gönder, JSON.stringify backend'de yapılacak
+    };
+
+    // Add loading state
+    if (saveBtn) {
+        ButtonAnimator.start(saveBtn);
+    }
+
+    try {
+        const action = editId ? 'updateMailInfoCard' : 'createMailInfoCard';
+        const params = editId ? { id: editId, ...cardData } : cardData;
+
+        const response = await ApiService.call(action, params) as ApiResponse;
+
+        if (response.success) {
+            if (saveBtn) {
+                ButtonAnimator.success(saveBtn);
+            }
+            getUI().showAlert(editId ? 'Info card güncellendi' : 'Info card oluşturuldu', 'success');
+            setTimeout(() => {
+                closeModal('mailInfoCardModal');
+                loadInfoCards();
+            }, 1000);
+        } else {
+            throw new Error(response.error || 'Bilinmeyen hata');
+        }
+    } catch (error) {
+        if (saveBtn) {
+            ButtonAnimator.error(saveBtn);
+        }
+        logError(error, { action: 'saveMailInfoCard' });
+        getUI().showAlert('Kaydetme hatası: ' + (error as Error).message, 'error');
+    }
+}
+
+/**
+ * Edit info card
+ */
+function editInfoCard(cardId: string): void {
+    openInfoCardModal(cardId);
+}
+
+/**
+ * Delete info card
+ */
+async function deleteInfoCard(cardId: string): Promise<void> {
+    if (!confirm('Bu info card\'ı silmek istediğinizden emin misiniz?')) return;
+
+    try {
+        const response = await ApiService.call('deleteMailInfoCard', { id: cardId }) as ApiResponse;
+
+        if (response.success) {
+            getUI().showAlert('Info card silindi', 'success');
+            await loadInfoCards();
+        } else {
+            getUI().showAlert('Hata: ' + (response.error || 'Bilinmeyen hata'), 'error');
+        }
+    } catch (error) {
+        logError(error, { action: 'deleteMailInfoCard', cardId });
+        getUI().showAlert('Silme hatası', 'error');
+    }
+}
+
 // ==================== HELPER FUNCTIONS ====================
 
 /**
@@ -844,6 +1543,30 @@ function showContainerEmpty(container: HTMLElement | null, message: string): voi
     p.style.cssText = 'color: #757575; text-align: center; padding: 20px;';
     p.textContent = message;
     container.appendChild(p);
+}
+
+/**
+ * Show error state with retry button in container
+ */
+function showContainerError(container: HTMLElement | null, message: string, retryFn: () => void): void {
+    if (!container) return;
+    clearContainer(container);
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'text-align: center; padding: 20px;';
+
+    const p = document.createElement('p');
+    p.style.cssText = 'color: #d32f2f; margin-bottom: 10px;';
+    p.textContent = message;
+
+    const retryBtn = document.createElement('button');
+    retryBtn.className = 'btn btn-small';
+    retryBtn.textContent = 'Tekrar Dene';
+    retryBtn.onclick = retryFn;
+
+    wrapper.appendChild(p);
+    wrapper.appendChild(retryBtn);
+    container.appendChild(wrapper);
 }
 
 /**
