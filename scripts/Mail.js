@@ -320,7 +320,7 @@ function getMailInfoCards() {
 
     log.info('getMailInfoCards - Valid cards count:', validCards.length);
 
-    // v3.9.48: DEFAULT_INFO_CARD her zaman listenin başında
+    // v3.9.65: Tüm info card'lar sheet'ten gelir - DEFAULT kaldırıldı
     const mappedCards = validCards.map(card => ({
       id: String(card.id),
       name: String(card.name || ''),
@@ -329,7 +329,7 @@ function getMailInfoCards() {
 
     return {
       success: true,
-      data: [DEFAULT_INFO_CARD, ...mappedCards]
+      data: mappedCards
     };
   } catch (error) {
     log.error('getMailInfoCards error:', error);
