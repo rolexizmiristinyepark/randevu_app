@@ -448,10 +448,13 @@ function generateAppointmentInfoBox(data, infoCardId) {
   if (infoCardId) {
     try {
       const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET);
+      log.info('[Mail] All cards count:', cards.length);
       const card = cards.find(c => c.id === infoCardId);
+      log.info('[Mail] Found card:', card ? card.name : 'NOT FOUND', ', infoCardId:', infoCardId);
 
       if (card) {
         const fields = parseJsonSafe(card.fields, []);
+        log.info('[Mail] Card fields:', JSON.stringify(fields));
 
         // Sıralı field'lara göre satır oluştur
         const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
@@ -459,7 +462,10 @@ function generateAppointmentInfoBox(data, infoCardId) {
         let rowsHtml = '';
         for (const field of sortedFields) {
           // Variable değerini getir (replacedVariables'dan)
-          const varKey = field.variable || '';
+          // v3.9.54: {{}} parantezlerini temizle
+          let varKey = field.variable || '';
+          varKey = varKey.replace(/^\{\{/, '').replace(/\}\}$/, '').trim();
+          log.info('[Mail] Processing varKey:', varKey, ', original:', field.variable);
           let value = '';
 
           // Variables.js'deki değişken haritasından değeri al
@@ -494,7 +500,8 @@ function generateAppointmentInfoBox(data, infoCardId) {
           }
 
           // Debug log - tüm bilgileri göster
-          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)', ', dataKeys:', Object.keys(data).join(','));
+          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)');
+          log.info('[Mail] Data check - formattedDate:', data.formattedDate, ', time:', data.time, ', profileName:', data.profileName);
 
           // Boş değer ise satırı gösterme
           if (!value) continue;
@@ -912,6 +919,13 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
       // ===== EMAIL BODY OLUŞTUR =====
       // 1. Randevu Bilgileri kutusu (flow'a bağlı bilgi kartı veya varsayılan)
       const infoCardId = flow.infoCardId || '';
+      log.info('[Mail] Flow infoCardId:', infoCardId, ', flow.id:', flow.id);
+      log.info('[Mail] appointmentData:', JSON.stringify({
+        formattedDate: appointmentData.formattedDate,
+        time: appointmentData.time,
+        profileName: appointmentData.profileName,
+        profile: appointmentData.profile
+      }));
       const appointmentInfoBox = generateAppointmentInfoBox(appointmentData, infoCardId);
 
       // 2. Template body (özelleştirilebilir içerik)
