@@ -448,21 +448,39 @@ function generateAppointmentInfoBox(data, infoCardId) {
   }
 
   let rows = '';
+  let debugInfo = []; // DEBUG: Email'e eklenecek
 
   // Info Card'ı sheet'ten al
   try {
+    // v3.9.67: DEBUG bilgisi topla (email'e eklenecek)
+    debugInfo.push('=== DEBUG v3.9.67 ===');
+    debugInfo.push('infoCardId: ' + infoCardId);
+    debugInfo.push('data.date: ' + (data?.date || 'undefined'));
+    debugInfo.push('data.time: ' + (data?.time || 'undefined'));
+    debugInfo.push('data.formattedDate: ' + (data?.formattedDate || 'undefined'));
+    debugInfo.push('data.appointmentDate: ' + (data?.appointmentDate || 'undefined'));
+    debugInfo.push('data.profile: ' + (data?.profile || 'undefined'));
+    debugInfo.push('data.profileName: ' + (data?.profileName || 'undefined'));
+    debugInfo.push('data.appointmentType: ' + (data?.appointmentType || 'undefined'));
+
     const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET);
+    debugInfo.push('Total cards: ' + (cards?.length || 0));
+
     const card = cards.find(c => c.id === infoCardId);
 
     if (!card) {
-      log.warn('[Mail] Info card bulunamadı:', infoCardId);
-      return '';
+      debugInfo.push('ERROR: Card not found!');
+      debugInfo.push('Available IDs: ' + (cards?.map(c => c.id).join(', ') || 'none'));
+      // DEBUG: Hata durumunda debug bilgisini göster
+      return '<div style="background:#ffe0e0;padding:10px;font-size:10px;"><pre>' + debugInfo.join('\n') + '</pre></div>';
     }
 
     const fields = parseJsonSafe(card.fields, []);
     const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
 
-    log.info('[Mail] Info card bulundu:', card.name, ', fields:', sortedFields.length);
+    debugInfo.push('Card name: ' + card.name);
+    debugInfo.push('Fields count: ' + sortedFields.length);
+    debugInfo.push('Field variables: ' + sortedFields.map(f => f.variable).join(', '));
 
     // Her field için: GLOBAL getVariableValue ile değer al
     for (const field of sortedFields) {
@@ -470,14 +488,23 @@ function generateAppointmentInfoBox(data, infoCardId) {
       // {{degisken}} formatını temizle
       varKey = varKey.replace(/\{\{?\s*/g, '').replace(/\s*\}?\}/g, '').trim();
 
-      if (!varKey) continue;
+      debugInfo.push('---');
+      debugInfo.push('Field: ' + field.label + ' | var: ' + field.variable + ' | clean: ' + varKey);
+
+      if (!varKey) {
+        debugInfo.push('SKIP: empty varKey');
+        continue;
+      }
 
       // ✅ GLOBAL SİSTEM: Variables.js'den getVariableValue ile değer al
       const value = getVariableValue(varKey, data);
 
-      log.info('[Mail] getVariableValue("' + varKey + '") =', value);
+      debugInfo.push('getVariableValue("' + varKey + '") = "' + (value || 'EMPTY') + '"');
 
-      if (!value) continue;
+      if (!value) {
+        debugInfo.push('SKIP: empty value');
+        continue;
+      }
 
       rows += `
         <tr>
@@ -487,14 +514,18 @@ function generateAppointmentInfoBox(data, infoCardId) {
       `;
     }
   } catch (err) {
-    log.error('[Mail] Info card yüklenirken hata:', err);
+    debugInfo.push('EXCEPTION: ' + err.toString());
   }
+
+  // v3.9.67: DEBUG bilgisini email'e ekle (test sonrası kaldırılacak)
+  const debugHtml = '<div style="background:#f0f0f0;padding:10px;margin-top:15px;font-size:9px;color:#666;border:1px solid #ddd;"><pre style="margin:0;white-space:pre-wrap;">' + debugInfo.join('\n') + '</pre></div>';
 
   return `
     <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
       <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
       <table style="width: 100%; border-collapse: collapse;">${rows}</table>
     </div>
+    ${debugHtml}
   `;
 }
 
