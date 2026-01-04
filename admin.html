@@ -187,18 +187,18 @@
             <div id="mail" class="sub-tab-content">
                 <!-- Mail İç Sekmeler -->
                 <div class="inner-tabs">
-                    <div class="inner-tab active" data-innertab="mailFlow">Flow</div>
+                    <div class="inner-tab active" data-innertab="mailInfoCards">Card</div>
                     <div class="inner-tab" data-innertab="mailTemplates">Template</div>
-                    <div class="inner-tab" data-innertab="mailInfoCards">Info Card</div>
+                    <div class="inner-tab" data-innertab="mailFlow">Flow</div>
                 </div>
 
-                <!-- Mail Flow -->
-                <div id="mailFlow" class="inner-tab-content active">
+                <!-- Mail Info Cards -->
+                <div id="mailInfoCards" class="inner-tab-content active">
                     <div class="card">
-                        <div id="mailFlowList">
-                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz flow tanımlanmamış</p>
+                        <div id="mailInfoCardsList">
+                            <p style="color: #757575; text-align: center; padding: 20px;">No info cards defined</p>
                         </div>
-                        <button class="btn" id="addMailFlowBtn" style="margin-top: 15px;">+ Yeni Flow</button>
+                        <button class="btn" id="addMailInfoCardBtn" style="margin-top: 15px;">+ New Card</button>
                     </div>
                 </div>
 
@@ -206,19 +206,19 @@
                 <div id="mailTemplates" class="inner-tab-content">
                     <div class="card">
                         <div id="mailTemplatesList">
-                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz şablon tanımlanmamış</p>
+                            <p style="color: #757575; text-align: center; padding: 20px;">No templates defined</p>
                         </div>
-                        <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ Yeni Şablon</button>
+                        <button class="btn" id="addMailTemplateBtn" style="margin-top: 15px;">+ New Template</button>
                     </div>
                 </div>
 
-                <!-- Mail Info Cards -->
-                <div id="mailInfoCards" class="inner-tab-content">
+                <!-- Mail Flow -->
+                <div id="mailFlow" class="inner-tab-content">
                     <div class="card">
-                        <div id="mailInfoCardsList">
-                            <p style="color: #757575; text-align: center; padding: 20px;">Henüz info card tanımlanmamış</p>
+                        <div id="mailFlowList">
+                            <p style="color: #757575; text-align: center; padding: 20px;">No flows defined</p>
                         </div>
-                        <button class="btn" id="addMailInfoCardBtn" style="margin-top: 15px;">+ Yeni Info Card</button>
+                        <button class="btn" id="addMailFlowBtn" style="margin-top: 15px;">+ New Flow</button>
                     </div>
                 </div>
             </div>
@@ -948,90 +948,88 @@
         <!-- Mail Flow Modal -->
         <div id="mailFlowModal" class="modal">
             <div class="modal-overlay"></div>
-            <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">Yeni Flow</div>
+            <div class="modal-content mail-flow-modal">
                 <div class="modal-body">
                     <div class="input-group">
-                        <label for="mailFlowName">Flow Adı</label>
-                        <input type="text" id="mailFlowName" placeholder="Randevu Onay">
+                        <label for="mailFlowName">Name</label>
+                        <input type="text" id="mailFlowName" placeholder="Appointment confirmation">
                     </div>
                     <div class="input-group">
-                        <label for="mailFlowDescription">Açıklama</label>
-                        <input type="text" id="mailFlowDescription" placeholder="Randevu oluşturulduğunda gönderilecek onay">
+                        <label for="mailFlowDescription">Detail</label>
+                        <input type="text" id="mailFlowDescription" placeholder="Sent when appointment is created">
                     </div>
                     <div class="input-group">
-                        <label>Tetikleyici Olaylar</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_OLUŞTUR"> Randevu Oluşturuldu
+                        <label>Trigger</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_OLUŞTUR"> Create
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_İPTAL"> Randevu İptal Edildi
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_İPTAL"> Cancel
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_GÜNCELLE"> Randevu Güncellendi
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_GÜNCELLE"> Update
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> Hatırlatma
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> Notify
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowTriggers" value="ILGILI_ATANDI"> İlgili Atandı
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowTriggers" value="ILGILI_ATANDI"> Assign
                             </label>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Hedef Profiller</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="g"> Genel
+                        <label>Profile</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="g"> General
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="w"> Günlük
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="w"> Daily
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="b"> Butik
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="b"> Boutique
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="m"> Yönetim
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="m"> Management
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="s"> Bireysel
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="s"> Individual
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="mailFlowProfiles" value="v"> VIP
-                            </label>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>Mail Gönderilecek Kişi</label>
-                        <div style="display: flex; gap: 20px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="radio" name="mailFlowTarget" value="customer" checked> Müşteri
-                            </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="radio" name="mailFlowTarget" value="staff"> Personel
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="mailFlowProfiles" value="v"> Vip
                             </label>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="mailFlowTemplates">Kullanılacak Şablon</label>
+                        <label>Recipient</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="mailFlowTarget" value="customer" checked> Customer
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="mailFlowTarget" value="staff"> Staff
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group">
+                        <label for="mailFlowTemplates">Template</label>
                         <select id="mailFlowTemplates">
                             <!-- Dinamik yüklenecek -->
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="mailFlowInfoCards">Info Card</label>
+                        <label for="mailFlowInfoCards">Card</label>
                         <select id="mailFlowInfoCards">
-                            <option value="">Varsayılan (Tüm Alanlar)</option>
+                            <option value="">Default (all fields)</option>
                             <!-- Dinamik yüklenecek -->
                         </select>
-                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Mailde gösterilecek info card şablonunu seçin</small>
                     </div>
                     <input type="hidden" id="mailFlowEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelMailFlowBtn">İptal</button>
-                    <button class="btn" id="saveMailFlowBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelMailFlowBtn">Cancel</button>
+                    <button class="btn" id="saveMailFlowBtn">Save</button>
                 </div>
             </div>
         </div>

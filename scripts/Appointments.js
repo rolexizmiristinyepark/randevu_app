@@ -500,22 +500,33 @@ const AppointmentService = {
         const rawProfil = event.getTag('profil') || 'genel';
         const profilTag = PROFILE_KEY_TO_CODE[rawProfil] || rawProfil || 'g';
 
+        // v3.9.49: Tüm gerekli alanlar eklendi
+        const PROFILE_NAMES = {
+          'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
+          'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
+        };
+        const customerNote = event.getTag('customerNote') || event.getDescription() || '';
         const mailData = {
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail,
           email: customerEmail,
+          customerNote: customerNote,
+          notes: customerNote,
           staffId: staffId,
           staffName: staff.name,
           linkedStaffName: staff.name,
           staffPhone: staff.phone || '',
           staffEmail: staff.email || '',
           linkedStaffEmail: staff.email || '',
+          date: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'yyyy-MM-dd'),
           formattedDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
           appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
           time: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
           appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
-          appointmentType: appointmentType
+          appointmentType: appointmentType,
+          profileName: PROFILE_NAMES[rawProfil] || rawProfil || 'Genel',
+          profile: rawProfil
         };
 
         sendMailByTrigger('ILGILI_ATANDI', profilTag, mailData);
@@ -611,6 +622,11 @@ const AppointmentService = {
           const formattedDate = DateUtils.toTurkishDate(date);
 
           // Mail Flow sistemi - RANDEVU_OLUŞTUR
+          // v3.9.49: profileName eklendi
+          const PROFILE_NAMES = {
+            'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
+            'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
+          };
           const appointmentData = {
             customerName: sanitizedCustomerName,
             customerPhone: sanitizedCustomerPhone,
@@ -630,7 +646,9 @@ const AppointmentService = {
             formattedDate,
             appointmentDate: formattedDate,
             appointmentType,
-            duration: durationNum
+            duration: durationNum,
+            profileName: PROFILE_NAMES[params.profil] || params.profil || 'Genel',
+            profile: params.profil || 'genel'
           };
 
           // Profil anahtarını koda çevir
@@ -1227,6 +1245,11 @@ function _sendNotifications(params) {
 
   // Mail Flow sistemini tetikle - RANDEVU_OLUŞTUR
   try {
+    // v3.9.49: profileName eklendi
+    const PROFILE_NAMES = {
+      'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
+      'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
+    };
     const appointmentData = {
       // Müşteri bilgileri
       customerName,
@@ -1251,7 +1274,9 @@ function _sendNotifications(params) {
       formattedDate,
       appointmentDate: formattedDate, // Alternatif key
       appointmentType,
-      duration: durationNum
+      duration: durationNum,
+      profileName: PROFILE_NAMES[profil] || profil || 'Genel',
+      profile: profil || 'genel'
     };
 
     // Profil anahtarını koda çevir (personel → s, genel → g, vb.)

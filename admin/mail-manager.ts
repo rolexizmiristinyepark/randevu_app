@@ -317,8 +317,8 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     const left = document.createElement('div');
     left.style.cssText = 'display: flex; align-items: center; gap: 10px;';
 
-    const name = document.createElement('strong');
-    name.style.color = '#1A1A2E';
+    const name = document.createElement('span');
+    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
     name.textContent = flow.name;
 
     const status = document.createElement('span');
@@ -346,7 +346,15 @@ function createFlowItem(flow: MailFlow): HTMLElement {
 
     // Details row
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; display: flex; flex-wrap: wrap; gap: 15px;';
+    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;';
+
+    // Helper: Ayırıcı nokta ekle
+    const addSeparator = () => {
+        const sep = document.createElement('span');
+        sep.textContent = '•';
+        sep.style.cssText = 'color: #ccc;';
+        details.appendChild(sep);
+    };
 
     // Profiles
     const profilesText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
@@ -354,11 +362,15 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     profilesSpan.textContent = profilesText;
     details.appendChild(profilesSpan);
 
+    addSeparator();
+
     // Triggers
     const triggersText = flow.triggers.map(t => TRIGGER_LABELS[t] || t).join(', ');
     const triggerSpan = document.createElement('span');
     triggerSpan.textContent = triggersText;
     details.appendChild(triggerSpan);
+
+    addSeparator();
 
     // Template
     const template = templates.find(t => t.id === flow.templateId);
@@ -366,11 +378,16 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     templateSpan.textContent = template?.name || 'Şablon seçilmemiş';
     details.appendChild(templateSpan);
 
-    // Info Card
-    const infoCard = infoCards.find(c => c.id === flow.infoCardId);
+    addSeparator();
+
+    // Info Card - boş ise DEFAULT_INFO_CARD (ics_default) kullan
+    const infoCardId = flow.infoCardId || 'ics_default';
+    const infoCard = infoCards.find(c => c.id === infoCardId);
     const infoCardSpan = document.createElement('span');
-    infoCardSpan.textContent = infoCard?.name || 'Varsayılan';
+    infoCardSpan.textContent = infoCard?.name || 'ICS (Default)';
     details.appendChild(infoCardSpan);
+
+    addSeparator();
 
     // Target
     const targetLabel = TARGET_LABELS[flow.target] || 'Müşteri';
@@ -846,8 +863,8 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
 
     // Left: Name
-    const name = document.createElement('strong');
-    name.style.color = '#1A1A2E';
+    const name = document.createElement('span');
+    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
     name.textContent = template.name;
 
     // Right: Actions
@@ -866,8 +883,8 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
 
     // Details - Subject
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575;';
-    details.textContent = '📧 Konu: ' + template.subject;
+    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400;';
+    details.textContent = template.subject;
 
     item.appendChild(header);
     item.appendChild(details);
@@ -1072,8 +1089,8 @@ function createInfoCardItem(card: MailInfoCard): HTMLElement {
     header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
 
     // Left: Name
-    const name = document.createElement('strong');
-    name.style.color = '#1A1A2E';
+    const name = document.createElement('span');
+    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
     name.textContent = card.name;
 
     // Right: Actions
@@ -1090,12 +1107,12 @@ function createInfoCardItem(card: MailInfoCard): HTMLElement {
     header.appendChild(name);
     header.appendChild(right);
 
-    // Details - Fields
+    // Details - Fields with separators
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575;';
+    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400;';
 
-    const fieldsText = card.fields.map(f => f.label).join(', ');
-    details.textContent = '📝 ' + (fieldsText || 'Alan yok');
+    const fieldsText = card.fields.map(f => f.label).join(' • ');
+    details.textContent = fieldsText || 'No fields';
 
     item.appendChild(header);
     item.appendChild(details);

@@ -407,6 +407,111 @@
             justify-content: flex-end;
         }
 
+        /* Mail Flow Modal - v3.9.48 */
+        .mail-flow-modal {
+            max-width: 420px !important;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .mail-flow-modal .modal-body {
+            overflow-y: auto;
+            flex: 1;
+            padding-right: 5px;
+        }
+
+        /* Mail Flow Modal Labels - Override uppercase */
+        .mail-flow-modal .input-group > label {
+            text-transform: none !important;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        /* Checkbox & Radio Groups */
+        .checkbox-group,
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 10px;
+            margin-top: 4px;
+        }
+
+        .checkbox-label,
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 13px;
+            font-weight: 400;
+            text-transform: none !important;
+            letter-spacing: 0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .checkbox-label input[type="checkbox"],
+        .radio-label input[type="radio"] {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 13px !important;
+            height: 13px !important;
+            min-width: 13px !important;
+            max-width: 13px !important;
+            margin: 0;
+            padding: 0;
+            border: 1px solid #999;
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+            background: #fff;
+            flex-shrink: 0;
+            box-sizing: border-box;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked,
+        .radio-label input[type="radio"]:checked {
+            background: #C9A55A;
+            border-color: #C9A55A;
+        }
+
+        .checkbox-label input[type="checkbox"]:checked::after,
+        .radio-label input[type="radio"]:checked::after {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: 45%;
+            width: 4px;
+            height: 7px;
+            border: solid #fff;
+            border-width: 0 2px 2px 0;
+            transform: translate(-50%, -50%) rotate(45deg);
+        }
+
+        /* Responsive Modal */
+        @media (max-width: 520px) {
+            .mail-flow-modal {
+                max-width: 95vw !important;
+                max-height: 90vh;
+                margin: 10px;
+            }
+
+            .mail-flow-modal .modal-body {
+                padding: 15px;
+            }
+
+            .checkbox-group,
+            .radio-group {
+                gap: 5px 8px;
+            }
+
+            .checkbox-label,
+            .radio-label {
+                font-size: 12px;
+            }
+        }
+
         /* Fixed Alert Container */
         #alertContainer {
             position: fixed;

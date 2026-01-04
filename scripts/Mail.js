@@ -19,6 +19,20 @@ const MAIL_FLOW_SHEET = 'MAIL_FLOWS';
 const MAIL_TEMPLATE_SHEET = 'MAIL_TEMPLATES';
 const MAIL_INFO_CARDS_SHEET = 'MAIL_INFO_CARDS';
 
+// v3.9.48: Default ICS (Info Card Standard) - Her mailde varsayılan olarak kullanılır
+const DEFAULT_INFO_CARD = {
+  id: 'ics_default',
+  name: 'ICS (Default)',
+  fields: [
+    { variable: 'randevu_tarih', label: 'Date', order: 1 },
+    { variable: 'randevu_saat', label: 'Time', order: 2 },
+    { variable: 'randevu_turu', label: 'Subject', order: 3 },
+    { variable: 'personel', label: 'Contact', order: 4 },
+    { variable: 'magaza', label: 'Location', order: 5 },
+    { variable: 'randevu_ek_bilgi', label: 'Note', order: 6 }
+  ]
+};
+
 // Değişkenler Variables.js'den gelir (MESSAGE_VARIABLES)
 // Mail şablonlarında {{musteri}}, {{randevu_tarihi}} vb. kullanılır
 
@@ -319,13 +333,16 @@ function getMailInfoCards() {
 
     log.info('getMailInfoCards - Valid cards count:', validCards.length);
 
+    // v3.9.48: DEFAULT_INFO_CARD her zaman listenin başında
+    const mappedCards = validCards.map(card => ({
+      id: String(card.id),
+      name: String(card.name || ''),
+      fields: parseJsonSafe(card.fields, [])
+    }));
+
     return {
       success: true,
-      data: validCards.map(card => ({
-        id: String(card.id),
-        name: String(card.name || ''),
-        fields: parseJsonSafe(card.fields, [])
-      }))
+      data: [DEFAULT_INFO_CARD, ...mappedCards]
     };
   } catch (error) {
     log.error('getMailInfoCards error:', error);
@@ -446,47 +463,53 @@ function generateAppointmentInfoBox(data, infoCardId) {
           let value = '';
 
           // Variables.js'deki değişken haritasından değeri al
+          // v3.9.49: Daha geniş field eşleşmesi
           if (varKey === 'randevu_tarih') {
-            value = data.formattedDate || data.appointmentDate || '';
+            value = data.formattedDate || data.appointmentDate || data.date || '';
           } else if (varKey === 'randevu_saat') {
             value = data.time || data.appointmentTime || '';
           } else if (varKey === 'randevu_turu') {
-            const appointmentType = data.appointmentType || '';
+            const appointmentType = data.appointmentType || data.type || '';
             value = CONFIG.SERVICE_NAMES?.[appointmentType] || appointmentType || '';
           } else if (varKey === 'personel') {
-            value = data.staffName || data.linkedStaffName || '';
+            value = data.staffName || data.linkedStaffName || data.assignedStaff || '';
           } else if (varKey === 'personel_tel') {
-            value = data.staffPhone ? '+' + data.staffPhone : '';
+            const phone = data.staffPhone || data.linkedStaffPhone || '';
+            value = phone ? (phone.startsWith('+') ? phone : '+' + phone) : '';
           } else if (varKey === 'personel_mail') {
-            value = data.staffEmail || '';
+            value = data.staffEmail || data.linkedStaffEmail || '';
           } else if (varKey === 'magaza') {
-            value = CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
+            value = data.storeName || CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
           } else if (varKey === 'randevu_ek_bilgi') {
-            value = data.customerNote || data.notes || '';
+            value = data.customerNote || data.notes || data.note || '';
           } else if (varKey === 'musteri') {
             value = data.customerName || data.name || '';
           } else if (varKey === 'musteri_tel') {
-            value = data.customerPhone || data.phone || '';
+            const custPhone = data.customerPhone || data.phone || '';
+            value = custPhone ? (custPhone.startsWith('+') ? custPhone : custPhone) : '';
           } else if (varKey === 'musteri_mail') {
             value = data.customerEmail || data.email || '';
           } else if (varKey === 'randevu_profili') {
-            value = data.profileName || '';
+            value = data.profileName || data.profile || '';
           }
+
+          // Debug log
+          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)');
 
           // Boş değer ise satırı gösterme
           if (!value) continue;
 
           rowsHtml += `
             <tr>
-              <td style="padding: 10px 0; color: #666666; width: 130px; vertical-align: top; font-size: 15px;">${escapeHtml(field.label || varKey)}</td>
-              <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(value)}</td>
+              <td style="padding: 6px 0; color: #888888; width: 100px; vertical-align: top; font-size: 13px; font-weight: 300;">${escapeHtml(field.label || varKey)}</td>
+              <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(value)}</td>
             </tr>
           `;
         }
 
         return `
-          <div style="border-left: 4px solid #C9A55A; padding: 25px 30px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-            <h2 style="margin: 0 0 25px 0; font-size: 18px; font-weight: 400; letter-spacing: 0.5px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+          <div style="border-left: 3px solid #C9A55A; padding: 15px 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
+            <h2 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
             <table style="width: 100%; border-collapse: collapse;">
               ${rowsHtml}
             </table>
@@ -498,43 +521,43 @@ function generateAppointmentInfoBox(data, infoCardId) {
     }
   }
 
-  // Varsayılan (default) info box - eski davranış
-  const formattedDate = data.formattedDate || data.appointmentDate || '';
+  // Varsayılan (default) info box - v3.9.49: Kompakt tasarım
+  const formattedDate = data.formattedDate || data.appointmentDate || data.date || '';
   const time = data.time || data.appointmentTime || '';
-  const appointmentType = data.appointmentType || '';
+  const appointmentType = data.appointmentType || data.type || '';
   const serviceName = CONFIG.SERVICE_NAMES?.[appointmentType] || appointmentType || 'Görüşme';
   const staffName = data.staffName || data.linkedStaffName || 'Atanmadı';
   const storeName = CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
-  const customerNote = data.customerNote || data.notes || '';
+  const customerNote = data.customerNote || data.notes || data.note || '';
 
   return `
-    <div style="border-left: 4px solid #C9A55A; padding: 25px 30px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-      <h2 style="margin: 0 0 25px 0; font-size: 18px; font-weight: 400; letter-spacing: 0.5px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+    <div style="border-left: 3px solid #C9A55A; padding: 15px 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
+      <h2 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td style="padding: 10px 0; color: #666666; width: 130px; vertical-align: top; font-size: 15px;">Tarih</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(formattedDate)}</td>
+          <td style="padding: 6px 0; color: #888888; width: 100px; vertical-align: top; font-size: 13px; font-weight: 300;">Tarih</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(formattedDate)}</td>
         </tr>
         <tr>
-          <td style="padding: 10px 0; color: #666666; vertical-align: top; font-size: 15px;">Saat</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(time)}</td>
+          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Saat</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(time)}</td>
         </tr>
         <tr>
-          <td style="padding: 10px 0; color: #666666; vertical-align: top; font-size: 15px;">Konu</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(serviceName)}</td>
+          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Konu</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(serviceName)}</td>
         </tr>
         <tr>
-          <td style="padding: 10px 0; color: #666666; vertical-align: top; font-size: 15px;">İlgili</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(staffName)}</td>
+          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">İlgili</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(staffName)}</td>
         </tr>
         <tr>
-          <td style="padding: 10px 0; color: #666666; vertical-align: top; font-size: 15px;">Mağaza</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(storeName)}</td>
+          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Mağaza</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(storeName)}</td>
         </tr>
         ${customerNote ? `
         <tr>
-          <td style="padding: 10px 0; color: #666666; vertical-align: top; font-size: 15px;">Ek Bilgi</td>
-          <td style="padding: 10px 0; color: #1a1a1a; font-size: 15px;">${escapeHtml(customerNote)}</td>
+          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Ek Bilgi</td>
+          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(customerNote)}</td>
         </tr>
         ` : ''}
       </table>
@@ -677,6 +700,138 @@ function generateMailICS(data) {
 }
 
 /**
+ * Schema.org Event microdata + JSON-LD oluştur
+ * - Apple Mail/Siri: Microdata formatını algılar
+ * - Gmail: JSON-LD formatını algılar (Events from Gmail)
+ * v3.9.50: Siri + Gmail Event Detection
+ *
+ * @param {Object} data - Randevu verileri
+ * @returns {string} HTML (microdata + JSON-LD script)
+ */
+function generateEventMicrodata(data) {
+  try {
+    // Tarih ve saat bilgilerini parse et
+    const date = data.date || '';
+    const time = data.time || data.appointmentTime || '10:00';
+    const duration = data.duration || 60;
+    const formattedDate = data.formattedDate || data.appointmentDate || '';
+
+    // Tarih parse et (YYYY-MM-DD formatına çevir)
+    let dateStr = date;
+    if (!dateStr || dateStr.includes(',')) {
+      // formattedDate'den parse et: "31 Aralık 2025, Çarşamba" gibi
+      const dateMatch = formattedDate.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+      if (dateMatch) {
+        const months = {
+          'Ocak': '01', 'Şubat': '02', 'Mart': '03', 'Nisan': '04',
+          'Mayıs': '05', 'Haziran': '06', 'Temmuz': '07', 'Ağustos': '08',
+          'Eylül': '09', 'Ekim': '10', 'Kasım': '11', 'Aralık': '12'
+        };
+        const day = dateMatch[1].padStart(2, '0');
+        const month = months[dateMatch[2]] || '01';
+        const year = dateMatch[3];
+        dateStr = `${year}-${month}-${day}`;
+      } else {
+        // Bugünü kullan
+        const now = new Date();
+        dateStr = now.toISOString().split('T')[0];
+      }
+    }
+
+    // ISO 8601 tarih/saat formatı (Türkiye: +03:00)
+    const startDateTime = `${dateStr}T${time}:00+03:00`;
+
+    // Bitiş zamanı hesapla
+    const [hours, minutes] = time.split(':').map(Number);
+    const endMinutes = hours * 60 + minutes + duration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+    const endDateTime = `${dateStr}T${endTime}:00+03:00`;
+
+    // Event bilgileri
+    const staffName = data.staffName || data.linkedStaffName || '';
+    const appointmentType = data.appointmentType || data.type || '';
+    const appointmentTypeName = CONFIG.SERVICE_NAMES?.[appointmentType] || appointmentType || 'Görüşme';
+    const storeName = CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
+    const location = CONFIG.COMPANY_LOCATION || 'İstinyepark AVM, İzmir';
+    const companyEmail = CONFIG.COMPANY_EMAIL || 'info@rolex.com';
+
+    // Event title
+    const eventName = `${storeName} - ${staffName || 'Randevu'} / ${appointmentTypeName}`;
+    const eventDescription = `Randevu: ${appointmentTypeName}${staffName ? ' - ' + staffName : ''}`;
+
+    // JSON-LD for Gmail (Events from Gmail feature)
+    const jsonLdData = {
+      "@context": "http://schema.org",
+      "@type": "Event",
+      "name": eventName,
+      "startDate": startDateTime,
+      "endDate": endDateTime,
+      "location": {
+        "@type": "Place",
+        "name": storeName,
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": location,
+          "addressLocality": "İzmir",
+          "addressCountry": "TR"
+        }
+      },
+      "description": eventDescription,
+      "organizer": {
+        "@type": "Organization",
+        "name": storeName,
+        "url": "https://www.rolex.com",
+        "email": companyEmail
+      }
+    };
+
+    // JSON-LD script (Gmail detection)
+    const jsonLdScript = `<script type="application/ld+json">${JSON.stringify(jsonLdData)}</script>`;
+
+    // Microdata (Apple Mail/Siri detection) + JSON-LD
+    return `
+      ${jsonLdScript}
+      <div itemscope itemtype="http://schema.org/Event" style="display:none;">
+        <meta itemprop="name" content="${escapeHtmlAttr(eventName)}" />
+        <meta itemprop="startDate" content="${startDateTime}" />
+        <meta itemprop="endDate" content="${endDateTime}" />
+        <div itemprop="location" itemscope itemtype="http://schema.org/Place">
+          <meta itemprop="name" content="${escapeHtmlAttr(storeName)}" />
+          <div itemprop="address" itemscope itemtype="http://schema.org/PostalAddress">
+            <meta itemprop="streetAddress" content="${escapeHtmlAttr(location)}" />
+            <meta itemprop="addressLocality" content="İzmir" />
+            <meta itemprop="addressCountry" content="TR" />
+          </div>
+        </div>
+        <meta itemprop="description" content="${escapeHtmlAttr(eventDescription)}" />
+        <div itemprop="organizer" itemscope itemtype="http://schema.org/Organization">
+          <meta itemprop="name" content="${escapeHtmlAttr(storeName)}" />
+          <meta itemprop="url" content="https://www.rolex.com" />
+        </div>
+      </div>
+    `;
+  } catch (error) {
+    log.warn('[Mail] Event microdata oluşturulamadı:', error);
+    return '';
+  }
+}
+
+/**
+ * HTML attribute için escape (XSS koruması)
+ */
+function escapeHtmlAttr(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+/**
  * Trigger'a göre mail gönder
  * Bu fonksiyon Appointments.js'den çağrılır
  *
@@ -691,6 +846,15 @@ function generateMailICS(data) {
  */
 function sendMailByTrigger(trigger, profileCode, appointmentData) {
   try {
+    // v3.9.49: Debug - appointmentData içeriğini logla
+    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, 'profile:', profileCode);
+    log.info('[Mail] appointmentData keys:', Object.keys(appointmentData || {}).join(', '));
+    log.info('[Mail] appointmentData.formattedDate:', appointmentData?.formattedDate);
+    log.info('[Mail] appointmentData.appointmentDate:', appointmentData?.appointmentDate);
+    log.info('[Mail] appointmentData.date:', appointmentData?.date);
+    log.info('[Mail] appointmentData.time:', appointmentData?.time);
+    log.info('[Mail] appointmentData.profileName:', appointmentData?.profileName);
+
     // Aktif ve bu trigger + profile için tanımlı flow'ları bul
     const allFlows = SheetStorageService.getAll(MAIL_FLOW_SHEET);
     const matchingFlows = allFlows.filter(flow => {
@@ -764,9 +928,13 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         </div>
       ` : '';
 
+      // v3.9.49: Schema.org Event microdata - Siri/Apple Mail takvim algılaması için
+      const eventMicrodata = generateEventMicrodata(appointmentData);
+
       // Tam HTML body (Footer template içinde olmalı, otomatik ekleme yok)
       const fullHtmlBody = `
         <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif;">
+          ${eventMicrodata}
           ${appointmentInfoBox}
           ${customContent}
         </div>

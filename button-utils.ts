@@ -242,23 +242,23 @@ export function injectButtonAnimationStyles(): void {
             pointer-events: none;
         }
 
-        /* Loading state - Buton görünmez, sadece spinner */
+        /* Loading state - Buton kaybolur, sadece spinner */
         .btn-animating.btn-loading {
             background: transparent !important;
             border-color: transparent !important;
             box-shadow: none !important;
+            color: transparent !important;
         }
 
-        /* Spinner - Altın rengi dönen border */
-        /* v3.9.19f: Spinner çapı buton yüksekliğine eşit (44px) */
+        /* Spinner - Buton boyutunda (yükseklik kadar) */
         .btn-spinner {
             display: inline-block;
-            width: 44px;
-            height: 44px;
-            border: 3px solid rgba(201, 165, 90, 0.3);
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(201, 165, 90, 0.3);
             border-top-color: #C9A55A;
             border-radius: 50%;
-            animation: btn-spin 0.8s linear infinite;
+            animation: btn-spin 0.7s linear infinite;
         }
 
         @keyframes btn-spin {
@@ -275,8 +275,8 @@ export function injectButtonAnimationStyles(): void {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 20px;
-            height: 20px;
+            width: 16px;
+            height: 16px;
         }
 
         .btn-tick svg {
@@ -350,14 +350,14 @@ export function injectButtonAnimationStyles(): void {
 
         /* Small buttons */
         .btn-small .btn-spinner {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             border-width: 2px;
         }
 
         .btn-small .btn-tick {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
         }
 
         .btn-small .btn-tick svg {
@@ -365,8 +365,8 @@ export function injectButtonAnimationStyles(): void {
         }
 
         .btn-small .btn-cross {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
         }
 
         .btn-small .btn-cross::before,
@@ -375,7 +375,7 @@ export function injectButtonAnimationStyles(): void {
         }
 
         @keyframes cross-draw-small {
-            to { height: 10px; }
+            to { height: 8px; }
         }
     `;
 
