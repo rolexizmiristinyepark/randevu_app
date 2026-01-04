@@ -440,27 +440,14 @@ function generateAppointmentInfoBox(data, infoCardId) {
   log.info('[Mail] data.date:', data?.date, 'data.formattedDate:', data?.formattedDate);
   log.info('[Mail] data.time:', data?.time, 'data.profile:', data?.profile);
 
-  let rows = '';
-
-  // Info Card ID yoksa veya boşsa - minimal fallback
+  // v3.9.65: Tamamen dinamik - Info Card ID ZORUNLU
+  // Manuel fallback yok - tüm tanımlar sheet'ten gelir
   if (!infoCardId) {
-    log.warn('[Mail] infoCardId yok - minimal info box döndürülüyor');
-    // GLOBAL değişkenlerden al
-    const tarih = getVariableValue('randevu_tarihi', data);
-    const saat = getVariableValue('randevu_saati', data);
-    const konu = getVariableValue('randevu_turu', data);
-
-    if (tarih) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Tarih</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(tarih)}</td></tr>`;
-    if (saat) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Saat</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(saat)}</td></tr>`;
-    if (konu) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Konu</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(konu)}</td></tr>`;
-
-    return `
-      <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-        <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
-        <table style="width: 100%; border-collapse: collapse;">${rows}</table>
-      </div>
-    `;
+    log.warn('[Mail] infoCardId tanımlı değil - info box oluşturulmadı');
+    return '';
   }
+
+  let rows = '';
 
   // Info Card'ı sheet'ten al
   try {
