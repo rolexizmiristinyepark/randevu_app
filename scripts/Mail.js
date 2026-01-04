@@ -489,12 +489,12 @@ function generateAppointmentInfoBox(data, infoCardId) {
             value = custPhone ? (custPhone.startsWith('+') ? custPhone : custPhone) : '';
           } else if (varKey === 'musteri_mail') {
             value = data.customerEmail || data.email || '';
-          } else if (varKey === 'randevu_profili') {
+          } else if (varKey === 'randevu_profili' || varKey === 'randevu_profil') {
             value = data.profileName || data.profile || '';
           }
 
-          // Debug log
-          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)');
+          // Debug log - tüm bilgileri göster
+          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)', ', dataKeys:', Object.keys(data).join(','));
 
           // Boş değer ise satırı gösterme
           if (!value) continue;
