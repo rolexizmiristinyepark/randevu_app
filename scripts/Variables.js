@@ -18,8 +18,12 @@
  * - key: Template'de kullanılan placeholder ({{key}})
  * - label: Admin panel'de gösterilen açıklama
  * - getValue: Randevu verisinden değeri döndüren fonksiyon
+ *
+ * v3.9.61: CRITICAL FIX - "const" yerine "var" kullanılmalı!
+ * Google Apps Script V8'de "const" dosya-scoped, "var" global-scoped.
+ * Bu değişken Mail.js ve WhatsApp.js'den erişildiği için global olmalı.
  */
-const MESSAGE_VARIABLES = {
+var MESSAGE_VARIABLES = {
   musteri: {
     label: 'Müşteri: Ahmet Yılmaz',
     getValue: function(data) {
@@ -240,10 +244,94 @@ function getMessageVariables() {
  * @param {string} key - Değişken key'i
  * @param {Object} data - Randevu verisi
  * @returns {string} Değişken değeri
+ *
+ * v3.9.61: const→var fix + direct fallback for critical fields
  */
 function getVariableValue(key, data) {
-  if (MESSAGE_VARIABLES[key] && MESSAGE_VARIABLES[key].getValue) {
-    return MESSAGE_VARIABLES[key].getValue(data);
+  if (!data) return '';
+
+  // v3.9.61: FALLBACK - MESSAGE_VARIABLES erişilemezse direkt data'dan al
+  // Bu, Google Apps Script'te const scope sorununun kalıcı çözümü
+  var DIRECT_FALLBACK = {
+    'randevu_tarihi': function() {
+      var dateStr = data.date || data.appointmentDate || data.formattedDate || '';
+      if (!dateStr) return '';
+      // Zaten formatlı ise döndür
+      if (dateStr.includes('Ocak') || dateStr.includes('Şubat') || dateStr.includes('Mart') ||
+          dateStr.includes('Nisan') || dateStr.includes('Mayıs') || dateStr.includes('Haziran') ||
+          dateStr.includes('Temmuz') || dateStr.includes('Ağustos') || dateStr.includes('Eylül') ||
+          dateStr.includes('Ekim') || dateStr.includes('Kasım') || dateStr.includes('Aralık')) {
+        return dateStr;
+      }
+      // ISO formatı parse et
+      if (dateStr.includes('-') && dateStr.length >= 10) {
+        var turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                             'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        var days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        var d = new Date(dateStr.substring(0, 10) + 'T12:00:00');
+        if (!isNaN(d.getTime())) {
+          return d.getDate() + ' ' + turkishMonths[d.getMonth()] + ' ' + d.getFullYear() + ', ' + days[d.getDay()];
+        }
+      }
+      return dateStr;
+    },
+    'randevu_saati': function() {
+      return data.time || data.appointmentTime || data.startTime || '';
+    },
+    'randevu_profili': function() {
+      var profile = data.profile || data.profileName || data.linkType || '';
+      var profileLabels = {
+        'w': 'Walk-in', 'walkin': 'Walk-in',
+        'g': 'Genel', 'genel': 'Genel',
+        's': 'Bireysel', 'staff': 'Bireysel', 'personel': 'Bireysel',
+        'b': 'Mağaza', 'boutique': 'Mağaza', 'butik': 'Mağaza',
+        'm': 'Yönetim', 'management': 'Yönetim', 'yonetim': 'Yönetim',
+        'vip': 'Özel Müşteri', 'v': 'Özel Müşteri'
+      };
+      return profileLabels[String(profile).toLowerCase()] || profile || '';
+    },
+    'musteri': function() {
+      if (data.customerName && String(data.customerName).includes(' ')) {
+        return data.customerName;
+      }
+      var name = data.customerName || data.name || '';
+      var surname = data.customerSurname || data.surname || '';
+      if (name && surname) return name + ' ' + surname;
+      return name || surname || '';
+    },
+    'personel': function() {
+      return data.staffName || data.assignedStaff || data.linkedStaffName || '';
+    },
+    'randevu_turu': function() {
+      var type = data.appointmentType || data.type || '';
+      var typeLabels = {
+        'meeting': 'Görüşme', 'gorisme': 'Görüşme',
+        'delivery': 'Teslim', 'teslim': 'Teslim',
+        'technical': 'Teknik Servis', 'teknik': 'Teknik Servis',
+        'service': 'Teknik Servis', 'test': 'Test Randevusu'
+      };
+      return typeLabels[String(type).toLowerCase()] || type || '';
+    }
+  };
+
+  // Önce MESSAGE_VARIABLES'dan dene (v3.9.61: artık var ile tanımlı)
+  try {
+    if (MESSAGE_VARIABLES && MESSAGE_VARIABLES[key] && MESSAGE_VARIABLES[key].getValue) {
+      var value = MESSAGE_VARIABLES[key].getValue(data);
+      if (value) return value;
+    }
+  } catch (e) {
+    // MESSAGE_VARIABLES erişilemedi, fallback kullan
   }
+
+  // Fallback: Direkt data'dan al
+  if (DIRECT_FALLBACK[key]) {
+    try {
+      return DIRECT_FALLBACK[key]() || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
   return '';
 }

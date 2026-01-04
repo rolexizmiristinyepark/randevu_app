@@ -19,21 +19,8 @@ const MAIL_FLOW_SHEET = 'MAIL_FLOWS';
 const MAIL_TEMPLATE_SHEET = 'MAIL_TEMPLATES';
 const MAIL_INFO_CARDS_SHEET = 'MAIL_INFO_CARDS';
 
-// v3.9.48: Default ICS (Info Card Standard) - Her mailde varsayılan olarak kullanılır
-const DEFAULT_INFO_CARD = {
-  id: 'ics_default',
-  name: 'ICS (Default)',
-  fields: [
-    { variable: 'randevu_tarih', label: 'Date', order: 1 },
-    { variable: 'randevu_saat', label: 'Time', order: 2 },
-    { variable: 'randevu_turu', label: 'Subject', order: 3 },
-    { variable: 'personel', label: 'Contact', order: 4 },
-    { variable: 'magaza', label: 'Location', order: 5 },
-    { variable: 'randevu_ek_bilgi', label: 'Note', order: 6 }
-  ]
-};
-
 // Değişkenler Variables.js'den gelir (MESSAGE_VARIABLES)
+// v3.9.64: DEFAULT_INFO_CARD kaldırıldı - tüm info card tanımları MAIL_INFO_CARDS sheet'inden gelir
 // Mail şablonlarında {{musteri}}, {{randevu_tarihi}} vb. kullanılır
 
 // Trigger türleri
@@ -429,8 +416,11 @@ function deleteMailInfoCard(params) {
 
 /**
  * Bilgi kartı şablonuna göre info box oluştur
- * @param {Object} data - Randevu verileri (replacedVariables)
- * @param {string} infoCardId - Bilgi kartı ID'si (opsiyonel)
+ * v3.9.64: GLOBAL SİSTEM - Tüm değerler Variables.js getVariableValue'dan gelir
+ *          Info card tanımları MAIL_INFO_CARDS sheet'inden gelir (DEFAULT yok)
+ *
+ * @param {Object} data - Randevu verileri
+ * @param {string} infoCardId - Bilgi kartı ID'si (ZORUNLU - sheet'ten)
  * @returns {string} HTML
  */
 function generateAppointmentInfoBox(data, infoCardId) {
@@ -444,130 +434,79 @@ function generateAppointmentInfoBox(data, infoCardId) {
       .replace(/'/g, '&#039;');
   };
 
-  // Eğer infoCardId varsa, bilgi kartı şablonunu kullan
-  if (infoCardId) {
-    try {
-      const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET);
-      log.info('[Mail] All cards count:', cards.length);
-      const card = cards.find(c => c.id === infoCardId);
-      log.info('[Mail] Found card:', card ? card.name : 'NOT FOUND', ', infoCardId:', infoCardId);
+  // v3.9.64: Debug logging
+  log.info('[Mail] generateAppointmentInfoBox called with infoCardId:', infoCardId);
+  log.info('[Mail] data keys:', Object.keys(data || {}).join(', '));
+  log.info('[Mail] data.date:', data?.date, 'data.formattedDate:', data?.formattedDate);
+  log.info('[Mail] data.time:', data?.time, 'data.profile:', data?.profile);
 
-      if (card) {
-        const fields = parseJsonSafe(card.fields, []);
-        log.info('[Mail] Card fields:', JSON.stringify(fields));
+  let rows = '';
 
-        // Sıralı field'lara göre satır oluştur
-        const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
+  // Info Card ID yoksa veya boşsa - minimal fallback
+  if (!infoCardId) {
+    log.warn('[Mail] infoCardId yok - minimal info box döndürülüyor');
+    // GLOBAL değişkenlerden al
+    const tarih = getVariableValue('randevu_tarihi', data);
+    const saat = getVariableValue('randevu_saati', data);
+    const konu = getVariableValue('randevu_turu', data);
 
-        let rowsHtml = '';
-        for (const field of sortedFields) {
-          // Variable değerini getir (replacedVariables'dan)
-          // v3.9.54: {{}} parantezlerini temizle
-          let varKey = field.variable || '';
-          varKey = varKey.replace(/^\{\{/, '').replace(/\}\}$/, '').trim();
-          log.info('[Mail] Processing varKey:', varKey, ', original:', field.variable);
-          let value = '';
+    if (tarih) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Tarih</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(tarih)}</td></tr>`;
+    if (saat) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Saat</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(saat)}</td></tr>`;
+    if (konu) rows += `<tr><td style="padding: 4px 0; color: #888888; width: 80px; font-size: 11px;">Konu</td><td style="padding: 4px 0; color: #1a1a1a; font-size: 11px;">${escapeHtml(konu)}</td></tr>`;
 
-          // Variables.js'deki değişken haritasından değeri al
-          // v3.9.51: randevu_tarih ve randevu_tarihi her ikisi de destekleniyor
-          if (varKey === 'randevu_tarih' || varKey === 'randevu_tarihi') {
-            value = data.formattedDate || data.appointmentDate || data.date || '';
-          } else if (varKey === 'randevu_saat' || varKey === 'randevu_saati') {
-            value = data.time || data.appointmentTime || '';
-          } else if (varKey === 'randevu_turu') {
-            const appointmentType = data.appointmentType || data.type || '';
-            value = CONFIG.SERVICE_NAMES?.[appointmentType] || appointmentType || '';
-          } else if (varKey === 'personel') {
-            value = data.staffName || data.linkedStaffName || data.assignedStaff || '';
-          } else if (varKey === 'personel_tel') {
-            const phone = data.staffPhone || data.linkedStaffPhone || '';
-            value = phone ? (phone.startsWith('+') ? phone : '+' + phone) : '';
-          } else if (varKey === 'personel_mail') {
-            value = data.staffEmail || data.linkedStaffEmail || '';
-          } else if (varKey === 'magaza') {
-            value = data.storeName || CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
-          } else if (varKey === 'randevu_ek_bilgi') {
-            value = data.customerNote || data.notes || data.note || '';
-          } else if (varKey === 'musteri') {
-            value = data.customerName || data.name || '';
-          } else if (varKey === 'musteri_tel') {
-            const custPhone = data.customerPhone || data.phone || '';
-            value = custPhone ? (custPhone.startsWith('+') ? custPhone : custPhone) : '';
-          } else if (varKey === 'musteri_mail') {
-            value = data.customerEmail || data.email || '';
-          } else if (varKey === 'randevu_profili' || varKey === 'randevu_profil') {
-            value = data.profileName || data.profile || '';
-          }
-
-          // Debug log - tüm bilgileri göster
-          log.info('[Mail] InfoCard field:', varKey, '=', value ? value.substring(0, 30) : '(empty)');
-          log.info('[Mail] Data check - formattedDate:', data.formattedDate, ', time:', data.time, ', profileName:', data.profileName);
-
-          // Boş değer ise satırı gösterme
-          if (!value) continue;
-
-          rowsHtml += `
-            <tr>
-              <td style="padding: 4px 0; color: #888888; width: 80px; vertical-align: top; font-size: 11px; font-weight: 300;">${escapeHtml(field.label || varKey)}</td>
-              <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(value)}</td>
-            </tr>
-          `;
-        }
-
-        return `
-          <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-            <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              ${rowsHtml}
-            </table>
-          </div>
-        `;
-      }
-    } catch (err) {
-      log.warn('[Mail] Info card yüklenirken hata:', err);
-    }
+    return `
+      <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
+        <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+        <table style="width: 100%; border-collapse: collapse;">${rows}</table>
+      </div>
+    `;
   }
 
-  // Varsayılan (default) info box - v3.9.49: Kompakt tasarım
-  const formattedDate = data.formattedDate || data.appointmentDate || data.date || '';
-  const time = data.time || data.appointmentTime || '';
-  const appointmentType = data.appointmentType || data.type || '';
-  const serviceName = CONFIG.SERVICE_NAMES?.[appointmentType] || appointmentType || 'Görüşme';
-  const staffName = data.staffName || data.linkedStaffName || 'Atanmadı';
-  const storeName = CONFIG.COMPANY_NAME || 'Rolex İzmir İstinyepark';
-  const customerNote = data.customerNote || data.notes || data.note || '';
+  // Info Card'ı sheet'ten al
+  try {
+    const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET);
+    const card = cards.find(c => c.id === infoCardId);
+
+    if (!card) {
+      log.warn('[Mail] Info card bulunamadı:', infoCardId);
+      return '';
+    }
+
+    const fields = parseJsonSafe(card.fields, []);
+    const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    log.info('[Mail] Info card bulundu:', card.name, ', fields:', sortedFields.length);
+
+    // Her field için: GLOBAL getVariableValue ile değer al
+    for (const field of sortedFields) {
+      let varKey = field.variable || '';
+      // {{degisken}} formatını temizle
+      varKey = varKey.replace(/\{\{?\s*/g, '').replace(/\s*\}?\}/g, '').trim();
+
+      if (!varKey) continue;
+
+      // ✅ GLOBAL SİSTEM: Variables.js'den getVariableValue ile değer al
+      const value = getVariableValue(varKey, data);
+
+      log.info('[Mail] getVariableValue("' + varKey + '") =', value);
+
+      if (!value) continue;
+
+      rows += `
+        <tr>
+          <td style="padding: 4px 0; color: #888888; width: 80px; vertical-align: top; font-size: 11px; font-weight: 300;">${escapeHtml(field.label || varKey)}</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(value)}</td>
+        </tr>
+      `;
+    }
+  } catch (err) {
+    log.error('[Mail] Info card yüklenirken hata:', err);
+  }
 
   return `
     <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
       <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr>
-          <td style="padding: 4px 0; color: #888888; width: 80px; vertical-align: top; font-size: 11px; font-weight: 300;">Tarih</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(formattedDate)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Saat</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(time)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Konu</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(serviceName)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">İlgili</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(staffName)}</td>
-        </tr>
-        <tr>
-          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Mağaza</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(storeName)}</td>
-        </tr>
-        ${customerNote ? `
-        <tr>
-          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Ek Bilgi</td>
-          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(customerNote)}</td>
-        </tr>
-        ` : ''}
-      </table>
+      <table style="width: 100%; border-collapse: collapse;">${rows}</table>
     </div>
   `;
 }
@@ -1038,6 +977,92 @@ function syncMailSheetHeaders() {
  */
 function debugMailFlowsHeadersApi() {
   return debugMailFlowsHeaders();
+}
+
+// ==================== MIGRATION ====================
+
+/**
+ * v3.9.60: Tüm info card'lara zorunlu değişkenleri ekle
+ * API endpoint: action=migrateInfoCardFields
+ *
+ * Bu migration tüm info card'lara randevu_tarihi, randevu_saati, randevu_profili
+ * ekler (eğer yoksa). Bu şekilde hangi card kullanılırsa kullanılsın,
+ * tarih/saat/profil her zaman gösterilir.
+ */
+function migrateInfoCardFields() {
+  try {
+    const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET) || [];
+    const results = [];
+
+    // Eklenecek zorunlu alanlar (en başa, sırasıyla)
+    const requiredFields = [
+      { variable: 'randevu_tarihi', label: 'Tarih', order: 0 },
+      { variable: 'randevu_saati', label: 'Saat', order: 1 },
+      { variable: 'randevu_profili', label: 'Profil', order: 2 }
+    ];
+
+    for (const card of cards) {
+      let fields = parseJsonSafe(card.fields, []);
+      let modified = false;
+
+      // Mevcut field'ların variable'larını al
+      const existingVars = fields.map(f => (f.variable || '').toLowerCase().replace(/\{\{?\s*/g, '').replace(/\s*\}?\}/g, '').trim());
+
+      // Zorunlu alanları kontrol et ve ekle
+      for (const required of requiredFields) {
+        const varLower = required.variable.toLowerCase();
+        const alreadyExists = existingVars.some(v =>
+          v === varLower ||
+          v.includes(varLower.replace('randevu_', ''))
+        );
+
+        if (!alreadyExists) {
+          // Mevcut field'ların order'larını kaydır
+          fields = fields.map(f => ({
+            ...f,
+            order: (f.order || 0) + 10
+          }));
+
+          // Yeni alanı ekle
+          fields.unshift({
+            variable: required.variable,
+            label: required.label,
+            order: required.order
+          });
+
+          modified = true;
+          log.info('[Migration] Card ' + card.id + ' -> ' + required.variable + ' eklendi');
+        }
+      }
+
+      // Değişiklik varsa güncelle
+      if (modified) {
+        // Sıralamayı düzelt
+        fields.sort((a, b) => (a.order || 0) - (b.order || 0));
+        fields = fields.map((f, idx) => ({ ...f, order: idx }));
+
+        SheetStorageService.update(MAIL_INFO_CARDS_SHEET, card.id, {
+          fields: JSON.stringify(fields),
+          updatedAt: new Date().toISOString()
+        });
+
+        results.push({ cardId: card.id, cardName: card.name, status: 'updated', fieldsCount: fields.length });
+      } else {
+        results.push({ cardId: card.id, cardName: card.name, status: 'unchanged' });
+      }
+    }
+
+    return {
+      success: true,
+      message: 'Migration tamamlandı',
+      results: results,
+      totalCards: cards.length,
+      updatedCards: results.filter(r => r.status === 'updated').length
+    };
+  } catch (error) {
+    log.error('migrateInfoCardFields error:', error);
+    return { success: false, error: error.toString() };
+  }
 }
 
 // ==================== HELPER FUNCTIONS ====================
