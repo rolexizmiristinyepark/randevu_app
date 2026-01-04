@@ -501,15 +501,15 @@ function generateAppointmentInfoBox(data, infoCardId) {
 
           rowsHtml += `
             <tr>
-              <td style="padding: 6px 0; color: #888888; width: 100px; vertical-align: top; font-size: 13px; font-weight: 300;">${escapeHtml(field.label || varKey)}</td>
-              <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(value)}</td>
+              <td style="padding: 4px 0; color: #888888; width: 80px; vertical-align: top; font-size: 11px; font-weight: 300;">${escapeHtml(field.label || varKey)}</td>
+              <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(value)}</td>
             </tr>
           `;
         }
 
         return `
-          <div style="border-left: 3px solid #C9A55A; padding: 15px 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-            <h2 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+          <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
+            <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
             <table style="width: 100%; border-collapse: collapse;">
               ${rowsHtml}
             </table>
@@ -531,33 +531,33 @@ function generateAppointmentInfoBox(data, infoCardId) {
   const customerNote = data.customerNote || data.notes || data.note || '';
 
   return `
-    <div style="border-left: 3px solid #C9A55A; padding: 15px 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
-      <h2 style="margin: 0 0 12px 0; font-size: 13px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
+    <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
+      <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
       <table style="width: 100%; border-collapse: collapse;">
         <tr>
-          <td style="padding: 6px 0; color: #888888; width: 100px; vertical-align: top; font-size: 13px; font-weight: 300;">Tarih</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(formattedDate)}</td>
+          <td style="padding: 4px 0; color: #888888; width: 80px; vertical-align: top; font-size: 11px; font-weight: 300;">Tarih</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(formattedDate)}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Saat</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(time)}</td>
+          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Saat</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(time)}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Konu</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(serviceName)}</td>
+          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Konu</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(serviceName)}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">İlgili</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(staffName)}</td>
+          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">İlgili</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(staffName)}</td>
         </tr>
         <tr>
-          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Mağaza</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(storeName)}</td>
+          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Mağaza</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(storeName)}</td>
         </tr>
         ${customerNote ? `
         <tr>
-          <td style="padding: 6px 0; color: #888888; vertical-align: top; font-size: 13px; font-weight: 300;">Ek Bilgi</td>
-          <td style="padding: 6px 0; color: #1a1a1a; font-size: 13px; font-weight: 400;">${escapeHtml(customerNote)}</td>
+          <td style="padding: 4px 0; color: #888888; vertical-align: top; font-size: 11px; font-weight: 300;">Ek Bilgi</td>
+          <td style="padding: 4px 0; color: #1a1a1a; font-size: 11px; font-weight: 400;">${escapeHtml(customerNote)}</td>
         </tr>
         ` : ''}
       </table>
@@ -923,8 +923,8 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
             .replace(/\n/g, '<br>')           // Tek satır sonu = <br>
         : '';
       const customContent = formattedBody ? `
-        <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; padding: 20px 0; line-height: 1.8; color: #333; font-size: 15px;">
-          <p style="margin: 0 0 15px 0;">${formattedBody}</p>
+        <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; padding: 15px 0; line-height: 1.6; color: #333; font-size: 12px;">
+          <p style="margin: 0 0 12px 0;">${formattedBody}</p>
         </div>
       ` : '';
 
