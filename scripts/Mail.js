@@ -463,10 +463,10 @@ function generateAppointmentInfoBox(data, infoCardId) {
           let value = '';
 
           // Variables.js'deki değişken haritasından değeri al
-          // v3.9.49: Daha geniş field eşleşmesi
-          if (varKey === 'randevu_tarih') {
+          // v3.9.51: randevu_tarih ve randevu_tarihi her ikisi de destekleniyor
+          if (varKey === 'randevu_tarih' || varKey === 'randevu_tarihi') {
             value = data.formattedDate || data.appointmentDate || data.date || '';
-          } else if (varKey === 'randevu_saat') {
+          } else if (varKey === 'randevu_saat' || varKey === 'randevu_saati') {
             value = data.time || data.appointmentTime || '';
           } else if (varKey === 'randevu_turu') {
             const appointmentType = data.appointmentType || data.type || '';
