@@ -1,11 +1,15 @@
 /**
- * MAIL MANAGER - Mail Flow ve Template Yönetimi
+ * MAIL MANAGER - Mail Template ve Info Card Yönetimi
  *
  * FAZ 4: Mail entegrasyonu için admin panel modülü
+ * v3.10.0: Flow yönetimi unified-flow-manager.ts'e taşındı
  *
  * Sorumluluklar:
- * - Flow yönetimi (olay bazlı mail gönderimi)
  * - Template yönetimi (HTML şablonlar)
+ * - Info Card yönetimi (randevu bilgi kartları)
+ *
+ * NOT: Flow yönetimi artık notification_flows üzerinden yapılmaktadır.
+ * Unified Flow Manager kullanınız.
  */
 
 import { ApiService } from '../api-service';
@@ -200,8 +204,8 @@ export async function initMailManager(store: DataStore): Promise<void> {
     setupEventListeners();
 
     // Initial data load
+    // v3.10.0: loadFlows() removed - flows are now managed via unified-flow-manager
     await Promise.all([
-        loadFlows(),
         loadTemplates(),
         loadInfoCards(),
         loadMessageVariables(),
@@ -209,8 +213,19 @@ export async function initMailManager(store: DataStore): Promise<void> {
         loadRecipients()
     ]);
 
+    // Show deprecation message in flow container
+    const flowContainer = document.getElementById('mailFlowList');
+    if (flowContainer) {
+        flowContainer.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;">
+                <p style="margin: 0; font-size: 14px;">
+                    <strong>v3.10.0:</strong> Mail flow'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.
+                </p>
+            </div>
+        `;
+    }
+
     // Debug: Expose data to window for console access
-    (window as any).mailFlows = flows;
     (window as any).mailTemplates = templates;
     (window as any).mailInfoCards = infoCards;
 }
@@ -219,8 +234,8 @@ export async function initMailManager(store: DataStore): Promise<void> {
  * Setup all event listeners
  */
 function setupEventListeners(): void {
-    // Flow button
-    document.getElementById('addMailFlowBtn')?.addEventListener('click', () => openFlowModal());
+    // v3.10.0: Flow button disabled - flows are managed via unified-flow-manager
+    // document.getElementById('addMailFlowBtn')?.addEventListener('click', () => openFlowModal());
 
     // Template button
     document.getElementById('addMailTemplateBtn')?.addEventListener('click', () => openTemplateModal());
@@ -228,10 +243,10 @@ function setupEventListeners(): void {
     // Info Card button
     document.getElementById('addMailInfoCardBtn')?.addEventListener('click', () => openInfoCardModal());
 
-    // Flow Modal handlers
-    document.getElementById('cancelMailFlowBtn')?.addEventListener('click', () => closeModal('mailFlowModal'));
-    document.getElementById('saveMailFlowBtn')?.addEventListener('click', saveFlow);
-    document.querySelector('#mailFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('mailFlowModal'));
+    // v3.10.0: Flow Modal handlers disabled - flows are managed via unified-flow-manager
+    // document.getElementById('cancelMailFlowBtn')?.addEventListener('click', () => closeModal('mailFlowModal'));
+    // document.getElementById('saveMailFlowBtn')?.addEventListener('click', saveFlow);
+    // document.querySelector('#mailFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('mailFlowModal'));
 
     // Template Modal handlers
     document.getElementById('cancelMailTemplateBtn')?.addEventListener('click', () => closeModal('mailTemplateModal'));

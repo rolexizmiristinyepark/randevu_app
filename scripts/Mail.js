@@ -1,24 +1,23 @@
 /**
  * Mail.js
  *
- * Mail Flow ve Template Yönetimi
+ * Mail Template ve Info Card Yönetimi
+ * v3.10.0: Unified notification system
  *
- * Bu modül mail gönderim akışlarını ve şablonlarını yönetir.
- * - Flow CRUD işlemleri
- * - Template CRUD işlemleri
- * - Flow'a göre mail gönderimi
+ * Bu modül mail şablonlarını ve bilgi kartlarını yönetir.
+ * Akışlar artık notification_flows'dan yönetilir (WhatsApp + Mail birleşik)
  *
  * Storage: SheetStorageService kullanır
- * - MAIL_FLOWS sheet'i (id, name, description, profiles, triggers, templateIds, active)
- * - MAIL_TEMPLATES sheet'i (id, name, subject, body, recipient)
+ * - notification_flows sheet'i (tek ana akış - WhatsApp + Mail)
+ * - mail_templates sheet'i (id, name, subject, body, recipient, infoCardId)
+ * - mail_info_cards sheet'i (id, name, fields)
  */
 
-// ==================== CONSTANTS ====================
+// ==================== CONSTANTS (v3.10.0 - lowercase) ====================
 
-const MAIL_FLOW_SHEET = 'MAIL_FLOWS';
-const MAIL_TEMPLATE_SHEET = 'MAIL_TEMPLATES';
-const MAIL_INFO_CARDS_SHEET = 'MAIL_INFO_CARDS';
-const UNIFIED_FLOWS_SHEET = 'UNIFIED_FLOWS'; // v3.9.75: Birleşik bildirim akışları
+const NOTIFICATION_FLOWS_SHEET = 'notification_flows';
+const MAIL_TEMPLATE_SHEET = 'mail_templates';
+const MAIL_INFO_CARDS_SHEET = 'mail_info_cards';
 
 // Değişkenler Variables.js'den gelir (MESSAGE_VARIABLES)
 // v3.9.64: DEFAULT_INFO_CARD kaldırıldı - tüm info card tanımları MAIL_INFO_CARDS sheet'inden gelir
@@ -31,140 +30,6 @@ const MAIL_TARGETS = {
   'customer': 'Müşteri',
   'staff': 'Personel'
 };
-
-// ==================== FLOW MANAGEMENT ====================
-
-/**
- * Tüm mail flow'larını getir
- */
-function getMailFlows() {
-  try {
-    const rawFlows = SheetStorageService.getAll(MAIL_FLOW_SHEET) || [];
-
-    // Debug: Ham veriyi logla
-    log.info('getMailFlows - Raw data count:', rawFlows.length);
-
-    // Geçersiz kayıtları filtrele (String() ile tip güvenliği)
-    const validFlows = rawFlows.filter(flow => {
-      const id = String(flow.id || '').trim();
-      return id.length > 10;
-    });
-
-    log.info('getMailFlows - Valid flows count:', validFlows.length);
-
-    return {
-      success: true,
-      data: validFlows.map(flow => ({
-        id: String(flow.id),
-        name: String(flow.name || ''),
-        description: String(flow.description || ''),
-        profiles: parseJsonSafe(flow.profiles, []),
-        triggers: parseJsonSafe(flow.triggers, []),
-        templateIds: parseJsonSafe(flow.templateIds, flow.templateId ? [flow.templateId] : []), // Backward compatible
-        infoCardId: String(flow.infoCardId || ''),
-        active: flow.active === true || flow.active === 'true'
-      }))
-    };
-  } catch (error) {
-    log.error('getMailFlows error:', error);
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Yeni mail flow oluştur
- */
-function createMailFlow(params) {
-  try {
-    const id = Utilities.getUuid();
-    const flow = {
-      id: id,
-      name: params.name,
-      description: params.description || '',
-      profiles: JSON.stringify(params.profiles || []),
-      triggers: JSON.stringify(params.triggers || []),
-      templateIds: JSON.stringify(params.templateIds || []), // v3.9.74: Multiple templates
-      infoCardId: params.infoCardId || '', // Bilgi kartı ID'si
-      active: true,
-      createdAt: new Date().toISOString()
-    };
-
-    SheetStorageService.add(MAIL_FLOW_SHEET, flow);
-
-    return {
-      success: true,
-      data: { id: id },
-      message: 'Flow oluşturuldu'
-    };
-  } catch (error) {
-    log.error('createMailFlow error:', error);
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Mail flow güncelle
- * ✅ v3.9.47: Detaylı logging eklendi
- */
-function updateMailFlow(params) {
-  try {
-    if (!params.id) {
-      return { success: false, error: 'Flow ID gerekli' };
-    }
-
-    const updates = {};
-
-    if (params.name !== undefined) updates.name = params.name;
-    if (params.description !== undefined) updates.description = params.description;
-    if (params.profiles !== undefined) updates.profiles = JSON.stringify(params.profiles);
-    if (params.triggers !== undefined) updates.triggers = JSON.stringify(params.triggers);
-    if (params.templateIds !== undefined) updates.templateIds = JSON.stringify(params.templateIds); // v3.9.74: Multiple templates
-    if (params.infoCardId !== undefined) updates.infoCardId = params.infoCardId;
-    if (params.active !== undefined) updates.active = params.active;
-
-    updates.updatedAt = new Date().toISOString();
-
-    // ✅ v3.9.47: Detaylı logging
-    log.info('updateMailFlow - Güncelleniyor:', {
-      id: params.id,
-      updates: updates,
-      templateIds: params.templateIds
-    });
-
-    const result = SheetStorageService.update(MAIL_FLOW_SHEET, params.id, updates);
-
-    log.info('updateMailFlow - SheetStorageService.update sonucu:', result);
-
-    return {
-      success: true,
-      message: 'Flow güncellendi'
-    };
-  } catch (error) {
-    log.error('updateMailFlow error:', error);
-    return { success: false, error: error.toString() };
-  }
-}
-
-/**
- * Mail flow sil
- */
-function deleteMailFlow(params) {
-  try {
-    if (!params.id) {
-      return { success: false, error: 'Flow ID gerekli' };
-    }
-
-    SheetStorageService.delete(MAIL_FLOW_SHEET, params.id);
-
-    return {
-      success: true,
-      message: 'Flow silindi'
-    };
-  } catch (error) {
-    log.error('deleteMailFlow error:', error);
-    return { success: false, error: error.toString() };
-  }
-}
 
 // ==================== TEMPLATE MANAGEMENT ====================
 
@@ -782,18 +647,19 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     log.info('[Mail] appointmentData.time:', appointmentData?.time);
     log.info('[Mail] appointmentData.profileName:', appointmentData?.profileName);
 
-    // Aktif ve bu trigger + profile için tanımlı flow'ları bul
-    const allFlows = SheetStorageService.getAll(MAIL_FLOW_SHEET);
+    // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
+    const allFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
     const matchingFlows = allFlows.filter(flow => {
       if (!flow.active && flow.active !== 'true') return false;
-      const triggers = parseJsonSafe(flow.triggers, []);
-      if (!triggers.includes(trigger)) return false;
+      // v3.10.0: trigger artık tek değer (array değil)
+      const flowTrigger = String(flow.trigger || '');
+      if (flowTrigger !== trigger) return false;
       const profiles = parseJsonSafe(flow.profiles, []);
       return profiles.includes(profileCode);
     });
 
     if (matchingFlows.length === 0) {
-      log.info('[Mail] Bu trigger ve profil için flow bulunamadı:', trigger, profileCode);
+      log.info('[Mail] Bu trigger ve profil için notification flow bulunamadı:', trigger, profileCode);
       return { success: true, message: 'No matching flows' };
     }
 
@@ -802,8 +668,8 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     const allTemplates = SheetStorageService.getAll(MAIL_TEMPLATE_SHEET); // Önce tüm template'leri al
 
     for (const flow of matchingFlows) {
-      // v3.9.74: templateIds array veya eski templateId'den backward compatible
-      const templateIds = parseJsonSafe(flow.templateIds, flow.templateId ? [flow.templateId] : []);
+      // v3.10.0: mailTemplateIds kullan (unified flow structure)
+      const templateIds = parseJsonSafe(flow.mailTemplateIds, []);
 
       if (templateIds.length === 0) {
         log.warn('[Mail] Flow template ID yok:', flow.id);
@@ -893,9 +759,9 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         }
 
         // ===== EMAIL BODY OLUŞTUR =====
-        // 1. Randevu Bilgileri kutusu (v3.9.75: template'den bilgi kartı veya varsayılan)
-        const infoCardId = template.infoCardId || flow.infoCardId || ''; // Template öncelikli, yoksa flow
-        log.info('[Mail] Template infoCardId:', template.infoCardId, ', Flow infoCardId:', flow.infoCardId, ', templateId:', templateId);
+        // 1. Randevu Bilgileri kutusu (v3.10.0: infoCardId sadece template'de)
+        const infoCardId = template.infoCardId || '';
+        log.info('[Mail] Template infoCardId:', template.infoCardId, ', templateId:', templateId);
         log.info('[Mail] appointmentData:', JSON.stringify({
           formattedDate: appointmentData.formattedDate,
           time: appointmentData.time,
@@ -991,10 +857,11 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
  */
 function syncMailSheetHeaders() {
   try {
+    // v3.10.0: MAIL_FLOWS kaldırıldı, notification_flows eklendi
     const results = {
-      MAIL_FLOWS: SheetStorageService.syncSheetHeaders(MAIL_FLOW_SHEET),
-      MAIL_TEMPLATES: SheetStorageService.syncSheetHeaders(MAIL_TEMPLATE_SHEET),
-      MAIL_INFO_CARDS: SheetStorageService.syncSheetHeaders(MAIL_INFO_CARDS_SHEET)
+      notification_flows: SheetStorageService.syncSheetHeaders(NOTIFICATION_FLOWS_SHEET),
+      mail_templates: SheetStorageService.syncSheetHeaders(MAIL_TEMPLATE_SHEET),
+      mail_info_cards: SheetStorageService.syncSheetHeaders(MAIL_INFO_CARDS_SHEET)
     };
 
     log.info('syncMailSheetHeaders tamamlandı:', results);
@@ -1105,14 +972,15 @@ function migrateInfoCardFields() {
   }
 }
 
-// ==================== UNIFIED FLOW MANAGEMENT (v3.9.75) ====================
+// ==================== NOTIFICATION FLOW MANAGEMENT (v3.10.0) ====================
 
 /**
- * Tüm birleşik akışları getir
+ * Tüm bildirim akışlarını getir
+ * v3.10.0: getUnifiedFlows -> getNotificationFlows
  */
-function getUnifiedFlows() {
+function getNotificationFlows() {
   try {
-    var rawFlows = SheetStorageService.getAll(UNIFIED_FLOWS_SHEET) || [];
+    var rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET) || [];
 
     var validFlows = rawFlows.filter(function(flow) {
       var id = String(flow.id || '').trim();
@@ -1135,15 +1003,21 @@ function getUnifiedFlows() {
       })
     };
   } catch (error) {
-    log.error('getUnifiedFlows error:', error);
+    log.error('getNotificationFlows error:', error);
     return { success: false, error: error.toString() };
   }
 }
 
+// Backward compatibility alias
+function getUnifiedFlows() {
+  return getNotificationFlows();
+}
+
 /**
- * Yeni birleşik akış oluştur
+ * Yeni bildirim akışı oluştur
+ * v3.10.0: createUnifiedFlow -> createNotificationFlow
  */
-function createUnifiedFlow(params) {
+function createNotificationFlow(params) {
   try {
     var id = Utilities.getUuid();
     var flow = {
@@ -1158,7 +1032,7 @@ function createUnifiedFlow(params) {
       createdAt: new Date().toISOString()
     };
 
-    SheetStorageService.add(UNIFIED_FLOWS_SHEET, flow);
+    SheetStorageService.add(NOTIFICATION_FLOWS_SHEET, flow);
 
     return {
       success: true,
@@ -1166,15 +1040,21 @@ function createUnifiedFlow(params) {
       message: 'Akış oluşturuldu'
     };
   } catch (error) {
-    log.error('createUnifiedFlow error:', error);
+    log.error('createNotificationFlow error:', error);
     return { success: false, error: error.toString() };
   }
 }
 
+// Backward compatibility alias
+function createUnifiedFlow(params) {
+  return createNotificationFlow(params);
+}
+
 /**
- * Birleşik akış güncelle
+ * Bildirim akışı güncelle
+ * v3.10.0: updateUnifiedFlow -> updateNotificationFlow
  */
-function updateUnifiedFlow(params) {
+function updateNotificationFlow(params) {
   try {
     if (!params.id) {
       return { success: false, error: 'Flow ID gerekli' };
@@ -1192,37 +1072,48 @@ function updateUnifiedFlow(params) {
 
     updates.updatedAt = new Date().toISOString();
 
-    SheetStorageService.update(UNIFIED_FLOWS_SHEET, params.id, updates);
+    SheetStorageService.update(NOTIFICATION_FLOWS_SHEET, params.id, updates);
 
     return {
       success: true,
       message: 'Akış güncellendi'
     };
   } catch (error) {
-    log.error('updateUnifiedFlow error:', error);
+    log.error('updateNotificationFlow error:', error);
     return { success: false, error: error.toString() };
   }
 }
 
+// Backward compatibility alias
+function updateUnifiedFlow(params) {
+  return updateNotificationFlow(params);
+}
+
 /**
- * Birleşik akış sil
+ * Bildirim akışı sil
+ * v3.10.0: deleteUnifiedFlow -> deleteNotificationFlow
  */
-function deleteUnifiedFlow(params) {
+function deleteNotificationFlow(params) {
   try {
     if (!params.id) {
       return { success: false, error: 'Flow ID gerekli' };
     }
 
-    SheetStorageService.delete(UNIFIED_FLOWS_SHEET, params.id);
+    SheetStorageService.delete(NOTIFICATION_FLOWS_SHEET, params.id);
 
     return {
       success: true,
       message: 'Akış silindi'
     };
   } catch (error) {
-    log.error('deleteUnifiedFlow error:', error);
+    log.error('deleteNotificationFlow error:', error);
     return { success: false, error: error.toString() };
   }
+}
+
+// Backward compatibility alias
+function deleteUnifiedFlow(params) {
+  return deleteNotificationFlow(params);
 }
 
 // ==================== HELPER FUNCTIONS ====================

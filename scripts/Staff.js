@@ -135,7 +135,7 @@ const Utils = {
  * @namespace StaffService
  */
 const StaffService = {
-  SHEET_NAME: 'Staff',
+  SHEET_NAME: 'staff',
 
   // Sütun indeksleri (0-based) - Yeni yapı
   COLUMNS: {
@@ -844,7 +844,7 @@ function debugCheckSheets() {
   });
 
   // Staff sheet kontrol
-  var staffSheet = ss.getSheetByName('Staff');
+  var staffSheet = ss.getSheetByName('staff');
   if (staffSheet) {
     Logger.log('');
     Logger.log('=== STAFF SHEET İÇERİĞİ ===');
@@ -858,7 +858,7 @@ function debugCheckSheets() {
   }
 
   // Links sheet kontrol
-  var linksSheet = ss.getSheetByName('Links');
+  var linksSheet = ss.getSheetByName('links');
   if (linksSheet) {
     Logger.log('');
     Logger.log('=== LINKS SHEET İÇERİĞİ ===');

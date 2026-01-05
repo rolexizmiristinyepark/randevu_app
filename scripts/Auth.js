@@ -414,13 +414,13 @@ const SessionAuthService = {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
       log.info('[SESSION-DEBUG] Spreadsheet ID: ' + CONFIG.SPREADSHEET_ID);
 
-      var sheet = ss.getSheetByName('SESSIONS');
+      var sheet = ss.getSheetByName('sessions');
       log.info('[SESSION-DEBUG] Sheet found: ' + (sheet ? 'YES' : 'NO'));
 
       // Sheet yoksa olustur
       if (!sheet) {
         log.info('[SESSION-DEBUG] Creating SESSIONS sheet');
-        sheet = ss.insertSheet('SESSIONS');
+        sheet = ss.insertSheet('sessions');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
         return {};
       }
@@ -470,11 +470,11 @@ const SessionAuthService = {
   saveSessions: function(sessions) {
     try {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-      var sheet = ss.getSheetByName('SESSIONS');
+      var sheet = ss.getSheetByName('sessions');
 
       // Sheet yoksa olustur
       if (!sheet) {
-        sheet = ss.insertSheet('SESSIONS');
+        sheet = ss.insertSheet('sessions');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
       }
 
@@ -695,7 +695,7 @@ function debugSessions() {
   Logger.log('Available sheets: ' + sheets.map(function(s) { return s.getName(); }).join(', '));
 
   // SESSIONS sheet'ini bul
-  var sessionsSheet = ss.getSheetByName('SESSIONS');
+  var sessionsSheet = ss.getSheetByName('sessions');
   if (!sessionsSheet) {
     Logger.log('❌ SESSIONS sheet bulunamadi!');
     return { error: 'SESSIONS sheet not found', availableSheets: sheets.map(function(s) { return s.getName(); }) };

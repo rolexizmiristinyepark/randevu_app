@@ -2457,182 +2457,109 @@ function prepareTemplateVariables(templateVars, eventData, recipient) {
   return variables;
 }
 
+// ==================== v3.10.0: NOTIFICATION FLOWS (UNIFIED) ====================
 /**
- * Akış listesini getir
+ * v3.10.0: notification_flows tablosundan WhatsApp için flow'ları getir
+ * Yeni unified flow yapısı - whatsappTemplateIds kullanan flow'lar
  */
-function getWhatsAppFlows() {
+function getNotificationFlowsForWhatsApp() {
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('FLOWS');
+    const sheet = ss.getSheetByName('notification_flows');
     if (!sheet) {
-      // Eğer FLOWS sheet'i yoksa oluştur
-      const flows = ss.insertSheet('FLOWS');
-      flows.getRange(1, 1, 1, 10).setValues([['ID', 'NAME', 'DESCRIPTION', 'PROFILES', 'TRIGGER', 'TRIGGER_TYPE', 'HATIRLATMA_SAAT', 'HATIRLATMA_ZAMAN', 'TEMPLATE_IDS', 'ACTIVE']]);
+      console.log('[getNotificationFlowsForWhatsApp] notification_flows sheet not found');
       return { success: true, data: [] };
     }
 
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return { success: true, data: [] };
 
+    // v3.10.0: notification_flows yapısı - trigger tek değer, whatsappTemplateIds
+    // Headers: id, name, description, trigger, profiles, whatsappTemplateIds, mailTemplateIds, active, createdAt, updatedAt
+    const parseJsonSafe = (val, defaultVal) => {
+      if (!val) return defaultVal;
+      if (Array.isArray(val)) return val;
+      try {
+        return JSON.parse(val);
+      } catch {
+        return defaultVal;
+      }
+    };
+
     const flows = data.slice(1).map(row => ({
       id: row[0] || '',
       name: row[1] || '',
       description: row[2] || '',
-      profiles: row[3] ? JSON.parse(row[3]) : [],
-      trigger: row[4] || '',
-      triggerType: row[5] || '',
-      hatirlatmaSaat: row[6] || '',
-      hatirlatmaZaman: row[7] || '',
-      templateIds: row[8] ? JSON.parse(row[8]) : [],
-      active: row[9] === true || row[9] === 'TRUE'
-    })).filter(flow => flow.id);
+      trigger: String(row[3] || ''),
+      profiles: parseJsonSafe(row[4], []),
+      whatsappTemplateIds: parseJsonSafe(row[5], []),
+      mailTemplateIds: parseJsonSafe(row[6], []),
+      active: row[7] === true || row[7] === 'TRUE' || row[7] === 'true',
+      createdAt: row[8] || '',
+      updatedAt: row[9] || ''
+    })).filter(flow => flow.id && flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0);
 
     return { success: true, data: flows };
   } catch (error) {
-    console.error('getWhatsAppFlows error:', error);
+    console.error('getNotificationFlowsForWhatsApp error:', error);
     return { success: false, message: error.toString() };
   }
 }
 
 /**
- * Tekil akış getir
+ * @deprecated v3.10.0: Eski FLOWS sheet'i artık kullanılmıyor. notification_flows kullanın.
+ * Backward compatibility için getNotificationFlowsForWhatsApp() döner
+ */
+function getWhatsAppFlows() {
+  console.warn('[DEPRECATED] getWhatsAppFlows is deprecated. Use getNotificationFlowsForWhatsApp() instead.');
+  // v3.10.0: Backward compatibility - notification_flows'tan oku, eski formatı simüle et
+  const result = getNotificationFlowsForWhatsApp();
+  if (!result.success) return result;
+
+  // Eski format: templateIds olarak map et
+  const mappedFlows = result.data.map(flow => ({
+    ...flow,
+    templateIds: flow.whatsappTemplateIds, // backward compatibility
+    triggerType: 'EVENT' // default triggerType
+  }));
+
+  return { success: true, data: mappedFlows };
+}
+
+/**
+ * @deprecated v3.10.0: Tekil akış getir - FLOWS sheet kaldırıldı
+ * Notification flows için getNotificationFlow() kullanın
  */
 function getWhatsAppFlow(params) {
-  try {
-    const flowId = params.id;
-    if (!flowId) return { success: false, message: 'Flow ID gerekli' };
-
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('FLOWS');
-    if (!sheet) return { success: false, message: 'Flow sheet bulunamadı' };
-
-    const data = sheet.getDataRange().getValues();
-    const flowRow = data.find(row => row[0] === flowId);
-    
-    if (!flowRow) return { success: false, message: 'Flow bulunamadı' };
-
-    const flow = {
-      id: flowRow[0],
-      name: flowRow[1],
-      description: flowRow[2],
-      profiles: flowRow[3] ? JSON.parse(flowRow[3]) : [],
-      trigger: flowRow[4],
-      triggerType: flowRow[5],
-      hatirlatmaSaat: flowRow[6],
-      hatirlatmaZaman: flowRow[7],
-      templateIds: flowRow[8] ? JSON.parse(flowRow[8]) : [],
-      active: flowRow[9] === true || flowRow[9] === 'TRUE'
-    };
-
-    return { success: true, data: flow };
-  } catch (error) {
-    console.error('getWhatsAppFlow error:', error);
-    return { success: false, message: error.toString() };
-  }
+  console.warn('[DEPRECATED] getWhatsAppFlow is deprecated. Use getNotificationFlow() instead.');
+  return { success: false, message: 'DEPRECATED: FLOWS sheet kaldırıldı. notification_flows kullanın.' };
 }
 
 /**
- * Yeni akış ekle
+ * @deprecated v3.10.0: Yeni akış ekle - FLOWS sheet kaldırıldı
+ * Notification flows için createNotificationFlow() kullanın
  */
 function addWhatsAppFlow(params) {
-  try {
-    const { name, description, profiles, trigger, triggerType, hatirlatmaSaat, hatirlatmaZaman, templateIds, active } = params;
-    
-    if (!name || !profiles || profiles.length === 0 || !trigger || !templateIds || templateIds.length === 0) {
-      return { success: false, message: 'Gerekli alanlar: name, profiles, trigger, templateIds' };
-    }
-
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    let sheet = ss.getSheetByName('FLOWS');
-    if (!sheet) {
-      // FLOWS sheet'i yoksa oluştur
-      sheet = ss.insertSheet('FLOWS');
-      sheet.getRange(1, 1, 1, 10).setValues([['ID', 'NAME', 'DESCRIPTION', 'PROFILES', 'TRIGGER', 'TRIGGER_TYPE', 'HATIRLATMA_SAAT', 'HATIRLATMA_ZAMAN', 'TEMPLATE_IDS', 'ACTIVE']]);
-    }
-
-    const flowId = 'flow_' + Date.now();
-    const newRow = [
-      flowId,
-      name,
-      description || '',
-      JSON.stringify(profiles),
-      trigger,
-      triggerType || '',
-      hatirlatmaSaat || '',
-      hatirlatmaZaman || '',
-      JSON.stringify(templateIds),
-      active !== false ? true : false
-    ];
-
-    sheet.appendRow(newRow);
-
-    return { success: true, message: 'Akış başarıyla eklendi', data: { id: flowId } };
-  } catch (error) {
-    console.error('addWhatsAppFlow error:', error);
-    return { success: false, message: error.toString() };
-  }
+  console.warn('[DEPRECATED] addWhatsAppFlow is deprecated. Use createNotificationFlow() instead.');
+  return { success: false, message: 'DEPRECATED: FLOWS sheet kaldırıldı. notification_flows kullanın.' };
 }
 
 /**
- * Akışı güncelle
+ * @deprecated v3.10.0: Akışı güncelle - FLOWS sheet kaldırıldı
+ * Notification flows için updateNotificationFlow() kullanın
  */
 function updateWhatsAppFlow(params) {
-  try {
-    const { id, name, description, profiles, trigger, triggerType, hatirlatmaSaat, hatirlatmaZaman, templateIds, active } = params;
-    
-    if (!id) return { success: false, message: 'Flow ID gerekli' };
-
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('FLOWS');
-    if (!sheet) return { success: false, message: 'Flow sheet bulunamadı' };
-
-    const data = sheet.getDataRange().getValues();
-    const rowIndex = data.findIndex(row => row[0] === id);
-
-    if (rowIndex === -1) return { success: false, message: 'Flow bulunamadı' };
-
-    // Update the row (rowIndex + 1 for 1-based indexing)
-    if (name) sheet.getRange(rowIndex + 1, 2).setValue(name);
-    if (description !== undefined) sheet.getRange(rowIndex + 1, 3).setValue(description);
-    if (profiles) sheet.getRange(rowIndex + 1, 4).setValue(JSON.stringify(profiles));
-    if (trigger) sheet.getRange(rowIndex + 1, 5).setValue(trigger);
-    if (triggerType !== undefined) sheet.getRange(rowIndex + 1, 6).setValue(triggerType);
-    if (hatirlatmaSaat !== undefined) sheet.getRange(rowIndex + 1, 7).setValue(hatirlatmaSaat);
-    if (hatirlatmaZaman !== undefined) sheet.getRange(rowIndex + 1, 8).setValue(hatirlatmaZaman);
-    if (templateIds) sheet.getRange(rowIndex + 1, 9).setValue(JSON.stringify(templateIds));
-    if (active !== undefined) sheet.getRange(rowIndex + 1, 10).setValue(active);
-
-    return { success: true, message: 'Akış başarıyla güncellendi' };
-  } catch (error) {
-    console.error('updateWhatsAppFlow error:', error);
-    return { success: false, message: error.toString() };
-  }
+  console.warn('[DEPRECATED] updateWhatsAppFlow is deprecated. Use updateNotificationFlow() instead.');
+  return { success: false, message: 'DEPRECATED: FLOWS sheet kaldırıldı. notification_flows kullanın.' };
 }
 
 /**
- * Akışı sil
+ * @deprecated v3.10.0: Akışı sil - FLOWS sheet kaldırıldı
+ * Notification flows için deleteNotificationFlow() kullanın
  */
 function deleteWhatsAppFlow(params) {
-  try {
-    const flowId = params.id;
-    if (!flowId) return { success: false, message: 'Flow ID gerekli' };
-
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('FLOWS');
-    if (!sheet) return { success: false, message: 'Flow sheet bulunamadı' };
-
-    const data = sheet.getDataRange().getValues();
-    const rowIndex = data.findIndex(row => row[0] === flowId);
-
-    if (rowIndex === -1) return { success: false, message: 'Flow bulunamadı' };
-
-    sheet.deleteRow(rowIndex + 1);
-
-    return { success: true, message: 'Akış başarıyla silindi' };
-  } catch (error) {
-    console.error('deleteWhatsAppFlow error:', error);
-    return { success: false, message: error.toString() };
-  }
+  console.warn('[DEPRECATED] deleteWhatsAppFlow is deprecated. Use deleteNotificationFlow() instead.');
+  return { success: false, message: 'DEPRECATED: FLOWS sheet kaldırıldı. notification_flows kullanın.' };
 }
 
 /**
@@ -2653,12 +2580,12 @@ function createWhatsAppTemplate(params) {
     }
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    let sheet = ss.getSheetByName('TEMPLATES');
+    let sheet = ss.getSheetByName('whatsapp_templates');
 
     // TEMPLATES sheet yoksa oluştur (LANGUAGE kolonu ile)
     if (!sheet) {
       console.log('[createWhatsAppTemplate] TEMPLATES sheet not found, creating...');
-      sheet = ss.insertSheet('TEMPLATES');
+      sheet = ss.insertSheet('whatsapp_templates');
       sheet.getRange(1, 1, 1, 7).setValues([['ID', 'NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
       console.log('[createWhatsAppTemplate] TEMPLATES sheet created with headers');
     } else {
@@ -2705,7 +2632,7 @@ function updateWhatsAppTemplate(params) {
     if (!id) return { success: false, message: 'Template ID gerekli' };
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('TEMPLATES');
+    const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) return { success: false, message: 'Template sheet bulunamadı' };
 
     // LANGUAGE kolonu yoksa ekle
@@ -2747,10 +2674,10 @@ function updateWhatsAppTemplate(params) {
 function getWhatsAppTemplates() {
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('TEMPLATES');
+    const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) {
       // Eğer TEMPLATES sheet'i yoksa oluştur (LANGUAGE kolonu ile)
-      const templates = ss.insertSheet('TEMPLATES');
+      const templates = ss.insertSheet('whatsapp_templates');
       templates.getRange(1, 1, 1, 7).setValues([['ID', 'NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
       return { success: true, data: [] };
     }
@@ -2788,7 +2715,7 @@ function deleteWhatsAppTemplate(params) {
     if (!templateId) return { success: false, message: 'Template ID gerekli' };
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('TEMPLATES');
+    const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) return { success: false, message: 'Template sheet bulunamadı' };
 
     const data = sheet.getDataRange().getValues();
@@ -2815,10 +2742,10 @@ function deleteWhatsAppTemplate(params) {
 function getDailyTasks() {
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('DAILY_TASKS');
+    const sheet = ss.getSheetByName('daily_tasks');
     if (!sheet) {
       // Eğer DAILY_TASKS sheet'i yoksa oluştur
-      const dailyTasks = ss.insertSheet('DAILY_TASKS');
+      const dailyTasks = ss.insertSheet('daily_tasks');
       dailyTasks.getRange(1, 1, 1, 6).setValues([['ID', 'NAME', 'DESCRIPTION', 'TIME', 'TARGET_DAY', 'TEMPLATE_ID', 'ACTIVE']]);
       return { success: true, data: [] };
     }
@@ -2852,7 +2779,7 @@ function getDailyTask(params) {
     if (!taskId) return { success: false, message: 'Task ID gerekli' };
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('DAILY_TASKS');
+    const sheet = ss.getSheetByName('daily_tasks');
     if (!sheet) return { success: false, message: 'Daily tasks sheet bulunamadı' };
 
     const data = sheet.getDataRange().getValues();
@@ -2889,7 +2816,7 @@ function addDailyTask(params) {
     }
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('DAILY_TASKS');
+    const sheet = ss.getSheetByName('daily_tasks');
     if (!sheet) return { success: false, message: 'Daily tasks sheet bulunamadı' };
 
     const taskId = 'task_' + Date.now();
@@ -2922,7 +2849,7 @@ function updateDailyTask(params) {
     if (!id) return { success: false, message: 'Task ID gerekli' };
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('DAILY_TASKS');
+    const sheet = ss.getSheetByName('daily_tasks');
     if (!sheet) return { success: false, message: 'Daily tasks sheet bulunamadı' };
 
     const data = sheet.getDataRange().getValues();
@@ -2954,7 +2881,7 @@ function deleteDailyTask(params) {
     if (!taskId) return { success: false, message: 'Task ID gerekli' };
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('DAILY_TASKS');
+    const sheet = ss.getSheetByName('daily_tasks');
     if (!sheet) return { success: false, message: 'Daily tasks sheet bulunamadı' };
 
     const data = sheet.getDataRange().getValues();

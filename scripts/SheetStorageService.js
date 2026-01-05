@@ -19,28 +19,36 @@ const SheetStorageService = {
   _spreadsheetId: null,
   _spreadsheet: null,
 
-  // Sheet isimleri
+  // Sheet isimleri (v3.10.0 - lowercase unified structure)
   SHEET_NAMES: {
-    STAFF: 'Staff',
-    SHIFTS: 'Shifts',
-    SETTINGS: 'Settings',
-    AUDIT_LOG: 'AuditLog',
-    MESSAGE_LOG: 'MessageLog',
-    MAIL_FLOWS: 'MAIL_FLOWS',
-    MAIL_TEMPLATES: 'MAIL_TEMPLATES',
-    MAIL_INFO_CARDS: 'MAIL_INFO_CARDS'
+    STAFF: 'staff',
+    SHIFTS: 'shifts',
+    SETTINGS: 'settings',
+    AUDIT_LOG: 'audit_log',
+    MESSAGE_LOG: 'message_log',
+    SESSIONS: 'sessions',
+    APPOINTMENTS: 'appointments',
+    LINKS: 'links',
+    NOTIFICATION_FLOWS: 'notification_flows',
+    WHATSAPP_TEMPLATES: 'whatsapp_templates',
+    MAIL_TEMPLATES: 'mail_templates',
+    MAIL_INFO_CARDS: 'mail_info_cards',
+    DAILY_TASKS: 'daily_tasks'
   },
 
-  // Header tanımları
+  // Header tanımları (v3.10.0)
   HEADERS: {
-    STAFF: ['id', 'name', 'phone', 'email', 'active', 'createdAt'],
-    SHIFTS: ['date', 'staffId', 'shiftType', 'createdAt'],
-    SETTINGS: ['key', 'value', 'updatedAt'],
-    AUDITLOG: ['timestamp', 'action', 'data', 'userId'],
-    MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
-    MAIL_FLOWS: ['id', 'name', 'description', 'profiles', 'triggers', 'templateId', 'infoCardId', 'target', 'active', 'createdAt', 'updatedAt'],
-    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'recipient', 'infoCardId', 'createdAt', 'updatedAt'],
-    MAIL_INFO_CARDS: ['id', 'name', 'fields', 'createdAt', 'updatedAt']
+    staff: ['id', 'name', 'phone', 'email', 'active', 'createdAt'],
+    shifts: ['date', 'staffId', 'shiftType', 'createdAt'],
+    settings: ['key', 'value', 'updatedAt'],
+    audit_log: ['timestamp', 'action', 'data', 'userId'],
+    message_log: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
+    sessions: ['token', 'odaSifresi', 'staffId', 'staffName', 'staffEmail', 'role', 'permissions', 'createdAt', 'expiresAt'],
+    notification_flows: ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'createdAt', 'updatedAt'],
+    whatsapp_templates: ['id', 'name', 'content', 'variables', 'active', 'createdAt', 'updatedAt'],
+    mail_templates: ['id', 'name', 'subject', 'body', 'recipient', 'infoCardId', 'createdAt', 'updatedAt'],
+    mail_info_cards: ['id', 'name', 'fields', 'createdAt', 'updatedAt'],
+    daily_tasks: ['id', 'name', 'schedule', 'action', 'params', 'active', 'lastRun', 'createdAt']
   },
 
   // ==================== INITIALIZATION ====================

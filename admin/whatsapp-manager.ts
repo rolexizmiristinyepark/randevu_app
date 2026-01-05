@@ -1,12 +1,15 @@
 /**
- * WHATSAPP MANAGER - WhatsApp Flow ve Template Yönetimi
+ * WHATSAPP MANAGER - WhatsApp Template Yönetimi
  *
  * FAZ 4: WhatsApp entegrasyonu için admin panel modülü
+ * v3.10.0: Flow yönetimi unified-flow-manager.ts'e taşındı
  *
  * Sorumluluklar:
- * - Flow yönetimi (zaman bazlı + olay bazlı)
  * - Template yönetimi
  * - Mesaj geçmişi görüntüleme
+ *
+ * NOT: Flow yönetimi artık notification_flows üzerinden yapılmaktadır.
+ * Unified Flow Manager kullanınız.
  */
 
 import { ApiService } from '../api-service';
@@ -104,12 +107,24 @@ export async function initWhatsAppManager(store: DataStore): Promise<void> {
     setupEventListeners();
 
     // Initial data load
+    // v3.10.0: loadFlows() removed - flows are now managed via unified-flow-manager
     await Promise.all([
-        loadFlows(),
         loadTemplates(),
         loadMessageVariables(),
         loadTriggers()
     ]);
+
+    // Show deprecation message in flow container
+    const flowContainer = document.getElementById('whatsappFlowList');
+    if (flowContainer) {
+        flowContainer.innerHTML = `
+            <div style="padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;">
+                <p style="margin: 0; font-size: 14px;">
+                    <strong>v3.10.0:</strong> WhatsApp flow'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.
+                </p>
+            </div>
+        `;
+    }
 }
 
 /**
@@ -146,30 +161,30 @@ async function loadTriggers(): Promise<void> {
  * Setup all event listeners
  */
 function setupEventListeners(): void {
-    // Flow button - tek buton
-    document.getElementById('addWhatsAppFlowBtn')?.addEventListener('click', () => openFlowModal());
+    // v3.10.0: Flow button disabled - flows are managed via unified-flow-manager
+    // document.getElementById('addWhatsAppFlowBtn')?.addEventListener('click', () => openFlowModal());
 
     // Template buttons
     document.getElementById('addTemplateBtn')?.addEventListener('click', () => openTemplateModal());
 
-    // Flow Modal handlers
-    document.getElementById('cancelFlowBtn')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
-    document.getElementById('saveFlowBtn')?.addEventListener('click', saveFlow);
-    document.querySelector('#whatsappFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
+    // v3.10.0: Flow Modal handlers disabled - flows are managed via unified-flow-manager
+    // document.getElementById('cancelFlowBtn')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
+    // document.getElementById('saveFlowBtn')?.addEventListener('click', saveFlow);
+    // document.querySelector('#whatsappFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('whatsappFlowModal'));
 
     // Template Modal handlers
     document.getElementById('cancelTemplateBtn')?.addEventListener('click', () => closeModal('whatsappTemplateModal'));
     document.getElementById('saveTemplateBtn')?.addEventListener('click', saveTemplate);
     document.querySelector('#whatsappTemplateModal .modal-overlay')?.addEventListener('click', () => closeModal('whatsappTemplateModal'));
 
-    // Trigger type change - show/hide time vs event options
-    document.getElementById('flowTriggerType')?.addEventListener('change', (e) => {
-        const value = (e.target as HTMLSelectElement).value;
-        const timeOptions = document.getElementById('timeBasedOptions');
-        const eventOptions = document.getElementById('eventBasedOptions');
-        if (timeOptions) timeOptions.style.display = value === 'time' ? 'block' : 'none';
-        if (eventOptions) eventOptions.style.display = value === 'event' ? 'block' : 'none';
-    });
+    // v3.10.0: Trigger type change disabled - flows are managed via unified-flow-manager
+    // document.getElementById('flowTriggerType')?.addEventListener('change', (e) => {
+    //     const value = (e.target as HTMLSelectElement).value;
+    //     const timeOptions = document.getElementById('timeBasedOptions');
+    //     const eventOptions = document.getElementById('eventBasedOptions');
+    //     if (timeOptions) timeOptions.style.display = value === 'time' ? 'block' : 'none';
+    //     if (eventOptions) eventOptions.style.display = value === 'event' ? 'block' : 'none';
+    // });
 
     // Template variable count change - generate variable inputs
     document.getElementById('templateVariableCount')?.addEventListener('change', (e) => {

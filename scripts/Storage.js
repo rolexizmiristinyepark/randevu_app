@@ -614,7 +614,7 @@ const KVKKRightsService = {
       // 2. MESSAGE_LOG sheet'ten mesajları anonimleştir
       try {
         const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-        const msgSheet = ss.getSheetByName('MESSAGE_LOG');
+        const msgSheet = ss.getSheetByName('message_log');
         if (msgSheet) {
           const data = msgSheet.getDataRange().getValues();
           for (let i = 1; i < data.length; i++) {
@@ -634,7 +634,7 @@ const KVKKRightsService = {
       // 3. Diğer sheet'lerden müşteri verilerini temizle
       try {
         const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-        const customerSheet = ss.getSheetByName('Randevular');
+        const customerSheet = ss.getSheetByName('appointments');
         if (customerSheet) {
           const data = customerSheet.getDataRange().getValues();
           for (let i = 1; i < data.length; i++) {
@@ -715,7 +715,7 @@ const KVKKRightsService = {
       // 2. MESSAGE_LOG'dan mesajları al (sadece metadata, içerik değil)
       try {
         const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-        const msgSheet = ss.getSheetByName('MESSAGE_LOG');
+        const msgSheet = ss.getSheetByName('message_log');
         if (msgSheet) {
           const data = msgSheet.getDataRange().getValues();
           for (let i = 1; i < data.length; i++) {
