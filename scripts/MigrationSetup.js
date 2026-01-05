@@ -449,3 +449,173 @@ function runStorageTests() {
     tests: tests
   };
 }
+
+// ==================== v3.10.0 SHEET RENAME MIGRATION ====================
+
+/**
+ * v3.10.0: Sheet isimlerini lowercase'e çevir
+ * Apps Script editöründe bu fonksiyonu çalıştırın
+ *
+ * Değişiklikler:
+ * - Staff → staff
+ * - Links → links
+ * - SESSIONS → sessions
+ * - MESSAGE_LOG → message_log
+ * - Randevular → appointments
+ * - TEMPLATES → whatsapp_templates
+ * - DAILY_TASKS → daily_tasks
+ * - MAIL_TEMPLATES → mail_templates
+ * - MAIL_INFO_CARDS → mail_info_cards
+ *
+ * Yeni sheet'ler (oluşturulacak):
+ * - notification_flows (FLOWS ve MAIL_FLOWS yerine)
+ */
+function migrateSheetNamesToLowercase() {
+  console.log('🚀 v3.10.0 Sheet Migration başlıyor...\n');
+
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  const results = [];
+
+  // Sheet isim değişiklikleri: [eskiAd, yeniAd]
+  const renames = [
+    ['Staff', 'staff'],
+    ['Links', 'links'],
+    ['SESSIONS', 'sessions'],
+    ['MESSAGE_LOG', 'message_log'],
+    ['Randevular', 'appointments'],
+    ['TEMPLATES', 'whatsapp_templates'],
+    ['DAILY_TASKS', 'daily_tasks'],
+    ['MAIL_TEMPLATES', 'mail_templates'],
+    ['MAIL_INFO_CARDS', 'mail_info_cards'],
+    ['Shifts', 'shifts'],
+    ['Settings', 'settings'],
+    ['AuditLog', 'audit_log']
+  ];
+
+  // Her sheet'i yeniden adlandır
+  for (const [oldName, newName] of renames) {
+    try {
+      const sheet = ss.getSheetByName(oldName);
+      if (sheet) {
+        // Yeni isimde sheet var mı kontrol et
+        const existingNew = ss.getSheetByName(newName);
+        if (existingNew && oldName !== newName) {
+          console.log(`⚠️ ${newName} zaten var, ${oldName} atlanıyor`);
+          results.push({ oldName, newName, status: 'skipped', reason: 'target exists' });
+          continue;
+        }
+
+        sheet.setName(newName);
+        console.log(`✅ ${oldName} → ${newName}`);
+        results.push({ oldName, newName, status: 'renamed' });
+      } else {
+        console.log(`⏭️ ${oldName} bulunamadı (zaten yeniden adlandırılmış olabilir)`);
+        results.push({ oldName, newName, status: 'not_found' });
+      }
+    } catch (error) {
+      console.error(`❌ ${oldName} yeniden adlandırılamadı:`, error.toString());
+      results.push({ oldName, newName, status: 'error', error: error.toString() });
+    }
+  }
+
+  // notification_flows sheet'i oluştur (yoksa)
+  try {
+    let notifSheet = ss.getSheetByName('notification_flows');
+    if (!notifSheet) {
+      notifSheet = ss.insertSheet('notification_flows');
+      // Header'ları ekle
+      const headers = ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'createdAt', 'updatedAt'];
+      notifSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+      notifSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
+      console.log('✅ notification_flows sheet oluşturuldu');
+      results.push({ oldName: null, newName: 'notification_flows', status: 'created' });
+    } else {
+      console.log('⏭️ notification_flows zaten var');
+      results.push({ oldName: null, newName: 'notification_flows', status: 'exists' });
+    }
+  } catch (error) {
+    console.error('❌ notification_flows oluşturulamadı:', error.toString());
+    results.push({ oldName: null, newName: 'notification_flows', status: 'error', error: error.toString() });
+  }
+
+  // Eski FLOWS ve MAIL_FLOWS sheet'lerini sil veya arşivle
+  const sheetsToArchive = ['FLOWS', 'MAIL_FLOWS'];
+  for (const sheetName of sheetsToArchive) {
+    try {
+      const sheet = ss.getSheetByName(sheetName);
+      if (sheet) {
+        // Arşiv olarak yeniden adlandır
+        const archiveName = `_ARCHIVE_${sheetName}_${Date.now()}`;
+        sheet.setName(archiveName);
+        console.log(`📦 ${sheetName} → ${archiveName} (arşivlendi)`);
+        results.push({ oldName: sheetName, newName: archiveName, status: 'archived' });
+      }
+    } catch (error) {
+      console.log(`⏭️ ${sheetName} bulunamadı veya arşivlenemedi`);
+    }
+  }
+
+  // Özet
+  console.log('\n' + '='.repeat(50));
+  console.log('📋 Migration Özeti:');
+  console.log('='.repeat(50));
+
+  const renamed = results.filter(r => r.status === 'renamed').length;
+  const created = results.filter(r => r.status === 'created').length;
+  const archived = results.filter(r => r.status === 'archived').length;
+  const errors = results.filter(r => r.status === 'error').length;
+
+  console.log(`✅ Yeniden adlandırılan: ${renamed}`);
+  console.log(`🆕 Oluşturulan: ${created}`);
+  console.log(`📦 Arşivlenen: ${archived}`);
+  console.log(`❌ Hata: ${errors}`);
+
+  if (errors === 0) {
+    console.log('\n🎉 Migration başarıyla tamamlandı!');
+  } else {
+    console.log('\n⚠️ Migration tamamlandı ancak hatalar var. Logları kontrol edin.');
+  }
+
+  return { results, summary: { renamed, created, archived, errors } };
+}
+
+/**
+ * Migration'ı geri al (acil durum için)
+ * Sheet isimlerini eski haline döndürür
+ */
+function rollbackSheetMigration() {
+  console.log('🔄 Migration geri alınıyor...\n');
+
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+  // Geri alma: [yeniAd, eskiAd]
+  const rollbacks = [
+    ['staff', 'Staff'],
+    ['links', 'Links'],
+    ['sessions', 'SESSIONS'],
+    ['message_log', 'MESSAGE_LOG'],
+    ['appointments', 'Randevular'],
+    ['whatsapp_templates', 'TEMPLATES'],
+    ['daily_tasks', 'DAILY_TASKS'],
+    ['mail_templates', 'MAIL_TEMPLATES'],
+    ['mail_info_cards', 'MAIL_INFO_CARDS'],
+    ['shifts', 'Shifts'],
+    ['settings', 'Settings'],
+    ['audit_log', 'AuditLog']
+  ];
+
+  for (const [currentName, originalName] of rollbacks) {
+    try {
+      const sheet = ss.getSheetByName(currentName);
+      if (sheet) {
+        sheet.setName(originalName);
+        console.log(`✅ ${currentName} → ${originalName}`);
+      }
+    } catch (error) {
+      console.log(`⏭️ ${currentName} geri alınamadı:`, error.toString());
+    }
+  }
+
+  console.log('\n🔄 Rollback tamamlandı!');
+  console.log('⚠️ NOT: notification_flows sheet\'i manuel silinmeli ve FLOWS/MAIL_FLOWS arşivden geri alınmalı.');
+}
