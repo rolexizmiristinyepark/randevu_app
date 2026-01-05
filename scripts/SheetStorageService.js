@@ -207,7 +207,7 @@ const SheetStorageService = {
   syncAllSheetHeaders: function() {
     try {
       const results = {};
-      const sheetsToSync = ['MAIL_FLOWS', 'MAIL_TEMPLATES', 'MAIL_INFO_CARDS', 'MESSAGELOG'];
+      const sheetsToSync = ['mail_templates', 'mail_info_cards', 'message_log', 'notification_flows'];
 
       sheetsToSync.forEach(sheetName => {
         const actualSheetName = this.SHEET_NAMES[sheetName] || sheetName;
@@ -273,13 +273,13 @@ const SheetStorageService = {
   },
 
   /**
-   * MAIL_INFO_CARDS sheet'ini düzelt (header + veri temizliği)
+   * mail_info_cards sheet'ini düzelt (header + veri temizliği)
    * Manuel olarak bir kez çalıştırılmalı
    * @returns {{success: boolean, message: string}}
    */
   fixMailInfoCardsSheet: function() {
     try {
-      const sheetName = 'MAIL_INFO_CARDS';
+      const sheetName = 'mail_info_cards';
       const ss = this.getSpreadsheet();
       let sheet = ss.getSheetByName(sheetName);
 
@@ -1353,7 +1353,7 @@ function cleanupOldPropertiesData() {
 // ==================== HEADER SYNC UTILITIES ====================
 
 /**
- * v3.9.47: Tüm Mail sheet'lerinin header'larını senkronize et
+ * v3.10.1: Tüm Mail sheet'lerinin header'larını senkronize et
  * Apps Script editöründen bu fonksiyonu çalıştırarak
  * eksik kolonları (örn: infoCardId) sheet'lere ekleyebilirsiniz
  * @returns {{success: boolean, results: Object}}
@@ -1361,9 +1361,9 @@ function cleanupOldPropertiesData() {
 function syncAllMailSheetHeaders() {
   try {
     const results = {
-      MAIL_FLOWS: SheetStorageService.syncSheetHeaders('MAIL_FLOWS'),
-      MAIL_TEMPLATES: SheetStorageService.syncSheetHeaders('MAIL_TEMPLATES'),
-      MAIL_INFO_CARDS: SheetStorageService.syncSheetHeaders('MAIL_INFO_CARDS')
+      mail_templates: SheetStorageService.syncSheetHeaders('mail_templates'),
+      mail_info_cards: SheetStorageService.syncSheetHeaders('mail_info_cards'),
+      notification_flows: SheetStorageService.syncSheetHeaders('notification_flows')
     };
 
     console.log('syncAllMailSheetHeaders sonuçları:', JSON.stringify(results, null, 2));
@@ -1380,22 +1380,22 @@ function syncAllMailSheetHeaders() {
 }
 
 /**
- * v3.9.47: MAIL_FLOWS sheet'inin header'larını kontrol et ve eksikleri listele
+ * v3.10.1: notification_flows sheet'inin header'larını kontrol et ve eksikleri listele
  * Debug için kullanışlı
  * @returns {{success: boolean, data: Object}}
  */
-function debugMailFlowsHeaders() {
+function debugNotificationFlowsHeaders() {
   try {
     const ss = SheetStorageService.getSpreadsheet();
-    const sheet = ss.getSheetByName('MAIL_FLOWS');
+    const sheet = ss.getSheetByName('notification_flows');
 
     if (!sheet) {
-      return { success: false, error: 'MAIL_FLOWS sheet bulunamadı' };
+      return { success: false, error: 'notification_flows sheet bulunamadı' };
     }
 
     const data = sheet.getDataRange().getValues();
     const currentHeaders = data.length > 0 ? data[0].map(h => String(h).trim()) : [];
-    const expectedHeaders = SheetStorageService.HEADERS.MAIL_FLOWS;
+    const expectedHeaders = SheetStorageService.HEADERS.notification_flows;
 
     const missing = expectedHeaders.filter(h => !currentHeaders.includes(h));
     const extra = currentHeaders.filter(h => !expectedHeaders.includes(h) && h !== '');
@@ -1411,10 +1411,10 @@ function debugMailFlowsHeaders() {
       }
     };
 
-    console.log('debugMailFlowsHeaders:', JSON.stringify(result, null, 2));
+    console.log('debugNotificationFlowsHeaders:', JSON.stringify(result, null, 2));
     return result;
   } catch (error) {
-    console.error('debugMailFlowsHeaders hatası:', error);
+    console.error('debugNotificationFlowsHeaders hatası:', error);
     return { success: false, error: error.toString() };
   }
 }
