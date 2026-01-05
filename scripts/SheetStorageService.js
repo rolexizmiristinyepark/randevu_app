@@ -39,7 +39,7 @@ const SheetStorageService = {
     AUDITLOG: ['timestamp', 'action', 'data', 'userId'],
     MESSAGELOG: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
     MAIL_FLOWS: ['id', 'name', 'description', 'profiles', 'triggers', 'templateId', 'infoCardId', 'target', 'active', 'createdAt', 'updatedAt'],
-    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'createdAt', 'updatedAt'],
+    MAIL_TEMPLATES: ['id', 'name', 'subject', 'body', 'recipient', 'infoCardId', 'createdAt', 'updatedAt'],
     MAIL_INFO_CARDS: ['id', 'name', 'fields', 'createdAt', 'updatedAt']
   },
 

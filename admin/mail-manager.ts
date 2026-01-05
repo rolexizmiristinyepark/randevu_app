@@ -1010,16 +1010,21 @@ function populateTemplateRecipientOptions(): void {
 }
 
 /**
- * Populate info card select in template modal - v3.9.75
+ * Populate info card select in template modal - v3.9.76
  */
 function populateTemplateInfoCardSelect(): void {
     const select = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
-    if (!select) return;
+    if (!select) {
+        console.warn('[Mail] mailTemplateInfoCard select not found');
+        return;
+    }
 
     // Keep first option (default), clear rest
     while (select.options.length > 1) {
         select.remove(1);
     }
+
+    console.log('[Mail] Populating info card select, cards:', infoCards.length);
 
     // Add info cards as options
     infoCards.forEach(card => {
