@@ -431,7 +431,9 @@ const ACTION_HANDLERS = {
       const params = {
         name: e.parameter.name,
         subject: e.parameter.subject,
-        body: e.parameter.body
+        body: e.parameter.body,
+        recipient: e.parameter.recipient,      // v3.10.3
+        infoCardId: e.parameter.infoCardId     // v3.10.3
       };
       return createMailTemplate(params);
     } catch (handlerError) {
@@ -445,7 +447,9 @@ const ACTION_HANDLERS = {
         id: e.parameter.id,
         name: e.parameter.name,
         subject: e.parameter.subject,
-        body: e.parameter.body
+        body: e.parameter.body,
+        recipient: e.parameter.recipient,      // v3.10.3
+        infoCardId: e.parameter.infoCardId     // v3.10.3
       };
       return updateMailTemplate(params);
     } catch (handlerError) {
