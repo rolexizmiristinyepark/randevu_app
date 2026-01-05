@@ -18,6 +18,7 @@
 const MAIL_FLOW_SHEET = 'MAIL_FLOWS';
 const MAIL_TEMPLATE_SHEET = 'MAIL_TEMPLATES';
 const MAIL_INFO_CARDS_SHEET = 'MAIL_INFO_CARDS';
+const UNIFIED_FLOWS_SHEET = 'UNIFIED_FLOWS'; // v3.9.75: Birleşik bildirim akışları
 
 // Değişkenler Variables.js'den gelir (MESSAGE_VARIABLES)
 // v3.9.64: DEFAULT_INFO_CARD kaldırıldı - tüm info card tanımları MAIL_INFO_CARDS sheet'inden gelir
@@ -192,7 +193,8 @@ function getMailTemplates() {
         name: String(template.name || ''),
         subject: String(template.subject || ''),
         body: String(template.body || ''),
-        recipient: String(template.recipient || 'customer') // v3.9.74: Recipient in template
+        recipient: String(template.recipient || 'customer'), // v3.9.74: Recipient in template
+        infoCardId: String(template.infoCardId || '') // v3.9.75: Info card in template
       }))
     };
   } catch (error) {
@@ -213,6 +215,7 @@ function createMailTemplate(params) {
       subject: params.subject || '',
       body: params.body || '',
       recipient: params.recipient || 'customer', // v3.9.74: Recipient in template
+      infoCardId: params.infoCardId || '', // v3.9.75: Info card in template
       createdAt: new Date().toISOString()
     };
 
@@ -244,6 +247,7 @@ function updateMailTemplate(params) {
     if (params.subject !== undefined) updates.subject = params.subject;
     if (params.body !== undefined) updates.body = params.body;
     if (params.recipient !== undefined) updates.recipient = params.recipient; // v3.9.74
+    if (params.infoCardId !== undefined) updates.infoCardId = params.infoCardId; // v3.9.75
 
     updates.updatedAt = new Date().toISOString();
 
@@ -889,9 +893,9 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         }
 
         // ===== EMAIL BODY OLUŞTUR =====
-        // 1. Randevu Bilgileri kutusu (flow'a bağlı bilgi kartı veya varsayılan)
-        const infoCardId = flow.infoCardId || '';
-        log.info('[Mail] Flow infoCardId:', infoCardId, ', flow.id:', flow.id, ', templateId:', templateId);
+        // 1. Randevu Bilgileri kutusu (v3.9.75: template'den bilgi kartı veya varsayılan)
+        const infoCardId = template.infoCardId || flow.infoCardId || ''; // Template öncelikli, yoksa flow
+        log.info('[Mail] Template infoCardId:', template.infoCardId, ', Flow infoCardId:', flow.infoCardId, ', templateId:', templateId);
         log.info('[Mail] appointmentData:', JSON.stringify({
           formattedDate: appointmentData.formattedDate,
           time: appointmentData.time,
@@ -1097,6 +1101,126 @@ function migrateInfoCardFields() {
     };
   } catch (error) {
     log.error('migrateInfoCardFields error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+// ==================== UNIFIED FLOW MANAGEMENT (v3.9.75) ====================
+
+/**
+ * Tüm birleşik akışları getir
+ */
+function getUnifiedFlows() {
+  try {
+    var rawFlows = SheetStorageService.getAll(UNIFIED_FLOWS_SHEET) || [];
+
+    var validFlows = rawFlows.filter(function(flow) {
+      var id = String(flow.id || '').trim();
+      return id.length > 10;
+    });
+
+    return {
+      success: true,
+      data: validFlows.map(function(flow) {
+        return {
+          id: String(flow.id),
+          name: String(flow.name || ''),
+          description: String(flow.description || ''),
+          trigger: String(flow.trigger || ''),
+          profiles: parseJsonSafe(flow.profiles, []),
+          whatsappTemplateIds: parseJsonSafe(flow.whatsappTemplateIds, []),
+          mailTemplateIds: parseJsonSafe(flow.mailTemplateIds, []),
+          active: flow.active === true || flow.active === 'true'
+        };
+      })
+    };
+  } catch (error) {
+    log.error('getUnifiedFlows error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Yeni birleşik akış oluştur
+ */
+function createUnifiedFlow(params) {
+  try {
+    var id = Utilities.getUuid();
+    var flow = {
+      id: id,
+      name: params.name,
+      description: params.description || '',
+      trigger: params.trigger,
+      profiles: JSON.stringify(params.profiles || []),
+      whatsappTemplateIds: JSON.stringify(params.whatsappTemplateIds || []),
+      mailTemplateIds: JSON.stringify(params.mailTemplateIds || []),
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+
+    SheetStorageService.add(UNIFIED_FLOWS_SHEET, flow);
+
+    return {
+      success: true,
+      data: { id: id },
+      message: 'Akış oluşturuldu'
+    };
+  } catch (error) {
+    log.error('createUnifiedFlow error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Birleşik akış güncelle
+ */
+function updateUnifiedFlow(params) {
+  try {
+    if (!params.id) {
+      return { success: false, error: 'Flow ID gerekli' };
+    }
+
+    var updates = {};
+
+    if (params.name !== undefined) updates.name = params.name;
+    if (params.description !== undefined) updates.description = params.description;
+    if (params.trigger !== undefined) updates.trigger = params.trigger;
+    if (params.profiles !== undefined) updates.profiles = JSON.stringify(params.profiles);
+    if (params.whatsappTemplateIds !== undefined) updates.whatsappTemplateIds = JSON.stringify(params.whatsappTemplateIds);
+    if (params.mailTemplateIds !== undefined) updates.mailTemplateIds = JSON.stringify(params.mailTemplateIds);
+    if (params.active !== undefined) updates.active = params.active;
+
+    updates.updatedAt = new Date().toISOString();
+
+    SheetStorageService.update(UNIFIED_FLOWS_SHEET, params.id, updates);
+
+    return {
+      success: true,
+      message: 'Akış güncellendi'
+    };
+  } catch (error) {
+    log.error('updateUnifiedFlow error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Birleşik akış sil
+ */
+function deleteUnifiedFlow(params) {
+  try {
+    if (!params.id) {
+      return { success: false, error: 'Flow ID gerekli' };
+    }
+
+    SheetStorageService.delete(UNIFIED_FLOWS_SHEET, params.id);
+
+    return {
+      success: true,
+      message: 'Akış silindi'
+    };
+  } catch (error) {
+    log.error('deleteUnifiedFlow error:', error);
     return { success: false, error: error.toString() };
   }
 }

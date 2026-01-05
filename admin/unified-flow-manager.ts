@@ -1,0 +1,495 @@
+/**
+ * UNIFIED FLOW MANAGER - Birleşik Bildirim Akışları
+ *
+ * v3.9.75: WhatsApp ve Mail bildirimlerini tek bir flow ile yönetir
+ */
+
+import { ApiService } from '../api-service';
+import { logError } from '../monitoring';
+import { closeModal } from '../ui-utils';
+import { ButtonAnimator } from '../button-utils';
+import type { DataStore } from './data-store';
+
+// ==================== TYPE DEFINITIONS ====================
+
+interface ApiResponse<T = unknown> {
+    success: boolean;
+    error?: string;
+    message?: string;
+    data?: T;
+}
+
+interface UnifiedFlow {
+    id: string;
+    name: string;
+    description: string;
+    trigger: string;
+    profiles: string[];
+    whatsappTemplateIds: string[];
+    mailTemplateIds: string[];
+    active: boolean;
+}
+
+interface WhatsAppTemplate {
+    id: string;
+    name: string;
+    targetType: string;
+}
+
+interface MailTemplate {
+    id: string;
+    name: string;
+    recipient: string;
+}
+
+// ==================== CONSTANTS ====================
+
+const PROFILE_LABELS: Record<string, string> = {
+    'g': 'general',
+    'w': 'walk-in',
+    'b': 'boutique',
+    'm': 'management',
+    's': 'individual',
+    'v': 'vip'
+};
+
+let triggerLabels: Record<string, string> = {};
+let recipientLabels: Record<string, string> = {};
+
+// ==================== MODULE STATE ====================
+
+let _dataStore: DataStore;
+let unifiedFlows: UnifiedFlow[] = [];
+let whatsappTemplates: WhatsAppTemplate[] = [];
+let mailTemplates: MailTemplate[] = [];
+
+declare const window: Window & {
+    UI: { showAlert: (message: string, type: string) => void; };
+};
+
+const getUI = () => window.UI;
+
+// ==================== INITIALIZATION ====================
+
+export function initUnifiedFlowManager(dataStore: DataStore): void {
+    _dataStore = dataStore;
+    loadTriggers();
+    loadRecipients();
+    loadWhatsAppTemplates();
+    loadMailTemplates();
+    loadUnifiedFlows();
+    setupEventListeners();
+}
+
+function setupEventListeners(): void {
+    document.getElementById('addUnifiedFlowBtn')?.addEventListener('click', () => openFlowModal());
+    document.getElementById('saveUnifiedFlowBtn')?.addEventListener('click', saveFlow);
+    document.getElementById('cancelUnifiedFlowBtn')?.addEventListener('click', () => closeModal('unifiedFlowModal'));
+    document.querySelector('#unifiedFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('unifiedFlowModal'));
+}
+
+// ==================== DATA LOADING ====================
+
+async function loadTriggers(): Promise<void> {
+    try {
+        const response = await ApiService.call('getTriggers', {}) as ApiResponse<Record<string, string>>;
+        if (response.success && response.data) {
+            triggerLabels = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadTriggers' });
+    }
+}
+
+async function loadRecipients(): Promise<void> {
+    try {
+        const response = await ApiService.call('getRecipients', {}) as ApiResponse<Record<string, string>>;
+        if (response.success && response.data) {
+            recipientLabels = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadRecipients' });
+    }
+}
+
+async function loadWhatsAppTemplates(): Promise<void> {
+    try {
+        const response = await ApiService.call('getWhatsAppTemplates', {}) as ApiResponse<WhatsAppTemplate[]>;
+        if (response.success && response.data) {
+            whatsappTemplates = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadWhatsAppTemplates' });
+    }
+}
+
+async function loadMailTemplates(): Promise<void> {
+    try {
+        const response = await ApiService.call('getMailTemplates', {}) as ApiResponse<MailTemplate[]>;
+        if (response.success && response.data) {
+            mailTemplates = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadMailTemplates' });
+    }
+}
+
+async function loadUnifiedFlows(): Promise<void> {
+    try {
+        const response = await ApiService.call('getUnifiedFlows', {}) as ApiResponse<UnifiedFlow[]>;
+        if (response.success && response.data) {
+            unifiedFlows = response.data;
+            renderFlowList();
+        }
+    } catch (error) {
+        logError(error, { action: 'loadUnifiedFlows' });
+    }
+}
+
+// ==================== RENDERING ====================
+
+function renderFlowList(): void {
+    const container = document.getElementById('unifiedFlowList');
+    if (!container) return;
+
+    // Clear container safely
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if (unifiedFlows.length === 0) {
+        const emptyMsg = document.createElement('p');
+        emptyMsg.style.cssText = 'color: #757575; text-align: center; padding: 20px;';
+        emptyMsg.textContent = 'Henüz akış tanımlanmadı';
+        container.appendChild(emptyMsg);
+        return;
+    }
+
+    unifiedFlows.forEach(flow => {
+        container.appendChild(createFlowItem(flow));
+    });
+}
+
+function createFlowItem(flow: UnifiedFlow): HTMLElement {
+    const item = document.createElement('div');
+    item.className = 'flow-item mail-list-item';
+    item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'mail-item-header';
+
+    const left = document.createElement('div');
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
+    const name = document.createElement('span');
+    name.className = 'mail-item-name';
+    name.textContent = flow.name;
+
+    const activeBadge = document.createElement('span');
+    activeBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${flow.active ? '#4CAF50' : '#9E9E9E'}; color: white;`;
+    activeBadge.textContent = flow.active ? 'Aktif' : 'Pasif';
+
+    left.appendChild(name);
+    left.appendChild(activeBadge);
+
+    const right = document.createElement('div');
+    right.className = 'mail-item-actions';
+
+    const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => openFlowModal(flow.id));
+    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteFlow(flow.id));
+    deleteBtn.style.color = '#C62828';
+
+    right.appendChild(toggleBtn);
+    right.appendChild(editBtn);
+    right.appendChild(deleteBtn);
+
+    header.appendChild(left);
+    header.appendChild(right);
+
+    // Details
+    const details = document.createElement('div');
+    details.style.cssText = 'font-size: 12px; color: #757575; margin-top: 8px;';
+
+    const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
+    const triggerSpan = document.createElement('span');
+    triggerSpan.textContent = `Tetikleyici: ${triggerLabel}`;
+    details.appendChild(triggerSpan);
+
+    if (flow.profiles.length > 0) {
+        const profileLabelsText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
+        const sep = document.createElement('span');
+        sep.textContent = ' • ';
+        sep.style.color = '#ccc';
+        details.appendChild(sep);
+
+        const profileSpan = document.createElement('span');
+        profileSpan.textContent = `Profiller: ${profileLabelsText}`;
+        details.appendChild(profileSpan);
+    }
+
+    // Templates info
+    const templatesDiv = document.createElement('div');
+    templatesDiv.style.cssText = 'margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap;';
+
+    if (flow.whatsappTemplateIds.length > 0) {
+        const waSpan = document.createElement('span');
+        waSpan.style.cssText = 'color: #25D366;';
+        waSpan.textContent = `WhatsApp: ${flow.whatsappTemplateIds.length} şablon`;
+        templatesDiv.appendChild(waSpan);
+    }
+
+    if (flow.mailTemplateIds.length > 0) {
+        const mailSpan = document.createElement('span');
+        mailSpan.style.cssText = 'color: #EA4335;';
+        mailSpan.textContent = `Mail: ${flow.mailTemplateIds.length} şablon`;
+        templatesDiv.appendChild(mailSpan);
+    }
+
+    item.appendChild(header);
+    item.appendChild(details);
+    item.appendChild(templatesDiv);
+
+    return item;
+}
+
+function createButton(text: string, className: string, onClick: () => void): HTMLButtonElement {
+    const btn = document.createElement('button');
+    btn.className = `btn ${className}`;
+    btn.textContent = text;
+    btn.addEventListener('click', onClick);
+    return btn;
+}
+
+// ==================== MODAL FUNCTIONS ====================
+
+function openFlowModal(flowId?: string): void {
+    const modal = document.getElementById('unifiedFlowModal');
+    if (!modal) return;
+
+    resetFlowForm();
+    populateTriggerOptions();
+    populateWhatsAppTemplateOptions();
+    populateMailTemplateOptions();
+
+    const header = modal.querySelector('.modal-header');
+    if (header) {
+        header.textContent = flowId ? 'Akış Düzenle' : 'Yeni Bildirim Akışı';
+    }
+
+    if (flowId) {
+        const flow = unifiedFlows.find(f => f.id === flowId);
+        if (flow) populateFlowForm(flow);
+        const editIdInput = document.getElementById('unifiedFlowEditId') as HTMLInputElement;
+        if (editIdInput) editIdInput.value = flowId;
+    }
+
+    modal.classList.add('active');
+}
+
+function resetFlowForm(): void {
+    (document.getElementById('unifiedFlowName') as HTMLInputElement).value = '';
+    (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value = '';
+    (document.getElementById('unifiedFlowEditId') as HTMLInputElement).value = '';
+
+    document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowProfiles"]').forEach(cb => {
+        cb.checked = false;
+    });
+}
+
+function populateTriggerOptions(): void {
+    const container = document.getElementById('unifiedFlowTriggerOptions');
+    if (!container) return;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    for (const [key, label] of Object.entries(triggerLabels)) {
+        const labelEl = document.createElement('label');
+        labelEl.className = 'radio-label';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'unifiedFlowTrigger';
+        radio.value = key;
+
+        labelEl.appendChild(radio);
+        labelEl.appendChild(document.createTextNode(label.toLowerCase()));
+        container.appendChild(labelEl);
+    }
+}
+
+function populateWhatsAppTemplateOptions(): void {
+    const container = document.getElementById('unifiedFlowWhatsAppTemplates');
+    if (!container) return;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    if (whatsappTemplates.length === 0) {
+        const msg = document.createElement('p');
+        msg.style.cssText = 'color: #888; font-size: 12px;';
+        msg.textContent = 'WhatsApp şablonu yok';
+        container.appendChild(msg);
+        return;
+    }
+
+    whatsappTemplates.forEach(template => {
+        const labelEl = document.createElement('label');
+        labelEl.className = 'checkbox-label';
+        labelEl.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-bottom: 4px;';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'unifiedFlowWhatsAppTemplates';
+        checkbox.value = template.id;
+
+        const targetLabel = template.targetType === 'staff' ? 'Personel' : 'Müşteri';
+        labelEl.appendChild(checkbox);
+        labelEl.appendChild(document.createTextNode(`${template.name} → ${targetLabel}`));
+        container.appendChild(labelEl);
+    });
+}
+
+function populateMailTemplateOptions(): void {
+    const container = document.getElementById('unifiedFlowMailTemplates');
+    if (!container) return;
+
+    while (container.firstChild) container.removeChild(container.firstChild);
+
+    if (mailTemplates.length === 0) {
+        const msg = document.createElement('p');
+        msg.style.cssText = 'color: #888; font-size: 12px;';
+        msg.textContent = 'Mail şablonu yok';
+        container.appendChild(msg);
+        return;
+    }
+
+    mailTemplates.forEach(template => {
+        const labelEl = document.createElement('label');
+        labelEl.className = 'checkbox-label';
+        labelEl.style.cssText = 'display: flex; align-items: center; gap: 6px; margin-bottom: 4px;';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'unifiedFlowMailTemplates';
+        checkbox.value = template.id;
+
+        const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'Müşteri';
+        labelEl.appendChild(checkbox);
+        labelEl.appendChild(document.createTextNode(`${template.name} → ${recipientLabel}`));
+        container.appendChild(labelEl);
+    });
+}
+
+function populateFlowForm(flow: UnifiedFlow): void {
+    (document.getElementById('unifiedFlowName') as HTMLInputElement).value = flow.name;
+    (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value = flow.description || '';
+
+    const triggerRadio = document.querySelector(`input[name="unifiedFlowTrigger"][value="${flow.trigger}"]`) as HTMLInputElement;
+    if (triggerRadio) triggerRadio.checked = true;
+
+    flow.profiles.forEach(profile => {
+        const checkbox = document.querySelector(`input[name="unifiedFlowProfiles"][value="${profile}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
+
+    flow.whatsappTemplateIds.forEach(id => {
+        const checkbox = document.querySelector(`input[name="unifiedFlowWhatsAppTemplates"][value="${id}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
+
+    flow.mailTemplateIds.forEach(id => {
+        const checkbox = document.querySelector(`input[name="unifiedFlowMailTemplates"][value="${id}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
+}
+
+// ==================== CRUD OPERATIONS ====================
+
+async function saveFlow(): Promise<void> {
+    const saveBtn = document.getElementById('saveUnifiedFlowBtn') as HTMLButtonElement;
+
+    const name = (document.getElementById('unifiedFlowName') as HTMLInputElement).value.trim();
+    const description = (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value.trim();
+    const editId = (document.getElementById('unifiedFlowEditId') as HTMLInputElement).value;
+
+    const triggerRadio = document.querySelector('input[name="unifiedFlowTrigger"]:checked') as HTMLInputElement;
+    const trigger = triggerRadio?.value || '';
+
+    const profileCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowProfiles"]:checked');
+    const profiles = Array.from(profileCheckboxes).map(cb => cb.value);
+
+    const waCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowWhatsAppTemplates"]:checked');
+    const whatsappTemplateIds = Array.from(waCheckboxes).map(cb => cb.value);
+
+    const mailCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowMailTemplates"]:checked');
+    const mailTemplateIds = Array.from(mailCheckboxes).map(cb => cb.value);
+
+    if (!name) { getUI().showAlert('İsim gereklidir', 'error'); return; }
+    if (!trigger) { getUI().showAlert('Tetikleyici seçiniz', 'error'); return; }
+    if (profiles.length === 0) { getUI().showAlert('En az bir profil seçiniz', 'error'); return; }
+    if (whatsappTemplateIds.length === 0 && mailTemplateIds.length === 0) {
+        getUI().showAlert('En az bir şablon seçiniz', 'error');
+        return;
+    }
+
+    const flowData: Partial<UnifiedFlow> = { name, description, trigger, profiles, whatsappTemplateIds, mailTemplateIds };
+
+    if (saveBtn) ButtonAnimator.start(saveBtn);
+
+    try {
+        const action = editId ? 'updateUnifiedFlow' : 'createUnifiedFlow';
+        const params = editId ? { id: editId, ...flowData } : flowData;
+
+        const response = await ApiService.call(action, params) as ApiResponse;
+
+        if (response.success) {
+            if (saveBtn) ButtonAnimator.success(saveBtn);
+            getUI().showAlert(editId ? 'Akış güncellendi' : 'Akış oluşturuldu', 'success');
+            setTimeout(() => { closeModal('unifiedFlowModal'); loadUnifiedFlows(); }, 1000);
+        } else {
+            throw new Error(response.error || 'Bilinmeyen hata');
+        }
+    } catch (error) {
+        if (saveBtn) ButtonAnimator.error(saveBtn);
+        logError(error, { action: 'saveUnifiedFlow' });
+        getUI().showAlert('Kaydetme hatası: ' + (error as Error).message, 'error');
+    }
+}
+
+async function toggleFlow(flowId: string): Promise<void> {
+    try {
+        const flow = unifiedFlows.find(f => f.id === flowId);
+        if (!flow) return;
+
+        const response = await ApiService.call('updateUnifiedFlow', { id: flowId, active: !flow.active }) as ApiResponse;
+
+        if (response.success) {
+            getUI().showAlert(flow.active ? 'Akış durduruldu' : 'Akış başlatıldı', 'success');
+            loadUnifiedFlows();
+        } else {
+            throw new Error(response.error || 'Güncelleme hatası');
+        }
+    } catch (error) {
+        logError(error, { action: 'toggleUnifiedFlow' });
+        getUI().showAlert('Hata: ' + (error as Error).message, 'error');
+    }
+}
+
+async function deleteFlow(flowId: string): Promise<void> {
+    if (!confirm('Bu akışı silmek istediğinizden emin misiniz?')) return;
+
+    try {
+        const response = await ApiService.call('deleteUnifiedFlow', { id: flowId }) as ApiResponse;
+
+        if (response.success) {
+            getUI().showAlert('Akış silindi', 'success');
+            loadUnifiedFlows();
+        } else {
+            throw new Error(response.error || 'Silme hatası');
+        }
+    } catch (error) {
+        logError(error, { action: 'deleteUnifiedFlow' });
+        getUI().showAlert('Hata: ' + (error as Error).message, 'error');
+    }
+}

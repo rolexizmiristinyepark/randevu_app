@@ -40,6 +40,7 @@ interface MailTemplate {
     subject: string;
     body: string; // HTML content
     recipient: string; // v3.9.74: customer, staff, admin, role_sales, role_greeter, etc.
+    infoCardId: string; // v3.9.75: Info card to use with this template
 }
 
 interface InfoCardField {
@@ -919,6 +920,21 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     recipientSpan.textContent = `→ ${recipientLabel}`;
     details.appendChild(recipientSpan);
 
+    // Info Card - v3.9.75
+    if (template.infoCardId) {
+        const card = infoCards.find(c => c.id === template.infoCardId);
+        if (card) {
+            const sep2 = document.createElement('span');
+            sep2.textContent = '•';
+            sep2.style.cssText = 'color: #ccc;';
+            details.appendChild(sep2);
+
+            const cardSpan = document.createElement('span');
+            cardSpan.textContent = `📋 ${card.name}`;
+            details.appendChild(cardSpan);
+        }
+    }
+
     item.appendChild(header);
     item.appendChild(details);
 
@@ -940,6 +956,9 @@ function openTemplateModal(templateId?: string): void {
 
     // Populate recipient options - v3.9.74
     populateTemplateRecipientOptions();
+
+    // Populate info card select - v3.9.75
+    populateTemplateInfoCardSelect();
 
     // Update modal header
     const header = modal.querySelector('.modal-header');
@@ -991,6 +1010,27 @@ function populateTemplateRecipientOptions(): void {
 }
 
 /**
+ * Populate info card select in template modal - v3.9.75
+ */
+function populateTemplateInfoCardSelect(): void {
+    const select = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
+    if (!select) return;
+
+    // Keep first option (default), clear rest
+    while (select.options.length > 1) {
+        select.remove(1);
+    }
+
+    // Add info cards as options
+    infoCards.forEach(card => {
+        const option = document.createElement('option');
+        option.value = card.id;
+        option.textContent = card.name;
+        select.appendChild(option);
+    });
+}
+
+/**
  * Reset template form to defaults
  */
 function resetTemplateForm(): void {
@@ -1002,6 +1042,10 @@ function resetTemplateForm(): void {
     // Reset recipient to customer (default) - v3.9.74
     const customerRadio = document.querySelector('input[name="mailTemplateRecipient"][value="customer"]') as HTMLInputElement;
     if (customerRadio) customerRadio.checked = true;
+
+    // Reset info card select - v3.9.75
+    const infoCardSelect = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
+    if (infoCardSelect) infoCardSelect.value = '';
 }
 
 /**
@@ -1016,6 +1060,10 @@ function populateTemplateForm(template: MailTemplate): void {
     const recipient = template.recipient || 'customer';
     const recipientRadio = document.querySelector(`input[name="mailTemplateRecipient"][value="${recipient}"]`) as HTMLInputElement;
     if (recipientRadio) recipientRadio.checked = true;
+
+    // Set info card select - v3.9.75
+    const infoCardSelect = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
+    if (infoCardSelect) infoCardSelect.value = template.infoCardId || '';
 }
 
 /**
@@ -1032,6 +1080,10 @@ async function saveTemplate(): Promise<void> {
     // Get selected recipient - v3.9.74
     const recipientRadio = document.querySelector('input[name="mailTemplateRecipient"]:checked') as HTMLInputElement;
     const recipient = recipientRadio?.value || 'customer';
+
+    // Get selected info card - v3.9.75
+    const infoCardSelect = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
+    const infoCardId = infoCardSelect?.value || '';
 
     // Validation
     if (!name) {
@@ -1054,7 +1106,8 @@ async function saveTemplate(): Promise<void> {
         name,
         subject,
         body,
-        recipient
+        recipient,
+        infoCardId
     };
 
     // Add loading state
