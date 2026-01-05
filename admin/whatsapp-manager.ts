@@ -59,21 +59,16 @@ interface WhatsAppMessage {
 // ==================== CONSTANTS ====================
 
 const PROFILE_LABELS: Record<string, string> = {
-    'g': 'Genel',
-    'w': 'Walk-in',
-    'b': 'Butik',
-    'm': 'Yönetim',
-    's': 'Bireysel',
-    'v': 'Özel Müşteri'
+    'g': 'general',
+    'w': 'walk-in',
+    'b': 'boutique',
+    'm': 'management',
+    's': 'individual',
+    'v': 'vip'
 };
 
-const TRIGGER_LABELS: Record<string, string> = {
-    'RANDEVU_OLUŞTUR': 'Randevu Oluşturuldu',
-    'RANDEVU_İPTAL': 'Randevu İptal Edildi',
-    'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
-    'HATIRLATMA': 'Hatırlatma',
-    'PERSONEL_ATAMA': 'Personel Atandı'
-};
+// TRIGGER_LABELS: API'den yüklenir (Variables.js - MESSAGE_TRIGGERS)
+let triggerLabels: Record<string, string> = {};
 
 const HATIRLATMA_ZAMAN_LABELS: Record<string, string> = {
     '1_gun_once': '1 gün önce',
@@ -88,6 +83,7 @@ const HATIRLATMA_ZAMAN_LABELS: Record<string, string> = {
 let _dataStore: DataStore;
 let flows: WhatsAppFlow[] = [];
 let templates: WhatsAppTemplate[] = [];
+let messageVariables: Record<string, string> = {};
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -97,47 +93,6 @@ declare const window: Window & {
 };
 
 const getUI = () => window.UI;
-
-// ==================== HELPER FUNCTIONS ====================
-
-/**
- * Copy variable to clipboard with visual feedback
- */
-function copyVariableToClipboard(varName: string, element: HTMLElement): void {
-    const variableText = `{{${varName}}}`;
-
-    navigator.clipboard.writeText(variableText).then(() => {
-        // Visual feedback
-        element.classList.add('copied');
-        const originalText = element.textContent;
-        element.textContent = '✓ Kopyalandı';
-
-        setTimeout(() => {
-            element.classList.remove('copied');
-            element.textContent = originalText;
-        }, 1500);
-    }).catch(() => {
-        // Fallback for older browsers
-        const textarea = document.createElement('textarea');
-        textarea.value = variableText;
-        textarea.style.position = 'fixed';
-        textarea.style.opacity = '0';
-        document.body.appendChild(textarea);
-        textarea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textarea);
-
-        // Visual feedback
-        element.classList.add('copied');
-        const originalText = element.textContent;
-        element.textContent = '✓ Kopyalandı';
-
-        setTimeout(() => {
-            element.classList.remove('copied');
-            element.textContent = originalText;
-        }, 1500);
-    });
-}
 
 // ==================== INITIALIZATION ====================
 
@@ -151,17 +106,48 @@ export async function initWhatsAppManager(store: DataStore): Promise<void> {
     // Initial data load
     await Promise.all([
         loadFlows(),
-        loadTemplates()
+        loadTemplates(),
+        loadMessageVariables(),
+        loadTriggers()
     ]);
+}
+
+/**
+ * Load message variables from backend (Variables.js)
+ */
+async function loadMessageVariables(): Promise<void> {
+    try {
+        const response = await ApiService.call('getMessageVariables', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            messageVariables = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadMessageVariables' });
+    }
+}
+
+/**
+ * Load triggers from backend (Variables.js - MESSAGE_TRIGGERS)
+ */
+async function loadTriggers(): Promise<void> {
+    try {
+        const response = await ApiService.call('getTriggers', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            triggerLabels = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadTriggers' });
+    }
 }
 
 /**
  * Setup all event listeners
  */
 function setupEventListeners(): void {
-    // Flow buttons
-    document.getElementById('addTimeBasedFlowBtn')?.addEventListener('click', () => openFlowModal('time'));
-    document.getElementById('addEventBasedFlowBtn')?.addEventListener('click', () => openFlowModal('event'));
+    // Flow button - tek buton
+    document.getElementById('addWhatsAppFlowBtn')?.addEventListener('click', () => openFlowModal());
 
     // Template buttons
     document.getElementById('addTemplateBtn')?.addEventListener('click', () => openTemplateModal());
@@ -191,27 +177,6 @@ function setupEventListeners(): void {
         generateVariableInputs(count);
     });
 
-    // Variable reference panel toggle
-    document.getElementById('toggleVarRefBtn')?.addEventListener('click', () => {
-        const content = document.getElementById('variableReferenceContent');
-        const toggle = document.getElementById('variableRefToggle');
-        if (content && toggle) {
-            const isHidden = content.style.display === 'none';
-            content.style.display = isHidden ? 'block' : 'none';
-            toggle.textContent = isHidden ? '▲ Gizle' : '▼ Göster';
-        }
-    });
-
-    // Variable tag click - copy to clipboard
-    document.querySelectorAll('.var-tag').forEach(tag => {
-        tag.addEventListener('click', (e) => {
-            const varName = (e.target as HTMLElement).dataset.var;
-            if (varName) {
-                copyVariableToClipboard(varName, e.target as HTMLElement);
-            }
-        });
-    });
-
     // Modal close handlers (escape key)
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') {
@@ -226,11 +191,9 @@ function setupEventListeners(): void {
  * Load all flows from backend
  */
 async function loadFlows(): Promise<void> {
-    const timeBasedContainer = document.getElementById('timeBasedFlowList');
-    const eventBasedContainer = document.getElementById('eventBasedFlowList');
+    const container = document.getElementById('whatsappFlowList');
 
-    showContainerLoading(timeBasedContainer);
-    showContainerLoading(eventBasedContainer);
+    showContainerLoading(container);
 
     try {
         const response = await ApiService.call('getWhatsAppFlows', {}) as ApiResponse<WhatsAppFlow[]>;
@@ -239,46 +202,37 @@ async function loadFlows(): Promise<void> {
             flows = response.data;
             renderFlows();
         } else {
-            showContainerError(timeBasedContainer, response.error || 'Yüklenemedi');
-            showContainerError(eventBasedContainer, response.error || 'Yüklenemedi');
+            showContainerError(container, response.error || 'Yüklenemedi');
         }
     } catch (error) {
         logError(error, { action: 'loadFlows' });
-        showContainerError(timeBasedContainer, 'Bağlantı hatası');
-        showContainerError(eventBasedContainer, 'Bağlantı hatası');
+        showContainerError(container, 'Bağlantı hatası');
     }
 }
 
 /**
- * Render flows in their respective containers
+ * Render all flows in single container
  */
 function renderFlows(): void {
-    const timeBasedFlows = flows.filter(f => f.triggerType === 'time' || f.trigger === 'HATIRLATMA');
-    const eventBasedFlows = flows.filter(f => f.triggerType === 'event' && f.trigger !== 'HATIRLATMA');
-
-    renderFlowList('timeBasedFlowList', timeBasedFlows, 'time');
-    renderFlowList('eventBasedFlowList', eventBasedFlows, 'event');
+    renderFlowList('whatsappFlowList', flows);
 }
 
 /**
  * Render a list of flows
  */
-function renderFlowList(containerId: string, flowList: WhatsAppFlow[], type: 'time' | 'event'): void {
+function renderFlowList(containerId: string, flowList: WhatsAppFlow[]): void {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     clearContainer(container);
 
     if (flowList.length === 0) {
-        const emptyMsg = type === 'time'
-            ? 'Henüz zaman bazlı flow eklenmemiş'
-            : 'Henüz olay bazlı flow eklenmemiş';
-        showContainerEmpty(container, emptyMsg);
+        showContainerEmpty(container, 'Henüz flow eklenmemiş');
         return;
     }
 
     flowList.forEach(flow => {
-        const item = createFlowItem(flow, type);
+        const item = createFlowItem(flow);
         container.appendChild(item);
     });
 }
@@ -286,21 +240,24 @@ function renderFlowList(containerId: string, flowList: WhatsAppFlow[], type: 'ti
 /**
  * Create a flow item element
  */
-function createFlowItem(flow: WhatsAppFlow, type: 'time' | 'event'): HTMLElement {
+function createFlowItem(flow: WhatsAppFlow): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'flow-item';
+    item.className = 'flow-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header row
+    // Trigger type'ı flow'dan al
+    const isTimeBased = flow.triggerType === 'time' || flow.trigger === 'HATIRLATMA';
+
+    // Header row - responsive
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+    header.className = 'mail-item-header';
 
     // Left: Name + Status
     const left = document.createElement('div');
-    left.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+    left.className = 'mail-item-name';
+    left.style.cssText = 'display: flex; align-items: center; gap: 10px; flex-wrap: wrap;';
 
     const name = document.createElement('strong');
-    name.style.color = '#1A1A2E';
     name.textContent = flow.name;
 
     const status = document.createElement('span');
@@ -310,9 +267,9 @@ function createFlowItem(flow: WhatsAppFlow, type: 'time' | 'event'): HTMLElement
     left.appendChild(name);
     left.appendChild(status);
 
-    // Right: Actions
+    // Right: Actions - responsive
     const right = document.createElement('div');
-    right.style.cssText = 'display: flex; gap: 8px;';
+    right.className = 'mail-item-actions';
 
     const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editFlow(flow.id));
     const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
@@ -333,22 +290,22 @@ function createFlowItem(flow: WhatsAppFlow, type: 'time' | 'event'): HTMLElement
     // Profiles
     const profilesText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
     const profilesSpan = document.createElement('span');
-    profilesSpan.textContent = '📋 ' + profilesText;
+    profilesSpan.textContent = profilesText;
     details.appendChild(profilesSpan);
 
     // Trigger
     const triggerSpan = document.createElement('span');
-    if (type === 'time') {
+    if (isTimeBased) {
         const zamanLabel = HATIRLATMA_ZAMAN_LABELS[flow.hatirlatmaZaman || ''] || flow.hatirlatmaZaman;
-        triggerSpan.textContent = '⏰ ' + (flow.hatirlatmaSaat || '') + ' - ' + zamanLabel;
+        triggerSpan.textContent = (flow.hatirlatmaSaat || '') + ' - ' + zamanLabel;
     } else {
-        triggerSpan.textContent = '⚡ ' + (TRIGGER_LABELS[flow.trigger] || flow.trigger);
+        triggerSpan.textContent = (triggerLabels[flow.trigger] || flow.trigger);
     }
     details.appendChild(triggerSpan);
 
     // Template count
     const templateSpan = document.createElement('span');
-    templateSpan.textContent = '📨 ' + flow.templateIds.length + ' şablon';
+    templateSpan.textContent = flow.templateIds.length + ' şablon';
     details.appendChild(templateSpan);
 
     item.appendChild(header);
@@ -360,12 +317,21 @@ function createFlowItem(flow: WhatsAppFlow, type: 'time' | 'event'): HTMLElement
 /**
  * Open flow creation/edit modal
  */
-function openFlowModal(type: 'time' | 'event', flowId?: string): void {
+function openFlowModal(flowId?: string): void {
     const modal = document.getElementById('whatsappFlowModal');
     if (!modal) return;
 
     // Reset form
     resetFlowForm();
+
+    // Get type from existing flow or default to 'event'
+    let type: 'time' | 'event' = 'event';
+    if (flowId) {
+        const existingFlow = flows.find(f => f.id === flowId);
+        if (existingFlow) {
+            type = existingFlow.triggerType === 'time' ? 'time' : 'event';
+        }
+    }
 
     // Set trigger type
     const triggerTypeSelect = document.getElementById('flowTriggerType') as HTMLSelectElement;
@@ -378,7 +344,7 @@ function openFlowModal(type: 'time' | 'event', flowId?: string): void {
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = flowId ? 'Flow Düzenle' : `Yeni ${type === 'time' ? 'Zaman Bazlı' : 'Olay Bazlı'} Flow`;
+        header.textContent = flowId ? 'Flow Düzenle' : 'Yeni WhatsApp Flow';
     }
 
     // If editing, populate form with existing data
@@ -525,7 +491,7 @@ async function saveFlow(): Promise<void> {
     }
 
     try {
-        const action = editId ? 'updateWhatsAppFlow' : 'createWhatsAppFlow';
+        const action = editId ? 'updateWhatsAppFlow' : 'addWhatsAppFlow';
         const params = editId ? { id: editId, ...flowData } : flowData;
 
         const response = await ApiService.call(action, params) as ApiResponse;
@@ -561,7 +527,7 @@ function editFlow(flowId: string): void {
         return;
     }
 
-    openFlowModal(flow.triggerType === 'time' ? 'time' : 'event', flowId);
+    openFlowModal(flowId);
 }
 
 /**
@@ -788,11 +754,20 @@ function populateTemplateForm(template: WhatsAppTemplate): void {
 }
 
 /**
- * Generate variable input fields
+ * Generate variable input fields - Table-like design
  */
 function generateVariableInputs(count: number): void {
     const container = document.getElementById('templateVariablesContainer');
     if (!container) return;
+
+    // Save existing values before clearing
+    const existingValues: Record<string, string> = {};
+    for (let i = 1; i <= 20; i++) {
+        const existingSelect = document.getElementById(`var_${i}`) as HTMLSelectElement;
+        if (existingSelect && existingSelect.value) {
+            existingValues[String(i)] = existingSelect.value;
+        }
+    }
 
     // Clear existing
     while (container.firstChild) {
@@ -801,49 +776,53 @@ function generateVariableInputs(count: number): void {
 
     if (count === 0) return;
 
-    // Create header
-    const header = document.createElement('label');
-    header.style.cssText = 'display: block; margin-top: 15px; margin-bottom: 10px; font-weight: 500;';
-    header.textContent = 'Değişken Tanımları';
-    container.appendChild(header);
+    // Create table container
+    const table = document.createElement('div');
+    table.style.cssText = 'border: 1px solid #E8E8E8; border-radius: 8px; overflow: hidden; margin-top: 15px;';
 
-    // Create variable inputs
+    // Create variable rows
     for (let i = 1; i <= count; i++) {
-        const inputGroup = document.createElement('div');
-        inputGroup.className = 'input-group';
-        inputGroup.style.marginBottom = '10px';
+        const row = document.createElement('div');
+        row.style.cssText = `display: flex; align-items: center; ${i < count ? 'border-bottom: 1px solid #E8E8E8;' : ''}`;
 
-        const label = document.createElement('label');
-        label.setAttribute('for', `var_${i}`);
-        label.textContent = `{{${i}}} değişkeni`;
+        // Left: Variable badge
+        const badge = document.createElement('div');
+        badge.style.cssText = 'width: 100px; padding: 16px 20px; background: #F5F5F0; font-family: monospace; font-size: 14px; color: #1A1A2E; flex-shrink: 0; border-right: 1px solid #E8E8E8;';
+        badge.textContent = `{{${i}}}`;
+
+        // Right: Dropdown
+        const selectWrapper = document.createElement('div');
+        selectWrapper.style.cssText = 'flex: 1; padding: 8px 12px;';
 
         const select = document.createElement('select');
         select.id = `var_${i}`;
-        select.style.width = '100%';
+        select.style.cssText = 'width: 100%; padding: 10px 12px; border: 1px solid #E8E8E8; border-radius: 4px; font-size: 14px; background: white; cursor: pointer;';
 
-        // Add options for common variables
-        const options = [
-            { value: '', label: 'Seçiniz...' },
-            { value: 'ISIM', label: 'Müşteri Adı' },
-            { value: 'SOYISIM', label: 'Müşteri Soyadı' },
-            { value: 'TARIH', label: 'Randevu Tarihi' },
-            { value: 'SAAT', label: 'Randevu Saati' },
-            { value: 'TELEFON', label: 'Telefon' },
-            { value: 'PERSONEL', label: 'Personel Adı' },
-            { value: 'MAGAZA', label: 'Mağaza Adı' }
-        ];
+        // Add default empty option
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = 'Seçiniz...';
+        select.appendChild(defaultOpt);
 
-        options.forEach(opt => {
+        // Add options from loaded messageVariables
+        for (const [key, labelText] of Object.entries(messageVariables)) {
             const optionEl = document.createElement('option');
-            optionEl.value = opt.value;
-            optionEl.textContent = opt.label;
+            optionEl.value = key;
+            optionEl.textContent = labelText;
+            // Restore previously selected value
+            if (existingValues[String(i)] === key) {
+                optionEl.selected = true;
+            }
             select.appendChild(optionEl);
-        });
+        }
 
-        inputGroup.appendChild(label);
-        inputGroup.appendChild(select);
-        container.appendChild(inputGroup);
+        selectWrapper.appendChild(select);
+        row.appendChild(badge);
+        row.appendChild(selectWrapper);
+        table.appendChild(row);
     }
+
+    container.appendChild(table);
 }
 
 /**

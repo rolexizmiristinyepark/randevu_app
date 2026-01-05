@@ -133,24 +133,13 @@
 
                 <!-- Flow Yönetimi -->
                 <div id="whatsappFlow" class="inner-tab-content active">
-                    <!-- Zaman Bazlı Flow -->
                     <div class="card">
-                        <div class="card-title">Zaman Bazlı Flow</div>
-                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Her gün belirli bir saatte otomatik gönderilecek mesajlar</p>
-                        <div id="timeBasedFlowList">
+                        <div class="card-title">WhatsApp Flow</div>
+                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Otomatik mesaj gönderim kuralları</p>
+                        <div id="whatsappFlowList">
                             <div class="loading-spinner"></div>
                         </div>
-                        <button class="btn" id="addTimeBasedFlowBtn" style="margin-top: 15px;">+ Yeni Zaman Bazlı Flow</button>
-                    </div>
-
-                    <!-- Olay Bazlı Flow -->
-                    <div class="card">
-                        <div class="card-title">Olay Bazlı Flow</div>
-                        <p style="color: #666; font-size: 14px; margin-bottom: 15px;">Randevu işlemlerinde tetiklenen mesajlar</p>
-                        <div id="eventBasedFlowList">
-                            <div class="loading-spinner"></div>
-                        </div>
-                        <button class="btn" id="addEventBasedFlowBtn" style="margin-top: 15px;">+ Yeni Olay Bazlı Flow</button>
+                        <button class="btn" id="addWhatsAppFlowBtn" style="margin-top: 15px;">+ Yeni Flow</button>
                     </div>
                 </div>
 
@@ -268,9 +257,10 @@
                             <option value="greeter">Karşılayıcı</option>
                         </select>
                     </div>
-                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="newStaffIsAdmin" style="width: auto;">
-                        <label for="newStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
+                    <div class="input-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="newStaffIsAdmin"> admin access
+                        </label>
                     </div>
                     <button class="btn" id="addStaffBtn">Ekle</button>
                 </div>
@@ -580,9 +570,10 @@
                             <option value="greeter">Karşılayıcı</option>
                         </select>
                     </div>
-                    <div class="input-group" style="display: flex; align-items: center; gap: 10px;">
-                        <input type="checkbox" id="editStaffIsAdmin" style="width: auto;">
-                        <label for="editStaffIsAdmin" style="margin: 0;">Admin Yetkisi</label>
+                    <div class="input-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="editStaffIsAdmin"> admin access
+                        </label>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -730,38 +721,38 @@
                     </div>
 
                     <div class="input-group" style="display: flex; justify-content: flex-start;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <label class="checkbox-label" style="cursor: pointer;">
                             <input type="checkbox" id="editProfilVardiyaKontrolu" checked>
-                            <span>Vardiya Kontrolü</span>
-                            <small style="color: #757575; font-weight: normal;">(Kapalıysa tüm günler/slotlar müsait)</small>
+                            <span>shift control</span>
+                            <small style="color: #757575; font-weight: normal; margin-left: 5px;">(if off, all days/slots available)</small>
                         </label>
                     </div>
 
                     <div class="input-group" style="display: flex; justify-content: flex-start;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                        <label class="checkbox-label" style="cursor: pointer;">
                             <input type="checkbox" id="editProfilIdKontrolu">
-                            <span>ID Kontrolü</span>
-                            <small style="color: #757575; font-weight: normal;">(Açıksa URL'den personel ID alınır)</small>
+                            <span>id control</span>
+                            <small style="color: #757575; font-weight: normal; margin-left: 5px;">(if on, staff id from url)</small>
                         </label>
                     </div>
 
                     <div class="input-group">
                         <label>İzin Verilen Randevu Türleri</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" id="profil-type-all"> Hepsi
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="profil-type-all"> all
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" class="profil-type-checkbox" value="delivery"> Teslim
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="profil-type-checkbox" value="delivery"> delivery
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" class="profil-type-checkbox" value="shipping"> Gönderi
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="profil-type-checkbox" value="shipping"> shipping
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" class="profil-type-checkbox" value="meeting"> Görüşme
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="profil-type-checkbox" value="meeting"> meeting
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" class="profil-type-checkbox" value="service"> Servis
+                            <label class="checkbox-label">
+                                <input type="checkbox" class="profil-type-checkbox" value="service"> service
                             </label>
                         </div>
                     </div>
@@ -823,22 +814,25 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Hedef Profiller</label>
-                        <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="flowProfiles" value="g"> Genel
+                        <label>Profile</label>
+                        <div class="checkbox-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="g"> general
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="flowProfiles" value="w"> Günlük
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="w"> walk-in
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="flowProfiles" value="b"> Butik
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="b"> boutique
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="flowProfiles" value="m"> Yönetim
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="m"> management
                             </label>
-                            <label style="display: flex; align-items: center; gap: 5px;">
-                                <input type="checkbox" name="flowProfiles" value="v"> VIP
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="s"> individual
+                            </label>
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="flowProfiles" value="v"> vip
                             </label>
                         </div>
                     </div>
@@ -894,48 +888,6 @@
                         <!-- Değişken alanları dinamik olarak eklenecek -->
                     </div>
 
-                    <!-- Değişken Referans Paneli -->
-                    <div class="variable-reference-panel" style="margin-top: 20px; border-top: 1px solid #E8E8E8; padding-top: 15px;">
-                        <div class="variable-reference-header" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" id="toggleVarRefBtn">
-                            <span style="font-weight: 500; color: #1A1A2E;">📋 Kullanılabilir Değişkenler</span>
-                            <span id="variableRefToggle" style="color: #757575; font-size: 12px;">▼ Göster</span>
-                        </div>
-                        <div id="variableReferenceContent" style="display: none; margin-top: 15px;">
-                            <!-- Müşteri Bilgileri -->
-                            <div class="var-category" style="margin-bottom: 15px;">
-                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Müşteri Bilgileri</div>
-                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                    <span class="var-tag" data-var="musteri" title="Ahmet Yılmaz">{{musteri}}</span>
-                                    <span class="var-tag" data-var="musteri_tel" title="+90 532 123 4567">{{musteri_tel}}</span>
-                                    <span class="var-tag" data-var="musteri_mail" title="ahmet@email.com">{{musteri_mail}}</span>
-                                </div>
-                            </div>
-                            <!-- Randevu Bilgileri -->
-                            <div class="var-category" style="margin-bottom: 15px;">
-                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Randevu Bilgileri</div>
-                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                    <span class="var-tag" data-var="randevu_tarih" title="20 Aralık 2025, Cumartesi">{{randevu_tarih}}</span>
-                                    <span class="var-tag" data-var="randevu_saat" title="14:30">{{randevu_saat}}</span>
-                                    <span class="var-tag" data-var="randevu_ek_bilgi" title="Müşteri notu">{{randevu_ek_bilgi}}</span>
-                                    <span class="var-tag" data-var="randevu_turu" title="Satış Görüşmesi">{{randevu_turu}}</span>
-                                    <span class="var-tag" data-var="randevu_profili" title="VIP, Butik, Walk-in vb.">{{randevu_profili}}</span>
-                                </div>
-                            </div>
-                            <!-- Personel Bilgileri -->
-                            <div class="var-category">
-                                <div style="font-size: 11px; color: #757575; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">Personel Bilgileri</div>
-                                <div class="var-list" style="display: flex; flex-wrap: wrap; gap: 6px;">
-                                    <span class="var-tag" data-var="personel" title="Mehmet Kaya">{{personel}}</span>
-                                    <span class="var-tag" data-var="personel_tel" title="+90 532 987 6543">{{personel_tel}}</span>
-                                    <span class="var-tag" data-var="personel_mail" title="mehmet@rolex.com">{{personel_mail}}</span>
-                                </div>
-                            </div>
-                            <div style="margin-top: 12px; font-size: 11px; color: #757575;">
-                                💡 Değişkene tıklayarak metne ekleyin
-                            </div>
-                        </div>
-                    </div>
-
                     <input type="hidden" id="templateEditId" value="">
                 </div>
                 <div class="modal-footer">
@@ -962,19 +914,19 @@
                         <label>Trigger</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_OLUŞTUR"> Create
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_OLUŞTUR"> create
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_İPTAL"> Cancel
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_İPTAL"> cancel
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_GÜNCELLE"> Update
+                                <input type="checkbox" name="mailFlowTriggers" value="RANDEVU_GÜNCELLE"> update
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> Notify
+                                <input type="checkbox" name="mailFlowTriggers" value="HATIRLATMA"> notify
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowTriggers" value="ILGILI_ATANDI"> Assign
+                                <input type="checkbox" name="mailFlowTriggers" value="ILGILI_ATANDI"> assign
                             </label>
                         </div>
                     </div>
@@ -982,41 +934,31 @@
                         <label>Profile</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="g"> General
+                                <input type="checkbox" name="mailFlowProfiles" value="g"> general
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="w"> Daily
+                                <input type="checkbox" name="mailFlowProfiles" value="w"> walk-in
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="b"> Boutique
+                                <input type="checkbox" name="mailFlowProfiles" value="b"> boutique
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="m"> Management
+                                <input type="checkbox" name="mailFlowProfiles" value="m"> management
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="s"> Individual
+                                <input type="checkbox" name="mailFlowProfiles" value="s"> individual
                             </label>
                             <label class="checkbox-label">
-                                <input type="checkbox" name="mailFlowProfiles" value="v"> Vip
+                                <input type="checkbox" name="mailFlowProfiles" value="v"> vip
                             </label>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Recipient</label>
-                        <div class="radio-group">
-                            <label class="radio-label">
-                                <input type="radio" name="mailFlowTarget" value="customer" checked> Customer
-                            </label>
-                            <label class="radio-label">
-                                <input type="radio" name="mailFlowTarget" value="staff"> Staff
-                            </label>
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label for="mailFlowTemplates">Template</label>
-                        <select id="mailFlowTemplates">
+                        <label>Templates</label>
+                        <div id="mailFlowTemplatesContainer" class="checkbox-group" style="max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid #E8E8E8; border-radius: 4px;">
                             <!-- Dinamik yüklenecek -->
-                        </select>
+                        </div>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Her template kendi alıcısına gönderim yapar</small>
                     </div>
                     <div class="input-group">
                         <label for="mailFlowInfoCards">Card</label>
@@ -1058,6 +1000,12 @@
                             <!-- Değişkenler mail-manager.ts tarafından dinamik yüklenir -->
                         </div>
                         <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Değişkene tıklayarak metne ekleyin</small>
+                    </div>
+                    <div class="input-group">
+                        <label>Alıcı</label>
+                        <div id="mailTemplateRecipientOptions" class="radio-group">
+                            <!-- Dinamik yüklenecek -->
+                        </div>
                     </div>
                     <input type="hidden" id="mailTemplateEditId" value="">
                 </div>

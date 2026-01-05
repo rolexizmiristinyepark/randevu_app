@@ -328,11 +328,14 @@ function openAssignStaffModal(appointment: any): void {
 
     // Modal başlık ve buton metnini güncelle
     const modalHeader = document.querySelector('#assignStaffModal .modal-header');
-    const saveBtn = document.getElementById('saveAssignStaffBtn');
+    const saveBtn = document.getElementById('saveAssignStaffBtn') as HTMLButtonElement;
     if (modalHeader) {
         modalHeader.textContent = isChanging ? 'İlgili Personel Değiştir' : 'İlgili Personel Ata';
     }
     if (saveBtn) {
+        // v3.9.70: Reset button state when modal opens (fix disabled button bug)
+        saveBtn.disabled = false;
+        saveBtn.classList.remove('btn-animating', 'btn-loading', 'btn-success', 'btn-error');
         saveBtn.textContent = isChanging ? 'Değiştir' : 'Ata';
     }
 

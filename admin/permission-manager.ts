@@ -238,8 +238,7 @@ function applyReadOnlyMode(): void {
 function hideRestrictedButtons(): void {
     if (!userPermissions.isAdmin) {
         // WhatsApp - hide add flow/template buttons
-        document.getElementById('addTimeBasedFlowBtn')?.style.setProperty('display', 'none');
-        document.getElementById('addEventBasedFlowBtn')?.style.setProperty('display', 'none');
+        document.getElementById('addWhatsAppFlowBtn')?.style.setProperty('display', 'none');
         document.getElementById('addTemplateBtn')?.style.setProperty('display', 'none');
 
         // Mail - hide add buttons

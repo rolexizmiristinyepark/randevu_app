@@ -170,6 +170,61 @@ var MESSAGE_VARIABLES = {
   }
 };
 
+// ==================== TRIGGER DEFINITIONS ====================
+
+/**
+ * Merkezi trigger tanımları - Mail ve WhatsApp için ortak
+ * v3.9.72: Global trigger listesi
+ */
+var MESSAGE_TRIGGERS = {
+  'RANDEVU_OLUŞTUR': 'Randevu Oluşturuldu',
+  'RANDEVU_İPTAL': 'Randevu İptal Edildi',
+  'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
+  'HATIRLATMA': 'Hatırlatma',
+  'ILGILI_ATANDI': 'İlgili Atandı'
+};
+
+/**
+ * Admin panel için trigger listesini döndür
+ * @returns {Object} { success: true, data: { key: label, ... } }
+ */
+function getTriggers() {
+  return { success: true, data: MESSAGE_TRIGGERS };
+}
+
+// ==================== RECIPIENT DEFINITIONS ====================
+
+/**
+ * Merkezi alıcı (recipient) tanımları - Mail ve WhatsApp için ortak
+ * v3.9.73: Global recipient listesi
+ *
+ * Kategoriler:
+ * - Bireysel: Randevuyla ilişkili kişiler
+ * - Rol bazlı: Belirli role sahip personeller
+ * - Dinamik: Koşula bağlı gruplar
+ */
+var MESSAGE_RECIPIENTS = {
+  // Bireysel alıcılar
+  'customer': 'Müşteri',
+  'staff': 'Atanan Personel',
+  'admin': 'Tüm Adminler',
+
+  // Rol bazlı alıcılar
+  'role_sales': 'Satış Rolündekiler',
+  'role_greeter': 'Karşılayıcı Rolündekiler',
+
+  // Dinamik alıcılar
+  'tomorrow_customers': 'Yarın Randevusu Olan Müşteriler'
+};
+
+/**
+ * Admin panel için recipient listesini döndür
+ * @returns {Object} { success: true, data: { key: label, ... } }
+ */
+function getRecipients() {
+  return { success: true, data: MESSAGE_RECIPIENTS };
+}
+
 // ==================== HELPER FUNCTIONS ====================
 
 /**

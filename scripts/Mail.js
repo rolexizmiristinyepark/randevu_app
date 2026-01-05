@@ -9,8 +9,8 @@
  * - Flow'a göre mail gönderimi
  *
  * Storage: SheetStorageService kullanır
- * - MAIL_FLOWS sheet'i (id, name, description, profiles, triggers, templateId, active)
- * - MAIL_TEMPLATES sheet'i (id, name, subject, body)
+ * - MAIL_FLOWS sheet'i (id, name, description, profiles, triggers, templateIds, active)
+ * - MAIL_TEMPLATES sheet'i (id, name, subject, body, recipient)
  */
 
 // ==================== CONSTANTS ====================
@@ -23,14 +23,7 @@ const MAIL_INFO_CARDS_SHEET = 'MAIL_INFO_CARDS';
 // v3.9.64: DEFAULT_INFO_CARD kaldırıldı - tüm info card tanımları MAIL_INFO_CARDS sheet'inden gelir
 // Mail şablonlarında {{musteri}}, {{randevu_tarihi}} vb. kullanılır
 
-// Trigger türleri
-const MAIL_TRIGGERS = {
-  'RANDEVU_OLUŞTUR': 'Randevu Oluşturuldu',
-  'RANDEVU_İPTAL': 'Randevu İptal Edildi',
-  'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
-  'HATIRLATMA': 'Hatırlatma',
-  'ILGILI_ATANDI': 'İlgili Atandı'
-};
+// Trigger türleri: Variables.js'deki MESSAGE_TRIGGERS kullanılıyor (global)
 
 // Hedef türleri
 const MAIL_TARGETS = {
@@ -66,9 +59,8 @@ function getMailFlows() {
         description: String(flow.description || ''),
         profiles: parseJsonSafe(flow.profiles, []),
         triggers: parseJsonSafe(flow.triggers, []),
-        templateId: String(flow.templateId || ''),
+        templateIds: parseJsonSafe(flow.templateIds, flow.templateId ? [flow.templateId] : []), // Backward compatible
         infoCardId: String(flow.infoCardId || ''),
-        target: String(flow.target || 'customer'),
         active: flow.active === true || flow.active === 'true'
       }))
     };
@@ -90,9 +82,8 @@ function createMailFlow(params) {
       description: params.description || '',
       profiles: JSON.stringify(params.profiles || []),
       triggers: JSON.stringify(params.triggers || []),
-      templateId: params.templateId || '',
+      templateIds: JSON.stringify(params.templateIds || []), // v3.9.74: Multiple templates
       infoCardId: params.infoCardId || '', // Bilgi kartı ID'si
-      target: params.target || 'customer', // customer veya staff
       active: true,
       createdAt: new Date().toISOString()
     };
@@ -126,9 +117,8 @@ function updateMailFlow(params) {
     if (params.description !== undefined) updates.description = params.description;
     if (params.profiles !== undefined) updates.profiles = JSON.stringify(params.profiles);
     if (params.triggers !== undefined) updates.triggers = JSON.stringify(params.triggers);
-    if (params.templateId !== undefined) updates.templateId = params.templateId;
+    if (params.templateIds !== undefined) updates.templateIds = JSON.stringify(params.templateIds); // v3.9.74: Multiple templates
     if (params.infoCardId !== undefined) updates.infoCardId = params.infoCardId;
-    if (params.target !== undefined) updates.target = params.target;
     if (params.active !== undefined) updates.active = params.active;
 
     updates.updatedAt = new Date().toISOString();
@@ -137,7 +127,7 @@ function updateMailFlow(params) {
     log.info('updateMailFlow - Güncelleniyor:', {
       id: params.id,
       updates: updates,
-      infoCardId: params.infoCardId
+      templateIds: params.templateIds
     });
 
     const result = SheetStorageService.update(MAIL_FLOW_SHEET, params.id, updates);
@@ -201,7 +191,8 @@ function getMailTemplates() {
         id: String(template.id),
         name: String(template.name || ''),
         subject: String(template.subject || ''),
-        body: String(template.body || '')
+        body: String(template.body || ''),
+        recipient: String(template.recipient || 'customer') // v3.9.74: Recipient in template
       }))
     };
   } catch (error) {
@@ -221,6 +212,7 @@ function createMailTemplate(params) {
       name: params.name,
       subject: params.subject || '',
       body: params.body || '',
+      recipient: params.recipient || 'customer', // v3.9.74: Recipient in template
       createdAt: new Date().toISOString()
     };
 
@@ -251,6 +243,7 @@ function updateMailTemplate(params) {
     if (params.name !== undefined) updates.name = params.name;
     if (params.subject !== undefined) updates.subject = params.subject;
     if (params.body !== undefined) updates.body = params.body;
+    if (params.recipient !== undefined) updates.recipient = params.recipient; // v3.9.74
 
     updates.updatedAt = new Date().toISOString();
 
@@ -440,7 +433,7 @@ function generateAppointmentInfoBox(data, infoCardId) {
   log.info('[Mail] data.date:', data?.date, 'data.formattedDate:', data?.formattedDate);
   log.info('[Mail] data.time:', data?.time, 'data.profile:', data?.profile);
 
-  // v3.9.65: Tamamen dinamik - Info Card ID ZORUNLU
+  // v3.9.69: Tamamen dinamik - Info Card ID ZORUNLU
   // Manuel fallback yok - tüm tanımlar sheet'ten gelir
   if (!infoCardId) {
     log.warn('[Mail] infoCardId tanımlı değil - info box oluşturulmadı');
@@ -448,39 +441,19 @@ function generateAppointmentInfoBox(data, infoCardId) {
   }
 
   let rows = '';
-  let debugInfo = []; // DEBUG: Email'e eklenecek
 
   // Info Card'ı sheet'ten al
   try {
-    // v3.9.67: DEBUG bilgisi topla (email'e eklenecek)
-    debugInfo.push('=== DEBUG v3.9.67 ===');
-    debugInfo.push('infoCardId: ' + infoCardId);
-    debugInfo.push('data.date: ' + (data?.date || 'undefined'));
-    debugInfo.push('data.time: ' + (data?.time || 'undefined'));
-    debugInfo.push('data.formattedDate: ' + (data?.formattedDate || 'undefined'));
-    debugInfo.push('data.appointmentDate: ' + (data?.appointmentDate || 'undefined'));
-    debugInfo.push('data.profile: ' + (data?.profile || 'undefined'));
-    debugInfo.push('data.profileName: ' + (data?.profileName || 'undefined'));
-    debugInfo.push('data.appointmentType: ' + (data?.appointmentType || 'undefined'));
-
     const cards = SheetStorageService.getAll(MAIL_INFO_CARDS_SHEET);
-    debugInfo.push('Total cards: ' + (cards?.length || 0));
-
     const card = cards.find(c => c.id === infoCardId);
 
     if (!card) {
-      debugInfo.push('ERROR: Card not found!');
-      debugInfo.push('Available IDs: ' + (cards?.map(c => c.id).join(', ') || 'none'));
-      // DEBUG: Hata durumunda debug bilgisini göster
-      return '<div style="background:#ffe0e0;padding:10px;font-size:10px;"><pre>' + debugInfo.join('\n') + '</pre></div>';
+      log.warn('[Mail] Info card bulunamadı:', infoCardId);
+      return '';
     }
 
     const fields = parseJsonSafe(card.fields, []);
     const sortedFields = [...fields].sort((a, b) => (a.order || 0) - (b.order || 0));
-
-    debugInfo.push('Card name: ' + card.name);
-    debugInfo.push('Fields count: ' + sortedFields.length);
-    debugInfo.push('Field variables: ' + sortedFields.map(f => f.variable).join(', '));
 
     // Her field için: GLOBAL getVariableValue ile değer al
     for (const field of sortedFields) {
@@ -488,23 +461,12 @@ function generateAppointmentInfoBox(data, infoCardId) {
       // {{degisken}} formatını temizle
       varKey = varKey.replace(/\{\{?\s*/g, '').replace(/\s*\}?\}/g, '').trim();
 
-      debugInfo.push('---');
-      debugInfo.push('Field: ' + field.label + ' | var: ' + field.variable + ' | clean: ' + varKey);
-
-      if (!varKey) {
-        debugInfo.push('SKIP: empty varKey');
-        continue;
-      }
+      if (!varKey) continue;
 
       // ✅ GLOBAL SİSTEM: Variables.js'den getVariableValue ile değer al
       const value = getVariableValue(varKey, data);
 
-      debugInfo.push('getVariableValue("' + varKey + '") = "' + (value || 'EMPTY') + '"');
-
-      if (!value) {
-        debugInfo.push('SKIP: empty value');
-        continue;
-      }
+      if (!value) continue;
 
       rows += `
         <tr>
@@ -514,18 +476,15 @@ function generateAppointmentInfoBox(data, infoCardId) {
       `;
     }
   } catch (err) {
-    debugInfo.push('EXCEPTION: ' + err.toString());
+    log.error('[Mail] generateAppointmentInfoBox error:', err);
+    return '';
   }
-
-  // v3.9.67: DEBUG bilgisini email'e ekle (test sonrası kaldırılacak)
-  const debugHtml = '<div style="background:#f0f0f0;padding:10px;margin-top:15px;font-size:9px;color:#666;border:1px solid #ddd;"><pre style="margin:0;white-space:pre-wrap;">' + debugInfo.join('\n') + '</pre></div>';
 
   return `
     <div style="border-left: 3px solid #C9A55A; padding: 10px 15px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; background-color: #f9f9f9;">
       <h2 style="margin: 0 0 8px 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
       <table style="width: 100%; border-collapse: collapse;">${rows}</table>
     </div>
-    ${debugHtml}
   `;
 }
 
@@ -836,118 +795,177 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
 
     // Her eşleşen flow için mail gönder
     const results = [];
+    const allTemplates = SheetStorageService.getAll(MAIL_TEMPLATE_SHEET); // Önce tüm template'leri al
+
     for (const flow of matchingFlows) {
-      if (!flow.templateId) {
+      // v3.9.74: templateIds array veya eski templateId'den backward compatible
+      const templateIds = parseJsonSafe(flow.templateIds, flow.templateId ? [flow.templateId] : []);
+
+      if (templateIds.length === 0) {
         log.warn('[Mail] Flow template ID yok:', flow.id);
         continue;
       }
 
-      // Template'i al
-      const templates = SheetStorageService.getAll(MAIL_TEMPLATE_SHEET);
-      const template = templates.find(t => t.id === flow.templateId);
+      // Her template için ayrı mail gönder (v3.9.74: multiple templates)
+      for (const templateId of templateIds) {
+        const template = allTemplates.find(t => t.id === templateId);
 
-      if (!template) {
-        log.warn('[Mail] Template bulunamadı:', flow.templateId);
-        continue;
-      }
-
-      // Variable'ları değiştir (Variables.js'den)
-      const subject = replaceMessageVariables(template.subject, appointmentData);
-      const templateBody = replaceMessageVariables(template.body || '', appointmentData);
-
-      // Hedef email adresini belirle
-      const target = flow.target || 'customer';
-      let email = null;
-      let recipientType = '';
-
-      if (target === 'staff') {
-        email = appointmentData.staffEmail || appointmentData.linkedStaffEmail;
-        recipientType = 'Personel';
-      } else {
-        email = appointmentData.email || appointmentData.customerEmail;
-        recipientType = 'Müşteri';
-      }
-
-      if (!email) {
-        log.warn('[Mail] ' + recipientType + ' email adresi yok, mail gönderilemedi');
-        continue;
-      }
-
-      // ===== EMAIL BODY OLUŞTUR =====
-      // 1. Randevu Bilgileri kutusu (flow'a bağlı bilgi kartı veya varsayılan)
-      const infoCardId = flow.infoCardId || '';
-      log.info('[Mail] Flow infoCardId:', infoCardId, ', flow.id:', flow.id);
-      log.info('[Mail] appointmentData:', JSON.stringify({
-        formattedDate: appointmentData.formattedDate,
-        time: appointmentData.time,
-        profileName: appointmentData.profileName,
-        profile: appointmentData.profile
-      }));
-      const appointmentInfoBox = generateAppointmentInfoBox(appointmentData, infoCardId);
-
-      // 2. Template body (özelleştirilebilir içerik)
-      // Satır sonlarını <br> etiketine çevir (paragraf boşlukları korunsun)
-      const formattedBody = templateBody
-        ? templateBody
-            .replace(/\r\n/g, '\n')           // Windows satır sonlarını normalize et
-            .replace(/\n\n+/g, '</p><p>')     // Çift+ satır sonu = yeni paragraf
-            .replace(/\n/g, '<br>')           // Tek satır sonu = <br>
-        : '';
-      const customContent = formattedBody ? `
-        <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; padding: 15px 0; line-height: 1.6; color: #333; font-size: 12px;">
-          <p style="margin: 0 0 12px 0;">${formattedBody}</p>
-        </div>
-      ` : '';
-
-      // v3.9.49: Schema.org Event microdata - Siri/Apple Mail takvim algılaması için
-      const eventMicrodata = generateEventMicrodata(appointmentData);
-
-      // Tam HTML body (Footer template içinde olmalı, otomatik ekleme yok)
-      const fullHtmlBody = `
-        <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif;">
-          ${eventMicrodata}
-          ${appointmentInfoBox}
-          ${customContent}
-        </div>
-      `;
-
-      // ===== ICS EKİ (Sadece müşteri mailleri için) =====
-      let attachments = [];
-      if (target === 'customer' && trigger !== 'RANDEVU_İPTAL') {
-        try {
-          const icsContent = generateMailICS(appointmentData);
-          const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
-          attachments.push(icsBlob);
-        } catch (icsError) {
-          log.warn('[Mail] ICS oluşturulamadı:', icsError);
-        }
-      }
-
-      // ===== MAİL GÖNDER =====
-      try {
-        const mailOptions = {
-          to: email,
-          subject: subject,
-          htmlBody: fullHtmlBody,
-          name: CONFIG.COMPANY_NAME || 'Rolex Boutique'
-        };
-
-        if (attachments.length > 0) {
-          mailOptions.attachments = attachments;
+        if (!template) {
+          log.warn('[Mail] Template bulunamadı:', templateId);
+          continue;
         }
 
-        // ReplyTo ekle (personel emaili varsa)
-        if (appointmentData.staffEmail) {
-          mailOptions.replyTo = appointmentData.staffEmail;
+        // Variable'ları değiştir (Variables.js'den)
+        const subject = replaceMessageVariables(template.subject, appointmentData);
+        const templateBody = replaceMessageVariables(template.body || '', appointmentData);
+
+        // v3.9.74: Hedef email adreslerini template'den al (recipient field)
+        const target = template.recipient || 'customer';
+        let recipients = []; // { email, type } dizisi
+
+        if (target === 'admin') {
+          // Tüm isAdmin=true personelleri al
+          try {
+            const allStaff = StaffService.getAll();
+            const admins = allStaff.filter(s => s.active && s.isAdmin === true);
+            log.info('[Mail] Admin hedefi - bulunan admin sayısı:', admins.length);
+
+            for (const admin of admins) {
+              if (admin.email) {
+                recipients.push({ email: admin.email, type: 'Admin: ' + admin.name });
+              }
+            }
+
+            if (recipients.length === 0) {
+              log.warn('[Mail] Hiç admin bulunamadı veya adminlerin email adresi yok');
+              continue;
+            }
+          } catch (adminError) {
+            log.error('[Mail] Admin listesi alınırken hata:', adminError);
+            continue;
+          }
+        } else if (target === 'staff') {
+          const staffEmail = appointmentData.staffEmail || appointmentData.linkedStaffEmail;
+          if (staffEmail) {
+            recipients.push({ email: staffEmail, type: 'Personel' });
+          }
+        } else if (target === 'role_sales') {
+          // Satış rolündeki personeller
+          try {
+            const allStaff = StaffService.getAll();
+            const salesStaff = allStaff.filter(s => s.active && s.role === 'sales');
+            for (const staff of salesStaff) {
+              if (staff.email) {
+                recipients.push({ email: staff.email, type: 'Satış: ' + staff.name });
+              }
+            }
+          } catch (roleError) {
+            log.error('[Mail] Satış rolü listesi alınırken hata:', roleError);
+          }
+        } else if (target === 'role_greeter') {
+          // Karşılayıcı rolündeki personeller
+          try {
+            const allStaff = StaffService.getAll();
+            const greeterStaff = allStaff.filter(s => s.active && s.role === 'greeter');
+            for (const staff of greeterStaff) {
+              if (staff.email) {
+                recipients.push({ email: staff.email, type: 'Karşılayıcı: ' + staff.name });
+              }
+            }
+          } catch (roleError) {
+            log.error('[Mail] Karşılayıcı rolü listesi alınırken hata:', roleError);
+          }
+        } else {
+          // customer (varsayılan)
+          const customerEmail = appointmentData.email || appointmentData.customerEmail;
+          if (customerEmail) {
+            recipients.push({ email: customerEmail, type: 'Müşteri' });
+          }
         }
 
-        MailApp.sendEmail(mailOptions);
+        if (recipients.length === 0) {
+          log.warn('[Mail] Hedef için email adresi bulunamadı, target:', target, 'template:', templateId);
+          continue;
+        }
 
-        log.info('[Mail] Mail gönderildi (' + recipientType + '):', email, subject);
-        results.push({ flow: flow.id, email: email, target: target, success: true });
-      } catch (mailError) {
-        log.error('[Mail] Mail gönderim hatası:', mailError);
-        results.push({ flow: flow.id, email: email, target: target, success: false, error: mailError.toString() });
+        // ===== EMAIL BODY OLUŞTUR =====
+        // 1. Randevu Bilgileri kutusu (flow'a bağlı bilgi kartı veya varsayılan)
+        const infoCardId = flow.infoCardId || '';
+        log.info('[Mail] Flow infoCardId:', infoCardId, ', flow.id:', flow.id, ', templateId:', templateId);
+        log.info('[Mail] appointmentData:', JSON.stringify({
+          formattedDate: appointmentData.formattedDate,
+          time: appointmentData.time,
+          profileName: appointmentData.profileName,
+          profile: appointmentData.profile
+        }));
+        const appointmentInfoBox = generateAppointmentInfoBox(appointmentData, infoCardId);
+
+        // 2. Template body (özelleştirilebilir içerik)
+        // Satır sonlarını <br> etiketine çevir (paragraf boşlukları korunsun)
+        const formattedBody = templateBody
+          ? templateBody
+              .replace(/\r\n/g, '\n')           // Windows satır sonlarını normalize et
+              .replace(/\n\n+/g, '</p><p>')     // Çift+ satır sonu = yeni paragraf
+              .replace(/\n/g, '<br>')           // Tek satır sonu = <br>
+          : '';
+        const customContent = formattedBody ? `
+          <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; padding: 15px 0; line-height: 1.6; color: #333; font-size: 12px;">
+            <p style="margin: 0 0 12px 0;">${formattedBody}</p>
+          </div>
+        ` : '';
+
+        // v3.9.49: Schema.org Event microdata - Siri/Apple Mail takvim algılaması için
+        const eventMicrodata = generateEventMicrodata(appointmentData);
+
+        // Tam HTML body (Footer template içinde olmalı, otomatik ekleme yok)
+        const fullHtmlBody = `
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif;">
+            ${eventMicrodata}
+            ${appointmentInfoBox}
+            ${customContent}
+          </div>
+        `;
+
+        // ===== ICS EKİ (Sadece müşteri mailleri için) =====
+        let attachments = [];
+        if (target === 'customer' && trigger !== 'RANDEVU_İPTAL') {
+          try {
+            const icsContent = generateMailICS(appointmentData);
+            const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+            attachments.push(icsBlob);
+          } catch (icsError) {
+            log.warn('[Mail] ICS oluşturulamadı:', icsError);
+          }
+        }
+
+        // ===== MAİL GÖNDER (v3.9.74: çoklu template + çoklu alıcı desteği) =====
+        for (const recipient of recipients) {
+          try {
+            const mailOptions = {
+              to: recipient.email,
+              subject: subject,
+              htmlBody: fullHtmlBody,
+              name: CONFIG.COMPANY_NAME || 'Rolex Boutique'
+            };
+
+            if (attachments.length > 0) {
+              mailOptions.attachments = attachments;
+            }
+
+            // ReplyTo ekle (personel emaili varsa)
+            if (appointmentData.staffEmail) {
+              mailOptions.replyTo = appointmentData.staffEmail;
+            }
+
+            MailApp.sendEmail(mailOptions);
+
+            log.info('[Mail] Mail gönderildi (' + recipient.type + '):', recipient.email, subject);
+            results.push({ flow: flow.id, templateId: templateId, email: recipient.email, target: target, recipientType: recipient.type, success: true });
+          } catch (mailError) {
+            log.error('[Mail] Mail gönderim hatası (' + recipient.type + '):', mailError);
+            results.push({ flow: flow.id, templateId: templateId, email: recipient.email, target: target, recipientType: recipient.type, success: false, error: mailError.toString() });
+          }
+        }
       }
     }
 

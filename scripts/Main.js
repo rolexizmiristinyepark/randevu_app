@@ -33,29 +33,37 @@ const ADMIN_ACTIONS = [
   // Profil ayarları (v3.3)
   'updateProfilAyarlari', 'resetProfilAyarlari',
   // WhatsApp Flow System (v3.4) - getWhatsAppFlows public (read-only)
-  'addWhatsAppFlow', 'updateWhatsAppFlow', 'deleteWhatsAppFlow',
+  'addWhatsAppFlow', 'createWhatsAppFlow', 'updateWhatsAppFlow', 'deleteWhatsAppFlow',
   // WhatsApp Daily Tasks (v3.4) - getWhatsAppDailyTasks public (read-only)
   'addWhatsAppDailyTask', 'updateWhatsAppDailyTask', 'deleteWhatsAppDailyTask'
 ];
 
 // v3.0: Session bazlı admin işlemleri (SessionAuthService ile)
+// v3.9.70: Read-only "get" action'ları public yapıldı (ilk yüklemede auth hatası vermemesi için)
 const SESSION_ADMIN_ACTIONS = [
   'createStaff', 'updateStaffV3', 'getAllLinks', 'regenerateLink',
-  // WhatsApp Template CRUD (v3.2)
-  'getWhatsAppTemplates', 'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate', 'getWhatsAppVariableOptions',
-  // WhatsApp Message Log (v4.0)
-  'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
-  // Mail Flow & Template CRUD (v3.9.20)
-  'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
-  'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
-  // Mail Info Cards (v3.9.35)
-  'getMailInfoCards', 'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
+  // WhatsApp Template CRUD (v3.2) - get public, write protected
+  'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate',
+  // WhatsApp Message Log (v4.0) - get public
+  // Mail Flow & Template CRUD (v3.9.20) - get public, write protected
+  'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
+  'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
+  // Mail Info Cards (v3.9.35) - get public, write protected
+  'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
   // Sheet Migration (v3.9.40)
   'fixMailInfoCardsSheet',
   // Header Sync (v3.9.47)
   'syncMailSheetHeaders',
   'debugMailFlowsHeaders'
-  // NOT: getMessageVariables auth gerektirmez (read-only)
+];
+
+// v3.9.70: Public read-only actions (auth gerektirmez)
+// Admin paneli ilk yüklemesinde sorunsuz çalışması için
+const PUBLIC_ADMIN_ACTIONS = [
+  'getWhatsAppTemplates', 'getWhatsAppVariableOptions',
+  'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
+  'getMailFlows', 'getMailTemplates', 'getMailInfoCards',
+  'getMessageVariables', 'getTriggers', 'getRecipients'
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -366,6 +374,7 @@ const ACTION_HANDLERS = {
   'getWhatsAppFlows': () => getWhatsAppFlows(),
   'getWhatsAppFlow': (e) => getWhatsAppFlow(e.parameter),
   'addWhatsAppFlow': (e) => addWhatsAppFlow(e.parameter),
+  'createWhatsAppFlow': (e) => addWhatsAppFlow(e.parameter),  // alias for addWhatsAppFlow
   'updateWhatsAppFlow': (e) => updateWhatsAppFlow(e.parameter),
   'deleteWhatsAppFlow': (e) => deleteWhatsAppFlow(e.parameter),
 
@@ -500,8 +509,10 @@ const ACTION_HANDLERS = {
   'syncMailSheetHeaders': () => syncMailSheetHeaders(),
   'debugMailFlowsHeaders': () => debugMailFlowsHeaders(),
 
-  // Merkezi değişkenler (v3.9.22) - Variables.js'den
-  'getMessageVariables': () => getMessageVariables()
+  // Merkezi değişkenler, trigger'lar ve recipient'lar - Variables.js'den
+  'getMessageVariables': () => getMessageVariables(),
+  'getTriggers': () => getTriggers(),
+  'getRecipients': () => getRecipients()
 };
 
 /**

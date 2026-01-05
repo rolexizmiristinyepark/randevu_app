@@ -29,9 +29,8 @@ interface MailFlow {
     description: string;
     profiles: string[];
     triggers: string[]; // ['RANDEVU_OLUŞTUR', 'RANDEVU_İPTAL', etc.]
-    templateId: string;
+    templateIds: string[]; // v3.9.74: Multiple templates
     infoCardId: string; // Info card ID'si
-    target: 'customer' | 'staff'; // customer: müşteri, staff: personel
     active: boolean;
 }
 
@@ -40,6 +39,7 @@ interface MailTemplate {
     name: string;
     subject: string;
     body: string; // HTML content
+    recipient: string; // v3.9.74: customer, staff, admin, role_sales, role_greeter, etc.
 }
 
 interface InfoCardField {
@@ -57,26 +57,19 @@ interface MailInfoCard {
 // ==================== CONSTANTS ====================
 
 const PROFILE_LABELS: Record<string, string> = {
-    'g': 'Genel',
-    'w': 'Walk-in',
-    'b': 'Butik',
-    'm': 'Yönetim',
-    's': 'Bireysel',
-    'v': 'Özel Müşteri'
+    'g': 'general',
+    'w': 'walk-in',
+    'b': 'boutique',
+    'm': 'management',
+    's': 'individual',
+    'v': 'vip'
 };
 
-const TRIGGER_LABELS: Record<string, string> = {
-    'RANDEVU_OLUŞTUR': 'Randevu Oluşturuldu',
-    'RANDEVU_İPTAL': 'Randevu İptal Edildi',
-    'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
-    'HATIRLATMA': 'Hatırlatma',
-    'ILGILI_ATANDI': 'İlgili Atandı'
-};
+// TRIGGER_LABELS: API'den yüklenir (Variables.js - MESSAGE_TRIGGERS)
+let triggerLabels: Record<string, string> = {};
 
-const TARGET_LABELS: Record<string, string> = {
-    'customer': 'Müşteri',
-    'staff': 'Personel'
-};
+// RECIPIENT_LABELS: API'den yüklenir (Variables.js - MESSAGE_RECIPIENTS)
+let recipientLabels: Record<string, string> = {};
 
 // Varsayılan alan başlıkları (kısa ve temiz)
 const DEFAULT_FIELD_LABELS: Record<string, string> = {
@@ -210,7 +203,9 @@ export async function initMailManager(store: DataStore): Promise<void> {
         loadFlows(),
         loadTemplates(),
         loadInfoCards(),
-        loadMessageVariables()
+        loadMessageVariables(),
+        loadTriggers(),
+        loadRecipients()
     ]);
 
     // Debug: Expose data to window for console access
@@ -306,19 +301,19 @@ function renderFlows(): void {
  */
 function createFlowItem(flow: MailFlow): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'flow-item';
+    item.className = 'flow-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header row
+    // Header row - responsive
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+    header.className = 'mail-item-header';
 
     // Left: Name + Status
     const left = document.createElement('div');
-    left.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+    left.className = 'mail-item-name';
+    left.style.cssText = 'display: flex; align-items: center; gap: 10px; flex-wrap: wrap;';
 
     const name = document.createElement('span');
-    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
     name.textContent = flow.name;
 
     const status = document.createElement('span');
@@ -328,9 +323,9 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     left.appendChild(name);
     left.appendChild(status);
 
-    // Right: Actions
+    // Right: Actions - responsive
     const right = document.createElement('div');
-    right.style.cssText = 'display: flex; gap: 8px;';
+    right.className = 'mail-item-actions';
 
     const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editFlow(flow.id));
     const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
@@ -365,17 +360,19 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     addSeparator();
 
     // Triggers
-    const triggersText = flow.triggers.map(t => TRIGGER_LABELS[t] || t).join(', ');
+    const triggersText = flow.triggers.map(t => triggerLabels[t] || t).join(', ');
     const triggerSpan = document.createElement('span');
     triggerSpan.textContent = triggersText;
     details.appendChild(triggerSpan);
 
     addSeparator();
 
-    // Template
-    const template = templates.find(t => t.id === flow.templateId);
+    // Templates - v3.9.74: Multiple templates
+    const templateNames = flow.templateIds
+        .map(id => templates.find(t => t.id === id)?.name)
+        .filter(Boolean);
     const templateSpan = document.createElement('span');
-    templateSpan.textContent = template?.name || 'Şablon seçilmemiş';
+    templateSpan.textContent = templateNames.length > 0 ? templateNames.join(', ') : 'Şablon seçilmemiş';
     details.appendChild(templateSpan);
 
     addSeparator();
@@ -386,14 +383,6 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     const infoCardSpan = document.createElement('span');
     infoCardSpan.textContent = infoCard?.name || 'ICS (Default)';
     details.appendChild(infoCardSpan);
-
-    addSeparator();
-
-    // Target
-    const targetLabel = TARGET_LABELS[flow.target] || 'Müşteri';
-    const targetSpan = document.createElement('span');
-    targetSpan.textContent = targetLabel;
-    details.appendChild(targetSpan);
 
     item.appendChild(header);
     item.appendChild(details);
@@ -455,15 +444,10 @@ function resetFlowForm(): void {
         (cb as HTMLInputElement).checked = false;
     });
 
-    // Reset target to customer (default)
-    const customerRadio = document.querySelector('input[name="mailFlowTarget"][value="customer"]') as HTMLInputElement;
-    if (customerRadio) customerRadio.checked = true;
-
-    // Clear template selection
-    const templateSelect = document.getElementById('mailFlowTemplates') as HTMLSelectElement;
-    if (templateSelect) {
-        templateSelect.value = '';
-    }
+    // Uncheck all template checkboxes - v3.9.74: Multiple templates
+    document.querySelectorAll('input[name="mailFlowTemplates"]').forEach(cb => {
+        (cb as HTMLInputElement).checked = false;
+    });
 
     // Clear info card selection
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
@@ -478,16 +462,6 @@ function resetFlowForm(): void {
 function populateFlowForm(flow: MailFlow): void {
     (document.getElementById('mailFlowName') as HTMLInputElement).value = flow.name;
     (document.getElementById('mailFlowDescription') as HTMLInputElement).value = flow.description || '';
-
-    // Set template select
-    const templateSelect = document.getElementById('mailFlowTemplates') as HTMLSelectElement;
-    if (templateSelect && flow.templateId) {
-        templateSelect.value = flow.templateId;
-        // Verify selection was successful
-        if (templateSelect.value !== flow.templateId) {
-            console.warn('[Mail] Template not found in options:', flow.templateId);
-        }
-    }
 
     // Set info card select
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
@@ -512,36 +486,49 @@ function populateFlowForm(flow: MailFlow): void {
         if (checkbox) checkbox.checked = true;
     });
 
-    // Set target radio button
-    const target = flow.target || 'customer';
-    const targetRadio = document.querySelector(`input[name="mailFlowTarget"][value="${target}"]`) as HTMLInputElement;
-    if (targetRadio) targetRadio.checked = true;
+    // Check template checkboxes - v3.9.74: Multiple templates
+    flow.templateIds.forEach(templateId => {
+        const checkbox = document.querySelector(`input[name="mailFlowTemplates"][value="${templateId}"]`) as HTMLInputElement;
+        if (checkbox) checkbox.checked = true;
+    });
 }
 
 /**
- * Populate template select with available templates
+ * Populate template checkboxes with available templates
+ * v3.9.74: Changed from select to checkboxes for multiple templates
  */
 function populateTemplateSelect(): void {
-    const select = document.getElementById('mailFlowTemplates') as HTMLSelectElement;
-    if (!select) return;
+    const container = document.getElementById('mailFlowTemplatesContainer');
+    if (!container) return;
 
-    // Clear existing options
-    while (select.firstChild) {
-        select.removeChild(select.firstChild);
+    // Clear existing checkboxes
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
     }
 
-    // Add empty option
-    const emptyOption = document.createElement('option');
-    emptyOption.value = '';
-    emptyOption.textContent = 'Şablon seçiniz...';
-    select.appendChild(emptyOption);
+    if (templates.length === 0) {
+        const p = document.createElement('p');
+        p.style.cssText = 'color: #757575; font-size: 12px; margin: 0;';
+        p.textContent = 'Henüz şablon tanımlanmamış';
+        container.appendChild(p);
+        return;
+    }
 
-    // Add template options
+    // Add template checkboxes - include recipient info
     templates.forEach(template => {
-        const option = document.createElement('option');
-        option.value = template.id;
-        option.textContent = template.name;
-        select.appendChild(option);
+        const label = document.createElement('label');
+        label.className = 'checkbox-label';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.name = 'mailFlowTemplates';
+        checkbox.value = template.id;
+
+        const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'müşteri';
+
+        label.appendChild(checkbox);
+        label.appendChild(document.createTextNode(`${template.name} → ${recipientLabel.toLowerCase()}`));
+        container.appendChild(label);
     });
 }
 
@@ -588,7 +575,6 @@ async function saveFlow(): Promise<void> {
 
     const name = (document.getElementById('mailFlowName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('mailFlowDescription') as HTMLInputElement).value.trim();
-    const templateId = (document.getElementById('mailFlowTemplates') as HTMLSelectElement).value;
     const editId = (document.getElementById('mailFlowEditId') as HTMLInputElement).value;
 
     // Validation
@@ -619,23 +605,24 @@ async function saveFlow(): Promise<void> {
         return;
     }
 
-    if (!templateId) {
-        getUI().showAlert('Bir şablon seçmelisiniz', 'error');
+    // Get selected templates - v3.9.74: Multiple templates
+    const templateIds: string[] = [];
+    document.querySelectorAll('input[name="mailFlowTemplates"]:checked').forEach(cb => {
+        templateIds.push((cb as HTMLInputElement).value);
+    });
+
+    if (templateIds.length === 0) {
+        getUI().showAlert('En az bir şablon seçmelisiniz', 'error');
         return;
     }
-
-    // Get selected target
-    const targetRadio = document.querySelector('input[name="mailFlowTarget"]:checked') as HTMLInputElement;
-    const target = (targetRadio?.value as 'customer' | 'staff') || 'customer';
 
     // Get selected info card
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
     const infoCardId = infoCardSelect?.value || '';
 
     // Debug: Log what we're saving
+    console.log('[Mail] Saving flow with templateIds:', templateIds);
     console.log('[Mail] Saving flow with infoCardId:', infoCardId);
-    console.log('[Mail] Select element value:', infoCardSelect?.value);
-    console.log('[Mail] Select selectedIndex:', infoCardSelect?.selectedIndex);
 
     // Build flow data
     const flowData: Partial<MailFlow> = {
@@ -643,9 +630,8 @@ async function saveFlow(): Promise<void> {
         description,
         triggers,
         profiles,
-        templateId,
+        templateIds,
         infoCardId,
-        target,
         active: true
     };
 
@@ -772,6 +758,38 @@ async function loadMessageVariables(): Promise<void> {
 }
 
 /**
+ * Load triggers from backend (Variables.js - MESSAGE_TRIGGERS)
+ */
+async function loadTriggers(): Promise<void> {
+    try {
+        const response = await ApiService.call('getTriggers', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            triggerLabels = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadTriggers' });
+    }
+}
+
+/**
+ * Load recipients from backend (Variables.js - MESSAGE_RECIPIENTS)
+ * v3.9.74: Recipients are now in template level, not flow level
+ */
+async function loadRecipients(): Promise<void> {
+    try {
+        const response = await ApiService.call('getRecipients', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            recipientLabels = response.data;
+            // v3.9.74: populateTemplateRecipientOptions is called when template modal opens
+        }
+    } catch (error) {
+        logError(error, { action: 'loadRecipients' });
+    }
+}
+
+/**
  * Populate the mail variables container with clickable variable buttons
  */
 function populateMailVariablesContainer(): void {
@@ -855,21 +873,21 @@ function renderTemplates(): void {
  */
 function createTemplateItem(template: MailTemplate): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'template-item';
+    item.className = 'template-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header
+    // Header - responsive
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+    header.className = 'mail-item-header';
 
     // Left: Name
     const name = document.createElement('span');
-    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
+    name.className = 'mail-item-name';
     name.textContent = template.name;
 
     // Right: Actions
     const right = document.createElement('div');
-    right.style.cssText = 'display: flex; gap: 8px;';
+    right.className = 'mail-item-actions';
 
     const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editTemplate(template.id));
     const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteTemplate(template.id));
@@ -881,10 +899,25 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     header.appendChild(name);
     header.appendChild(right);
 
-    // Details - Subject
+    // Details - Subject + Recipient
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400;';
-    details.textContent = template.subject;
+    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400; display: flex; align-items: center; gap: 8px;';
+
+    const subjectSpan = document.createElement('span');
+    subjectSpan.textContent = template.subject;
+    details.appendChild(subjectSpan);
+
+    // Add separator
+    const sep = document.createElement('span');
+    sep.textContent = '•';
+    sep.style.cssText = 'color: #ccc;';
+    details.appendChild(sep);
+
+    // Recipient - v3.9.74
+    const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'Müşteri';
+    const recipientSpan = document.createElement('span');
+    recipientSpan.textContent = `→ ${recipientLabel}`;
+    details.appendChild(recipientSpan);
 
     item.appendChild(header);
     item.appendChild(details);
@@ -904,6 +937,9 @@ function openTemplateModal(templateId?: string): void {
 
     // Değişkenleri göster
     populateMailVariablesContainer();
+
+    // Populate recipient options - v3.9.74
+    populateTemplateRecipientOptions();
 
     // Update modal header
     const header = modal.querySelector('.modal-header');
@@ -926,6 +962,35 @@ function openTemplateModal(templateId?: string): void {
 }
 
 /**
+ * Populate recipient options in template modal - v3.9.74
+ */
+function populateTemplateRecipientOptions(): void {
+    const container = document.getElementById('mailTemplateRecipientOptions');
+    if (!container) return;
+
+    // Clear existing
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    // Add radio buttons for each recipient
+    for (const [key, label] of Object.entries(recipientLabels)) {
+        const labelEl = document.createElement('label');
+        labelEl.className = 'radio-label';
+
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = 'mailTemplateRecipient';
+        radio.value = key;
+        if (key === 'customer') radio.checked = true; // Default
+
+        labelEl.appendChild(radio);
+        labelEl.appendChild(document.createTextNode(label.toLowerCase()));
+        container.appendChild(labelEl);
+    }
+}
+
+/**
  * Reset template form to defaults
  */
 function resetTemplateForm(): void {
@@ -933,6 +998,10 @@ function resetTemplateForm(): void {
     (document.getElementById('mailTemplateSubject') as HTMLInputElement).value = '';
     (document.getElementById('mailTemplateBody') as HTMLTextAreaElement).value = '';
     (document.getElementById('mailTemplateEditId') as HTMLInputElement).value = '';
+
+    // Reset recipient to customer (default) - v3.9.74
+    const customerRadio = document.querySelector('input[name="mailTemplateRecipient"][value="customer"]') as HTMLInputElement;
+    if (customerRadio) customerRadio.checked = true;
 }
 
 /**
@@ -942,6 +1011,11 @@ function populateTemplateForm(template: MailTemplate): void {
     (document.getElementById('mailTemplateName') as HTMLInputElement).value = template.name;
     (document.getElementById('mailTemplateSubject') as HTMLInputElement).value = template.subject;
     (document.getElementById('mailTemplateBody') as HTMLTextAreaElement).value = template.body;
+
+    // Set recipient radio button - v3.9.74
+    const recipient = template.recipient || 'customer';
+    const recipientRadio = document.querySelector(`input[name="mailTemplateRecipient"][value="${recipient}"]`) as HTMLInputElement;
+    if (recipientRadio) recipientRadio.checked = true;
 }
 
 /**
@@ -954,6 +1028,10 @@ async function saveTemplate(): Promise<void> {
     const subject = (document.getElementById('mailTemplateSubject') as HTMLInputElement).value.trim();
     const body = (document.getElementById('mailTemplateBody') as HTMLTextAreaElement).value.trim();
     const editId = (document.getElementById('mailTemplateEditId') as HTMLInputElement).value;
+
+    // Get selected recipient - v3.9.74
+    const recipientRadio = document.querySelector('input[name="mailTemplateRecipient"]:checked') as HTMLInputElement;
+    const recipient = recipientRadio?.value || 'customer';
 
     // Validation
     if (!name) {
@@ -975,7 +1053,8 @@ async function saveTemplate(): Promise<void> {
     const templateData: Partial<MailTemplate> = {
         name,
         subject,
-        body
+        body,
+        recipient
     };
 
     // Add loading state
@@ -1081,21 +1160,21 @@ function renderInfoCards(): void {
  */
 function createInfoCardItem(card: MailInfoCard): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'info-card-item';
+    item.className = 'info-card-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header
+    // Header - responsive
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+    header.className = 'mail-item-header';
 
     // Left: Name
     const name = document.createElement('span');
-    name.style.cssText = 'color: #1A1A2E; font-weight: 400;';
+    name.className = 'mail-item-name';
     name.textContent = card.name;
 
     // Right: Actions
     const right = document.createElement('div');
-    right.style.cssText = 'display: flex; gap: 8px;';
+    right.className = 'mail-item-actions';
 
     const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editInfoCard(card.id));
     const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteInfoCard(card.id));
