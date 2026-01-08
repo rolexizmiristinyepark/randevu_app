@@ -67,7 +67,11 @@ type ProtectedAction =
     | 'fixMailInfoCardsSheet'
     // v3.9.47: Header Sync
     | 'syncMailSheetHeaders'
-    | 'debugMailFlowsHeaders';
+    | 'debugMailFlowsHeaders'
+    // v3.10: Unified Notification Flows
+    | 'createUnifiedFlow'
+    | 'updateUnifiedFlow'
+    | 'deleteUnifiedFlow';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -124,7 +128,11 @@ const ApiService = {
         'fixMailInfoCardsSheet',        // Info card sheet'ini düzelt
         // v3.9.47: Header Sync
         'syncMailSheetHeaders',         // Mail sheet header'larını senkronize et
-        'debugMailFlowsHeaders'         // MAIL_FLOWS header'larını debug et
+        'debugMailFlowsHeaders',        // MAIL_FLOWS header'larını debug et
+        // v3.10: Unified Notification Flows
+        'createUnifiedFlow',            // Yeni unified flow
+        'updateUnifiedFlow',            // Unified flow güncelle
+        'deleteUnifiedFlow'             // Unified flow sil
     ] as const,
 
     // Validation map for actions that support Zod validation
