@@ -422,12 +422,12 @@ const AdminAuth = {
             userNameSpan.textContent = ` - ${staff.name}`;
         }
 
-        // Sadece çıkış butonu
+        // Logout button
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
-        logoutBtn.textContent = '🔓 Çıkış';
+        logoutBtn.textContent = 'Logout';
         logoutBtn.addEventListener('click', () => {
-            if (confirm('Çıkış yapmak istediğinize emin misiniz?')) {
+            if (confirm('Are you sure you want to logout?')) {
                 this.logout();
             }
         });

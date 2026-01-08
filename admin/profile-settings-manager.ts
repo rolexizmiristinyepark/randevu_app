@@ -153,7 +153,7 @@ function renderTable(): void {
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeDuration}dk</td>
                 <td style="padding: 10px; border-bottom: 1px solid #eee;">${staffLabel}</td>
                 <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
-                    <button class="btn btn-small" data-action="edit" data-profil="${safeKey}">Düzenle</button>
+                    <button class="btn btn-small" data-action="edit" data-profil="${safeKey}">Edit</button>
                 </td>
             </tr>
         `;
@@ -182,7 +182,7 @@ function openEditModal(key: string): void {
 
     // Set modal title
     const titleEl = document.getElementById('editProfilTitle');
-    if (titleEl) titleEl.textContent = `${PROFIL_LABELS[key] || key} Profili Düzenle`;
+    if (titleEl) titleEl.textContent = `Edit ${PROFIL_LABELS[key] || key} Profile`;
 
     // Set form values
     (document.getElementById('editProfilKey') as HTMLInputElement).value = key;
@@ -284,35 +284,6 @@ async function saveProfilAyari(): Promise<void> {
 }
 
 /**
- * Reset all profile settings to defaults
- */
-async function resetProfilAyarlari(): Promise<void> {
-    if (!confirm('Tüm profil ayarlarını varsayılana sıfırlamak istediğinize emin misiniz?')) {
-        return;
-    }
-
-    const resetBtn = document.getElementById('resetProfilBtn') as HTMLButtonElement;
-    ButtonAnimator.start(resetBtn);
-
-    try {
-        const response = await apiCall('resetProfilAyarlari') as { success: boolean; error?: string };
-
-        if (response.success) {
-            ButtonAnimator.success(resetBtn);
-            getUI().showAlert('Profil ayarları sıfırlandı!', 'success');
-            setTimeout(() => loadProfilAyarlari(), 1000);
-        } else {
-            ButtonAnimator.error(resetBtn);
-            getUI().showAlert(`${response.error || 'Sıfırlama başarısız'}`, 'error');
-        }
-    } catch (error) {
-        console.error('Profil sıfırlama hatası:', error);
-        ButtonAnimator.error(resetBtn);
-        getUI().showAlert('Bağlantı hatası', 'error');
-    }
-}
-
-/**
  * Setup event listeners
  */
 function setupEventListeners(): void {
@@ -321,9 +292,6 @@ function setupEventListeners(): void {
 
     // Cancel button
     document.getElementById('cancelProfilBtn')?.addEventListener('click', closeEditModal);
-
-    // Reset button
-    document.getElementById('resetProfilBtn')?.addEventListener('click', resetProfilAyarlari);
 
     // Modal overlay click
     document.getElementById('editProfilModal')?.querySelector('.modal-overlay')?.addEventListener('click', closeEditModal);

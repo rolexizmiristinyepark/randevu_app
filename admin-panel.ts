@@ -436,12 +436,12 @@ function createStaticLinkCard(name: string, code: string): HTMLElement {
 
     const copyBtn = document.createElement('button');
     copyBtn.className = 'link-btn';
-    copyBtn.textContent = 'Kopyala';
+    copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', () => copyProfileLink(code));
 
     const openBtn = document.createElement('button');
     openBtn.className = 'link-btn link-btn-primary';
-    openBtn.textContent = 'Aç';
+    openBtn.textContent = 'Open';
     openBtn.addEventListener('click', () => openProfileLink(code));
 
     btnsDiv.appendChild(copyBtn);
@@ -779,12 +779,12 @@ function createLinkCard(name: string, type: string, id: string): HTMLElement {
 
     const copyBtn = document.createElement('button');
     copyBtn.className = 'link-btn';
-    copyBtn.textContent = 'Kopyala';
+    copyBtn.textContent = 'Copy';
     copyBtn.addEventListener('click', () => copyStaffLink(type, id));
 
     const openBtn = document.createElement('button');
     openBtn.className = 'link-btn link-btn-primary';
-    openBtn.textContent = 'Aç';
+    openBtn.textContent = 'Open';
     openBtn.addEventListener('click', () => openStaffLink(type, id));
 
     btnsDiv.appendChild(copyBtn);

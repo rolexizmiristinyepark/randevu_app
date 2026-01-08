@@ -15,7 +15,7 @@
 import { ApiService } from '../api-service';
 import { logError } from '../monitoring';
 import { closeModal } from '../ui-utils';
-import { ButtonAnimator } from '../button-utils';
+import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -101,6 +101,8 @@ let infoCards: MailInfoCard[] = [];
 let messageVariables: Record<string, string> = {}; // Variables.js'den yüklenir
 let lastFocusedField: HTMLInputElement | HTMLTextAreaElement | null = null; // Son focus olan alan
 let infoCardFields: InfoCardField[] = []; // Modal için aktif field listesi
+let templateModalDirtyState: FormDirtyState | null = null;
+let infoCardModalDirtyState: FormDirtyState | null = null;
 
 // ==================== CACHE & RETRY CONFIGURATION ====================
 
@@ -334,7 +336,7 @@ function createFlowItem(flow: MailFlow): HTMLElement {
 
     const status = document.createElement('span');
     status.style.cssText = `padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; ${flow.active ? 'background: #E8F5E9; color: #2E7D32;' : 'background: #FFEBEE; color: #C62828;'}`;
-    status.textContent = flow.active ? 'Aktif' : 'Pasif';
+    status.textContent = flow.active ? 'Active' : 'Inactive';
 
     left.appendChild(name);
     left.appendChild(status);
@@ -343,10 +345,9 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editFlow(flow.id));
-    const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteFlow(flow.id));
-    deleteBtn.style.color = '#C62828';
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editFlow(flow.id));
+    const toggleBtn = createButton(flow.active ? 'Stop' : 'Start', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
     right.appendChild(editBtn);
     right.appendChild(toggleBtn);
@@ -419,7 +420,7 @@ function openFlowModal(flowId?: string): void {
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = flowId ? 'Flow Düzenle' : 'Yeni Flow';
+        header.textContent = flowId ? 'Edit Flow' : 'New Flow';
     }
 
     // Populate template options FIRST (before setting values)
@@ -905,9 +906,8 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editTemplate(template.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteTemplate(template.id));
-    deleteBtn.style.color = '#C62828';
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editTemplate(template.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteTemplate(template.id));
 
     right.appendChild(editBtn);
     right.appendChild(deleteBtn);
@@ -963,6 +963,12 @@ function openTemplateModal(templateId?: string): void {
     const modal = document.getElementById('mailTemplateModal');
     if (!modal) return;
 
+    // Destroy previous dirty state if exists
+    if (templateModalDirtyState) {
+        templateModalDirtyState.destroy();
+        templateModalDirtyState = null;
+    }
+
     // Reset form
     resetTemplateForm();
 
@@ -978,7 +984,7 @@ function openTemplateModal(templateId?: string): void {
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = templateId ? 'Şablon Düzenle' : 'Yeni Şablon';
+        header.textContent = templateId ? 'Edit Template' : 'New Template';
     }
 
     // If editing, populate form with existing data
@@ -993,6 +999,12 @@ function openTemplateModal(templateId?: string): void {
 
     // Show modal
     modal.classList.add('active');
+
+    // Initialize FormDirtyState - button disabled until changes made
+    templateModalDirtyState = new FormDirtyState({
+        container: '#mailTemplateModal .modal-content',
+        saveButton: '#saveMailTemplateBtn'
+    });
 }
 
 /**
@@ -1249,9 +1261,8 @@ function createInfoCardItem(card: MailInfoCard): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editInfoCard(card.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteInfoCard(card.id));
-    deleteBtn.style.color = '#C62828';
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editInfoCard(card.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteInfoCard(card.id));
 
     right.appendChild(editBtn);
     right.appendChild(deleteBtn);
@@ -1279,13 +1290,19 @@ function openInfoCardModal(cardId?: string): void {
     const modal = document.getElementById('mailInfoCardModal');
     if (!modal) return;
 
+    // Destroy previous dirty state if exists
+    if (infoCardModalDirtyState) {
+        infoCardModalDirtyState.destroy();
+        infoCardModalDirtyState = null;
+    }
+
     // Reset form
     resetInfoCardForm();
 
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = cardId ? 'Info Card Düzenle' : 'Yeni Info Card';
+        header.textContent = cardId ? 'Edit Info Card' : 'New Info Card';
     }
 
     // Populate variable chips
@@ -1303,6 +1320,13 @@ function openInfoCardModal(cardId?: string): void {
 
     // Show modal
     modal.classList.add('active');
+
+    // Initialize FormDirtyState - button disabled until changes made
+    // Note: Info card has dynamic fields, so we also need to call refresh() when fields change
+    infoCardModalDirtyState = new FormDirtyState({
+        container: '#mailInfoCardModal .modal-content',
+        saveButton: '#saveMailInfoCardBtn'
+    });
 }
 
 /**
@@ -1402,6 +1426,11 @@ function addInfoCardFieldFromChip(variable: string): void {
     populateVariableChips();
     renderInfoCardFields();
     updateInfoCardPreview();
+
+    // Refresh dirty state for new dynamic inputs
+    if (infoCardModalDirtyState) {
+        infoCardModalDirtyState.refresh();
+    }
 }
 
 
@@ -1742,6 +1771,16 @@ function showContainerError(container: HTMLElement | null, message: string, retr
  * Close all modals
  */
 function closeAllModals(): void {
+    // Destroy dirty states
+    if (templateModalDirtyState) {
+        templateModalDirtyState.destroy();
+        templateModalDirtyState = null;
+    }
+    if (infoCardModalDirtyState) {
+        infoCardModalDirtyState.destroy();
+        infoCardModalDirtyState = null;
+    }
+
     document.querySelectorAll('.modal.active').forEach(modal => {
         modal.classList.remove('active');
     });

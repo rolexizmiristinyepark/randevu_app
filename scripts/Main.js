@@ -50,6 +50,8 @@ const SESSION_ADMIN_ACTIONS = [
   'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
   // Mail Info Cards (v3.9.35) - get public, write protected
   'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
+  // Unified Notification Flows (v3.10) - get public, write protected
+  'createUnifiedFlow', 'updateUnifiedFlow', 'deleteUnifiedFlow',
   // Sheet Migration (v3.9.40)
   'fixMailInfoCardsSheet',
   // Header Sync (v3.9.47)
@@ -63,6 +65,7 @@ const PUBLIC_ADMIN_ACTIONS = [
   'getWhatsAppTemplates', 'getWhatsAppVariableOptions',
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   'getMailFlows', 'getMailTemplates', 'getMailInfoCards',
+  'getUnifiedFlows',  // v3.10: Unified notification flows
   'getMessageVariables', 'getTriggers', 'getRecipients'
 ];
 
@@ -516,7 +519,46 @@ const ACTION_HANDLERS = {
   // Merkezi değişkenler, trigger'lar ve recipient'lar - Variables.js'den
   'getMessageVariables': () => getMessageVariables(),
   'getTriggers': () => getTriggers(),
-  'getRecipients': () => getRecipients()
+  'getRecipients': () => getRecipients(),
+
+  // Unified Notification Flows (v3.10)
+  'getUnifiedFlows': () => getNotificationFlows(),
+  'createUnifiedFlow': (e) => {
+    try {
+      const params = {
+        name: e.parameter.name,
+        description: e.parameter.description,
+        trigger: e.parameter.trigger,
+        profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : (e.parameter.profiles || []),
+        whatsappTemplates: typeof e.parameter.whatsappTemplates === 'string' ? JSON.parse(e.parameter.whatsappTemplates) : (e.parameter.whatsappTemplates || []),
+        mailTemplates: typeof e.parameter.mailTemplates === 'string' ? JSON.parse(e.parameter.mailTemplates) : (e.parameter.mailTemplates || []),
+        active: e.parameter.active !== false && e.parameter.active !== 'false'
+      };
+      return createNotificationFlow(params);
+    } catch (handlerError) {
+      log.error('[createUnifiedFlow-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'updateUnifiedFlow': (e) => {
+    try {
+      const params = {
+        id: e.parameter.id,
+        name: e.parameter.name,
+        description: e.parameter.description,
+        trigger: e.parameter.trigger,
+        profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
+        whatsappTemplates: typeof e.parameter.whatsappTemplates === 'string' ? JSON.parse(e.parameter.whatsappTemplates) : e.parameter.whatsappTemplates,
+        mailTemplates: typeof e.parameter.mailTemplates === 'string' ? JSON.parse(e.parameter.mailTemplates) : e.parameter.mailTemplates,
+        active: e.parameter.active === true || e.parameter.active === 'true'
+      };
+      return updateNotificationFlow(params);
+    } catch (handlerError) {
+      log.error('[updateUnifiedFlow-handler] error:', handlerError);
+      return { success: false, error: handlerError.toString() };
+    }
+  },
+  'deleteUnifiedFlow': (e) => deleteNotificationFlow({ id: e.parameter.id })
 };
 
 /**

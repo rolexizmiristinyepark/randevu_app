@@ -6,7 +6,7 @@
 import { apiCall } from '../api-service';
 import { ValidationUtils } from '../validation-utils';
 import { ErrorUtils } from '../error-utils';
-import { ButtonAnimator } from '../button-utils';
+import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import { formatPhoneForDisplay } from '../security-helpers';
 import { initPhoneInput, getPhoneNumber, setPhoneNumber, destroyPhoneInput } from '../phone-input';
 import type { DataStore } from './data-store';
@@ -14,6 +14,7 @@ import type { DataStore } from './data-store';
 // Module-scoped variables
 let dataStore: DataStore;
 let currentEditId: string | null = null;
+let editModalDirtyState: FormDirtyState | null = null;
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -265,28 +266,28 @@ function render(): void {
         // Status span
         const statusSpan = createElement('span', {
             className: `staff-status ${s.active ? 'status-active' : 'status-inactive'}`
-        }, s.active ? 'Aktif' : 'Pasif');
+        }, s.active ? 'Active' : 'Inactive');
 
         // Edit button (with data attributes for event delegation)
         const editBtn = createElement('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'edit',
             'data-staff-id': s.id
-        }, 'Düzenle');
+        }, 'Edit');
 
         // Toggle button
         const toggleBtn = createElement('button', {
             className: `btn btn-small btn-secondary`,
             'data-action': 'toggle',
             'data-staff-id': s.id
-        }, s.active ? 'Pasif' : 'Aktif');
+        }, s.active ? 'Inactive' : 'Active');
 
         // Remove button
         const removeBtn = createElement('button', {
             className: 'btn btn-small btn-secondary',
             'data-action': 'remove',
             'data-staff-id': s.id
-        }, 'Sil');
+        }, 'Delete');
 
         staffActions.appendChild(statusSpan);
         staffActions.appendChild(editBtn);
@@ -353,12 +354,12 @@ function renderLinks(): void {
 
         const copyBtn = createElement('button', {
             className: 'btn btn-small btn-secondary'
-        }, 'Kopyala');
+        }, 'Copy');
         copyBtn.addEventListener('click', () => copyLink(s.id));
 
         const openBtn = createElement('button', {
             className: 'btn btn-small'
-        }, 'Aç');
+        }, 'Open');
         openBtn.addEventListener('click', () => openLink(s.id));
 
         actions.appendChild(copyBtn);
@@ -419,6 +420,12 @@ function openEditModal(staffId: string): void {
             return;
         }
 
+        // Destroy previous dirty state if exists
+        if (editModalDirtyState) {
+            editModalDirtyState.destroy();
+            editModalDirtyState = null;
+        }
+
         currentEditId = staffId;
 
         const nameInput = document.getElementById('editStaffName') as HTMLInputElement;
@@ -441,6 +448,12 @@ function openEditModal(staffId: string): void {
         }
 
         modal?.classList.add('active');
+
+        // Initialize FormDirtyState after modal is shown
+        editModalDirtyState = new FormDirtyState({
+            container: '#editStaffModal .modal-content',
+            saveButton: '#saveEditStaffBtn'
+        });
     } catch (error) {
         console.error('Error opening edit modal:', error);
         getUI().showAlert('Modal açılırken hata oluştu', 'error');
@@ -451,6 +464,11 @@ function openEditModal(staffId: string): void {
  * Close edit modal
  */
 function closeEditModal(): void {
+    // Destroy dirty state
+    if (editModalDirtyState) {
+        editModalDirtyState.destroy();
+        editModalDirtyState = null;
+    }
     currentEditId = null;
     document.getElementById('editStaffModal')?.classList.remove('active');
 }

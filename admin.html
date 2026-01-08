@@ -108,7 +108,6 @@
                     <div id="profilAyarlariTable">
                         <div class="loading-spinner"></div>
                     </div>
-                    <button class="btn btn-secondary" id="resetProfilBtn" style="margin-top: 15px;">Varsayılana Sıfırla</button>
                 </div>
             </div>
         </div>
@@ -131,7 +130,7 @@
                     <div id="unifiedFlowList">
                         <div class="loading-spinner"></div>
                     </div>
-                    <button class="btn" id="addUnifiedFlowBtn" style="margin-top: 15px;">+ Yeni Flow</button>
+                    <button class="btn" id="addUnifiedFlowBtn" style="margin-top: 15px;">New Flow</button>
                 </div>
             </div>
 
@@ -151,7 +150,7 @@
                         <div id="templatesList">
                             <div class="loading-spinner"></div>
                         </div>
-                        <button class="btn" id="addTemplateBtn" style="margin-top: 15px;">+ Yeni Şablon Ekle</button>
+                        <button class="btn" id="addTemplateBtn" style="margin-top: 15px;">Add Template</button>
                     </div>
                 </div>
 
@@ -251,7 +250,7 @@
                             <input type="checkbox" id="newStaffIsAdmin"> admin access
                         </label>
                     </div>
-                    <button class="btn" id="addStaffBtn">Ekle</button>
+                    <button class="btn" id="addStaffBtn">Add</button>
                 </div>
 
                 <div class="card">
@@ -268,11 +267,11 @@
                         <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
                         <div style="display: flex; gap: 10px;">
                             <input type="week" id="weekDate" style="flex: 1;">
-                            <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki</button>
+                            <button class="btn btn-secondary btn-small" id="nextWeekBtn">Next</button>
                         </div>
                     </div>
                     <div id="shiftTable"></div>
-                    <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Kaydet</button>
+                    <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Save</button>
                 </div>
 
                 <div class="card">
@@ -537,7 +536,7 @@
         <div id="editStaffModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
-                <div class="modal-header">Personel Düzenle</div>
+                <div class="modal-header">Edit Staff</div>
                 <div class="modal-body">
                     <div class="input-group">
                         <label for="editStaffName">İsim</label>
@@ -566,8 +565,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelEditStaffBtn">İptal</button>
-                    <button class="btn" id="saveEditStaffBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelEditStaffBtn">Cancel</button>
+                    <button class="btn" id="saveEditStaffBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -576,7 +575,7 @@
         <div id="editAppointmentModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
-                <div class="modal-header">Randevu Düzenle</div>
+                <div class="modal-header">Edit Appointment</div>
                 <div class="modal-body">
                     <div class="input-group">
                         <label for="editAppointmentDate">Tarih</label>
@@ -600,8 +599,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
-                    <button class="btn" id="saveEditAppointmentBtn" disabled>Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">Cancel</button>
+                    <button class="btn" id="saveEditAppointmentBtn" disabled>Save</button>
                 </div>
             </div>
         </div>
@@ -610,7 +609,7 @@
         <div id="assignStaffModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
-                <div class="modal-header">İlgili Personel Ata</div>
+                <div class="modal-header">Assign Staff</div>
                 <div class="modal-body">
                     <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
                         <!-- Randevu bilgileri dinamik -->
@@ -623,8 +622,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
-                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
+                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">Cancel</button>
+                    <button class="btn" id="saveAssignStaffBtn">Assign</button>
                 </div>
             </div>
         </div>
@@ -633,7 +632,7 @@
         <div id="editProfilModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content">
-                <div class="modal-header" id="editProfilTitle">Profil Düzenle</div>
+                <div class="modal-header" id="editProfilTitle">Edit Profile</div>
                 <div class="modal-body">
                     <input type="hidden" id="editProfilKey">
 
@@ -747,8 +746,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelProfilBtn">İptal</button>
-                    <button class="btn" id="saveProfilBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelProfilBtn">Cancel</button>
+                    <button class="btn" id="saveProfilBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -757,7 +756,7 @@
         <div id="unifiedFlowModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 700px;">
-                <div class="modal-header">Yeni Bildirim Akışı</div>
+                <div class="modal-header">New Notification Flow</div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="input-group">
                         <label for="unifiedFlowName">İsim</label>
@@ -813,8 +812,8 @@
                     <input type="hidden" id="unifiedFlowEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelUnifiedFlowBtn">İptal</button>
-                    <button class="btn" id="saveUnifiedFlowBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelUnifiedFlowBtn">Cancel</button>
+                    <button class="btn" id="saveUnifiedFlowBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -823,7 +822,7 @@
         <div id="whatsappFlowModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">Yeni WhatsApp Flow</div>
+                <div class="modal-header">New WhatsApp Flow</div>
                 <div class="modal-body">
                     <div class="input-group">
                         <label for="flowName">Flow Adı</label>
@@ -901,8 +900,8 @@
                     <input type="hidden" id="flowEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelFlowBtn">İptal</button>
-                    <button class="btn" id="saveFlowBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelFlowBtn">Cancel</button>
+                    <button class="btn" id="saveFlowBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -911,7 +910,7 @@
         <div id="whatsappTemplateModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 600px;">
-                <div class="modal-header">WhatsApp Şablonu Ekle</div>
+                <div class="modal-header">Add WhatsApp Template</div>
                 <div class="modal-body">
                     <div class="input-group">
                         <label for="templateName">Şablon Adı (Meta'daki isim)</label>
@@ -946,8 +945,8 @@
                     <input type="hidden" id="templateEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelTemplateBtn">İptal</button>
-                    <button class="btn" id="saveTemplateBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelTemplateBtn">Cancel</button>
+                    <button class="btn" id="saveTemplateBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -1035,7 +1034,7 @@
         <div id="mailTemplateModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 700px;">
-                <div class="modal-header">Mail Şablonu Ekle</div>
+                <div class="modal-header">Add Mail Template</div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="input-group">
                         <label for="mailTemplateName">Şablon Adı</label>
@@ -1072,8 +1071,8 @@
                     <input type="hidden" id="mailTemplateEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelMailTemplateBtn">İptal</button>
-                    <button class="btn" id="saveMailTemplateBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelMailTemplateBtn">Cancel</button>
+                    <button class="btn" id="saveMailTemplateBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -1082,7 +1081,7 @@
         <div id="mailInfoCardModal" class="modal">
             <div class="modal-overlay"></div>
             <div class="modal-content" style="max-width: 800px; max-height: 90vh; display: flex; flex-direction: column;">
-                <div class="modal-header">Yeni Info Card</div>
+                <div class="modal-header">New Info Card</div>
                 <div class="modal-body" style="overflow-y: auto; flex: 1;">
                     <div class="input-group">
                         <label for="mailInfoCardName">Info Card Adı</label>
@@ -1116,8 +1115,8 @@
                     <input type="hidden" id="mailInfoCardEditId" value="">
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelMailInfoCardBtn">İptal</button>
-                    <button class="btn" id="saveMailInfoCardBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelMailInfoCardBtn">Cancel</button>
+                    <button class="btn" id="saveMailInfoCardBtn">Save</button>
                 </div>
             </div>
         </div>
@@ -1142,8 +1141,8 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn btn-secondary" id="cancelWhatsAppSettingsBtn">İptal</button>
-                    <button class="btn" id="saveWhatsAppSettingsBtn">Kaydet</button>
+                    <button class="btn btn-secondary" id="cancelWhatsAppSettingsBtn">Cancel</button>
+                    <button class="btn" id="saveWhatsAppSettingsBtn">Save</button>
                 </div>
             </div>
         </div>

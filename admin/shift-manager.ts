@@ -548,7 +548,7 @@ function renderSaved(): void {
         // Edit button
         const editBtn = getCreateElement()('button', {
             className: 'btn btn-small btn-secondary'
-        }, 'Düzenle');
+        }, 'Edit');
         editBtn.addEventListener('click', () => {
             loadWeek(weekStart);
             // Scroll up

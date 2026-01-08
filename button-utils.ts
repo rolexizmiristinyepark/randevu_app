@@ -390,3 +390,265 @@ if (typeof document !== 'undefined') {
         injectButtonAnimationStyles();
     }
 }
+
+/**
+ * FormDirtyState - Form değişiklik takibi
+ *
+ * Edit/Update butonlarını sadece değişiklik olduğunda aktif yapar.
+ * Değişiklik yoksa buton disabled kalır.
+ *
+ * @example
+ * // Modal açıldığında
+ * const dirtyState = new FormDirtyState({
+ *     container: '#editModal',
+ *     saveButton: '#saveBtn',
+ *     onDirtyChange: (isDirty) => console.log('Dirty:', isDirty)
+ * });
+ *
+ * // Kayıt başarılı olduktan sonra
+ * dirtyState.reset();
+ *
+ * // Modal kapandığında
+ * dirtyState.destroy();
+ */
+export interface FormDirtyStateOptions {
+    /** Form container - element veya selector */
+    container: HTMLElement | string;
+    /** Save/Update butonu - element veya selector */
+    saveButton: HTMLElement | string;
+    /** Opsiyonel: Dirty state değiştiğinde callback */
+    onDirtyChange?: (isDirty: boolean) => void;
+    /** Opsiyonel: Özel input selector (default: input, textarea, select) */
+    inputSelector?: string;
+}
+
+export class FormDirtyState {
+    private originalValues: Map<string, string> = new Map();
+    private container: HTMLElement | null = null;
+    private saveButton: HTMLButtonElement | null = null;
+    private inputs: NodeListOf<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement> | null = null;
+    private onDirtyChange?: (isDirty: boolean) => void;
+    private inputSelector: string;
+    private boundCheckDirty: () => void;
+    private isDirty: boolean = false;
+
+    constructor(options: FormDirtyStateOptions) {
+        // Get container
+        this.container = typeof options.container === 'string'
+            ? document.querySelector(options.container)
+            : options.container;
+
+        // Get save button
+        this.saveButton = (typeof options.saveButton === 'string'
+            ? document.querySelector(options.saveButton)
+            : options.saveButton) as HTMLButtonElement;
+
+        this.onDirtyChange = options.onDirtyChange;
+        this.inputSelector = options.inputSelector || 'input, textarea, select';
+
+        // Bind check function for event listener removal
+        this.boundCheckDirty = this.checkDirty.bind(this);
+
+        // Initialize
+        this.init();
+    }
+
+    /**
+     * Form'u başlat - mevcut değerleri kaydet, listener ekle
+     */
+    private init(): void {
+        if (!this.container || !this.saveButton) {
+            console.warn('[FormDirtyState] Container veya saveButton bulunamadı');
+            return;
+        }
+
+        // Find all inputs
+        this.inputs = this.container.querySelectorAll(this.inputSelector);
+
+        // Store original values
+        this.captureOriginalValues();
+
+        // Disable save button initially (no changes yet)
+        this.saveButton.disabled = true;
+        this.saveButton.classList.add('btn-pristine');
+
+        // Add change listeners
+        this.inputs.forEach(input => {
+            input.addEventListener('input', this.boundCheckDirty);
+            input.addEventListener('change', this.boundCheckDirty);
+        });
+    }
+
+    /**
+     * Mevcut değerleri orijinal olarak kaydet
+     */
+    private captureOriginalValues(): void {
+        this.originalValues.clear();
+
+        if (!this.inputs) return;
+
+        this.inputs.forEach((input, index) => {
+            const key = input.id || input.name || `input-${index}`;
+            let value: string;
+
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                value = (input as HTMLInputElement).checked ? 'true' : 'false';
+            } else {
+                value = input.value;
+            }
+
+            this.originalValues.set(key, value);
+        });
+    }
+
+    /**
+     * Değişiklik kontrolü yap
+     */
+    private checkDirty(): void {
+        if (!this.inputs || !this.saveButton) return;
+
+        let hasChanges = false;
+
+        this.inputs.forEach((input, index) => {
+            const key = input.id || input.name || `input-${index}`;
+            const originalValue = this.originalValues.get(key);
+
+            let currentValue: string;
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                currentValue = (input as HTMLInputElement).checked ? 'true' : 'false';
+            } else {
+                currentValue = input.value;
+            }
+
+            if (currentValue !== originalValue) {
+                hasChanges = true;
+            }
+        });
+
+        // Update button state only if changed
+        if (hasChanges !== this.isDirty) {
+            this.isDirty = hasChanges;
+
+            if (hasChanges) {
+                this.saveButton.disabled = false;
+                this.saveButton.classList.remove('btn-pristine');
+                this.saveButton.classList.add('btn-dirty');
+            } else {
+                this.saveButton.disabled = true;
+                this.saveButton.classList.add('btn-pristine');
+                this.saveButton.classList.remove('btn-dirty');
+            }
+
+            // Callback
+            if (this.onDirtyChange) {
+                this.onDirtyChange(hasChanges);
+            }
+        }
+    }
+
+    /**
+     * Kayıt başarılı olduktan sonra çağır
+     * Mevcut değerleri yeni orijinal değerler olarak kaydet
+     */
+    reset(): void {
+        this.captureOriginalValues();
+        this.isDirty = false;
+
+        if (this.saveButton) {
+            this.saveButton.disabled = true;
+            this.saveButton.classList.add('btn-pristine');
+            this.saveButton.classList.remove('btn-dirty');
+        }
+
+        if (this.onDirtyChange) {
+            this.onDirtyChange(false);
+        }
+    }
+
+    /**
+     * Inputları yeniden tara (dinamik form için)
+     * Mevcut original değerleri korur, sadece yeni inputlar için capture yapar
+     */
+    refresh(): void {
+        if (!this.container || !this.saveButton) return;
+
+        // Remove old listeners
+        if (this.inputs) {
+            this.inputs.forEach(input => {
+                input.removeEventListener('input', this.boundCheckDirty);
+                input.removeEventListener('change', this.boundCheckDirty);
+            });
+        }
+
+        // Find all inputs again
+        this.inputs = this.container.querySelectorAll(this.inputSelector);
+
+        // Capture values only for NEW inputs (preserve existing original values)
+        this.inputs.forEach((input, index) => {
+            const key = input.id || input.name || `input-${index}`;
+
+            // Only capture if this input wasn't tracked before
+            if (!this.originalValues.has(key)) {
+                let value: string;
+                if (input.type === 'checkbox' || input.type === 'radio') {
+                    value = (input as HTMLInputElement).checked ? 'true' : 'false';
+                } else {
+                    value = input.value;
+                }
+                this.originalValues.set(key, value);
+            }
+
+            // Add listeners to all inputs
+            input.addEventListener('input', this.boundCheckDirty);
+            input.addEventListener('change', this.boundCheckDirty);
+        });
+
+        // Check dirty state after refresh
+        this.checkDirty();
+    }
+
+    /**
+     * Dirty state'i manuel olarak kontrol et
+     */
+    getIsDirty(): boolean {
+        return this.isDirty;
+    }
+
+    /**
+     * Temizle - event listener'ları kaldır
+     */
+    destroy(): void {
+        if (this.inputs) {
+            this.inputs.forEach(input => {
+                input.removeEventListener('input', this.boundCheckDirty);
+                input.removeEventListener('change', this.boundCheckDirty);
+            });
+        }
+
+        if (this.saveButton) {
+            this.saveButton.classList.remove('btn-pristine', 'btn-dirty');
+        }
+
+        this.originalValues.clear();
+        this.inputs = null;
+        this.container = null;
+        this.saveButton = null;
+    }
+}
+
+/**
+ * Kolay kullanım için factory function
+ *
+ * @example
+ * const dirtyState = createFormDirtyState('#editModal', '#saveBtn');
+ * // ...
+ * dirtyState.reset();
+ * dirtyState.destroy();
+ */
+export function createFormDirtyState(
+    container: HTMLElement | string,
+    saveButton: HTMLElement | string,
+    onDirtyChange?: (isDirty: boolean) => void
+): FormDirtyState {
+    return new FormDirtyState({ container, saveButton, onDirtyChange });
+}

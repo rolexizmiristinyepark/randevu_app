@@ -6,13 +6,15 @@
 import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
 import { TimeUtils } from '../time-utils';
-import { ButtonAnimator } from '../button-utils';
+import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // Module-scoped variables
 let dataStore: DataStore;
 let currentEditingAppointment: any = null;
 let currentAssigningAppointment: any = null;
+let editModalDirtyState: FormDirtyState | null = null;
+let assignModalDirtyState: FormDirtyState | null = null;
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -192,6 +194,12 @@ async function deleteAppointment(eventId: string, button?: HTMLButtonElement): P
 function openEditModal(appointment: any): void {
     currentEditingAppointment = appointment;
 
+    // Destroy previous dirty state if exists
+    if (editModalDirtyState) {
+        editModalDirtyState.destroy();
+        editModalDirtyState = null;
+    }
+
     try {
         // Parse date
         const startDate = new Date(appointment.start.dateTime || appointment.start.date);
@@ -209,11 +217,14 @@ function openEditModal(appointment: any): void {
         (document.getElementById('editAppointmentDate') as HTMLInputElement).value = dateStr;
         (document.getElementById('editAppointmentTime') as HTMLInputElement).value = currentTime;
 
-        // Enable save button if both date and time are set
-        (document.getElementById('saveEditAppointmentBtn') as HTMLButtonElement).disabled = false;
-
-        // Show modal
+        // Show modal first (so elements are visible for FormDirtyState)
         document.getElementById('editAppointmentModal')?.classList.add('active');
+
+        // Initialize FormDirtyState - button disabled until changes made
+        editModalDirtyState = new FormDirtyState({
+            container: '#editAppointmentModal .modal-content',
+            saveButton: '#saveEditAppointmentBtn'
+        });
     } catch (error) {
         console.error('Modal açma hatası:', error, appointment);
         getUI().showAlert('Randevu tarihi okunamadı', 'error');
@@ -224,6 +235,11 @@ function openEditModal(appointment: any): void {
  * Close edit appointment modal
  */
 function closeEditModal(): void {
+    // Destroy dirty state
+    if (editModalDirtyState) {
+        editModalDirtyState.destroy();
+        editModalDirtyState = null;
+    }
     document.getElementById('editAppointmentModal')?.classList.remove('active');
     currentEditingAppointment = null;
 }
@@ -275,6 +291,12 @@ async function saveEditedAppointment(): Promise<void> {
  */
 function openAssignStaffModal(appointment: any): void {
     currentAssigningAppointment = appointment;
+
+    // Destroy previous dirty state if exists
+    if (assignModalDirtyState) {
+        assignModalDirtyState.destroy();
+        assignModalDirtyState = null;
+    }
 
     // Fill appointment info
     const start = new Date(appointment.start.dateTime || appointment.start.date);
@@ -330,23 +352,33 @@ function openAssignStaffModal(appointment: any): void {
     const modalHeader = document.querySelector('#assignStaffModal .modal-header');
     const saveBtn = document.getElementById('saveAssignStaffBtn') as HTMLButtonElement;
     if (modalHeader) {
-        modalHeader.textContent = isChanging ? 'İlgili Personel Değiştir' : 'İlgili Personel Ata';
+        modalHeader.textContent = isChanging ? 'Change Staff' : 'Assign Staff';
     }
     if (saveBtn) {
         // v3.9.70: Reset button state when modal opens (fix disabled button bug)
-        saveBtn.disabled = false;
         saveBtn.classList.remove('btn-animating', 'btn-loading', 'btn-success', 'btn-error');
-        saveBtn.textContent = isChanging ? 'Değiştir' : 'Ata';
+        saveBtn.textContent = isChanging ? 'Change' : 'Assign';
     }
 
     // Show modal
     document.getElementById('assignStaffModal')?.classList.add('active');
+
+    // Initialize FormDirtyState - button disabled until selection made
+    assignModalDirtyState = new FormDirtyState({
+        container: '#assignStaffModal .modal-content',
+        saveButton: '#saveAssignStaffBtn'
+    });
 }
 
 /**
  * Close assign staff modal
  */
 function closeAssignStaffModal(): void {
+    // Destroy dirty state
+    if (assignModalDirtyState) {
+        assignModalDirtyState.destroy();
+        assignModalDirtyState = null;
+    }
     document.getElementById('assignStaffModal')?.classList.remove('active');
     currentAssigningAppointment = null;
 }
@@ -508,7 +540,7 @@ function render(appointments: any[]): void {
             infoDiv.appendChild(document.createTextNode(phone));
             infoDiv.appendChild(getCreateElement()('br'));
 
-            const staffLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'İlgili: ');
+            const staffLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Staff: ');
             infoDiv.appendChild(staffLabel);
             infoDiv.appendChild(document.createTextNode(staff?.name || '-'));
 
@@ -527,29 +559,8 @@ function render(appointments: any[]): void {
                 style: { display: 'flex', flexDirection: 'column', gap: '8px' }
             });
 
-            // Buton genişliği (tüm butonlar aynı genişlikte - "İlgili Değiştir" e göre)
+            // Button width (all buttons same width)
             const btnWidth = '145px';
-
-            // Edit button
-            const editBtn = getCreateElement()('button', {
-                className: 'btn btn-small btn-secondary',
-                style: { width: btnWidth }
-            }, 'Düzenle') as HTMLButtonElement;
-            editBtn.addEventListener('click', () => {
-                openEditModal(apt);
-            });
-
-            // Cancel button
-            const cancelBtn = getCreateElement()('button', {
-                className: 'btn btn-small btn-secondary',
-                style: { width: btnWidth }
-            }, 'İptal Et') as HTMLButtonElement;
-            cancelBtn.addEventListener('click', () => {
-                deleteAppointment(apt.id, cancelBtn);
-            });
-
-            buttonsDiv.appendChild(editBtn);
-            buttonsDiv.appendChild(cancelBtn);
 
             // Assign staff button - show based on profile's assignByAdmin setting
             const staffName = staff?.name || '-';
@@ -564,9 +575,10 @@ function render(appointments: any[]): void {
             // DEBUG
             console.log('[AssignBtn]', { appointmentProfil, profilAyari, showAssignButton, hasNoStaff, staffName, staffId });
 
+            // Button order: 1. Assign Staff (if applicable), 2. Edit, 3. Delete
             if (showAssignButton) {
                 if (hasNoStaff) {
-                    // İlgili atanmamış - "İlgili Ata" butonu
+                    // No staff assigned - "Assign Staff" button
                     const assignBtn = getCreateElement()('button', {
                         className: 'btn btn-small',
                         style: {
@@ -575,13 +587,13 @@ function render(appointments: any[]): void {
                             borderColor: '#C9A55A',
                             color: 'white'
                         }
-                    }, 'İlgili Ata');
+                    }, 'Assign Staff');
                     assignBtn.addEventListener('click', () => {
                         openAssignStaffModal(apt);
                     });
                     buttonsDiv.appendChild(assignBtn);
                 } else {
-                    // İlgili atanmış - "İlgili Değiştir" butonu (aynı altın rengi)
+                    // Staff assigned - "Change Staff" button (same gold color)
                     const changeBtn = getCreateElement()('button', {
                         className: 'btn btn-small',
                         style: {
@@ -590,13 +602,33 @@ function render(appointments: any[]): void {
                             borderColor: '#C9A55A',
                             color: 'white'
                         }
-                    }, 'İlgili Değiştir');
+                    }, 'Change Staff');
                     changeBtn.addEventListener('click', () => {
                         openAssignStaffModal(apt);
                     });
                     buttonsDiv.appendChild(changeBtn);
                 }
             }
+
+            // Edit button
+            const editBtn = getCreateElement()('button', {
+                className: 'btn btn-small btn-secondary',
+                style: { width: btnWidth }
+            }, 'Edit') as HTMLButtonElement;
+            editBtn.addEventListener('click', () => {
+                openEditModal(apt);
+            });
+            buttonsDiv.appendChild(editBtn);
+
+            // Cancel button
+            const cancelBtn = getCreateElement()('button', {
+                className: 'btn btn-small btn-secondary',
+                style: { width: btnWidth }
+            }, 'Cancel') as HTMLButtonElement;
+            cancelBtn.addEventListener('click', () => {
+                deleteAppointment(apt.id, cancelBtn);
+            });
+            buttonsDiv.appendChild(cancelBtn);
 
             flexContainer.appendChild(detailsDiv);
             flexContainer.appendChild(buttonsDiv);

@@ -15,7 +15,7 @@
 import { ApiService } from '../api-service';
 import { logError } from '../monitoring';
 import { closeModal } from '../ui-utils';
-import { ButtonAnimator } from '../button-utils';
+import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -87,6 +87,7 @@ let _dataStore: DataStore;
 let flows: WhatsAppFlow[] = [];
 let templates: WhatsAppTemplate[] = [];
 let messageVariables: Record<string, string> = {};
+let templateModalDirtyState: FormDirtyState | null = null;
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -277,7 +278,7 @@ function createFlowItem(flow: WhatsAppFlow): HTMLElement {
 
     const status = document.createElement('span');
     status.style.cssText = `padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; ${flow.active ? 'background: #E8F5E9; color: #2E7D32;' : 'background: #FFEBEE; color: #C62828;'}`;
-    status.textContent = flow.active ? 'Aktif' : 'Pasif';
+    status.textContent = flow.active ? 'Active' : 'Inactive';
 
     left.appendChild(name);
     left.appendChild(status);
@@ -286,10 +287,9 @@ function createFlowItem(flow: WhatsAppFlow): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editFlow(flow.id));
-    const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteFlow(flow.id));
-    deleteBtn.style.color = '#C62828';
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editFlow(flow.id));
+    const toggleBtn = createButton(flow.active ? 'Stop' : 'Start', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
     right.appendChild(editBtn);
     right.appendChild(toggleBtn);
@@ -359,7 +359,7 @@ function openFlowModal(flowId?: string): void {
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = flowId ? 'Flow Düzenle' : 'Yeni WhatsApp Flow';
+        header.textContent = flowId ? 'Edit Flow' : 'New WhatsApp Flow';
     }
 
     // If editing, populate form with existing data
@@ -669,9 +669,8 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     const right = document.createElement('div');
     right.style.cssText = 'display: flex; gap: 8px;';
 
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => editTemplate(template.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteTemplate(template.id));
-    deleteBtn.style.color = '#C62828';
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editTemplate(template.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteTemplate(template.id));
 
     right.appendChild(editBtn);
     right.appendChild(deleteBtn);
@@ -703,13 +702,19 @@ function openTemplateModal(templateId?: string): void {
     const modal = document.getElementById('whatsappTemplateModal');
     if (!modal) return;
 
+    // Destroy previous dirty state if exists
+    if (templateModalDirtyState) {
+        templateModalDirtyState.destroy();
+        templateModalDirtyState = null;
+    }
+
     // Reset form
     resetTemplateForm();
 
     // Update modal header
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = templateId ? 'Şablon Düzenle' : 'WhatsApp Şablonu Ekle';
+        header.textContent = templateId ? 'Edit Template' : 'Add WhatsApp Template';
     }
 
     // If editing, populate form with existing data
@@ -724,6 +729,12 @@ function openTemplateModal(templateId?: string): void {
 
     // Show modal
     modal.classList.add('active');
+
+    // Initialize FormDirtyState after modal is shown
+    templateModalDirtyState = new FormDirtyState({
+        container: '#whatsappTemplateModal .modal-content',
+        saveButton: '#saveTemplateBtn'
+    });
 }
 
 /**
@@ -838,6 +849,11 @@ function generateVariableInputs(count: number): void {
     }
 
     container.appendChild(table);
+
+    // Refresh dirty state to capture new dynamic inputs
+    if (templateModalDirtyState) {
+        templateModalDirtyState.refresh();
+    }
 }
 
 /**
@@ -1094,6 +1110,12 @@ function showContainerEmpty(container: HTMLElement | null, message: string): voi
  * Close all modals
  */
 function closeAllModals(): void {
+    // Destroy dirty state
+    if (templateModalDirtyState) {
+        templateModalDirtyState.destroy();
+        templateModalDirtyState = null;
+    }
+
     document.querySelectorAll('.modal.active').forEach(modal => {
         modal.classList.remove('active');
     });

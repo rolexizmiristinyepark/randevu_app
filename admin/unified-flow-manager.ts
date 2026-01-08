@@ -7,7 +7,7 @@
 import { ApiService } from '../api-service';
 import { logError } from '../monitoring';
 import { closeModal } from '../ui-utils';
-import { ButtonAnimator } from '../button-utils';
+import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
 
 // ==================== TYPE DEFINITIONS ====================
@@ -62,6 +62,7 @@ let _dataStore: DataStore;
 let unifiedFlows: UnifiedFlow[] = [];
 let whatsappTemplates: WhatsAppTemplate[] = [];
 let mailTemplates: MailTemplate[] = [];
+let flowModalDirtyState: FormDirtyState | null = null;
 
 declare const window: Window & {
     UI: { showAlert: (message: string, type: string) => void; };
@@ -84,8 +85,8 @@ export function initUnifiedFlowManager(dataStore: DataStore): void {
 function setupEventListeners(): void {
     document.getElementById('addUnifiedFlowBtn')?.addEventListener('click', () => openFlowModal());
     document.getElementById('saveUnifiedFlowBtn')?.addEventListener('click', saveFlow);
-    document.getElementById('cancelUnifiedFlowBtn')?.addEventListener('click', () => closeModal('unifiedFlowModal'));
-    document.querySelector('#unifiedFlowModal .modal-overlay')?.addEventListener('click', () => closeModal('unifiedFlowModal'));
+    document.getElementById('cancelUnifiedFlowBtn')?.addEventListener('click', () => closeFlowModal());
+    document.querySelector('#unifiedFlowModal .modal-overlay')?.addEventListener('click', () => closeFlowModal());
 }
 
 // ==================== DATA LOADING ====================
@@ -188,7 +189,7 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
 
     const activeBadge = document.createElement('span');
     activeBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${flow.active ? '#4CAF50' : '#9E9E9E'}; color: white;`;
-    activeBadge.textContent = flow.active ? 'Aktif' : 'Pasif';
+    activeBadge.textContent = flow.active ? 'Active' : 'Inactive';
 
     left.appendChild(name);
     left.appendChild(activeBadge);
@@ -196,10 +197,9 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const toggleBtn = createButton(flow.active ? 'Durdur' : 'Başlat', 'btn-secondary btn-small', () => toggleFlow(flow.id));
-    const editBtn = createButton('Düzenle', 'btn-secondary btn-small', () => openFlowModal(flow.id));
-    const deleteBtn = createButton('Sil', 'btn-secondary btn-small', () => deleteFlow(flow.id));
-    deleteBtn.style.color = '#C62828';
+    const toggleBtn = createButton(flow.active ? 'Stop' : 'Start', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    const editBtn = createButton('Edit', 'btn-secondary btn-small', () => openFlowModal(flow.id));
+    const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
     right.appendChild(toggleBtn);
     right.appendChild(editBtn);
@@ -264,18 +264,28 @@ function createButton(text: string, className: string, onClick: () => void): HTM
 
 // ==================== MODAL FUNCTIONS ====================
 
-function openFlowModal(flowId?: string): void {
+async function openFlowModal(flowId?: string): Promise<void> {
     const modal = document.getElementById('unifiedFlowModal');
     if (!modal) return;
 
+    // Destroy previous dirty state if exists
+    if (flowModalDirtyState) {
+        flowModalDirtyState.destroy();
+        flowModalDirtyState = null;
+    }
+
     resetFlowForm();
     populateTriggerOptions();
+
+    // Always refresh templates from API to get latest data
+    await Promise.all([loadWhatsAppTemplates(), loadMailTemplates()]);
+
     populateWhatsAppTemplateOptions();
     populateMailTemplateOptions();
 
     const header = modal.querySelector('.modal-header');
     if (header) {
-        header.textContent = flowId ? 'Akış Düzenle' : 'Yeni Bildirim Akışı';
+        header.textContent = flowId ? 'Edit Flow' : 'New Notification Flow';
     }
 
     if (flowId) {
@@ -286,6 +296,24 @@ function openFlowModal(flowId?: string): void {
     }
 
     modal.classList.add('active');
+
+    // Initialize FormDirtyState after modal is shown
+    flowModalDirtyState = new FormDirtyState({
+        container: '#unifiedFlowModal .modal-content',
+        saveButton: '#saveUnifiedFlowBtn'
+    });
+}
+
+/**
+ * Close flow modal and cleanup dirty state
+ */
+function closeFlowModal(): void {
+    // Destroy dirty state
+    if (flowModalDirtyState) {
+        flowModalDirtyState.destroy();
+        flowModalDirtyState = null;
+    }
+    closeModal('unifiedFlowModal');
 }
 
 function resetFlowForm(): void {
@@ -343,9 +371,8 @@ function populateWhatsAppTemplateOptions(): void {
         checkbox.name = 'unifiedFlowWhatsAppTemplates';
         checkbox.value = template.id;
 
-        const targetLabel = template.targetType === 'staff' ? 'Personel' : 'Müşteri';
         labelEl.appendChild(checkbox);
-        labelEl.appendChild(document.createTextNode(`${template.name} → ${targetLabel}`));
+        labelEl.appendChild(document.createTextNode(template.name));
         container.appendChild(labelEl);
     });
 }
@@ -374,9 +401,8 @@ function populateMailTemplateOptions(): void {
         checkbox.name = 'unifiedFlowMailTemplates';
         checkbox.value = template.id;
 
-        const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'Müşteri';
         labelEl.appendChild(checkbox);
-        labelEl.appendChild(document.createTextNode(`${template.name} → ${recipientLabel}`));
+        labelEl.appendChild(document.createTextNode(template.name));
         container.appendChild(labelEl);
     });
 }
@@ -446,7 +472,7 @@ async function saveFlow(): Promise<void> {
         if (response.success) {
             if (saveBtn) ButtonAnimator.success(saveBtn);
             getUI().showAlert(editId ? 'Akış güncellendi' : 'Akış oluşturuldu', 'success');
-            setTimeout(() => { closeModal('unifiedFlowModal'); loadUnifiedFlows(); }, 1000);
+            setTimeout(() => { closeFlowModal(); loadUnifiedFlows(); }, 1000);
         } else {
             throw new Error(response.error || 'Bilinmeyen hata');
         }

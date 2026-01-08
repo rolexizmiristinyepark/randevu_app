@@ -468,7 +468,7 @@ function renderTemplatesList(templates: WhatsAppTemplate[]): void {
 
         const statusSpan = document.createElement('span');
         statusSpan.style.cssText = `margin-left: 10px; padding: 2px 8px; background: ${t.isActive ? '#E8F5E9' : '#FFEBEE'}; color: ${t.isActive ? '#2E7D32' : '#C62828'}; font-size: 12px; border-radius: 4px;`;
-        statusSpan.textContent = t.isActive ? 'Aktif' : 'Pasif';
+        statusSpan.textContent = t.isActive ? 'Active' : 'Inactive';
 
         leftDiv.appendChild(nameStrong);
         leftDiv.appendChild(statusSpan);
@@ -478,13 +478,12 @@ function renderTemplatesList(templates: WhatsAppTemplate[]): void {
 
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'btn btn-small btn-secondary';
-        toggleBtn.textContent = t.isActive ? 'Pasif Yap' : 'Aktif Yap';
+        toggleBtn.textContent = t.isActive ? 'Deactivate' : 'Activate';
         toggleBtn.addEventListener('click', () => toggleTemplate(t.id));
 
         const deleteBtn = document.createElement('button');
         deleteBtn.className = 'btn btn-small btn-secondary';
-        deleteBtn.style.color = '#C62828';
-        deleteBtn.textContent = 'Sil';
+        deleteBtn.textContent = 'Delete';
         deleteBtn.addEventListener('click', () => deleteTemplate(t.id));
 
         rightDiv.appendChild(toggleBtn);
