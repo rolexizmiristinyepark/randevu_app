@@ -2299,9 +2299,18 @@ function processFlowTemplate(template, eventData) {
  * @returns {string} Profil kodu
  */
 function extractProfileFromAppointment(eventData) {
-  // linkType'dan profili belirle
-  if (eventData.linkType === 'vip') return 'vip';
-  if (eventData.linkType === 'staff') return 'staff';
+  // v3.10.4: Önce eventData.profil kontrol et (eski format uyumluluğu)
+  if (eventData.profil) {
+    const PROFILE_KEY_TO_CODE = {
+      'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
+      'yonetim': 'm', 'personel': 's', 'vip': 'v'
+    };
+    return PROFILE_KEY_TO_CODE[eventData.profil] || eventData.profil || 'g';
+  }
+
+  // linkType'dan profili belirle (tek harfli kod formatında)
+  if (eventData.linkType === 'vip') return 'v';
+  if (eventData.linkType === 'staff') return 's';
   if (eventData.linkType === 'walkin') return 'w';
   if (eventData.linkType === 'management') return 'm';
   if (eventData.linkType === 'boutique') return 'b';

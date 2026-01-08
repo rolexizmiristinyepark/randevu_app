@@ -1309,6 +1309,17 @@ function _triggerWhatsAppFlow(params) {
           staffId, staffName, formattedDate, time, appointmentType, profil, assignByAdmin } = params;
 
   try {
+    // v3.10.4: Profil kodunu doğru formata çevir (WhatsApp flow eşleşmesi için)
+    const PROFILE_KEY_TO_CODE = {
+      'genel': 'g',
+      'gunluk': 'w',
+      'boutique': 'b',
+      'yonetim': 'm',
+      'personel': 's',
+      'vip': 'v'
+    };
+    const profileCode = PROFILE_KEY_TO_CODE[profil] || profil || 'g';
+
     const eventData = {
       eventId: event.getId(),
       customerName,
@@ -1320,13 +1331,13 @@ function _triggerWhatsAppFlow(params) {
       appointmentDate: formattedDate,
       appointmentTime: time,
       appointmentType,
-      profil: profil || 'genel',
+      profile: profileCode, // v3.10.4: 'profil' yerine 'profile' ve doğru kod
       assignByAdmin: assignByAdmin || false
     };
 
     log.info('[FLOW] Calling triggerFlowForEvent with:', JSON.stringify({
       trigger: 'RANDEVU_OLUŞTUR',
-      profil: eventData.profil,
+      profile: eventData.profile,
       customerName: eventData.customerName,
       staffId: eventData.staffId
     }));
