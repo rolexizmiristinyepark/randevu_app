@@ -649,13 +649,45 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
 
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
     const allFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
+
+    // v3.10.6: Debug - tüm flow'ları ve filtreleme sürecini logla
+    log.info('[Mail] DEBUG - Total flows from sheet:', allFlows.length);
+    allFlows.forEach((flow, idx) => {
+      const profiles = parseJsonSafe(flow.profiles, []);
+      log.info('[Mail] DEBUG - Flow[' + idx + ']:', JSON.stringify({
+        id: flow.id,
+        name: flow.name,
+        trigger: flow.trigger,
+        triggerMatch: flow.trigger === trigger,
+        active: flow.active,
+        activeType: typeof flow.active,
+        profiles: profiles,
+        profileMatch: profiles.includes(profileCode),
+        mailTemplateIds: parseJsonSafe(flow.mailTemplateIds, [])
+      }));
+    });
+
     const matchingFlows = allFlows.filter(flow => {
-      if (!flow.active && flow.active !== 'true') return false;
+      // v3.10.6: Active kontrolü - 'TRUE' (büyük harf) desteği eklendi
+      const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
+      if (!isActive) {
+        log.info('[Mail] DEBUG - Flow excluded (not active):', flow.name, 'active:', flow.active);
+        return false;
+      }
       // v3.10.0: trigger artık tek değer (array değil)
       const flowTrigger = String(flow.trigger || '');
-      if (flowTrigger !== trigger) return false;
+      if (flowTrigger !== trigger) {
+        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flowTrigger, 'expected:', trigger);
+        return false;
+      }
       const profiles = parseJsonSafe(flow.profiles, []);
-      return profiles.includes(profileCode);
+      const hasProfile = profiles.includes(profileCode);
+      if (!hasProfile) {
+        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', profiles, 'expected:', profileCode);
+        return false;
+      }
+      log.info('[Mail] DEBUG - Flow MATCHED:', flow.name);
+      return true;
     });
 
     if (matchingFlows.length === 0) {

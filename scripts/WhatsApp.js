@@ -2468,23 +2468,20 @@ function prepareTemplateVariables(templateVars, eventData, recipient) {
 
 // ==================== v3.10.0: NOTIFICATION FLOWS (UNIFIED) ====================
 /**
- * v3.10.0: notification_flows tablosundan WhatsApp için flow'ları getir
- * Yeni unified flow yapısı - whatsappTemplateIds kullanan flow'lar
+ * v3.10.5: notification_flows tablosundan WhatsApp için flow'ları getir
+ * FIX: Header-based parsing kullan (hardcoded index yerine)
+ * FIX: SheetStorageService ile aynı spreadsheet kullan
  */
 function getNotificationFlowsForWhatsApp() {
   try {
-    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const sheet = ss.getSheetByName('notification_flows');
-    if (!sheet) {
-      console.log('[getNotificationFlowsForWhatsApp] notification_flows sheet not found');
+    // v3.10.5: SheetStorageService kullan - tutarlı veri kaynağı
+    const allFlows = SheetStorageService.getAll('notification_flows');
+
+    if (!allFlows || allFlows.length === 0) {
+      console.log('[getNotificationFlowsForWhatsApp] notification_flows sheet boş veya bulunamadı');
       return { success: true, data: [] };
     }
 
-    const data = sheet.getDataRange().getValues();
-    if (data.length <= 1) return { success: true, data: [] };
-
-    // v3.10.0: notification_flows yapısı - trigger tek değer, whatsappTemplateIds
-    // Headers: id, name, description, trigger, profiles, whatsappTemplateIds, mailTemplateIds, active, createdAt, updatedAt
     const parseJsonSafe = (val, defaultVal) => {
       if (!val) return defaultVal;
       if (Array.isArray(val)) return val;
@@ -2495,18 +2492,21 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    const flows = data.slice(1).map(row => ({
-      id: row[0] || '',
-      name: row[1] || '',
-      description: row[2] || '',
-      trigger: String(row[3] || ''),
-      profiles: parseJsonSafe(row[4], []),
-      whatsappTemplateIds: parseJsonSafe(row[5], []),
-      mailTemplateIds: parseJsonSafe(row[6], []),
-      active: row[7] === true || row[7] === 'TRUE' || row[7] === 'true',
-      createdAt: row[8] || '',
-      updatedAt: row[9] || ''
+    // v3.10.5: Header-based parsing ile gelen veriyi kullan
+    const flows = allFlows.map(row => ({
+      id: String(row.id || ''),
+      name: String(row.name || ''),
+      description: String(row.description || ''),
+      trigger: String(row.trigger || ''),
+      profiles: parseJsonSafe(row.profiles, []),
+      whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
+      mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
+      active: row.active === true || row.active === 'TRUE' || row.active === 'true',
+      createdAt: row.createdAt || '',
+      updatedAt: row.updatedAt || ''
     })).filter(flow => flow.id && flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0);
+
+    console.log('[getNotificationFlowsForWhatsApp] Found', flows.length, 'flows with WhatsApp templates');
 
     return { success: true, data: flows };
   } catch (error) {

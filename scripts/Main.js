@@ -15,6 +15,17 @@
  *   Appointments, Validation, Notifications, WhatsApp, Slack)
  */
 
+// v3.10.7: Helper function for JSON parsing (used by debug endpoint)
+function parseJsonSafeMain(jsonStr, defaultValue) {
+  if (!jsonStr) return defaultValue;
+  if (typeof jsonStr !== 'string') return jsonStr;
+  try {
+    return JSON.parse(jsonStr);
+  } catch (error) {
+    return defaultValue;
+  }
+}
+
 // Admin işlemleri için API key gereken action'lar (legacy)
 // v3.0: Session token ile admin işlemleri için SESSION_ADMIN_ACTIONS kullanılıyor
 const ADMIN_ACTIONS = [
@@ -66,7 +77,8 @@ const PUBLIC_ADMIN_ACTIONS = [
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   'getMailFlows', 'getMailTemplates', 'getMailInfoCards',
   'getUnifiedFlows',  // v3.10: Unified notification flows
-  'getMessageVariables', 'getTriggers', 'getRecipients'
+  'getMessageVariables', 'getTriggers', 'getRecipients',
+  'debugNotificationFlows'  // v3.10.7: Diagnostic endpoint
 ];
 
 // Action handler map - daha okunabilir ve yönetilebilir
@@ -523,15 +535,83 @@ const ACTION_HANDLERS = {
 
   // Unified Notification Flows (v3.10)
   'getUnifiedFlows': () => getNotificationFlows(),
+
+  // v3.10.7: Debug endpoint for diagnosing notification flow issues
+  'debugNotificationFlows': (e) => {
+    try {
+      const trigger = e.parameter.trigger || 'RANDEVU_OLUŞTUR';
+      const profileCode = e.parameter.profileCode || 's';
+
+      // Get raw data from sheet
+      const allFlows = SheetStorageService.getAll('notification_flows');
+      const allMailTemplates = SheetStorageService.getAll('mail_templates');
+      const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
+
+      // Analyze each flow
+      const flowAnalysis = allFlows.map((flow, idx) => {
+        const profiles = parseJsonSafeMain(flow.profiles, []);
+        const mailTemplateIds = parseJsonSafeMain(flow.mailTemplateIds, []);
+        const whatsappTemplateIds = parseJsonSafeMain(flow.whatsappTemplateIds, []);
+
+        const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
+        const triggerMatches = String(flow.trigger || '') === trigger;
+        const profileMatches = profiles.includes(profileCode);
+
+        return {
+          index: idx,
+          id: flow.id,
+          name: flow.name,
+          raw: {
+            active: flow.active,
+            activeType: typeof flow.active,
+            trigger: flow.trigger,
+            profiles: flow.profiles,
+            mailTemplateIds: flow.mailTemplateIds,
+            whatsappTemplateIds: flow.whatsappTemplateIds
+          },
+          parsed: {
+            isActive,
+            profiles,
+            mailTemplateIds,
+            whatsappTemplateIds
+          },
+          matching: {
+            triggerMatches,
+            profileMatches,
+            wouldMatchForMail: isActive && triggerMatches && profileMatches && mailTemplateIds.length > 0,
+            wouldMatchForWhatsApp: isActive && triggerMatches && profileMatches && whatsappTemplateIds.length > 0
+          }
+        };
+      });
+
+      return {
+        success: true,
+        data: {
+          testTrigger: trigger,
+          testProfileCode: profileCode,
+          sheetHeaders: {
+            notification_flows: SheetStorageService.HEADERS.notification_flows
+          },
+          totalFlows: allFlows.length,
+          totalMailTemplates: allMailTemplates.length,
+          totalWhatsAppTemplates: allWhatsAppTemplates.length,
+          flowAnalysis: flowAnalysis
+        }
+      };
+    } catch (error) {
+      return { success: false, error: error.toString() };
+    }
+  },
   'createUnifiedFlow': (e) => {
     try {
+      // v3.10.8: FIX - Doğru parametre isimleri kullan (whatsappTemplateIds, mailTemplateIds)
       const params = {
         name: e.parameter.name,
         description: e.parameter.description,
         trigger: e.parameter.trigger,
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : (e.parameter.profiles || []),
-        whatsappTemplates: typeof e.parameter.whatsappTemplates === 'string' ? JSON.parse(e.parameter.whatsappTemplates) : (e.parameter.whatsappTemplates || []),
-        mailTemplates: typeof e.parameter.mailTemplates === 'string' ? JSON.parse(e.parameter.mailTemplates) : (e.parameter.mailTemplates || []),
+        whatsappTemplateIds: typeof e.parameter.whatsappTemplateIds === 'string' ? JSON.parse(e.parameter.whatsappTemplateIds) : (e.parameter.whatsappTemplateIds || []),
+        mailTemplateIds: typeof e.parameter.mailTemplateIds === 'string' ? JSON.parse(e.parameter.mailTemplateIds) : (e.parameter.mailTemplateIds || []),
         active: e.parameter.active !== false && e.parameter.active !== 'false'
       };
       return createNotificationFlow(params);
@@ -542,14 +622,15 @@ const ACTION_HANDLERS = {
   },
   'updateUnifiedFlow': (e) => {
     try {
+      // v3.10.8: FIX - Doğru parametre isimleri kullan (whatsappTemplateIds, mailTemplateIds)
       const params = {
         id: e.parameter.id,
         name: e.parameter.name,
         description: e.parameter.description,
         trigger: e.parameter.trigger,
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
-        whatsappTemplates: typeof e.parameter.whatsappTemplates === 'string' ? JSON.parse(e.parameter.whatsappTemplates) : e.parameter.whatsappTemplates,
-        mailTemplates: typeof e.parameter.mailTemplates === 'string' ? JSON.parse(e.parameter.mailTemplates) : e.parameter.mailTemplates,
+        whatsappTemplateIds: typeof e.parameter.whatsappTemplateIds === 'string' ? JSON.parse(e.parameter.whatsappTemplateIds) : e.parameter.whatsappTemplateIds,
+        mailTemplateIds: typeof e.parameter.mailTemplateIds === 'string' ? JSON.parse(e.parameter.mailTemplateIds) : e.parameter.mailTemplateIds,
         active: e.parameter.active === true || e.parameter.active === 'true'
       };
       return updateNotificationFlow(params);
