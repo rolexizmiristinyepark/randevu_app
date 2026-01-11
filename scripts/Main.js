@@ -15,7 +15,8 @@
  *   Appointments, Validation, Notifications, WhatsApp, Slack)
  */
 
-// v3.10.7: Helper function for JSON parsing (used by debug endpoint)
+// v3.10.9: Helper function for JSON parsing (used by debug endpoint)
+// v3.10.9 FIX: updateUnifiedFlow artık active parametresi gönderilmezse mevcut değeri koruyor
 function parseJsonSafeMain(jsonStr, defaultValue) {
   if (!jsonStr) return defaultValue;
   if (typeof jsonStr !== 'string') return jsonStr;
@@ -622,7 +623,7 @@ const ACTION_HANDLERS = {
   },
   'updateUnifiedFlow': (e) => {
     try {
-      // v3.10.8: FIX - Doğru parametre isimleri kullan (whatsappTemplateIds, mailTemplateIds)
+      // v3.10.9: FIX - active gönderilmezse undefined bırak (mevcut değeri korumak için)
       const params = {
         id: e.parameter.id,
         name: e.parameter.name,
@@ -631,7 +632,8 @@ const ACTION_HANDLERS = {
         profiles: typeof e.parameter.profiles === 'string' ? JSON.parse(e.parameter.profiles) : e.parameter.profiles,
         whatsappTemplateIds: typeof e.parameter.whatsappTemplateIds === 'string' ? JSON.parse(e.parameter.whatsappTemplateIds) : e.parameter.whatsappTemplateIds,
         mailTemplateIds: typeof e.parameter.mailTemplateIds === 'string' ? JSON.parse(e.parameter.mailTemplateIds) : e.parameter.mailTemplateIds,
-        active: e.parameter.active === true || e.parameter.active === 'true'
+        // v3.10.9: active parametresi gönderilmezse undefined bırak - updateNotificationFlow mevcut değeri koruyacak
+        active: e.parameter.active !== undefined ? (e.parameter.active === true || e.parameter.active === 'true') : undefined
       };
       return updateNotificationFlow(params);
     } catch (handlerError) {
