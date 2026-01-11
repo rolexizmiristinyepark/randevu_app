@@ -739,6 +739,9 @@ const WhatsAppService = {
       if (responseCode === 200) {
         const messageId = responseData.messages[0].id;
 
+        // v3.10.10: Mesaj içeriğini oluştur (template parametrelerinden)
+        const messageContent = parameters.map(p => p.text || '').join(' | ');
+
         // MESSAGE_LOG: Başarılı gönderimi logla
         try {
           SheetStorageService.addMessageLog({
@@ -754,7 +757,8 @@ const WhatsAppService = {
             staffName: appointmentData.staffName || '',
             flowId: appointmentData._flowId || '',
             triggeredBy: appointmentData._triggeredBy || 'manual',
-            profile: appointmentData.profile || appointmentData.linkType || ''
+            profile: appointmentData.profile || appointmentData.linkType || '',
+            messageContent: messageContent // v3.10.10: Mesaj içeriği
           });
         } catch (logError) {
           console.error('Message log error (non-critical):', logError);
@@ -770,6 +774,8 @@ const WhatsAppService = {
         log.error('WhatsApp API hatası:', responseData);
 
         // MESSAGE_LOG: Başarısız gönderimi logla
+        // v3.10.10: Mesaj içeriğini oluştur (hata durumunda da)
+        const failedMessageContent = parameters.map(p => p.text || '').join(' | ');
         try {
           SheetStorageService.addMessageLog({
             direction: 'outgoing',
@@ -785,7 +791,8 @@ const WhatsAppService = {
             staffName: appointmentData.staffName || '',
             flowId: appointmentData._flowId || '',
             triggeredBy: appointmentData._triggeredBy || 'manual',
-            profile: appointmentData.profile || appointmentData.linkType || ''
+            profile: appointmentData.profile || appointmentData.linkType || '',
+            messageContent: failedMessageContent // v3.10.10: Mesaj içeriği
           });
         } catch (logError) {
           console.error('Message log error (non-critical):', logError);

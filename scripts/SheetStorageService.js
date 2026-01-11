@@ -760,7 +760,9 @@ const SheetStorageService = {
       staffName: messageData.staffName || '',
       flowId: messageData.flowId || '',
       triggeredBy: messageData.triggeredBy || 'manual',
-      profile: messageData.profile || ''
+      profile: messageData.profile || '',
+      // v3.10.10: Mesaj içeriği eklendi
+      messageContent: messageData.messageContent || ''
     };
 
     this.appendRow(this.SHEET_NAMES.MESSAGE_LOG, logEntry);
@@ -838,6 +840,13 @@ const SheetStorageService = {
     if (options.status) {
       logs = logs.filter(function(log) {
         return log.status === options.status;
+      });
+    }
+
+    // v3.10.10: direction filtresi (incoming/outgoing)
+    if (options.direction) {
+      logs = logs.filter(function(log) {
+        return log.direction === options.direction;
       });
     }
 

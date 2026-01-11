@@ -57,6 +57,8 @@ interface WhatsAppMessage {
     status: 'sent' | 'delivered' | 'read' | 'failed';
     sentAt: string;
     error?: string;
+    messageContent?: string; // v3.10.10: Mesaj içeriği
+    timestamp?: string; // Backend'den gelen timestamp
 }
 
 // ==================== CONSTANTS ====================
@@ -1018,18 +1020,20 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
 
         const phone = document.createElement('span');
         phone.style.fontWeight = '500';
-        phone.textContent = msg.phone;
+        phone.textContent = String(msg.phone || '');
 
         const time = document.createElement('span');
         time.style.cssText = 'color: #757575; font-size: 11px;';
-        time.textContent = new Date(msg.sentAt).toLocaleString('tr-TR');
+        // v3.10.10: timestamp veya sentAt kullan
+        const dateStr = msg.timestamp || msg.sentAt;
+        time.textContent = dateStr ? new Date(dateStr).toLocaleString('tr-TR') : '';
 
         header.appendChild(phone);
         header.appendChild(time);
 
         const template = document.createElement('div');
         template.style.cssText = 'margin-top: 5px; color: #757575;';
-        template.textContent = msg.templateName;
+        template.textContent = msg.templateName || '';
 
         const statusSpan = document.createElement('span');
         const statusColors: Record<string, string> = {
@@ -1039,11 +1043,28 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
             'failed': '#C62828'
         };
         statusSpan.style.cssText = `margin-left: 10px; color: ${statusColors[msg.status] || '#757575'}; font-size: 11px;`;
-        statusSpan.textContent = msg.status.toUpperCase();
+        statusSpan.textContent = (msg.status || '').toUpperCase();
         template.appendChild(statusSpan);
 
         item.appendChild(header);
         item.appendChild(template);
+
+        // v3.10.10: Mesaj içeriği göster
+        if (msg.messageContent) {
+            const content = document.createElement('div');
+            content.style.cssText = 'margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; color: #333; font-size: 12px; border-left: 3px solid #C9A55A;';
+            content.textContent = msg.messageContent;
+            item.appendChild(content);
+        }
+
+        // v3.10.10: Hata mesajı göster (failed durumunda)
+        if (msg.status === 'failed' && msg.error) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = 'margin-top: 5px; color: #C62828; font-size: 11px;';
+            errorDiv.textContent = `Hata: ${msg.error}`;
+            item.appendChild(errorDiv);
+        }
+
         container.appendChild(item);
     });
 }

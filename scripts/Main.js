@@ -15,7 +15,7 @@
  *   Appointments, Validation, Notifications, WhatsApp, Slack)
  */
 
-// v3.10.9: Helper function for JSON parsing (used by debug endpoint)
+// v3.10.10: WhatsApp message direction filtering + message content logging
 // v3.10.9 FIX: updateUnifiedFlow artık active parametresi gönderilmezse mevcut değeri koruyor
 function parseJsonSafeMain(jsonStr, defaultValue) {
   if (!jsonStr) return defaultValue;
@@ -367,12 +367,14 @@ const ACTION_HANDLERS = {
   'getWhatsAppVariableOptions': () => getWhatsAppVariableOptions(),
 
   // WhatsApp Message Log (v4.0)
+  // v3.10.10: type parametresi direction filtrelemesi için eklendi
   'getWhatsAppMessages': (e) => ({
     success: true,
     data: SheetStorageService.getMessageLogs({
       appointmentId: e.parameter.appointmentId || null,
       phone: e.parameter.phone || null,
       status: e.parameter.status || null,
+      direction: e.parameter.type === 'received' ? 'incoming' : (e.parameter.type === 'sent' ? 'outgoing' : null),
       limit: parseInt(e.parameter.limit) || 100,
       offset: parseInt(e.parameter.offset) || 0
     })
