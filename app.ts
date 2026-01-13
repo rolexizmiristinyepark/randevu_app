@@ -19,6 +19,7 @@ import { apiCall } from './api-service';
 import { initMonitoring } from './monitoring';
 import { initConfig, checkAndInvalidateCache } from './config-loader';
 import { debounce } from './performance-utils';
+import EventListenerManager from './event-listener-manager';
 
 // Import profile resolver (v3.2 - unified ?id=xxx format)
 import { initProfileFromURL, applyProfileUI, showInvalidIdError } from './ProfileResolver';
@@ -79,6 +80,14 @@ if (typeof window !== 'undefined') {
 // Config is now loaded via initConfig() (line 22) with localStorage cache
 // Old functions created duplicate API calls and race conditions
 
+// Global event listener manager for cleanup on page unload
+const appEventManager = new EventListenerManager();
+
+// Export for cleanup in other components
+if (typeof window !== 'undefined') {
+    (window as any).appEventManager = appEventManager;
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
     // Initialize monitoring (Sentry + Web Vitals)
     initMonitoring();
@@ -94,15 +103,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Site key: window.TURNSTILE_SITE_KEY (config-loader.ts'den)
 
     // ==================== EVENT LISTENERS (HER SAYFA İÇİN) ====================
-    // Calendar modal buttons - Lazy loaded handlers
-    document.getElementById('calendarAppleBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarGoogleBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarOutlookBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarICSBtn')?.addEventListener('click', handleCalendarAction);
-    document.getElementById('calendarModalCloseBtn')?.addEventListener('click', () => ModalUtils.close('calendarModal'));
+    // Calendar modal buttons - Lazy loaded handlers (tracked for cleanup)
+    const calendarAppleBtn = document.getElementById('calendarAppleBtn');
+    const calendarGoogleBtn = document.getElementById('calendarGoogleBtn');
+    const calendarOutlookBtn = document.getElementById('calendarOutlookBtn');
+    const calendarICSBtn = document.getElementById('calendarICSBtn');
+    const calendarModalCloseBtn = document.getElementById('calendarModalCloseBtn');
+    const guideCloseBtn = document.getElementById('guideCloseBtn');
 
-    // Guide modal event listener
-    document.getElementById('guideCloseBtn')?.addEventListener('click', () => ModalUtils.close('guideModal'));
+    if (calendarAppleBtn) appEventManager.add(calendarAppleBtn, 'click', handleCalendarAction);
+    if (calendarGoogleBtn) appEventManager.add(calendarGoogleBtn, 'click', handleCalendarAction);
+    if (calendarOutlookBtn) appEventManager.add(calendarOutlookBtn, 'click', handleCalendarAction);
+    if (calendarICSBtn) appEventManager.add(calendarICSBtn, 'click', handleCalendarAction);
+    if (calendarModalCloseBtn) appEventManager.add(calendarModalCloseBtn, 'click', () => ModalUtils.close('calendarModal'));
+    if (guideCloseBtn) appEventManager.add(guideCloseBtn, 'click', () => ModalUtils.close('guideModal'));
 
     // ==================== CUSTOMER PAGE INIT ====================
     // Guard: Bu kod sadece customer sayfası (index.html) için çalışmalı
@@ -317,8 +331,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Calendar navigation buttons
     // ⚡ PERFORMANCE: Debounce to prevent rapid API spam from fast clicking
     const debouncedChangeMonth = debounce(changeMonth, 300);
-    document.getElementById('prevMonthBtn')?.addEventListener('click', () => debouncedChangeMonth(-1));
-    document.getElementById('nextMonthBtn')?.addEventListener('click', () => debouncedChangeMonth(1));
+    const prevMonthBtn = document.getElementById('prevMonthBtn');
+    const nextMonthBtn = document.getElementById('nextMonthBtn');
+    if (prevMonthBtn) appEventManager.add(prevMonthBtn, 'click', () => debouncedChangeMonth(-1));
+    if (nextMonthBtn) appEventManager.add(nextMonthBtn, 'click', () => debouncedChangeMonth(1));
+});
+
+// ==================== CLEANUP ON PAGE UNLOAD ====================
+// Prevents memory leaks from orphaned event listeners
+window.addEventListener('beforeunload', () => {
+    appEventManager.cleanup();
 });
 
 // ⭐ TypeSelector functions moved to TypeSelectorComponent.ts

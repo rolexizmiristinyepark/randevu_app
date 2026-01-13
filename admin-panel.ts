@@ -18,6 +18,7 @@ import { initUnifiedFlowManager } from './admin/unified-flow-manager';
 import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
+import EventListenerManager from './event-listener-manager';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -796,6 +797,21 @@ function createLinkCard(name: string, type: string, id: string): HTMLElement {
 
     return card;
 }
+//#endregion
+
+//#region Event Listener Cleanup
+// Global event listener manager for admin panel cleanup
+export const adminEventManager = new EventListenerManager();
+
+// Export for use in admin sub-modules
+if (typeof window !== 'undefined') {
+    (window as any).adminEventManager = adminEventManager;
+}
+
+// Cleanup on page unload to prevent memory leaks
+window.addEventListener('beforeunload', () => {
+    adminEventManager.cleanup();
+});
 //#endregion
 
 // Start initialization when DOM is ready
