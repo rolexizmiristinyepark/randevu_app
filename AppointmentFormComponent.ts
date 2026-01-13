@@ -14,6 +14,10 @@ import { apiCall } from './api-service';
 import { logError } from './monitoring';
 import { sanitizeName, sanitizeEmail, sanitizeInput } from './security-helpers';
 import { initPhoneInput, getPhoneNumber } from './phone-input';
+import { createDebugLogger } from './debug-logger';
+
+// Debug logger - uses centralized debug module
+const log = createDebugLogger('AppointmentForm');
 
 // ==================== TURNSTILE RESET ====================
 
@@ -159,7 +163,8 @@ async function handleFormSubmit(): Promise<void> {
     const linkedStaffId = state.get('linkedStaffId');
     const linkedStaffName = state.get('linkedStaffName');
 
-    console.log('DEBUG: currentProfile=', currentProfile, 'staffId=', assignedStaffId, 'assignByAdmin=', assignByAdmin, 'linkedStaffId=', linkedStaffId);
+    // v3.9.13: DEBUG log removed for security (PII protection)
+    log.log('createAppointment context:', { profile: currentProfile, assignByAdmin });
 
     try {
         const result = await apiCall('createAppointment', {

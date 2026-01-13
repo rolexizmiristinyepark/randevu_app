@@ -114,6 +114,9 @@ export function displayAvailableStaff(): void {
     // v3.9: Önceden seçili staff'ı hatırla (gün değiştiğinde korunması için)
     const previouslySelectedStaff = state.get('selectedStaff');
 
+    // ⚡ v3.9.13 PERFORMANCE: Use DocumentFragment to batch DOM updates (single reflow)
+    const fragment = document.createDocumentFragment();
+
     filteredStaff.forEach((staff: Staff) => {
         if (!staff.active) return;
 
@@ -144,8 +147,11 @@ export function displayAvailableStaff(): void {
             card.style.cursor = 'not-allowed';
         }
 
-        staffList.appendChild(card);
+        fragment.appendChild(card);
     });
+
+    // ⚡ v3.9.13: Single DOM update instead of N updates
+    staffList.appendChild(fragment);
 
     // v3.9: Önceden seçili ve hala müsait staff varsa, saat section'ını da göster
     if (previouslySelectedStaff) {

@@ -135,77 +135,31 @@ const UI = {
 // Expose UI globally for modules
 window.UI = UI;
 
-// Link utility functions
-function copyLink(): void {
-    const linkInput = document.getElementById('customerLink') as HTMLInputElement;
-    linkInput.select();
-    document.execCommand('copy');
-    UI.showAlert('Link kopyalandı!', 'success');
+// ⚡ v3.9.13: Consolidated link utility functions (DRY principle - reduced 70 lines to 20)
+function copyLinkById(inputId: string, successMessage: string): void {
+    const linkInput = document.getElementById(inputId) as HTMLInputElement;
+    if (linkInput) {
+        linkInput.select();
+        document.execCommand('copy');
+        UI.showAlert(successMessage, 'success');
+    }
 }
 
-function openCustomerPage(): void {
-    const link = (document.getElementById('customerLink') as HTMLInputElement).value;
+function openLinkById(inputId: string): void {
+    const link = (document.getElementById(inputId) as HTMLInputElement)?.value;
     if (link && !link.includes('⚠️')) {
         window.open(link, '_blank');
     }
 }
 
-function copyManualLink(): void {
-    const linkInput = document.getElementById('manualLink') as HTMLInputElement;
-    linkInput.select();
-    document.execCommand('copy');
-    UI.showAlert('Manuel randevu linki kopyalandı!', 'success');
-}
-
-function openManualPage(): void {
-    const link = (document.getElementById('manualLink') as HTMLInputElement).value;
-    if (link && !link.includes('⚠️')) {
-        window.open(link, '_blank');
-    }
-}
-
-// Management link functions (VIP links: #hk, #ok, #hmk)
-function copyManagement1Link(): void {
-    const linkInput = document.getElementById('management1Link') as HTMLInputElement;
-    linkInput.select();
-    document.execCommand('copy');
-    UI.showAlert('Yönetim-1 linki kopyalandı!', 'success');
-}
-
-function openManagement1Page(): void {
-    const link = (document.getElementById('management1Link') as HTMLInputElement).value;
-    if (link && !link.includes('⚠️')) {
-        window.open(link, '_blank');
-    }
-}
-
-function copyManagement2Link(): void {
-    const linkInput = document.getElementById('management2Link') as HTMLInputElement;
-    linkInput.select();
-    document.execCommand('copy');
-    UI.showAlert('Yönetim-2 linki kopyalandı!', 'success');
-}
-
-function openManagement2Page(): void {
-    const link = (document.getElementById('management2Link') as HTMLInputElement).value;
-    if (link && !link.includes('⚠️')) {
-        window.open(link, '_blank');
-    }
-}
-
-function copyManagement3Link(): void {
-    const linkInput = document.getElementById('management3Link') as HTMLInputElement;
-    linkInput.select();
-    document.execCommand('copy');
-    UI.showAlert('Yönetim-3 linki kopyalandı!', 'success');
-}
-
-function openManagement3Page(): void {
-    const link = (document.getElementById('management3Link') as HTMLInputElement).value;
-    if (link && !link.includes('⚠️')) {
-        window.open(link, '_blank');
-    }
-}
+// Convenience wrappers for backward compatibility
+const copyLink = () => copyLinkById('customerLink', 'Link kopyalandı!');
+const openCustomerPage = () => openLinkById('customerLink');
+const copyManualLink = () => copyLinkById('manualLink', 'Manuel randevu linki kopyalandı!');
+const openManualPage = () => openLinkById('manualLink');
+const copyManagement1Link = () => copyLinkById('management1Link', 'Yönetim-1 linki kopyalandı!');
+const copyManagement2Link = () => copyLinkById('management2Link', 'Yönetim-2 linki kopyalandı!');
+const copyManagement3Link = () => copyLinkById('management3Link', 'Yönetim-3 linki kopyalandı!');
 //#endregion
 
 //#region Initialization

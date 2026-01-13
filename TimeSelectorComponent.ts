@@ -312,8 +312,8 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         const maxSlotAppointment = profilAyarlari?.maxSlotAppointment || 1;
         const profilCode = profilAyarlari?.code || 'g';
 
-        // DEBUG: slotGrid ve maxSlotAppointment kontrolü
-        console.log('DEBUG getDailySlots:', { slotGrid, maxSlotAppointment, profilCode, selectedDate, selectedShiftType });
+        // v3.9.13: DEBUG log removed for security (PII protection)
+        log.log('getDailySlots params:', { slotGrid, maxSlotAppointment, profilCode });
 
         // v3.8: vardiyaKontrolu=false ise tüm çalışma saatlerini getir (shiftType='full')
         const effectiveShiftType = vardiyaKontrolu ? selectedShiftType : 'full';
