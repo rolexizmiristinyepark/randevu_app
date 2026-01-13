@@ -2,6 +2,14 @@ import { defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
+  // Define test environment variables
+  define: {
+    'import.meta.env.VITE_APPS_SCRIPT_URL': JSON.stringify('https://script.google.com/test'),
+    'import.meta.env.VITE_BASE_URL': JSON.stringify('http://localhost:3000/'),
+    'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify('1x00000000000000000000AA'),
+    'import.meta.env.VITE_DEBUG': JSON.stringify('true'),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify('test-1.0.0'),
+  },
   test: {
     globals: true,
     environment: 'happy-dom', // Fast, lightweight DOM for testing
