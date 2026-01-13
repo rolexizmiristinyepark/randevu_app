@@ -42,7 +42,7 @@ const SheetStorageService = {
     shifts: ['date', 'staffId', 'shiftType', 'createdAt'],
     settings: ['key', 'value', 'updatedAt'],
     audit_log: ['timestamp', 'action', 'data', 'userId'],
-    message_log: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile'],
+    message_log: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile', 'messageContent'],
     sessions: ['token', 'odaSifresi', 'staffId', 'staffName', 'staffEmail', 'role', 'permissions', 'createdAt', 'expiresAt'],
     notification_flows: ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'createdAt', 'updatedAt'],
     whatsapp_templates: ['id', 'name', 'content', 'variables', 'active', 'createdAt', 'updatedAt'],

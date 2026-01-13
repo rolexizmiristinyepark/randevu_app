@@ -52,13 +52,15 @@ interface WhatsAppTemplate {
 
 interface WhatsAppMessage {
     id: string;
-    phone: string;
+    phone: string | number;
     templateName: string;
     status: 'sent' | 'delivered' | 'read' | 'failed';
-    sentAt: string;
+    sentAt?: string;
     error?: string;
+    errorMessage?: string; // Backend'den gelen hata mesajı
     messageContent?: string; // v3.10.10: Mesaj içeriği
     timestamp?: string; // Backend'den gelen timestamp
+    recipientName?: string;
 }
 
 // ==================== CONSTANTS ====================
@@ -1013,22 +1015,37 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
 
     messages.forEach(msg => {
         const item = document.createElement('div');
-        item.style.cssText = 'padding: 12px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 8px; font-size: 13px;';
+        item.style.cssText = 'padding: 12px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 8px; font-size: 13px; cursor: pointer; transition: background 0.2s;';
+
+        // Hover efekti
+        item.addEventListener('mouseenter', () => { item.style.background = '#f0f0f0'; });
+        item.addEventListener('mouseleave', () => { item.style.background = '#FAFAFA'; });
 
         const header = document.createElement('div');
         header.style.cssText = 'display: flex; justify-content: space-between; align-items: center;';
 
+        // Sol taraf: Telefon + Alıcı adı
+        const leftSide = document.createElement('div');
+
         const phone = document.createElement('span');
         phone.style.fontWeight = '500';
         phone.textContent = String(msg.phone || '');
+        leftSide.appendChild(phone);
+
+        // Alıcı adı varsa göster
+        if (msg.recipientName) {
+            const recipientSpan = document.createElement('span');
+            recipientSpan.style.cssText = 'margin-left: 8px; color: #757575; font-size: 12px;';
+            recipientSpan.textContent = `(${msg.recipientName})`;
+            leftSide.appendChild(recipientSpan);
+        }
 
         const time = document.createElement('span');
         time.style.cssText = 'color: #757575; font-size: 11px;';
-        // v3.10.10: timestamp veya sentAt kullan
         const dateStr = msg.timestamp || msg.sentAt;
         time.textContent = dateStr ? new Date(dateStr).toLocaleString('tr-TR') : '';
 
-        header.appendChild(phone);
+        header.appendChild(leftSide);
         header.appendChild(time);
 
         const template = document.createElement('div');
@@ -1042,7 +1059,7 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
             'read': '#2E7D32',
             'failed': '#C62828'
         };
-        statusSpan.style.cssText = `margin-left: 10px; color: ${statusColors[msg.status] || '#757575'}; font-size: 11px;`;
+        statusSpan.style.cssText = `margin-left: 10px; color: ${statusColors[msg.status] || '#757575'}; font-size: 11px; font-weight: 500;`;
         statusSpan.textContent = (msg.status || '').toUpperCase();
         template.appendChild(statusSpan);
 
@@ -1058,12 +1075,46 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
         }
 
         // v3.10.10: Hata mesajı göster (failed durumunda)
-        if (msg.status === 'failed' && msg.error) {
+        const errorText = msg.errorMessage || msg.error;
+        if (msg.status === 'failed' && errorText) {
             const errorDiv = document.createElement('div');
-            errorDiv.style.cssText = 'margin-top: 5px; color: #C62828; font-size: 11px;';
-            errorDiv.textContent = `Hata: ${msg.error}`;
+            errorDiv.style.cssText = 'margin-top: 5px; color: #C62828; font-size: 11px; background: #FFEBEE; padding: 6px 8px; border-radius: 4px;';
+            errorDiv.textContent = `Hata: ${errorText}`;
             item.appendChild(errorDiv);
         }
+
+        // Tıklama ile detay göster (expandable) - DOM API kullanarak güvenli
+        item.addEventListener('click', () => {
+            const existingDetail = item.querySelector('.message-detail');
+            if (existingDetail) {
+                existingDetail.remove();
+                return;
+            }
+
+            const detail = document.createElement('div');
+            detail.className = 'message-detail';
+            detail.style.cssText = 'margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #E8E8E8; border-radius: 4px; font-size: 11px; color: #555;';
+
+            const msgRecord = msg as unknown as Record<string, string>;
+            const fields = [
+                { label: 'ID', value: msg.id || '-' },
+                { label: 'Template ID', value: msgRecord.templateId || '-' },
+                { label: 'Staff', value: msgRecord.staffName || '-' },
+                { label: 'Profil', value: msgRecord.profile || '-' }
+            ];
+
+            fields.forEach((field, idx) => {
+                const row = document.createElement('div');
+                if (idx < fields.length - 1) row.style.marginBottom = '4px';
+                const label = document.createElement('strong');
+                label.textContent = field.label + ': ';
+                row.appendChild(label);
+                row.appendChild(document.createTextNode(field.value));
+                detail.appendChild(row);
+            });
+
+            item.appendChild(detail);
+        });
 
         container.appendChild(item);
     });

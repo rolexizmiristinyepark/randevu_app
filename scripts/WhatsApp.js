@@ -68,21 +68,54 @@ function handleWhatsAppWebhook(webhookData) {
           }
         }
 
-        // Incoming messages (for future: auto-reply or logging)
+        // Incoming messages - v3.10.12: Mesaj içeriği kaydediliyor (7 gün sonra otomatik silinecek - KVKK uyumlu)
         if (value.messages && Array.isArray(value.messages)) {
           for (const message of value.messages) {
-            // Log incoming message for audit (KVKK compliant - no content logged)
             try {
+              // Mesaj içeriğini al (text, image caption, vb.)
+              let messageContent = '';
+              if (message.type === 'text' && message.text) {
+                messageContent = message.text.body || '';
+              } else if (message.type === 'image' && message.image) {
+                messageContent = '[Resim]' + (message.image.caption ? ': ' + message.image.caption : '');
+              } else if (message.type === 'video' && message.video) {
+                messageContent = '[Video]' + (message.video.caption ? ': ' + message.video.caption : '');
+              } else if (message.type === 'audio') {
+                messageContent = '[Ses Mesajı]';
+              } else if (message.type === 'document' && message.document) {
+                messageContent = '[Dosya]: ' + (message.document.filename || 'dosya');
+              } else if (message.type === 'location' && message.location) {
+                messageContent = '[Konum]: ' + message.location.latitude + ', ' + message.location.longitude;
+              } else if (message.type === 'contacts') {
+                messageContent = '[Kişi Paylaşımı]';
+              } else if (message.type === 'sticker') {
+                messageContent = '[Çıkartma]';
+              } else {
+                messageContent = '[' + (message.type || 'Bilinmeyen') + ']';
+              }
+
+              // Gönderen bilgisi (contacts dizisinden)
+              let senderName = '';
+              if (value.contacts && value.contacts.length > 0) {
+                const contact = value.contacts.find(c => c.wa_id === message.from);
+                if (contact && contact.profile) {
+                  senderName = contact.profile.name || '';
+                }
+              }
+
               SheetStorageService.addMessageLog({
                 direction: 'incoming',
                 phone: message.from || '',
-                recipientName: '',
-                templateName: '',
+                recipientName: senderName,
+                templateName: message.type || 'text',
                 templateId: '',
                 status: 'received',
                 messageId: message.id || '',
-                triggeredBy: 'webhook'
+                triggeredBy: 'webhook',
+                messageContent: messageContent
               });
+
+              console.log('Incoming message logged: ' + message.from + ' - ' + message.type);
             } catch (logError) {
               console.error('Failed to log incoming message:', logError);
             }
@@ -92,6 +125,73 @@ function handleWhatsAppWebhook(webhookData) {
     }
   } catch (error) {
     console.error('handleWhatsAppWebhook error:', error);
+  }
+}
+
+// ==================== KVKK UYUMLU OTOMATİK TEMİZLİK ====================
+/**
+ * v3.10.12: 7 günden eski mesaj içeriklerini siler (KVKK uyumlu veri minimizasyonu)
+ * Bu fonksiyon günlük trigger ile çalıştırılmalıdır:
+ * Apps Script > Triggers > Add Trigger > cleanupOldMessageContent > Time-driven > Day timer
+ */
+function cleanupOldMessageContent() {
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheet = ss.getSheetByName('whatsapp_message_log');
+
+    if (!sheet) {
+      console.log('cleanupOldMessageContent: whatsapp_message_log sheet bulunamadı');
+      return { success: false, error: 'Sheet not found' };
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+
+    // Sütun indexlerini bul
+    const timestampCol = headers.indexOf('timestamp');
+    const contentCol = headers.indexOf('messageContent');
+    const directionCol = headers.indexOf('direction');
+
+    if (timestampCol === -1 || contentCol === -1) {
+      console.log('cleanupOldMessageContent: Gerekli sütunlar bulunamadı');
+      return { success: false, error: 'Required columns not found' };
+    }
+
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
+    let cleanedCount = 0;
+
+    // 7 günden eski incoming mesajların içeriğini temizle
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const timestamp = row[timestampCol];
+      const content = row[contentCol];
+      const direction = row[directionCol];
+
+      // Sadece incoming mesajları temizle (gönderilen template mesajlar kalabilir)
+      if (direction === 'incoming' && content && content !== '[Silindi - KVKK]') {
+        let rowDate;
+        if (timestamp instanceof Date) {
+          rowDate = timestamp;
+        } else if (typeof timestamp === 'string') {
+          rowDate = new Date(timestamp);
+        } else {
+          continue;
+        }
+
+        if (rowDate < sevenDaysAgo) {
+          // İçeriği temizle, kaydı silme (audit trail için)
+          sheet.getRange(i + 1, contentCol + 1).setValue('[Silindi - KVKK]');
+          cleanedCount++;
+        }
+      }
+    }
+
+    console.log('cleanupOldMessageContent: ' + cleanedCount + ' mesaj içeriği temizlendi');
+    return { success: true, cleanedCount: cleanedCount };
+  } catch (error) {
+    console.error('cleanupOldMessageContent error:', error);
+    return { success: false, error: error.message };
   }
 }
 
