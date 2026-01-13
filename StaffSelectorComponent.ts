@@ -9,14 +9,10 @@ import { state, Staff } from './StateManager';
 import { revealSection, hideSection } from './UIManager';
 import { createElement } from './security-helpers';
 import { apiCall } from './api-service';
+import { createDebugLogger } from './debug-logger';
 
-// Debug logger
-const log = {
-    error: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.error(...args),
-    warn: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.warn(...args),
-    info: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.info(...args),
-    log: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.log(...args)
-};
+// Debug logger - uses centralized debug module
+const log = createDebugLogger('StaffSelector');
 
 // ==================== DATA LOADING ====================
 

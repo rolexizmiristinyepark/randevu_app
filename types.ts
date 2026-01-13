@@ -193,6 +193,7 @@ export type AlertType = 'success' | 'error' | 'warning' | 'info';
 
 declare global {
   interface Window {
+    // Application Configuration
     CONFIG: {
       APPS_SCRIPT_URL: string;
       BASE_URL: string;
@@ -205,21 +206,70 @@ declare global {
       companyName?: string;
       companyLocation?: string;
     };
-    AdminAuth: typeof import('./admin-auth').AdminAuth;
-    UI: {
+
+    // Authentication
+    AdminAuth?: {
+      showLoginModal: () => void;
+      getSessionToken: () => string | null;
+      isAuthenticated: () => boolean;
+      logout: () => void;
+    };
+
+    // UI Utilities
+    UI?: {
       showAlert: (message: string, type: string) => void;
       showLoading?: (show: boolean) => void;
       updateUI?: () => void;
       switchTab?: (tabName: string) => void;
-      // Diğer UI metodları buraya eklenebilir
     };
+
+    // API Service
+    ApiService?: {
+      call: (action: string, params?: Record<string, unknown>) => Promise<unknown>;
+    };
+    apiCall?: (action: string, params?: Record<string, unknown>) => Promise<unknown>;
+    apiCallWithKey?: (action: string, params?: Record<string, unknown>, apiKey?: string) => Promise<unknown>;
+
+    // Time Selector
+    selectTimeSlot?: (time: string) => void;
+    displayAvailableTimeSlots?: (slots: TimeSlot[]) => void;
+    TimeSelector?: unknown;
+
+    // Security Helpers (exposed globally for backward compatibility)
+    sanitizeInput?: (input: string, options?: Record<string, unknown>) => string;
+    sanitizePhone?: (phone: string) => string;
+    sanitizeEmail?: (email: string) => string;
+    sanitizeName?: (name: string) => string;
+    escapeHtml?: (str: string) => string;
+    createElement?: (tag: string, options?: Record<string, unknown>, text?: string) => HTMLElement;
+    showAlertSafe?: (message: string, type: string) => void;
+    createFragmentFromTrustedHtml?: (html: string) => DocumentFragment;
+    createSafeFragment?: (html: string) => DocumentFragment;
+    maskEmail?: (email: string) => string;
+    maskPhone?: (phone: string) => string;
+    maskName?: (name: string) => string;
+
+    // Logging
+    SecureLogger?: unknown;
+
+    // State & Data
     lastAppointmentData: LastAppointmentData | null;
     managementContactPerson?: string;
-    CalendarIntegration?: any;
+    turnstileVerified?: boolean;
+
+    // External Libraries
+    CalendarIntegration?: {
+      addToGoogleCalendar?: (data: Record<string, unknown>) => void;
+      addToAppleCalendar?: (data: Record<string, unknown>) => void;
+    };
     turnstile?: {
       getResponse: () => string | undefined;
+      reset: () => void;
     };
-    Sentry?: any;
+    Sentry?: {
+      captureException: (error: Error | unknown) => void;
+      captureMessage: (message: string) => void;
+    };
   }
 }
 

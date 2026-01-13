@@ -12,18 +12,14 @@ import { DateUtils } from './date-utils';
 import { apiCall } from './api-service';
 import { logError } from './monitoring';
 import { memoize } from './performance-utils';
+import { createDebugLogger } from './debug-logger';
 
 // ==================== CONSTANTS ====================
 
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
-// Debug logger - Production'da log'ları devre dışı bırakır
-const log = {
-    error: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.error(...args),
-    warn: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.warn(...args),
-    info: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.info(...args),
-    log: (...args: any[]) => (window as any).CONFIG?.DEBUG && console.log(...args)
-};
+// Debug logger - uses centralized debug module
+const log = createDebugLogger('Calendar');
 
 // ==================== MONTH NAVIGATION ====================
 
