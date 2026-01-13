@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 🔒 SECURITY: Content Security Policy -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:;">
     <title>KVKK Aydınlatma Metni - Rolex İzmir İstinyepark</title>
     <link rel="icon" type="image/svg+xml" href="./assets/rolex-logo-CwVza6ql.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -411,81 +413,7 @@
         </div>
     </div>
 
-    <script>
-    // KVKK Veri Silme Talebi Form Handler
-    (function() {
-        const form = document.getElementById('kvkkDeletionForm');
-        if (!form) return;
-
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-
-            const submitBtn = form.querySelector('button[type="submit"]');
-            const resultDiv = document.getElementById('kvkkFormResult');
-            const identifierType = form.querySelector('input[name="identifierType"]:checked')?.value || 'email';
-            const identifier = form.querySelector('#kvkkIdentifier')?.value.trim();
-            const reason = form.querySelector('#kvkkReason')?.value.trim();
-
-            // Clear previous result
-            if (resultDiv) {
-                resultDiv.textContent = '';
-                resultDiv.className = 'form-result';
-            }
-
-            // Validate
-            if (!identifier) {
-                showResult('Lütfen e-posta adresinizi veya telefon numaranızı girin.', 'error');
-                return;
-            }
-
-            // Basic validation
-            if (identifierType === 'email' && !identifier.includes('@')) {
-                showResult('Geçerli bir e-posta adresi girin.', 'error');
-                return;
-            }
-
-            if (identifierType === 'phone' && !/^5\d{9}$/.test(identifier.replace(/\D/g, ''))) {
-                showResult('Geçerli bir telefon numarası girin (örn: 5XX XXX XX XX).', 'error');
-                return;
-            }
-
-            // Disable button
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Gönderiliyor...';
-            }
-
-            try {
-                // For now, show a success message (backend API will be implemented separately)
-                // In production, this would call the API
-                await new Promise(r => setTimeout(r, 1000)); // Simulate network delay
-
-                showResult(
-                    'Veri silme talebiniz alındı. Talebiniz 30 gün içinde işleme alınacaktır. ' +
-                    'İstinyePark Rolex mağazasından e-posta ile bilgilendirileceksiniz.',
-                    'success'
-                );
-                form.reset();
-            } catch (error) {
-                showResult(
-                    'Bir hata oluştu. Lütfen daha sonra tekrar deneyin veya doğrudan bizimle iletişime geçin.',
-                    'error'
-                );
-            } finally {
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = 'Talep Gönder';
-                }
-            }
-
-            function showResult(message, type) {
-                if (resultDiv) {
-                    resultDiv.textContent = message;
-                    resultDiv.className = 'form-result form-result-' + type;
-                }
-            }
-        });
-    })();
-    </script>
+    <!-- 🔒 v3.9.13: External module for CSP compliance -->
+    <script type="module" src="kvkk-form.ts"></script>
 </body>
 </html>

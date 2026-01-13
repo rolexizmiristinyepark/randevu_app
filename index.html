@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 🔒 SECURITY: Content Security Policy (Defense-in-Depth XSS Protection) -->
-    <!-- 🔒 SECURITY: Content Security Policy (Defense-in-Depth XSS Protection) -->
     <!-- NOT: frame-ancestors, form-action, base-uri meta tag'de çalışmaz, sadece HTTP header ile gönderilebilir -->
     <!-- GitHub Pages'de HTTP header kontrolümüz yok, bu yüzden sadece desteklenen direktifler kullanıyoruz -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; frame-src https://challenges.cloudflare.com;">
+    <!-- 🔒 v3.9.13: unsafe-inline removed from script-src - all scripts externalized -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:; frame-src https://challenges.cloudflare.com;">
     <title>İzmir İstinyepark Rolex</title>
     <link rel="icon" type="image/svg+xml" href="assets/rolex-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,31 +19,8 @@
     <!-- Security Helper Functions -->
     <script type="module" src="security-helpers.ts"></script>
     <!-- Cloudflare Turnstile (explicit render mode - site key JavaScript'ten gelir) -->
-    <script>
-        // Turnstile callback - script yüklenmeden önce tanımlanmalı
-        window.onloadTurnstileCallback = function() {
-            var widget = document.getElementById('turnstileWidget');
-            var siteKey = window.TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
-            console.log('🔒 Turnstile loading with key:', siteKey.substring(0, 10) + '...');
-            if (widget && window.turnstile) {
-                window.turnstile.render(widget, {
-                    sitekey: siteKey,
-                    callback: function(token) {
-                        console.log('✅ Turnstile verified');
-                        window.turnstileVerified = true;
-                        // Submit butonunu göster
-                        var submitBtn = document.getElementById('submitBtn');
-                        var detailsSection = document.getElementById('detailsSection');
-                        if (submitBtn && detailsSection && detailsSection.style.display !== 'none') {
-                            submitBtn.style.display = 'block';
-                        }
-                    },
-                    theme: 'light',
-                    size: 'normal'
-                });
-            }
-        };
-    </script>
+    <!-- 🔒 v3.9.13: Inline script moved to external file for CSP compliance -->
+    <script type="module" src="turnstile-init.ts"></script>
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback" async defer></script>
 </head>
 <body>

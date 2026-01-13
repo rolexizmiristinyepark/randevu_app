@@ -6,7 +6,7 @@
  */
 
 import { apiCall } from './api-service';
-import { validateEmail, validatePhone } from './validation-utils';
+import { ValidationUtils } from './validation-utils';
 import { maskEmail, maskPhone } from './security-helpers';
 import { SecureLogger } from './SecureLogger';
 
@@ -54,17 +54,16 @@ async function handleDeletionRequest(event: Event): Promise<void> {
     }
 
     // Validate based on type
-    let isValid = false;
     if (identifierType === 'email') {
-        isValid = validateEmail(identifier);
-        if (!isValid) {
-            showResult(resultDiv, 'Geçerli bir e-posta adresi girin.', 'error');
+        const result = ValidationUtils.validateEmail(identifier);
+        if (!result.valid) {
+            showResult(resultDiv, result.message || 'Geçerli bir e-posta adresi girin.', 'error');
             return;
         }
     } else {
-        isValid = validatePhone(identifier);
-        if (!isValid) {
-            showResult(resultDiv, 'Geçerli bir telefon numarası girin (örn: 5XXXXXXXXX).', 'error');
+        const result = ValidationUtils.validatePhone(identifier);
+        if (!result.valid) {
+            showResult(resultDiv, result.message || 'Geçerli bir telefon numarası girin (örn: 5XXXXXXXXX).', 'error');
             return;
         }
     }
