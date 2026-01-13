@@ -267,10 +267,22 @@ function renderListSafe(container: HTMLElement | null, items: any[], itemRendere
     });
 }
 
-// Güvenli HTML fragment oluşturma (sadece güvenilir içerik için)
-function createSafeFragment(trustedHtml: string): DocumentFragment {
+/**
+ * Creates a DocumentFragment from pre-trusted HTML content.
+ *
+ * WARNING: This function does NOT sanitize input! Only use with:
+ * - Hardcoded HTML strings
+ * - Content that has already been sanitized with escapeHtml() or sanitizeInput()
+ *
+ * NEVER use with user input or external data without sanitization!
+ *
+ * @param preTrustedHtml - HTML string that has already been validated/sanitized
+ * @returns DocumentFragment containing the parsed HTML
+ */
+function createFragmentFromTrustedHtml(preTrustedHtml: string): DocumentFragment {
     const template = document.createElement('template');
-    template.innerHTML = trustedHtml;
+    // This innerHTML is intentionally used for pre-trusted/sanitized content only
+    template.innerHTML = preTrustedHtml;
     return template.content;
 }
 
@@ -527,7 +539,8 @@ export {
     createElement,
     showAlertSafe,
     renderListSafe,
-    createSafeFragment,
+    createFragmentFromTrustedHtml,
+    createFragmentFromTrustedHtml as createSafeFragment, // Alias for backward compatibility
     createLoadingElement,
     createTableRow,
     createSuccessPageSafe,
@@ -556,7 +569,8 @@ if (typeof window !== 'undefined') {
     (window as any).createElement = createElement;
     (window as any).showAlertSafe = showAlertSafe;
     (window as any).renderListSafe = renderListSafe;
-    (window as any).createSafeFragment = createSafeFragment;
+    (window as any).createFragmentFromTrustedHtml = createFragmentFromTrustedHtml;
+    (window as any).createSafeFragment = createFragmentFromTrustedHtml; // Alias for backward compatibility
     (window as any).createLoadingElement = createLoadingElement;
     (window as any).createTableRow = createTableRow;
     (window as any).createSuccessPageSafe = createSuccessPageSafe;

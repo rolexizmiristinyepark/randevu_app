@@ -14,7 +14,8 @@ import {
   createElement,
   showAlertSafe,
   renderListSafe,
-  createSafeFragment,
+  createFragmentFromTrustedHtml,
+  createSafeFragment, // Backward compatible alias
   createLoadingElement,
   createTableRow
 } from '../security-helpers';

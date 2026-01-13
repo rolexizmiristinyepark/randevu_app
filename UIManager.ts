@@ -294,11 +294,15 @@ export function showLoadingError(): void {
   retryBtn.textContent = '🔄 Tekrar Dene';
   retryBtn.onclick = () => window.location.reload();
 
-  // Support info
+  // Support info - using safe DOM methods instead of innerHTML
   const supportInfo = createElement('p', {
     style: "font-family: 'Montserrat', sans-serif; font-size: 14px; color: #999; margin-top: 40px;"
   });
-  supportInfo.innerHTML = 'Sorun devam ederse lütfen bizimle iletişime geçin:<br><strong>istinyeparkrolex35@gmail.com</strong>';
+  supportInfo.appendChild(document.createTextNode('Sorun devam ederse lütfen bizimle iletişime geçin:'));
+  supportInfo.appendChild(document.createElement('br'));
+  const emailStrong = document.createElement('strong');
+  emailStrong.textContent = 'istinyeparkrolex35@gmail.com';
+  supportInfo.appendChild(emailStrong);
 
   // Assemble error page
   errorDiv.appendChild(logoImg);
@@ -366,7 +370,13 @@ export function setButtonLoading(button: HTMLButtonElement, loading: boolean, or
   if (loading) {
     button.disabled = true;
     button.dataset.originalText = originalText || button.textContent || '';
-    button.innerHTML = '<span class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span> Yükleniyor...';
+    // Use safe DOM methods instead of innerHTML
+    button.textContent = '';
+    const spinner = document.createElement('span');
+    spinner.className = 'spinner';
+    spinner.style.cssText = 'width: 16px; height: 16px; border-width: 2px;';
+    button.appendChild(spinner);
+    button.appendChild(document.createTextNode(' Yükleniyor...'));
   } else {
     button.disabled = false;
     button.textContent = button.dataset.originalText || originalText || 'Gönder';
