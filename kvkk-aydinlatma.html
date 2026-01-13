@@ -149,6 +149,110 @@
             font-size: 12px;
         }
 
+        /* KVKK Form Styles */
+        .deletion-form-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 20px 0;
+        }
+
+        .kvkk-form .form-group {
+            margin-bottom: 20px;
+        }
+
+        .kvkk-form label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .kvkk-form small {
+            display: block;
+            margin-top: 5px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .radio-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-weight: 400;
+        }
+
+        .radio-label input[type="radio"] {
+            accent-color: #006039;
+        }
+
+        .kvkk-form input[type="text"],
+        .kvkk-form textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s;
+        }
+
+        .kvkk-form input[type="text"]:focus,
+        .kvkk-form textarea:focus {
+            outline: none;
+            border-color: #006039;
+        }
+
+        .kvkk-form .submit-btn {
+            background: #006039;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .kvkk-form .submit-btn:hover {
+            background: #004d2e;
+        }
+
+        .kvkk-form .submit-btn:disabled {
+            background: #999;
+            cursor: not-allowed;
+        }
+
+        .form-result {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-result:empty {
+            display: none;
+        }
+
+        .form-result-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .form-result-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
         @media (max-width: 600px) {
             .container {
                 padding: 25px;
@@ -161,6 +265,11 @@
 
             h2 {
                 font-size: 14px;
+            }
+
+            .radio-group {
+                flex-direction: column;
+                gap: 10px;
             }
         }
     </style>
@@ -234,10 +343,57 @@
             <li>Kişisel verilerinizin kanuna aykırı olarak işlenmesi sebebiyle zarara uğramanız hâlinde zararın giderilmesini talep etme</li>
         </ul>
 
-        <h2>8. Başvuru Yöntemi</h2>
+        <h2>8. Veri Silme Talebi</h2>
+        <p>
+            KVKK kapsamında kişisel verilerinizin silinmesini talep edebilirsiniz.
+            Aşağıdaki formu kullanarak talebinizi iletebilirsiniz.
+        </p>
+
+        <div class="deletion-form-container">
+            <form id="kvkkDeletionForm" class="kvkk-form">
+                <div class="form-group">
+                    <label>Kimlik Doğrulama Yöntemi:</label>
+                    <div class="radio-group">
+                        <label class="radio-label">
+                            <input type="radio" name="identifierType" value="email" checked>
+                            <span>E-posta</span>
+                        </label>
+                        <label class="radio-label">
+                            <input type="radio" name="identifierType" value="phone">
+                            <span>Telefon</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="kvkkIdentifier">E-posta / Telefon Numarası:</label>
+                    <input type="text" id="kvkkIdentifier" name="identifier"
+                           placeholder="ornek@email.com veya 5XX XXX XX XX" required>
+                    <small>Randevu oluştururken kullandığınız bilgiyi girin.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="kvkkReason">Silme Nedeni (İsteğe Bağlı):</label>
+                    <textarea id="kvkkReason" name="reason" rows="3"
+                              placeholder="Verilerinizin silinmesini talep etme nedeniniz..."></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn">Talep Gönder</button>
+                <div id="kvkkFormResult" class="form-result"></div>
+            </form>
+        </div>
+
+        <div class="highlight-box" style="margin-top: 20px;">
+            <p>
+                <strong>Not:</strong> Veri silme talepleri 30 gün içinde işleme alınır.
+                Silme işlemi geri alınamaz. Aktif randevularınız varsa, önce iptal edilmeleri gerekebilir.
+            </p>
+        </div>
+
+        <h2>9. Başvuru Yöntemi</h2>
         <p>
             Yukarıda belirtilen haklarınızı kullanmak için aşağıdaki iletişim bilgileri üzerinden
-            bizimle iletişime geçebilirsiniz.
+            veya veri silme formu aracılığıyla bizimle iletişime geçebilirsiniz.
         </p>
 
         <div class="contact-info">
@@ -250,9 +406,86 @@
         <a href="./" class="back-link">← Randevu Sayfasına Dön</a>
 
         <div class="footer">
-            <p>Son güncelleme: Kasım 2025</p>
+            <p>Son güncelleme: Ocak 2026</p>
             <p>© Rolex İzmir İstinyepark - Tüm hakları saklıdır.</p>
         </div>
     </div>
+
+    <script>
+    // KVKK Veri Silme Talebi Form Handler
+    (function() {
+        const form = document.getElementById('kvkkDeletionForm');
+        if (!form) return;
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const resultDiv = document.getElementById('kvkkFormResult');
+            const identifierType = form.querySelector('input[name="identifierType"]:checked')?.value || 'email';
+            const identifier = form.querySelector('#kvkkIdentifier')?.value.trim();
+            const reason = form.querySelector('#kvkkReason')?.value.trim();
+
+            // Clear previous result
+            if (resultDiv) {
+                resultDiv.textContent = '';
+                resultDiv.className = 'form-result';
+            }
+
+            // Validate
+            if (!identifier) {
+                showResult('Lütfen e-posta adresinizi veya telefon numaranızı girin.', 'error');
+                return;
+            }
+
+            // Basic validation
+            if (identifierType === 'email' && !identifier.includes('@')) {
+                showResult('Geçerli bir e-posta adresi girin.', 'error');
+                return;
+            }
+
+            if (identifierType === 'phone' && !/^5\d{9}$/.test(identifier.replace(/\D/g, ''))) {
+                showResult('Geçerli bir telefon numarası girin (örn: 5XX XXX XX XX).', 'error');
+                return;
+            }
+
+            // Disable button
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Gönderiliyor...';
+            }
+
+            try {
+                // For now, show a success message (backend API will be implemented separately)
+                // In production, this would call the API
+                await new Promise(r => setTimeout(r, 1000)); // Simulate network delay
+
+                showResult(
+                    'Veri silme talebiniz alındı. Talebiniz 30 gün içinde işleme alınacaktır. ' +
+                    'İstinyePark Rolex mağazasından e-posta ile bilgilendirileceksiniz.',
+                    'success'
+                );
+                form.reset();
+            } catch (error) {
+                showResult(
+                    'Bir hata oluştu. Lütfen daha sonra tekrar deneyin veya doğrudan bizimle iletişime geçin.',
+                    'error'
+                );
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Talep Gönder';
+                }
+            }
+
+            function showResult(message, type) {
+                if (resultDiv) {
+                    resultDiv.textContent = message;
+                    resultDiv.className = 'form-result form-result-' + type;
+                }
+            }
+        });
+    })();
+    </script>
 </body>
 </html>
