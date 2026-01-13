@@ -8,7 +8,8 @@ import { revealSection, hideSection, ModalUtils } from './UIManager';
 // Import flow components
 import { selectAppointmentType, selectManagementContact } from './TypeSelectorComponent';
 import { changeMonth } from './CalendarComponent';
-import { loadStaffMembers, loadSettings } from './StaffSelectorComponent';
+import { loadStaffMembers, loadSettings, displayAvailableStaff } from './StaffSelectorComponent';
+import { loadInitialCustomerData } from './batch-loader';
 // TimeSelectorComponent functions exported to window for calendar-integration.js
 import { initAppointmentForm } from './AppointmentFormComponent';
 import { handleCalendarAction } from './SuccessPageComponent';
@@ -136,17 +137,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Profil bazlı UI ayarlarını uygula
     applyProfileUI(profileInfo);
 
-    // v3.2: Profil ayarlarını backend'den yükle
-    let profilAyarlari: any = null;
-    try {
-        const ayarResponse = await apiCall('getProfilAyarlari', { profil: profileInfo.profil });
-        if (ayarResponse.success) {
-            profilAyarlari = ayarResponse.data;
-            state.set('profilAyarlari', profilAyarlari);
-        }
-    } catch (e) {
-        console.warn('Profil ayarları yüklenemedi:', e);
-    }
+    // ⚡ PERFORMANCE: Batch load all initial data in parallel
+    // Instead of sequential: profilAyarlari -> settings -> staff
+    // Now: all three fetched simultaneously, processed in order
+    const batchResult = await loadInitialCustomerData(profileInfo.profil);
+    let profilAyarlari: any = state.get('profilAyarlari');
 
     // v3.4: Profil ayarlarına göre UI düzenle
     // takvimFiltresi:
@@ -234,17 +229,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2+ tür seçili ise: müşteri seçsin (kartlar görünür)
     }
 
-    // Ana spinner zaten gösteriliyor, sadece verilerini yükle
+    // Ana spinner zaten gösteriliyor, batch loader zaten verileri yükledi
     const typesContainer = document.getElementById('appointmentTypesContainer');
 
-    // Load settings first
-    await loadSettings();
-
-    // Initialize appointment form
+    // Initialize appointment form (data already loaded via batch loader)
     initAppointmentForm();
 
-    // Staff verilerini yükle
-    await loadStaffMembers();
+    // ⚡ Batch loader already loaded staff and settings in parallel
+    // No need for: await loadSettings(); await loadStaffMembers();
 
     // Personel linki ise selectedStaff'ı ayarla
     if (profileInfo.profil === 'personel' && profileInfo.data?.id) {
