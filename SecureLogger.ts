@@ -10,15 +10,9 @@ import { maskEmail, maskPhone, maskName } from './security-helpers';
 // Log levels
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
-// PII patterns for auto-detection
-const PII_PATTERNS = [
-    { pattern: /[\w.-]+@[\w.-]+\.\w+/g, type: 'email' },
-    { pattern: /(?:\+90|0)?5\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}/g, type: 'phone' },
-    { pattern: /\b\d{11}\b/g, type: 'tcno' },  // TC Kimlik No
-];
-
 /**
  * Mesajdaki PII'leri otomatik maskeler
+ * Uses inline patterns for email, phone, and TC number detection
  */
 function sanitizeMessage(message: string): string {
     if (!message || typeof message !== 'string') return message;
