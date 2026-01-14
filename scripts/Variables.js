@@ -180,7 +180,7 @@ var MESSAGE_TRIGGERS = {
   'RANDEVU_OLUŞTUR': 'create',
   'RANDEVU_İPTAL': 'cancel',
   'RANDEVU_GÜNCELLE': 'update',
-  'HATIRLATMA': 'notify',
+  'HATIRLATMA': 'reminder',
   'ILGILI_ATANDI': 'assign'
 };
 

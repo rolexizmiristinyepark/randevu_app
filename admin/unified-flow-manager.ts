@@ -197,7 +197,8 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
-    const toggleBtn = createButton(flow.active ? 'Stop' : 'Start', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    // v3.10.15: Inactive/Active instead of Stop/Start
+    const toggleBtn = createButton(flow.active ? 'Inactive' : 'Active', 'btn-secondary btn-small', () => toggleFlow(flow.id));
     const editBtn = createButton('Edit', 'btn-secondary btn-small', () => openFlowModal(flow.id));
     const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
@@ -208,65 +209,52 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     header.appendChild(left);
     header.appendChild(right);
 
-    // Details
+    // v3.10.15: Details - vertical layout with bold labels
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; margin-top: 8px;';
+    details.style.cssText = 'font-size: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px;';
 
+    // Helper function to create a row with bold label
+    const createRow = (label: string, value: string): HTMLElement => {
+        const row = document.createElement('div');
+        const labelSpan = document.createElement('span');
+        labelSpan.style.cssText = 'font-weight: 600; color: #555;';
+        labelSpan.textContent = `${label}: `;
+        const valueSpan = document.createElement('span');
+        valueSpan.style.cssText = 'color: #757575;';
+        valueSpan.textContent = value;
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        return row;
+    };
+
+    // Trigger row
     const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
-    const triggerSpan = document.createElement('span');
-    triggerSpan.textContent = `Trigger: ${triggerLabel}`;
-    details.appendChild(triggerSpan);
+    details.appendChild(createRow('Trigger', triggerLabel));
 
+    // Profiles row
     if (flow.profiles.length > 0) {
         const profileLabelsText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
-        const sep = document.createElement('span');
-        sep.textContent = ' • ';
-        sep.style.color = '#ccc';
-        details.appendChild(sep);
+        details.appendChild(createRow('Profiles', profileLabelsText));
+    }
 
-        const profileSpan = document.createElement('span');
-        profileSpan.textContent = `Profiles: ${profileLabelsText}`;
-        details.appendChild(profileSpan);
+    // WhatsApp templates row
+    if (flow.whatsappTemplateIds.length > 0) {
+        const waNames = flow.whatsappTemplateIds
+            .map(id => whatsappTemplates.find(t => t.id === id)?.name || id)
+            .join(', ');
+        details.appendChild(createRow('WhatsApp', waNames));
+    }
+
+    // Mail templates row
+    if (flow.mailTemplateIds.length > 0) {
+        const mailNames = flow.mailTemplateIds
+            .map(id => mailTemplates.find(t => t.id === id)?.name || id)
+            .join(', ');
+        details.appendChild(createRow('Mail', mailNames));
     }
 
     item.appendChild(header);
     item.appendChild(details);
-
-    // Templates info - v3.9.13: Show template names instead of count, match styling with details line
-    if (flow.whatsappTemplateIds.length > 0 || flow.mailTemplateIds.length > 0) {
-        const templatesDiv = document.createElement('div');
-        templatesDiv.style.cssText = 'font-size: 12px; color: #757575; margin-top: 4px;';
-
-        // WhatsApp template names
-        if (flow.whatsappTemplateIds.length > 0) {
-            const waNames = flow.whatsappTemplateIds
-                .map(id => whatsappTemplates.find(t => t.id === id)?.name || id)
-                .join(', ');
-            const waSpan = document.createElement('span');
-            waSpan.textContent = `WhatsApp: ${waNames}`;
-            templatesDiv.appendChild(waSpan);
-        }
-
-        // Separator if both exist
-        if (flow.whatsappTemplateIds.length > 0 && flow.mailTemplateIds.length > 0) {
-            const sep = document.createElement('span');
-            sep.textContent = ' · ';
-            sep.style.color = '#ccc';
-            templatesDiv.appendChild(sep);
-        }
-
-        // Mail template names
-        if (flow.mailTemplateIds.length > 0) {
-            const mailNames = flow.mailTemplateIds
-                .map(id => mailTemplates.find(t => t.id === id)?.name || id)
-                .join(', ');
-            const mailSpan = document.createElement('span');
-            mailSpan.textContent = `Mail: ${mailNames}`;
-            templatesDiv.appendChild(mailSpan);
-        }
-
-        item.appendChild(templatesDiv);
-    }
 
     return item;
 }
@@ -508,7 +496,7 @@ async function toggleFlow(flowId: string): Promise<void> {
         const response = await ApiService.call('updateUnifiedFlow', { id: flowId, active: !flow.active }) as ApiResponse;
 
         if (response.success) {
-            getUI().showAlert(flow.active ? 'Flow stopped' : 'Flow started', 'success');
+            getUI().showAlert(flow.active ? 'Flow deactivated' : 'Flow activated', 'success');
             loadUnifiedFlows();
         } else {
             throw new Error(response.error || 'Update error');
