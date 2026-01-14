@@ -229,27 +229,44 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
         details.appendChild(profileSpan);
     }
 
-    // Templates info
-    const templatesDiv = document.createElement('div');
-    templatesDiv.style.cssText = 'margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap;';
-
-    if (flow.whatsappTemplateIds.length > 0) {
-        const waSpan = document.createElement('span');
-        waSpan.style.cssText = 'color: #25D366;';
-        waSpan.textContent = `WhatsApp: ${flow.whatsappTemplateIds.length} şablon`;
-        templatesDiv.appendChild(waSpan);
-    }
-
-    if (flow.mailTemplateIds.length > 0) {
-        const mailSpan = document.createElement('span');
-        mailSpan.style.cssText = 'color: #EA4335;';
-        mailSpan.textContent = `Mail: ${flow.mailTemplateIds.length} şablon`;
-        templatesDiv.appendChild(mailSpan);
-    }
-
     item.appendChild(header);
     item.appendChild(details);
-    item.appendChild(templatesDiv);
+
+    // Templates info - v3.9.13: Show template names instead of count, match styling with details line
+    if (flow.whatsappTemplateIds.length > 0 || flow.mailTemplateIds.length > 0) {
+        const templatesDiv = document.createElement('div');
+        templatesDiv.style.cssText = 'font-size: 12px; color: #757575; margin-top: 4px;';
+
+        // WhatsApp template names
+        if (flow.whatsappTemplateIds.length > 0) {
+            const waNames = flow.whatsappTemplateIds
+                .map(id => whatsappTemplates.find(t => t.id === id)?.name || id)
+                .join(', ');
+            const waSpan = document.createElement('span');
+            waSpan.textContent = `WhatsApp: ${waNames}`;
+            templatesDiv.appendChild(waSpan);
+        }
+
+        // Separator if both exist
+        if (flow.whatsappTemplateIds.length > 0 && flow.mailTemplateIds.length > 0) {
+            const sep = document.createElement('span');
+            sep.textContent = ' · ';
+            sep.style.color = '#ccc';
+            templatesDiv.appendChild(sep);
+        }
+
+        // Mail template names
+        if (flow.mailTemplateIds.length > 0) {
+            const mailNames = flow.mailTemplateIds
+                .map(id => mailTemplates.find(t => t.id === id)?.name || id)
+                .join(', ');
+            const mailSpan = document.createElement('span');
+            mailSpan.textContent = `Mail: ${mailNames}`;
+            templatesDiv.appendChild(mailSpan);
+        }
+
+        item.appendChild(templatesDiv);
+    }
 
     return item;
 }
