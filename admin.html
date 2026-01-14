@@ -765,9 +765,27 @@
                         <input type="text" id="unifiedFlowDescription" placeholder="Randevu oluşturulduğunda müşteri ve personele bildirim">
                     </div>
                     <div class="input-group">
+                        <label>Flow Type</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="unifiedFlowType" value="event" checked> Event Based
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="unifiedFlowType" value="time"> Time Based
+                            </label>
+                        </div>
+                    </div>
+                    <div class="input-group" id="triggerSection">
                         <label>Trigger</label>
                         <div id="unifiedFlowTriggerOptions" class="radio-group">
                             <!-- Dinamik yüklenecek -->
+                        </div>
+                    </div>
+                    <div class="input-group" id="timeBasedInfo" style="display: none;">
+                        <label>Schedule</label>
+                        <div style="padding: 10px; background: #f5f5f5; border-radius: 4px; color: #666;">
+                            <span style="font-weight: 500;">⏰ Daily at 10:00 AM (TR)</span>
+                            <p style="margin: 5px 0 0; font-size: 12px;">Sends reminder to customers with appointments tomorrow</p>
                         </div>
                     </div>
                     <div class="input-group">

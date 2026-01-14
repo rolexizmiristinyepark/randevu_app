@@ -176,13 +176,16 @@ var MESSAGE_VARIABLES = {
  * Merkezi trigger tanımları - Mail ve WhatsApp için ortak
  * v3.9.72: Global trigger listesi
  */
+// Event-based triggers (for real-time notifications)
 var MESSAGE_TRIGGERS = {
   'RANDEVU_OLUŞTUR': 'create',
   'RANDEVU_İPTAL': 'cancel',
   'RANDEVU_GÜNCELLE': 'update',
-  'HATIRLATMA': 'reminder',
   'ILGILI_ATANDI': 'assign'
 };
+
+// Time-based trigger (for scheduled notifications - runs at 10:00 AM TR)
+var TIME_BASED_TRIGGER = 'reminder';
 
 /**
  * Admin panel için trigger listesini döndür

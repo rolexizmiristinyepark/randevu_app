@@ -87,6 +87,28 @@ function setupEventListeners(): void {
     document.getElementById('saveUnifiedFlowBtn')?.addEventListener('click', saveFlow);
     document.getElementById('cancelUnifiedFlowBtn')?.addEventListener('click', () => closeFlowModal());
     document.querySelector('#unifiedFlowModal .modal-overlay')?.addEventListener('click', () => closeFlowModal());
+
+    // Flow type toggle (Event Based / Time Based)
+    document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowType"]').forEach(radio => {
+        radio.addEventListener('change', toggleFlowType);
+    });
+}
+
+/**
+ * Toggle between Event Based and Time Based flow type
+ */
+function toggleFlowType(): void {
+    const flowType = (document.querySelector('input[name="unifiedFlowType"]:checked') as HTMLInputElement)?.value;
+    const triggerSection = document.getElementById('triggerSection');
+    const timeBasedInfo = document.getElementById('timeBasedInfo');
+
+    if (flowType === 'event') {
+        if (triggerSection) triggerSection.style.display = 'block';
+        if (timeBasedInfo) timeBasedInfo.style.display = 'none';
+    } else {
+        if (triggerSection) triggerSection.style.display = 'none';
+        if (timeBasedInfo) timeBasedInfo.style.display = 'block';
+    }
 }
 
 // ==================== DATA LOADING ====================
@@ -227,9 +249,16 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
         return row;
     };
 
-    // Trigger row
-    const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
-    details.appendChild(createRow('Trigger', triggerLabel));
+    // Type/Trigger row - show differently for time-based vs event-based
+    const isTimeBased = flow.trigger === 'HATIRLATMA';
+    if (isTimeBased) {
+        details.appendChild(createRow('Type', 'Time Based'));
+        details.appendChild(createRow('Schedule', 'Daily at 10:00 AM (TR)'));
+    } else {
+        details.appendChild(createRow('Type', 'Event Based'));
+        const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
+        details.appendChild(createRow('Trigger', triggerLabel));
+    }
 
     // Profiles row
     if (flow.profiles.length > 0) {
@@ -326,6 +355,16 @@ function resetFlowForm(): void {
     (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value = '';
     (document.getElementById('unifiedFlowEditId') as HTMLInputElement).value = '';
 
+    // Reset flow type to Event Based
+    const eventRadio = document.querySelector('input[name="unifiedFlowType"][value="event"]') as HTMLInputElement;
+    if (eventRadio) eventRadio.checked = true;
+    toggleFlowType();
+
+    // Reset trigger selection
+    document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowTrigger"]').forEach(radio => {
+        radio.checked = false;
+    });
+
     document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowProfiles"]').forEach(cb => {
         cb.checked = false;
     });
@@ -416,8 +455,17 @@ function populateFlowForm(flow: UnifiedFlow): void {
     (document.getElementById('unifiedFlowName') as HTMLInputElement).value = flow.name;
     (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value = flow.description || '';
 
-    const triggerRadio = document.querySelector(`input[name="unifiedFlowTrigger"][value="${flow.trigger}"]`) as HTMLInputElement;
-    if (triggerRadio) triggerRadio.checked = true;
+    // Set flow type based on trigger (HATIRLATMA = time based, others = event based)
+    const isTimeBased = flow.trigger === 'HATIRLATMA';
+    const flowTypeRadio = document.querySelector(`input[name="unifiedFlowType"][value="${isTimeBased ? 'time' : 'event'}"]`) as HTMLInputElement;
+    if (flowTypeRadio) flowTypeRadio.checked = true;
+    toggleFlowType();
+
+    // Set trigger for event-based flows
+    if (!isTimeBased) {
+        const triggerRadio = document.querySelector(`input[name="unifiedFlowTrigger"][value="${flow.trigger}"]`) as HTMLInputElement;
+        if (triggerRadio) triggerRadio.checked = true;
+    }
 
     flow.profiles.forEach(profile => {
         const checkbox = document.querySelector(`input[name="unifiedFlowProfiles"][value="${profile}"]`) as HTMLInputElement;
@@ -444,8 +492,18 @@ async function saveFlow(): Promise<void> {
     const description = (document.getElementById('unifiedFlowDescription') as HTMLInputElement).value.trim();
     const editId = (document.getElementById('unifiedFlowEditId') as HTMLInputElement).value;
 
-    const triggerRadio = document.querySelector('input[name="unifiedFlowTrigger"]:checked') as HTMLInputElement;
-    const trigger = triggerRadio?.value || '';
+    // Get flow type (event or time)
+    const flowTypeRadio = document.querySelector('input[name="unifiedFlowType"]:checked') as HTMLInputElement;
+    const flowType = flowTypeRadio?.value || 'event';
+
+    // Set trigger based on flow type
+    let trigger: string;
+    if (flowType === 'time') {
+        trigger = 'HATIRLATMA'; // Time-based trigger
+    } else {
+        const triggerRadio = document.querySelector('input[name="unifiedFlowTrigger"]:checked') as HTMLInputElement;
+        trigger = triggerRadio?.value || '';
+    }
 
     const profileCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowProfiles"]:checked');
     const profiles = Array.from(profileCheckboxes).map(cb => cb.value);
@@ -457,7 +515,7 @@ async function saveFlow(): Promise<void> {
     const mailTemplateIds = Array.from(mailCheckboxes).map(cb => cb.value);
 
     if (!name) { getUI().showAlert('Name is required', 'error'); return; }
-    if (!trigger) { getUI().showAlert('Select a trigger', 'error'); return; }
+    if (flowType === 'event' && !trigger) { getUI().showAlert('Select a trigger', 'error'); return; }
     if (profiles.length === 0) { getUI().showAlert('Select at least one profile', 'error'); return; }
     if (whatsappTemplateIds.length === 0 && mailTemplateIds.length === 0) {
         getUI().showAlert('Select at least one template', 'error');
