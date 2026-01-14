@@ -177,11 +177,11 @@ var MESSAGE_VARIABLES = {
  * v3.9.72: Global trigger listesi
  */
 var MESSAGE_TRIGGERS = {
-  'RANDEVU_OLUŞTUR': 'Randevu Oluşturuldu',
-  'RANDEVU_İPTAL': 'Randevu İptal Edildi',
-  'RANDEVU_GÜNCELLE': 'Randevu Güncellendi',
-  'HATIRLATMA': 'Hatırlatma',
-  'ILGILI_ATANDI': 'İlgili Atandı'
+  'RANDEVU_OLUŞTUR': 'create',
+  'RANDEVU_İPTAL': 'cancel',
+  'RANDEVU_GÜNCELLE': 'update',
+  'HATIRLATMA': 'notify',
+  'ILGILI_ATANDI': 'assign'
 };
 
 /**

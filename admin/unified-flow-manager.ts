@@ -161,7 +161,7 @@ function renderFlowList(): void {
     if (unifiedFlows.length === 0) {
         const emptyMsg = document.createElement('p');
         emptyMsg.style.cssText = 'color: #757575; text-align: center; padding: 20px;';
-        emptyMsg.textContent = 'Henüz akış tanımlanmadı';
+        emptyMsg.textContent = 'No flows defined yet';
         container.appendChild(emptyMsg);
         return;
     }
@@ -214,7 +214,7 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
 
     const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
     const triggerSpan = document.createElement('span');
-    triggerSpan.textContent = `Tetikleyici: ${triggerLabel}`;
+    triggerSpan.textContent = `Trigger: ${triggerLabel}`;
     details.appendChild(triggerSpan);
 
     if (flow.profiles.length > 0) {
@@ -225,7 +225,7 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
         details.appendChild(sep);
 
         const profileSpan = document.createElement('span');
-        profileSpan.textContent = `Profiller: ${profileLabelsText}`;
+        profileSpan.textContent = `Profiles: ${profileLabelsText}`;
         details.appendChild(profileSpan);
     }
 
@@ -373,7 +373,7 @@ function populateWhatsAppTemplateOptions(): void {
     if (whatsappTemplates.length === 0) {
         const msg = document.createElement('p');
         msg.style.cssText = 'color: #888; font-size: 12px;';
-        msg.textContent = 'WhatsApp şablonu yok';
+        msg.textContent = 'No WhatsApp template';
         container.appendChild(msg);
         return;
     }
@@ -403,7 +403,7 @@ function populateMailTemplateOptions(): void {
     if (mailTemplates.length === 0) {
         const msg = document.createElement('p');
         msg.style.cssText = 'color: #888; font-size: 12px;';
-        msg.textContent = 'Mail şablonu yok';
+        msg.textContent = 'No Mail template';
         container.appendChild(msg);
         return;
     }
@@ -468,11 +468,11 @@ async function saveFlow(): Promise<void> {
     const mailCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowMailTemplates"]:checked');
     const mailTemplateIds = Array.from(mailCheckboxes).map(cb => cb.value);
 
-    if (!name) { getUI().showAlert('İsim gereklidir', 'error'); return; }
-    if (!trigger) { getUI().showAlert('Tetikleyici seçiniz', 'error'); return; }
-    if (profiles.length === 0) { getUI().showAlert('En az bir profil seçiniz', 'error'); return; }
+    if (!name) { getUI().showAlert('Name is required', 'error'); return; }
+    if (!trigger) { getUI().showAlert('Select a trigger', 'error'); return; }
+    if (profiles.length === 0) { getUI().showAlert('Select at least one profile', 'error'); return; }
     if (whatsappTemplateIds.length === 0 && mailTemplateIds.length === 0) {
-        getUI().showAlert('En az bir şablon seçiniz', 'error');
+        getUI().showAlert('Select at least one template', 'error');
         return;
     }
 
@@ -488,15 +488,15 @@ async function saveFlow(): Promise<void> {
 
         if (response.success) {
             if (saveBtn) ButtonAnimator.success(saveBtn);
-            getUI().showAlert(editId ? 'Akış güncellendi' : 'Akış oluşturuldu', 'success');
+            getUI().showAlert(editId ? 'Flow updated' : 'Flow created', 'success');
             setTimeout(() => { closeFlowModal(); loadUnifiedFlows(); }, 1000);
         } else {
-            throw new Error(response.error || 'Bilinmeyen hata');
+            throw new Error(response.error || 'Unknown error');
         }
     } catch (error) {
         if (saveBtn) ButtonAnimator.error(saveBtn);
         logError(error, { action: 'saveUnifiedFlow' });
-        getUI().showAlert('Kaydetme hatası: ' + (error as Error).message, 'error');
+        getUI().showAlert('Save error: ' + (error as Error).message, 'error');
     }
 }
 
@@ -508,31 +508,31 @@ async function toggleFlow(flowId: string): Promise<void> {
         const response = await ApiService.call('updateUnifiedFlow', { id: flowId, active: !flow.active }) as ApiResponse;
 
         if (response.success) {
-            getUI().showAlert(flow.active ? 'Akış durduruldu' : 'Akış başlatıldı', 'success');
+            getUI().showAlert(flow.active ? 'Flow stopped' : 'Flow started', 'success');
             loadUnifiedFlows();
         } else {
-            throw new Error(response.error || 'Güncelleme hatası');
+            throw new Error(response.error || 'Update error');
         }
     } catch (error) {
         logError(error, { action: 'toggleUnifiedFlow' });
-        getUI().showAlert('Hata: ' + (error as Error).message, 'error');
+        getUI().showAlert('Error: ' + (error as Error).message, 'error');
     }
 }
 
 async function deleteFlow(flowId: string): Promise<void> {
-    if (!confirm('Bu akışı silmek istediğinizden emin misiniz?')) return;
+    if (!confirm('Are you sure you want to delete this flow?')) return;
 
     try {
         const response = await ApiService.call('deleteUnifiedFlow', { id: flowId }) as ApiResponse;
 
         if (response.success) {
-            getUI().showAlert('Akış silindi', 'success');
+            getUI().showAlert('Flow deleted', 'success');
             loadUnifiedFlows();
         } else {
-            throw new Error(response.error || 'Silme hatası');
+            throw new Error(response.error || 'Delete error');
         }
     } catch (error) {
         logError(error, { action: 'deleteUnifiedFlow' });
-        getUI().showAlert('Hata: ' + (error as Error).message, 'error');
+        getUI().showAlert('Error: ' + (error as Error).message, 'error');
     }
 }
