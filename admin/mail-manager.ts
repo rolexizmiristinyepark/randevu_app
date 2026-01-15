@@ -315,91 +315,83 @@ function renderFlows(): void {
 }
 
 /**
- * Create a flow item element
+ * Create a flow item element - Matches unified flow card design
  */
 function createFlowItem(flow: MailFlow): HTMLElement {
     const item = document.createElement('div');
     item.className = 'flow-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header row - responsive
+    // Header
     const header = document.createElement('div');
     header.className = 'mail-item-header';
 
-    // Left: Name + Status
+    // Left: Name + Status badge
     const left = document.createElement('div');
-    left.className = 'mail-item-name';
-    left.style.cssText = 'display: flex; align-items: center; gap: 10px; flex-wrap: wrap;';
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px;';
 
     const name = document.createElement('span');
+    name.className = 'mail-item-name';
     name.textContent = flow.name;
 
-    const status = document.createElement('span');
-    status.style.cssText = `padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; ${flow.active ? 'background: #E8F5E9; color: #2E7D32;' : 'background: #FFEBEE; color: #C62828;'}`;
-    status.textContent = flow.active ? 'Active' : 'Inactive';
+    const activeBadge = document.createElement('span');
+    activeBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${flow.active ? '#4CAF50' : '#9E9E9E'}; color: white;`;
+    activeBadge.textContent = flow.active ? 'Active' : 'Inactive';
 
     left.appendChild(name);
-    left.appendChild(status);
+    left.appendChild(activeBadge);
 
-    // Right: Actions - responsive
+    // Right: Actions
     const right = document.createElement('div');
     right.className = 'mail-item-actions';
 
+    const toggleBtn = createButton(flow.active ? 'Inactive' : 'Active', 'btn-secondary btn-small', () => toggleFlow(flow.id));
     const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editFlow(flow.id));
-    const toggleBtn = createButton(flow.active ? 'Stop' : 'Start', 'btn-secondary btn-small', () => toggleFlow(flow.id));
     const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
-    right.appendChild(editBtn);
     right.appendChild(toggleBtn);
+    right.appendChild(editBtn);
     right.appendChild(deleteBtn);
 
     header.appendChild(left);
     header.appendChild(right);
 
-    // Details row
+    // Details - vertical layout with bold labels (matching unified flow card)
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;';
+    details.style.cssText = 'font-size: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px;';
 
-    // Helper: Ayırıcı nokta ekle
-    const addSeparator = () => {
-        const sep = document.createElement('span');
-        sep.textContent = '•';
-        sep.style.cssText = 'color: #ccc;';
-        details.appendChild(sep);
+    // Helper function to create a row with bold label
+    const createRow = (label: string, value: string): HTMLElement => {
+        const row = document.createElement('div');
+        const labelSpan = document.createElement('span');
+        labelSpan.style.cssText = 'font-weight: 600; color: #555;';
+        labelSpan.textContent = `${label}: `;
+        const valueSpan = document.createElement('span');
+        valueSpan.style.cssText = 'color: #757575;';
+        valueSpan.textContent = value;
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        return row;
     };
 
     // Profiles
     const profilesText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
-    const profilesSpan = document.createElement('span');
-    profilesSpan.textContent = profilesText;
-    details.appendChild(profilesSpan);
-
-    addSeparator();
+    details.appendChild(createRow('Profiles', profilesText));
 
     // Triggers
     const triggersText = flow.triggers.map(t => triggerLabels[t] || t).join(', ');
-    const triggerSpan = document.createElement('span');
-    triggerSpan.textContent = triggersText;
-    details.appendChild(triggerSpan);
+    details.appendChild(createRow('Triggers', triggersText));
 
-    addSeparator();
-
-    // Templates - v3.9.74: Multiple templates
+    // Templates
     const templateNames = flow.templateIds
         .map(id => templates.find(t => t.id === id)?.name)
         .filter(Boolean);
-    const templateSpan = document.createElement('span');
-    templateSpan.textContent = templateNames.length > 0 ? templateNames.join(', ') : 'Şablon seçilmemiş';
-    details.appendChild(templateSpan);
+    details.appendChild(createRow('Templates', templateNames.length > 0 ? templateNames.join(', ') : 'No template selected'));
 
-    addSeparator();
-
-    // Info Card - boş ise DEFAULT_INFO_CARD (ics_default) kullan
+    // Info Card
     const infoCardId = flow.infoCardId || 'ics_default';
     const infoCard = infoCards.find(c => c.id === infoCardId);
-    const infoCardSpan = document.createElement('span');
-    infoCardSpan.textContent = infoCard?.name || 'ICS (Default)';
-    details.appendChild(infoCardSpan);
+    details.appendChild(createRow('Info Card', infoCard?.name || 'ICS (Default)'));
 
     item.appendChild(header);
     item.appendChild(details);
@@ -886,21 +878,33 @@ function renderTemplates(): void {
 }
 
 /**
- * Create a template item element
+ * Create a template item element - Matches unified flow card design
  */
 function createTemplateItem(template: MailTemplate): HTMLElement {
     const item = document.createElement('div');
     item.className = 'template-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
-    // Header - responsive
+    // Header
     const header = document.createElement('div');
     header.className = 'mail-item-header';
 
-    // Left: Name
+    // Left: Name + Recipient badge
+    const left = document.createElement('div');
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px;';
+
     const name = document.createElement('span');
     name.className = 'mail-item-name';
     name.textContent = template.name;
+
+    const recipientBadge = document.createElement('span');
+    const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'Customer';
+    const isCustomer = template.recipient === 'customer' || !template.recipient;
+    recipientBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${isCustomer ? '#2196F3' : '#9C27B0'}; color: white;`;
+    recipientBadge.textContent = recipientLabel;
+
+    left.appendChild(name);
+    left.appendChild(recipientBadge);
 
     // Right: Actions
     const right = document.createElement('div');
@@ -912,41 +916,35 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     right.appendChild(editBtn);
     right.appendChild(deleteBtn);
 
-    header.appendChild(name);
+    header.appendChild(left);
     header.appendChild(right);
 
-    // Details - Subject + Recipient
+    // Details - vertical layout with bold labels (matching unified flow card)
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; font-weight: 400; display: flex; align-items: center; gap: 8px;';
+    details.style.cssText = 'font-size: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px;';
 
-    const subjectSpan = document.createElement('span');
-    subjectSpan.textContent = template.subject;
-    details.appendChild(subjectSpan);
+    // Helper function to create a row with bold label
+    const createRow = (label: string, value: string): HTMLElement => {
+        const row = document.createElement('div');
+        const labelSpan = document.createElement('span');
+        labelSpan.style.cssText = 'font-weight: 600; color: #555;';
+        labelSpan.textContent = `${label}: `;
+        const valueSpan = document.createElement('span');
+        valueSpan.style.cssText = 'color: #757575;';
+        valueSpan.textContent = value;
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        return row;
+    };
 
-    // Add separator
-    const sep = document.createElement('span');
-    sep.textContent = '•';
-    sep.style.cssText = 'color: #ccc;';
-    details.appendChild(sep);
+    // Subject
+    details.appendChild(createRow('Subject', template.subject));
 
-    // Recipient - v3.9.74
-    const recipientLabel = recipientLabels[template.recipient] || template.recipient || 'Müşteri';
-    const recipientSpan = document.createElement('span');
-    recipientSpan.textContent = `→ ${recipientLabel}`;
-    details.appendChild(recipientSpan);
-
-    // Info Card - v3.9.75
+    // Info Card
     if (template.infoCardId) {
         const card = infoCards.find(c => c.id === template.infoCardId);
         if (card) {
-            const sep2 = document.createElement('span');
-            sep2.textContent = '•';
-            sep2.style.cssText = 'color: #ccc;';
-            details.appendChild(sep2);
-
-            const cardSpan = document.createElement('span');
-            cardSpan.textContent = `📋 ${card.name}`;
-            details.appendChild(cardSpan);
+            details.appendChild(createRow('Info Card', card.name));
         }
     }
 

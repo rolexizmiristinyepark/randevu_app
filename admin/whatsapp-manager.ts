@@ -644,27 +644,27 @@ function renderTemplates(): void {
 }
 
 /**
- * Create a template item element
+ * Create a template item element - Matches flow card design
  */
 function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     const item = document.createElement('div');
-    item.className = 'template-item';
+    item.className = 'template-item mail-list-item';
     item.style.cssText = 'padding: 15px; background: #FAFAFA; border: 1px solid #E8E8E8; border-radius: 4px; margin-bottom: 10px;';
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
+    header.className = 'mail-item-header';
 
     // Left: Display Name + Target type badge
     const left = document.createElement('div');
-    left.style.cssText = 'display: flex; align-items: center; gap: 10px;';
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px;';
 
-    const name = document.createElement('strong');
-    name.style.color = '#1A1A2E';
+    const name = document.createElement('span');
+    name.className = 'mail-item-name';
     name.textContent = template.name;
 
     const targetBadge = document.createElement('span');
-    targetBadge.style.cssText = 'padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; background: #E3F2FD; color: #1976D2;';
+    targetBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${template.targetType === 'customer' ? '#2196F3' : '#9C27B0'}; color: white;`;
     targetBadge.textContent = template.targetType === 'customer' ? 'Customer' : 'Staff';
 
     left.appendChild(name);
@@ -672,7 +672,7 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
 
     // Right: Actions
     const right = document.createElement('div');
-    right.style.cssText = 'display: flex; gap: 8px;';
+    right.className = 'mail-item-actions';
 
     const editBtn = createButton('Edit', 'btn-secondary btn-small', () => editTemplate(template.id));
     const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteTemplate(template.id));
@@ -683,24 +683,37 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     header.appendChild(left);
     header.appendChild(right);
 
-    // Meta template name row
-    const metaRow = document.createElement('div');
-    metaRow.style.cssText = 'font-size: 12px; color: #888; margin-bottom: 4px; font-family: monospace;';
-    metaRow.textContent = `Meta: ${template.metaTemplateName || template.name}`;
-
-    // Details
+    // Details - vertical layout with bold labels (matching flow card)
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575;';
+    details.style.cssText = 'font-size: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px;';
 
-    let detailsText = template.description || '';
-    if (detailsText) detailsText += ' • ';
-    detailsText += template.variableCount + ' variables';
-    detailsText += ' • Lang: ' + (template.language || 'tr').toUpperCase();
+    // Helper function to create a row with bold label
+    const createRow = (label: string, value: string): HTMLElement => {
+        const row = document.createElement('div');
+        const labelSpan = document.createElement('span');
+        labelSpan.style.cssText = 'font-weight: 600; color: #555;';
+        labelSpan.textContent = `${label}: `;
+        const valueSpan = document.createElement('span');
+        valueSpan.style.cssText = 'color: #757575;';
+        valueSpan.textContent = value;
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        return row;
+    };
 
-    details.textContent = detailsText;
+    // Meta template name
+    details.appendChild(createRow('Meta', template.metaTemplateName || template.name));
+
+    // Description (if exists)
+    if (template.description) {
+        details.appendChild(createRow('Description', template.description));
+    }
+
+    // Variables and Language
+    details.appendChild(createRow('Variables', String(template.variableCount || 0)));
+    details.appendChild(createRow('Language', (template.language || 'tr').toUpperCase()));
 
     item.appendChild(header);
-    item.appendChild(metaRow);
     item.appendChild(details);
 
     return item;
