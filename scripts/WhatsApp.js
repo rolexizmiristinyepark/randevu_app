@@ -3029,16 +3029,13 @@ function getWhatsAppTemplates() {
         try { variables = JSON.parse(row[variablesCol]); } catch(e) {}
       }
 
-      // Get metaTemplateName - if column doesn't exist, fallback to name (for backwards compatibility)
+      // Get metaTemplateName - column may or may not exist
       var metaTemplateNameCol = getColIndex('META_TEMPLATE_NAME');
       var nameCol = getColIndex('NAME');
       var metaTemplateName = metaTemplateNameCol >= 0 ? (row[metaTemplateNameCol] || '') : '';
       var displayName = nameCol >= 0 ? (row[nameCol] || '') : '';
 
-      // Backwards compatibility: if metaTemplateName is empty but name exists, use name as both
-      if (!metaTemplateName && displayName) {
-        metaTemplateName = displayName;
-      }
+      // v3.10.16: metaTemplateName boşsa boş bırak - _sendToSingleRecipient zaten fallback yapıyor
 
       return {
         id: row[getColIndex('ID')] || '',
