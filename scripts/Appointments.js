@@ -179,10 +179,10 @@ const AppointmentService = {
           profil: profilTag
         };
 
-        const flowResult = triggerFlowForEvent('RANDEVU_IPTAL', eventData);
-        log.info('RANDEVU_IPTAL flow result:', flowResult);
+        const flowResult = triggerFlowForEvent('RANDEVU_İPTAL', eventData);
+        log.info('RANDEVU_İPTAL flow result:', flowResult);
       } catch (flowError) {
-        log.error('RANDEVU_IPTAL flow error:', flowError);
+        log.error('RANDEVU_İPTAL flow error:', flowError);
         // Flow hatası ana işlemi etkilemesin
       }
 
@@ -459,7 +459,7 @@ const AppointmentService = {
 
       log.info('Personel atandı:', eventId, staffId, staff.name);
 
-      // WhatsApp Flow tetikle - RANDEVU_ATAMA
+      // WhatsApp Flow tetikle - ILGILI_ATANDI
       try {
         const customerName = event.getTitle().split(' - ')[0] || '';
         const customerPhone = event.getTag('customerPhone') || '';
@@ -480,10 +480,10 @@ const AppointmentService = {
           profil: profilTag
         };
 
-        const flowResult = triggerFlowForEvent('RANDEVU_ATAMA', eventData);
-        log.info('RANDEVU_ATAMA flow result:', flowResult);
+        const flowResult = triggerFlowForEvent('ILGILI_ATANDI', eventData);
+        log.info('ILGILI_ATANDI flow result:', flowResult);
       } catch (flowError) {
-        log.error('RANDEVU_ATAMA flow error:', flowError);
+        log.error('ILGILI_ATANDI flow error:', flowError);
       }
 
       // Mail Flow tetikle - ILGILI_ATANDI
