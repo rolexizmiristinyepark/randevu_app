@@ -1,6 +1,6 @@
 
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -757,12 +757,12 @@
                 <div class="modal-header">New Notification Flow</div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="input-group">
-                        <label for="unifiedFlowName">İsim</label>
-                        <input type="text" id="unifiedFlowName" placeholder="Randevu Onay Bildirimi">
+                        <label for="unifiedFlowName">Name</label>
+                        <input type="text" id="unifiedFlowName" placeholder="Appointment Confirmation">
                     </div>
                     <div class="input-group">
-                        <label for="unifiedFlowDescription">Açıklama</label>
-                        <input type="text" id="unifiedFlowDescription" placeholder="Randevu oluşturulduğunda müşteri ve personele bildirim">
+                        <label for="unifiedFlowDescription">Description</label>
+                        <input type="text" id="unifiedFlowDescription" placeholder="Notify customer and staff when appointment is created">
                     </div>
                     <div class="input-group">
                         <label>Flow Type</label>
@@ -783,13 +783,22 @@
                     </div>
                     <div class="input-group" id="timeBasedInfo" style="display: none;">
                         <label>Schedule</label>
-                        <div style="padding: 10px; background: #f5f5f5; border-radius: 4px; color: #666;">
-                            <span style="font-weight: 500;">⏰ Daily at 10:00 AM (TR)</span>
-                            <p style="margin: 5px 0 0; font-size: 12px;">Sends reminder to customers with appointments tomorrow</p>
-                        </div>
+                        <select id="unifiedFlowScheduleHour" class="input-field" style="width: 140px; padding: 10px 35px 10px 15px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: white url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22 viewBox=%220 0 12 7%22%3E%3Cpath fill=%22%23555%22 d=%22M6 7L0 0h12z%22/%3E%3C/svg%3E') no-repeat right 15px center; cursor: pointer;">
+                            <option value="10" selected>10:00</option>
+                            <option value="11">11:00</option>
+                            <option value="12">12:00</option>
+                            <option value="13">13:00</option>
+                            <option value="14">14:00</option>
+                            <option value="15">15:00</option>
+                            <option value="16">16:00</option>
+                            <option value="17">17:00</option>
+                            <option value="18">18:00</option>
+                            <option value="19">19:00</option>
+                            <option value="20">20:00</option>
+                        </select>
                     </div>
                     <div class="input-group">
-                        <label>Profiller</label>
+                        <label>Profiles</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="unifiedFlowProfiles" value="g"> general
@@ -927,29 +936,33 @@
                 <div class="modal-header">Add WhatsApp Template</div>
                 <div class="modal-body">
                     <div class="input-group">
-                        <label for="templateName">Şablon Adı (Meta'daki isim)</label>
+                        <label for="templateDisplayName">TEMPLATE NAME</label>
+                        <input type="text" id="templateDisplayName" placeholder="Randevu Hatırlatma">
+                    </div>
+                    <div class="input-group">
+                        <label for="templateName">META TEMPLATE NAME</label>
                         <input type="text" id="templateName" placeholder="randevu_hatirlatma">
                     </div>
                     <div class="input-group">
-                        <label for="templateDescription">Açıklama</label>
-                        <input type="text" id="templateDescription" placeholder="Randevu hatırlatma mesajı">
+                        <label for="templateDescription">DESCRIPTION</label>
+                        <input type="text" id="templateDescription" placeholder="Reminder message for appointment">
                     </div>
                     <div class="input-group">
-                        <label for="templateTargetType">Hedef Kişi</label>
+                        <label for="templateTargetType">TARGET</label>
                         <select id="templateTargetType">
-                            <option value="customer">Müşteri</option>
-                            <option value="staff">Personel</option>
+                            <option value="customer">Customer</option>
+                            <option value="staff">Staff</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="templateLanguage">Dil</label>
+                        <label for="templateLanguage">LANGUAGE</label>
                         <select id="templateLanguage">
-                            <option value="tr" selected>Türkçe (tr)</option>
+                            <option value="tr" selected>Turkish (tr)</option>
                             <option value="en">English (en)</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="templateVariableCount">Değişken Sayısı</label>
+                        <label for="templateVariableCount">VARIABLE COUNT</label>
                         <input type="number" id="templateVariableCount" min="0" max="10" value="0">
                     </div>
                     <div id="templateVariablesContainer">

@@ -878,6 +878,170 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
   }
 }
 
+/**
+ * v3.10.19: Template ID ile mail gönder
+ * Scheduled flow'lar için kullanılır (runHourlyScheduledFlows)
+ *
+ * @param {string} templateId - Mail template ID
+ * @param {Object} appointmentData - Randevu bilgileri
+ * @returns {Object} Sonuç
+ */
+function sendMailByTemplate(templateId, appointmentData) {
+  try {
+    log.info('[Mail] sendMailByTemplate called with templateId:', templateId);
+
+    // Template'i al
+    const allTemplates = SheetStorageService.getAll(MAIL_TEMPLATE_SHEET);
+    const template = allTemplates.find(t => t.id === templateId);
+
+    if (!template) {
+      log.warn('[Mail] Template bulunamadı:', templateId);
+      return { success: false, error: 'Template not found: ' + templateId };
+    }
+
+    // Variable'ları değiştir
+    const subject = replaceMessageVariables(template.subject, appointmentData);
+    const templateBody = replaceMessageVariables(template.body || '', appointmentData);
+
+    // Hedef email adreslerini belirle
+    const target = template.recipient || 'customer';
+    let recipients = [];
+
+    if (target === 'admin') {
+      try {
+        const allStaff = StaffService.getAll();
+        const admins = allStaff.filter(s => s.active && s.isAdmin === true);
+        for (const admin of admins) {
+          if (admin.email) {
+            recipients.push({ email: admin.email, type: 'Admin: ' + admin.name });
+          }
+        }
+      } catch (adminError) {
+        log.error('[Mail] Admin listesi alınırken hata:', adminError);
+      }
+    } else if (target === 'staff') {
+      const staffEmail = appointmentData.staffEmail || appointmentData.linkedStaffEmail;
+      if (staffEmail) {
+        recipients.push({ email: staffEmail, type: 'Staff' });
+      }
+    } else if (target === 'role_sales') {
+      try {
+        const allStaff = StaffService.getAll();
+        const salesStaff = allStaff.filter(s => s.active && s.role === 'sales');
+        for (const staff of salesStaff) {
+          if (staff.email) {
+            recipients.push({ email: staff.email, type: 'Sales: ' + staff.name });
+          }
+        }
+      } catch (e) {
+        log.error('[Mail] Sales listesi alınırken hata:', e);
+      }
+    } else if (target === 'role_greeter') {
+      try {
+        const allStaff = StaffService.getAll();
+        const greeters = allStaff.filter(s => s.active && s.role === 'greeter');
+        for (const staff of greeters) {
+          if (staff.email) {
+            recipients.push({ email: staff.email, type: 'Greeter: ' + staff.name });
+          }
+        }
+      } catch (e) {
+        log.error('[Mail] Greeter listesi alınırken hata:', e);
+      }
+    } else if (target === 'tomorrow_customers') {
+      // Müşteri emaili varsa kullan
+      const customerEmail = appointmentData.email || appointmentData.customerEmail;
+      if (customerEmail) {
+        recipients.push({ email: customerEmail, type: 'Customer' });
+      }
+    } else {
+      // customer (varsayılan)
+      const customerEmail = appointmentData.email || appointmentData.customerEmail;
+      if (customerEmail) {
+        recipients.push({ email: customerEmail, type: 'Customer' });
+      }
+    }
+
+    if (recipients.length === 0) {
+      log.warn('[Mail] Hedef için email adresi bulunamadı, target:', target);
+      return { success: false, error: 'No recipient email found' };
+    }
+
+    // Email body oluştur
+    const infoCardId = template.infoCardId || '';
+    const appointmentInfoBox = generateAppointmentInfoBox(appointmentData, infoCardId);
+
+    const formattedBody = templateBody
+      ? templateBody
+          .replace(/\r\n/g, '\n')
+          .replace(/\n\n+/g, '</p><p>')
+          .replace(/\n/g, '<br>')
+      : '';
+
+    const customContent = formattedBody ? `
+      <div style="font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif; padding: 15px 0; line-height: 1.6; color: #333; font-size: 12px;">
+        <p style="margin: 0 0 12px 0;">${formattedBody}</p>
+      </div>
+    ` : '';
+
+    const eventMicrodata = generateEventMicrodata(appointmentData);
+
+    const fullHtmlBody = `
+      <div style="max-width: 600px; margin: 0 auto; padding: 20px; font-family: 'Montserrat', 'Segoe UI', Tahoma, sans-serif;">
+        ${eventMicrodata}
+        ${appointmentInfoBox}
+        ${customContent}
+      </div>
+    `;
+
+    // ICS eki (müşteri için)
+    let attachments = [];
+    if (target === 'customer' || target === 'tomorrow_customers') {
+      try {
+        const icsContent = generateMailICS(appointmentData);
+        const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');
+        attachments.push(icsBlob);
+      } catch (icsError) {
+        log.warn('[Mail] ICS oluşturulamadı:', icsError);
+      }
+    }
+
+    // Mail gönder
+    const results = [];
+    for (const recipient of recipients) {
+      try {
+        const mailOptions = {
+          to: recipient.email,
+          subject: subject,
+          htmlBody: fullHtmlBody,
+          name: CONFIG.COMPANY_NAME || 'Rolex Boutique'
+        };
+
+        if (attachments.length > 0) {
+          mailOptions.attachments = attachments;
+        }
+
+        if (appointmentData.staffEmail) {
+          mailOptions.replyTo = appointmentData.staffEmail;
+        }
+
+        MailApp.sendEmail(mailOptions);
+
+        log.info('[Mail] Template mail gönderildi (' + recipient.type + '):', recipient.email, subject);
+        results.push({ templateId: templateId, email: recipient.email, type: recipient.type, success: true });
+      } catch (mailError) {
+        log.error('[Mail] Template mail hatası (' + recipient.type + '):', mailError);
+        results.push({ templateId: templateId, email: recipient.email, type: recipient.type, success: false, error: mailError.toString() });
+      }
+    }
+
+    return { success: true, results: results };
+  } catch (error) {
+    log.error('[Mail] sendMailByTemplate error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // Değişken değiştirme: Variables.js'deki replaceMessageVariables() kullanılır
 
 // ==================== HEADER SYNC (v3.9.47) ====================
@@ -1030,7 +1194,8 @@ function getNotificationFlows() {
           profiles: parseJsonSafe(flow.profiles, []),
           whatsappTemplateIds: parseJsonSafe(flow.whatsappTemplateIds, []),
           mailTemplateIds: parseJsonSafe(flow.mailTemplateIds, []),
-          active: flow.active === true || flow.active === 'true'
+          active: flow.active === true || flow.active === 'true',
+          scheduleHour: String(flow.scheduleHour || '10') // v3.10.17: For time-based flows
         };
       })
     };
@@ -1061,6 +1226,7 @@ function createNotificationFlow(params) {
       whatsappTemplateIds: JSON.stringify(params.whatsappTemplateIds || []),
       mailTemplateIds: JSON.stringify(params.mailTemplateIds || []),
       active: true,
+      scheduleHour: params.scheduleHour || '10', // v3.10.17: For time-based flows
       createdAt: new Date().toISOString()
     };
 
@@ -1101,6 +1267,7 @@ function updateNotificationFlow(params) {
     if (params.whatsappTemplateIds !== undefined) updates.whatsappTemplateIds = JSON.stringify(params.whatsappTemplateIds);
     if (params.mailTemplateIds !== undefined) updates.mailTemplateIds = JSON.stringify(params.mailTemplateIds);
     if (params.active !== undefined) updates.active = params.active;
+    if (params.scheduleHour !== undefined) updates.scheduleHour = params.scheduleHour; // v3.10.17
 
     updates.updatedAt = new Date().toISOString();
 

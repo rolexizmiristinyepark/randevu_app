@@ -42,7 +42,8 @@ interface WhatsAppFlow {
 
 interface WhatsAppTemplate {
     id: string;
-    name: string;
+    name: string;              // User-friendly display name
+    metaTemplateName: string;  // Meta Business API template name
     description: string;
     variableCount: number;
     variables: Record<string, string>;
@@ -654,7 +655,7 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     const header = document.createElement('div');
     header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;';
 
-    // Left: Name + Target type badge
+    // Left: Display Name + Target type badge
     const left = document.createElement('div');
     left.style.cssText = 'display: flex; align-items: center; gap: 10px;';
 
@@ -664,7 +665,7 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
 
     const targetBadge = document.createElement('span');
     targetBadge.style.cssText = 'padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; background: #E3F2FD; color: #1976D2;';
-    targetBadge.textContent = template.targetType === 'customer' ? 'Müşteri' : 'Personel';
+    targetBadge.textContent = template.targetType === 'customer' ? 'Customer' : 'Staff';
 
     left.appendChild(name);
     left.appendChild(targetBadge);
@@ -682,18 +683,24 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     header.appendChild(left);
     header.appendChild(right);
 
+    // Meta template name row
+    const metaRow = document.createElement('div');
+    metaRow.style.cssText = 'font-size: 12px; color: #888; margin-bottom: 4px; font-family: monospace;';
+    metaRow.textContent = `Meta: ${template.metaTemplateName || template.name}`;
+
     // Details
     const details = document.createElement('div');
     details.style.cssText = 'font-size: 12px; color: #757575;';
 
     let detailsText = template.description || '';
     if (detailsText) detailsText += ' • ';
-    detailsText += template.variableCount + ' değişken';
-    detailsText += ' • Dil: ' + (template.language || 'tr').toUpperCase();
+    detailsText += template.variableCount + ' variables';
+    detailsText += ' • Lang: ' + (template.language || 'tr').toUpperCase();
 
     details.textContent = detailsText;
 
     item.appendChild(header);
+    item.appendChild(metaRow);
     item.appendChild(details);
 
     return item;
@@ -745,6 +752,7 @@ function openTemplateModal(templateId?: string): void {
  * Reset template form to defaults
  */
 function resetTemplateForm(): void {
+    (document.getElementById('templateDisplayName') as HTMLInputElement).value = '';
     (document.getElementById('templateName') as HTMLInputElement).value = '';
     (document.getElementById('templateDescription') as HTMLInputElement).value = '';
     (document.getElementById('templateTargetType') as HTMLSelectElement).value = 'customer';
@@ -765,7 +773,8 @@ function resetTemplateForm(): void {
  * Populate template form with existing data
  */
 function populateTemplateForm(template: WhatsAppTemplate): void {
-    (document.getElementById('templateName') as HTMLInputElement).value = template.name;
+    (document.getElementById('templateDisplayName') as HTMLInputElement).value = template.name || '';
+    (document.getElementById('templateName') as HTMLInputElement).value = template.metaTemplateName || '';
     (document.getElementById('templateDescription') as HTMLInputElement).value = template.description || '';
     (document.getElementById('templateTargetType') as HTMLSelectElement).value = template.targetType;
     (document.getElementById('templateLanguage') as HTMLSelectElement).value = template.language || 'tr';
@@ -866,7 +875,8 @@ function generateVariableInputs(count: number): void {
 async function saveTemplate(): Promise<void> {
     const saveBtn = document.getElementById('saveTemplateBtn') as HTMLButtonElement;
 
-    const name = (document.getElementById('templateName') as HTMLInputElement).value.trim();
+    const displayName = (document.getElementById('templateDisplayName') as HTMLInputElement).value.trim();
+    const metaTemplateName = (document.getElementById('templateName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('templateDescription') as HTMLInputElement).value.trim();
     const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value as 'customer' | 'staff';
     const language = (document.getElementById('templateLanguage') as HTMLSelectElement).value;
@@ -874,8 +884,12 @@ async function saveTemplate(): Promise<void> {
     const editId = (document.getElementById('templateEditId') as HTMLInputElement).value;
 
     // Validation
-    if (!name) {
-        getUI().showAlert('Şablon adı gereklidir', 'error');
+    if (!displayName) {
+        getUI().showAlert('Template name is required', 'error');
+        return;
+    }
+    if (!metaTemplateName) {
+        getUI().showAlert('Meta template name is required', 'error');
         return;
     }
 
@@ -890,7 +904,8 @@ async function saveTemplate(): Promise<void> {
 
     // Build template data
     const templateData: Partial<WhatsAppTemplate> = {
-        name,
+        name: displayName,
+        metaTemplateName,
         description,
         targetType,
         language,

@@ -812,12 +812,14 @@ const WhatsAppService = {
       ];
 
       // WhatsApp template payload
+      // v3.10.14: Use metaTemplateName for Meta API, fallback to name for backwards compatibility
+      const metaTemplateName = template.metaTemplateName || template.name;
       const payload = {
         messaging_product: 'whatsapp',
         to: cleanPhone,
         type: 'template',
         template: {
-          name: template.name, // Admin panelden girilen template adı
+          name: metaTemplateName, // Meta Business'taki template adı (metaTemplateName)
           language: { code: template.language || 'en' }, // Template'in WhatsApp Business'taki dili
           components: components
         }
@@ -2133,6 +2135,184 @@ function setupWhatsAppTriggers() {
   };
 }
 
+// === v3.10.18: HOURLY SCHEDULED FLOW SYSTEM ===
+
+/**
+ * Saatlik çalışan trigger fonksiyonu
+ * Her saat başı çalışır, o saate ayarlı flow'ları çalıştırır
+ *
+ * Bu fonksiyon setupHourlyFlowTrigger() ile kurulur
+ */
+function runHourlyScheduledFlows() {
+  try {
+    // Türkiye saatini al
+    var now = new Date();
+    var currentHour = parseInt(Utilities.formatDate(now, 'Europe/Istanbul', 'HH'));
+
+    Logger.log('⏰ [runHourlyScheduledFlows] Current hour (TR): ' + currentHour);
+
+    // notification_flows tablosundan aktif time-based flow'ları al
+    var flowsResult = getNotificationFlows();
+    if (!flowsResult.success) {
+      Logger.log('❌ Flow\'lar yüklenemedi');
+      return { success: false, error: 'Flow\'lar yüklenemedi' };
+    }
+
+    // HATIRLATMA trigger'lı ve scheduleHour'u şimdiki saate eşit olan flow'ları filtrele
+    var matchingFlows = flowsResult.data.filter(function(flow) {
+      var flowHour = parseInt(flow.scheduleHour || '10');
+      var isTimeBased = flow.trigger === 'HATIRLATMA';
+      var isActive = flow.active === true || flow.active === 'true';
+      var hourMatches = flowHour === currentHour;
+
+      Logger.log('📋 Flow: ' + flow.name + ' | trigger=' + flow.trigger + ' | scheduleHour=' + flowHour + ' | active=' + isActive + ' | matches=' + (isTimeBased && isActive && hourMatches));
+
+      return isTimeBased && isActive && hourMatches;
+    });
+
+    Logger.log('✅ Çalışacak flow sayısı: ' + matchingFlows.length);
+
+    if (matchingFlows.length === 0) {
+      return { success: true, processed: 0, message: 'Bu saat için flow yok' };
+    }
+
+    // YARININ tarihini al (hatırlatma bir gün önce gönderilir)
+    var tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    var dateStr = Utilities.formatDate(tomorrow, 'Europe/Istanbul', 'yyyy-MM-dd');
+
+    // Yarınki randevuları al
+    var reminders = WhatsAppService.getTodayWhatsAppReminders(dateStr);
+
+    if (!reminders.success || reminders.data.length === 0) {
+      Logger.log('📭 Yarın için randevu yok');
+      return { success: true, processed: 0, message: 'Gönderilecek hatırlatma yok' };
+    }
+
+    Logger.log('📅 Yarınki randevu sayısı: ' + reminders.data.length);
+
+    var results = [];
+
+    // Her flow için
+    matchingFlows.forEach(function(flow) {
+      Logger.log('🔄 Processing flow: ' + flow.name);
+
+      // Her randevu için
+      reminders.data.forEach(function(reminder) {
+        // Profile kontrolü
+        var appointmentProfile = reminder.profile || 'g';
+        if (flow.profiles && flow.profiles.length > 0 && flow.profiles.indexOf(appointmentProfile) === -1) {
+          Logger.log('⏭️ Skipping - profile mismatch: ' + appointmentProfile);
+          return; // Bu randevu bu flow için uygun değil
+        }
+
+        var appointmentData = {
+          customerName: reminder.customerName,
+          customerPhone: reminder.link ? reminder.link.split('/').pop().split('?')[0] : '',
+          date: reminder.date,
+          time: reminder.time,
+          staffName: reminder.staffName,
+          appointmentType: reminder.appointmentType,
+          staffPhone: reminder.staffPhone || '',
+          profile: appointmentProfile
+        };
+
+        // WhatsApp template'leri gönder
+        if (flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0) {
+          flow.whatsappTemplateIds.forEach(function(templateId) {
+            try {
+              var result = sendWhatsAppByTemplate(templateId, appointmentData);
+              results.push({ flow: flow.name, template: templateId, type: 'whatsapp', result: result });
+            } catch (e) {
+              Logger.log('❌ WhatsApp error: ' + e.toString());
+              results.push({ flow: flow.name, template: templateId, type: 'whatsapp', error: e.toString() });
+            }
+          });
+        }
+
+        // Mail template'leri gönder
+        if (flow.mailTemplateIds && flow.mailTemplateIds.length > 0) {
+          flow.mailTemplateIds.forEach(function(templateId) {
+            try {
+              var result = sendMailByTemplate(templateId, appointmentData);
+              results.push({ flow: flow.name, template: templateId, type: 'mail', result: result });
+            } catch (e) {
+              Logger.log('❌ Mail error: ' + e.toString());
+              results.push({ flow: flow.name, template: templateId, type: 'mail', error: e.toString() });
+            }
+          });
+        }
+      });
+    });
+
+    Logger.log('✅ Toplam işlem: ' + results.length);
+
+    return {
+      success: true,
+      hour: currentHour,
+      flowsProcessed: matchingFlows.length,
+      results: results
+    };
+
+  } catch (error) {
+    Logger.log('❌ runHourlyScheduledFlows error: ' + error.toString());
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Saatlik flow trigger'ını kur
+ * Bu fonksiyonu Apps Script editöründe BİR KEZ çalıştır!
+ *
+ * Her saat başı runHourlyScheduledFlows() fonksiyonunu çalıştırır
+ */
+function setupHourlyFlowTrigger() {
+  // Önce mevcut hourly trigger'ı sil
+  var existingTriggers = ScriptApp.getProjectTriggers();
+  var deletedCount = 0;
+
+  existingTriggers.forEach(function(trigger) {
+    if (trigger.getHandlerFunction() === 'runHourlyScheduledFlows') {
+      ScriptApp.deleteTrigger(trigger);
+      deletedCount++;
+    }
+  });
+
+  Logger.log(deletedCount + ' eski hourly trigger silindi');
+
+  // Yeni saatlik trigger oluştur
+  ScriptApp.newTrigger('runHourlyScheduledFlows')
+    .timeBased()
+    .everyHours(1)
+    .create();
+
+  Logger.log('✅ Hourly flow trigger oluşturuldu - Her saat başı çalışacak');
+
+  return {
+    success: true,
+    message: 'Hourly flow trigger kuruldu. Her saat başı runHourlyScheduledFlows çalışacak.'
+  };
+}
+
+/**
+ * Mevcut trigger'ları listele (debug için)
+ */
+function listAllTriggers() {
+  var triggers = ScriptApp.getProjectTriggers();
+  var list = [];
+
+  triggers.forEach(function(trigger) {
+    list.push({
+      function: trigger.getHandlerFunction(),
+      type: trigger.getEventType().toString(),
+      id: trigger.getUniqueId()
+    });
+  });
+
+  Logger.log('Mevcut triggerlar: ' + JSON.stringify(list, null, 2));
+  return { success: true, triggers: list };
+}
+
 // 🔒 KVKK: Kişisel veri maskeleme helper fonksiyonları
 function _maskPersonalData(name) {
     if (!name || typeof name !== 'string') return '';
@@ -2684,29 +2864,39 @@ function deleteWhatsAppFlow(params) {
 
 /**
  * Template oluştur (yeni basitleştirilmiş sistem)
+ * v3.10.14: Added metaTemplateName field for Meta Business API template name
  */
 function createWhatsAppTemplate(params) {
   try {
     console.log('[createWhatsAppTemplate] params:', JSON.stringify(params));
-    const { name, description, variableCount, variables, targetType, language } = params;
+    const { name, metaTemplateName, description, variableCount, variables, targetType, language } = params;
 
-    if (!name || !targetType || variableCount === undefined) {
-      console.log('[createWhatsAppTemplate] Missing required fields - name:', name, 'targetType:', targetType, 'variableCount:', variableCount);
-      return { success: false, message: 'Gerekli alanlar: name, targetType, variableCount' };
+    if (!name || !metaTemplateName || !targetType || variableCount === undefined) {
+      console.log('[createWhatsAppTemplate] Missing required fields - name:', name, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'variableCount:', variableCount);
+      return { success: false, message: 'Gerekli alanlar: name, metaTemplateName, targetType, variableCount' };
     }
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     let sheet = ss.getSheetByName('whatsapp_templates');
 
-    // TEMPLATES sheet yoksa oluştur (LANGUAGE kolonu ile)
+    // TEMPLATES sheet yoksa oluştur (META_TEMPLATE_NAME kolonu ile)
     if (!sheet) {
       console.log('[createWhatsAppTemplate] TEMPLATES sheet not found, creating...');
       sheet = ss.insertSheet('whatsapp_templates');
-      sheet.getRange(1, 1, 1, 7).setValues([['ID', 'NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
+      sheet.getRange(1, 1, 1, 8).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
       console.log('[createWhatsAppTemplate] TEMPLATES sheet created with headers');
     } else {
-      // Mevcut sheet'e LANGUAGE kolonu yoksa ekle
+      // Mevcut sheet'e META_TEMPLATE_NAME ve LANGUAGE kolonu yoksa ekle
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      if (!headers.includes('META_TEMPLATE_NAME')) {
+        // Insert META_TEMPLATE_NAME after NAME column
+        const nameColIdx = headers.indexOf('NAME');
+        if (nameColIdx >= 0) {
+          sheet.insertColumnAfter(nameColIdx + 1);
+          sheet.getRange(1, nameColIdx + 2).setValue('META_TEMPLATE_NAME');
+          console.log('[createWhatsAppTemplate] META_TEMPLATE_NAME column added after NAME');
+        }
+      }
       if (!headers.includes('LANGUAGE')) {
         const lastCol = sheet.getLastColumn() + 1;
         sheet.getRange(1, lastCol).setValue('LANGUAGE');
@@ -2714,16 +2904,24 @@ function createWhatsAppTemplate(params) {
       }
     }
 
+    // Re-read headers after potential column additions
+    const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const templateId = 'tmpl_' + Date.now();
-    const newRow = [
-      templateId,
-      name,
-      description || '',
-      variableCount,
-      JSON.stringify(variables || {}),
-      targetType,
-      language || 'en' // Default: English
-    ];
+
+    // Build row based on current headers
+    const newRow = currentHeaders.map(function(header) {
+      switch(header) {
+        case 'ID': return templateId;
+        case 'NAME': return name;
+        case 'META_TEMPLATE_NAME': return metaTemplateName;
+        case 'DESCRIPTION': return description || '';
+        case 'VARIABLE_COUNT': return variableCount;
+        case 'VARIABLES': return JSON.stringify(variables || {});
+        case 'TARGET_TYPE': return targetType;
+        case 'LANGUAGE': return language || 'en';
+        default: return '';
+      }
+    });
 
     console.log('[createWhatsAppTemplate] Appending row:', JSON.stringify(newRow));
     sheet.appendRow(newRow);
@@ -2738,12 +2936,13 @@ function createWhatsAppTemplate(params) {
 
 /**
  * Template güncelle (yeni basitleştirilmiş sistem)
+ * v3.10.14: Added metaTemplateName field support
  */
 function updateWhatsAppTemplate(params) {
   try {
     console.log('[updateWhatsAppTemplate] params:', JSON.stringify(params));
-    const { id, name, description, variableCount, variables, targetType, language } = params;
-    console.log('[updateWhatsAppTemplate] id:', id, 'targetType:', targetType, 'language:', language);
+    const { id, name, metaTemplateName, description, variableCount, variables, targetType, language } = params;
+    console.log('[updateWhatsAppTemplate] id:', id, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'language:', language);
 
     if (!id) return { success: false, message: 'Template ID gerekli' };
 
@@ -2751,31 +2950,48 @@ function updateWhatsAppTemplate(params) {
     const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) return { success: false, message: 'Template sheet bulunamadı' };
 
-    // LANGUAGE kolonu yoksa ekle
-    const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    let languageCol = headers.indexOf('LANGUAGE') + 1;
-    if (languageCol === 0) {
-      languageCol = sheet.getLastColumn() + 1;
-      sheet.getRange(1, languageCol).setValue('LANGUAGE');
+    // Get headers and ensure META_TEMPLATE_NAME and LANGUAGE columns exist
+    var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+    // Add META_TEMPLATE_NAME column if missing
+    if (!headers.includes('META_TEMPLATE_NAME')) {
+      const nameColIdx = headers.indexOf('NAME');
+      if (nameColIdx >= 0) {
+        sheet.insertColumnAfter(nameColIdx + 1);
+        sheet.getRange(1, nameColIdx + 2).setValue('META_TEMPLATE_NAME');
+        console.log('[updateWhatsAppTemplate] META_TEMPLATE_NAME column added');
+        // Re-read headers after column addition
+        headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      }
+    }
+
+    // Add LANGUAGE column if missing
+    if (!headers.includes('LANGUAGE')) {
+      const lastCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, lastCol).setValue('LANGUAGE');
       console.log('[updateWhatsAppTemplate] LANGUAGE column added');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
 
     const data = sheet.getDataRange().getValues();
     console.log('[updateWhatsAppTemplate] sheet data rows:', data.length);
-    console.log('[updateWhatsAppTemplate] existing IDs:', data.map(row => row[0]));
 
     const rowIndex = data.findIndex(row => String(row[0]) === String(id));
     console.log('[updateWhatsAppTemplate] rowIndex:', rowIndex);
 
     if (rowIndex === -1) return { success: false, message: 'Template bulunamadı: ' + id };
 
-    // Update the row (rowIndex + 1 for 1-based indexing)
-    if (name) sheet.getRange(rowIndex + 1, 2).setValue(name);
-    if (description !== undefined) sheet.getRange(rowIndex + 1, 3).setValue(description);
-    if (variableCount !== undefined) sheet.getRange(rowIndex + 1, 4).setValue(variableCount);
-    if (variables) sheet.getRange(rowIndex + 1, 5).setValue(JSON.stringify(variables));
-    if (targetType) sheet.getRange(rowIndex + 1, 6).setValue(targetType);
-    if (language) sheet.getRange(rowIndex + 1, languageCol).setValue(language);
+    // Get column indices
+    const getColIndex = function(colName) { return headers.indexOf(colName) + 1; };
+
+    // Update the row using column names (rowIndex + 1 for 1-based indexing)
+    if (name) sheet.getRange(rowIndex + 1, getColIndex('NAME')).setValue(name);
+    if (metaTemplateName) sheet.getRange(rowIndex + 1, getColIndex('META_TEMPLATE_NAME')).setValue(metaTemplateName);
+    if (description !== undefined) sheet.getRange(rowIndex + 1, getColIndex('DESCRIPTION')).setValue(description);
+    if (variableCount !== undefined) sheet.getRange(rowIndex + 1, getColIndex('VARIABLE_COUNT')).setValue(variableCount);
+    if (variables) sheet.getRange(rowIndex + 1, getColIndex('VARIABLES')).setValue(JSON.stringify(variables));
+    if (targetType) sheet.getRange(rowIndex + 1, getColIndex('TARGET_TYPE')).setValue(targetType);
+    if (language) sheet.getRange(rowIndex + 1, getColIndex('LANGUAGE')).setValue(language);
 
     return { success: true, message: 'Template başarıyla güncellendi' };
   } catch (error) {
@@ -2786,34 +3002,55 @@ function updateWhatsAppTemplate(params) {
 
 /**
  * Template listesi getir (yeni basitleştirilmiş sistem)
+ * v3.10.14: Added metaTemplateName field support
  */
 function getWhatsAppTemplates() {
   try {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) {
-      // Eğer TEMPLATES sheet'i yoksa oluştur (LANGUAGE kolonu ile)
+      // Eğer TEMPLATES sheet'i yoksa oluştur (META_TEMPLATE_NAME kolonu ile)
       const templates = ss.insertSheet('whatsapp_templates');
-      templates.getRange(1, 1, 1, 7).setValues([['ID', 'NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
+      templates.getRange(1, 1, 1, 8).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
       return { success: true, data: [] };
     }
 
-    // LANGUAGE kolonu index'ini bul
+    // Get column indices from headers
     const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-    const languageColIndex = headers.indexOf('LANGUAGE');
+    const getColIndex = function(colName) { return headers.indexOf(colName); };
 
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) return { success: true, data: [] };
 
-    const templates = data.slice(1).map(row => ({
-      id: row[0] || '',
-      name: row[1] || '',
-      description: row[2] || '',
-      variableCount: Number(row[3]) || 0,
-      variables: row[4] ? JSON.parse(row[4]) : {},
-      targetType: row[5] || '',
-      language: languageColIndex >= 0 ? (row[languageColIndex] || 'en') : 'en' // Default: en
-    })).filter(template => template.id);
+    const templates = data.slice(1).map(function(row) {
+      var variables = {};
+      var variablesCol = getColIndex('VARIABLES');
+      if (variablesCol >= 0 && row[variablesCol]) {
+        try { variables = JSON.parse(row[variablesCol]); } catch(e) {}
+      }
+
+      // Get metaTemplateName - if column doesn't exist, fallback to name (for backwards compatibility)
+      var metaTemplateNameCol = getColIndex('META_TEMPLATE_NAME');
+      var nameCol = getColIndex('NAME');
+      var metaTemplateName = metaTemplateNameCol >= 0 ? (row[metaTemplateNameCol] || '') : '';
+      var displayName = nameCol >= 0 ? (row[nameCol] || '') : '';
+
+      // Backwards compatibility: if metaTemplateName is empty but name exists, use name as both
+      if (!metaTemplateName && displayName) {
+        metaTemplateName = displayName;
+      }
+
+      return {
+        id: row[getColIndex('ID')] || '',
+        name: displayName,
+        metaTemplateName: metaTemplateName,
+        description: row[getColIndex('DESCRIPTION')] || '',
+        variableCount: Number(row[getColIndex('VARIABLE_COUNT')]) || 0,
+        variables: variables,
+        targetType: row[getColIndex('TARGET_TYPE')] || '',
+        language: row[getColIndex('LANGUAGE')] || 'en'
+      };
+    }).filter(function(template) { return template.id; });
 
     return { success: true, data: templates };
   } catch (error) {

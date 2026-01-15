@@ -218,7 +218,7 @@ async function startApp(): Promise<void> {
         await initSettingsManager(dataStore);
         await initWhatsAppManager(dataStore);
         await initMailManager(dataStore);
-        initUnifiedFlowManager(dataStore);
+        await initUnifiedFlowManager(dataStore);
 
         // Initialize permission manager (applies role-based access control)
         await initPermissionManager(dataStore);

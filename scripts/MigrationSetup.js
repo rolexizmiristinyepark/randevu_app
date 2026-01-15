@@ -524,7 +524,7 @@ function migrateSheetNamesToLowercase() {
     if (!notifSheet) {
       notifSheet = ss.insertSheet('notification_flows');
       // Header'ları ekle
-      const headers = ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'createdAt', 'updatedAt'];
+      const headers = ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'scheduleHour', 'createdAt', 'updatedAt'];
       notifSheet.getRange(1, 1, 1, headers.length).setValues([headers]);
       notifSheet.getRange(1, 1, 1, headers.length).setFontWeight('bold');
       console.log('✅ notification_flows sheet oluşturuldu');
