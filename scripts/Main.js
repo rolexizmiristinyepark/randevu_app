@@ -357,17 +357,27 @@ const ACTION_HANDLERS = {
       return { success: false, error: handlerError.toString(), handlerError: true };
     }
   },
-  'updateWhatsAppTemplate': (e) => updateWhatsAppTemplate({
-    id: e.parameter.id,
-    name: e.parameter.name,
-    metaTemplateName: e.parameter.metaTemplateName,
-    description: e.parameter.description,
-    variableCount: e.parameter.variableCount,
-    language: e.parameter.language,
-    variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
-    targetType: e.parameter.targetType,
-    content: e.parameter.content // v3.10.20: WhatsApp şablon içeriği
-  }),
+  'updateWhatsAppTemplate': (e) => {
+    // v3.10.20: Debug log - content parametresi gelip gelmediğini kontrol et
+    log.info('[updateWhatsAppTemplate-handler] e.parameter keys:', Object.keys(e.parameter || {}).join(', '));
+    log.info('[updateWhatsAppTemplate-handler] content value:', e.parameter.content);
+    log.info('[updateWhatsAppTemplate-handler] content type:', typeof e.parameter.content);
+
+    const params = {
+      id: e.parameter.id,
+      name: e.parameter.name,
+      metaTemplateName: e.parameter.metaTemplateName,
+      description: e.parameter.description,
+      variableCount: e.parameter.variableCount,
+      language: e.parameter.language,
+      variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
+      targetType: e.parameter.targetType,
+      content: e.parameter.content
+    };
+
+    log.info('[updateWhatsAppTemplate-handler] params:', JSON.stringify(params));
+    return updateWhatsAppTemplate(params);
+  },
   'deleteWhatsAppTemplate': (e) => deleteWhatsAppTemplate({ id: e.parameter.id }),
   'getWhatsAppVariableOptions': () => getWhatsAppVariableOptions(),
 
