@@ -46,7 +46,7 @@ interface Contact {
 // State
 let allMessages: WhatsAppMessage[] = [];
 let contacts: Contact[] = [];
-let selectedCustomer: string | null = null; // Müşteri adı (lowercase key)
+let selectedCustomer: string | null = null; // Normalized phone number (key)
 let searchTerm = '';
 let templatesCache: Map<string, WhatsAppTemplate> = new Map(); // name -> template
 
@@ -207,22 +207,28 @@ function groupByContact(): void {
         const recipientName = getRecipientName(msg);
         const recipientPhone = getRecipientPhone(msg);
 
-        // recipientName yoksa telefon numarasını kullan, o da yoksa "Bilinmeyen"
-        const displayName = recipientName || (recipientPhone ? formatPhoneDisplay(recipientPhone) : 'Bilinmeyen');
-
-        // Key olarak alıcı adını kullan (lowercase for consistency)
-        const key = displayName.toLowerCase();
+        // Key olarak normalize edilmiş telefon numarasını kullan
+        const normalizedPhone = normalizePhone(recipientPhone);
+        const key = normalizedPhone || 'unknown';
 
         if (!contactMap.has(key)) {
             contactMap.set(key, {
-                phone: normalizePhone(recipientPhone),
-                name: displayName,
+                phone: normalizedPhone,
+                name: recipientName || (recipientPhone ? formatPhoneDisplay(recipientPhone) : 'Bilinmeyen'),
                 customerPhone: recipientPhone,
                 lastMessage: '',
                 lastMessageTime: msg.timestamp || msg.sentAt || '',
                 unreadCount: 0,
                 lastDirection: msg.direction
             });
+        } else {
+            // Mevcut contact varsa ve bu mesajda isim varsa, ismi güncelle
+            const existingContact = contactMap.get(key)!;
+            if (recipientName && !existingContact.name.startsWith('+')) {
+                // Zaten isim varsa dokunma, yoksa güncelle
+            } else if (recipientName) {
+                existingContact.name = recipientName;
+            }
         }
     });
 
@@ -266,7 +272,8 @@ function renderContacts(): void {
     }
 
     filteredContacts.forEach(contact => {
-        const customerKey = contact.name.toLowerCase();
+        // Key olarak telefon numarasını kullan (aynı numara farklı isimlerle gelirse birleşsin)
+        const customerKey = contact.phone || 'unknown';
         const item = document.createElement('div');
         item.className = `wa-contact-item${selectedCustomer === customerKey ? ' active' : ''}`;
         item.dataset.customer = customerKey;
@@ -340,17 +347,17 @@ function selectContact(customerKey: string, customerName: string): void {
 
 /**
  * Render messages for selected customer using DOM methods
+ * customerKey = normalized phone number
  */
 function renderMessages(customerKey: string): void {
     const container = document.getElementById('waMessagesArea');
     if (!container) return;
 
-    // Filter messages for this recipient
+    // Filter messages by phone number
     const customerMessages = allMessages.filter(msg => {
-        const recipientName = getRecipientName(msg);
         const recipientPhone = getRecipientPhone(msg);
-        const displayName = recipientName || (recipientPhone ? formatPhoneDisplay(recipientPhone) : 'Bilinmeyen');
-        return displayName.toLowerCase() === customerKey;
+        const normalizedPhone = normalizePhone(recipientPhone);
+        return normalizedPhone === customerKey || (customerKey === 'unknown' && !normalizedPhone);
     });
 
     // Sort by timestamp (oldest first for conversation view)
