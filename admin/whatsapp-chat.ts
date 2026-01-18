@@ -181,33 +181,38 @@ async function loadAllMessages(): Promise<void> {
 
 /**
  * Get recipient name from message based on targetType
- * targetType = 'staff' → staffName
- * targetType = 'customer' → customerName
+ * Öncelik: targetType → phone eşleşmesi → recipientName fallback
  */
 function getRecipientName(msg: WhatsAppMessage): string {
-    if (msg.targetType === 'staff') {
-        return msg.staffName || '';
+    const msgPhone = normalizePhone(String(msg.phone || ''));
+    const staffPhoneNorm = normalizePhone(String(msg.staffPhone || ''));
+    const customerPhoneNorm = normalizePhone(String(msg.customerPhone || ''));
+
+    // 1. targetType varsa ona göre
+    if (msg.targetType === 'staff' && msg.staffName) {
+        return msg.staffName;
     }
-    if (msg.targetType === 'customer') {
-        return msg.customerName || '';
+    if (msg.targetType === 'customer' && msg.customerName) {
+        return msg.customerName;
     }
-    // Fallback: recipientName veya boş
+
+    // 2. Phone eşleşmesine göre (eski veriler için)
+    if (msgPhone && staffPhoneNorm && msgPhone === staffPhoneNorm && msg.staffName) {
+        return msg.staffName;
+    }
+    if (msgPhone && customerPhoneNorm && msgPhone === customerPhoneNorm && msg.customerName) {
+        return msg.customerName;
+    }
+
+    // 3. Fallback: recipientName
     return msg.recipientName || '';
 }
 
 /**
- * Get recipient phone from message based on targetType
- * targetType = 'staff' → staffPhone
- * targetType = 'customer' → customerPhone
+ * Get recipient phone from message
+ * phone alanı zaten alıcının telefonu
  */
 function getRecipientPhone(msg: WhatsAppMessage): string {
-    if (msg.targetType === 'staff') {
-        return String(msg.staffPhone || '');
-    }
-    if (msg.targetType === 'customer') {
-        return String(msg.customerPhone || '');
-    }
-    // Fallback: phone alanı
     return String(msg.phone || '');
 }
 
