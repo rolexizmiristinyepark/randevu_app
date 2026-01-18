@@ -180,66 +180,51 @@ async function loadAllMessages(): Promise<void> {
 }
 
 /**
- * Get recipient name based on targetType
- * staff → staffName, customer → customerName
+ * Get recipient name directly from backend field
+ * Backend sets this based on targetType when logging
  */
 function getRecipientName(msg: WhatsAppMessage): string {
-    if (msg.targetType === 'staff') {
-        return msg.staffName || '';
-    }
-    if (msg.targetType === 'customer') {
-        return msg.customerName || '';
-    }
-    return '';
+    return msg.recipientName || '';
 }
 
 /**
- * Get recipient phone based on targetType
- * staff → staffPhone, customer → customerPhone
+ * Get recipient phone directly from backend field
+ * phone field = actual recipient phone number
  */
 function getRecipientPhone(msg: WhatsAppMessage): string {
-    if (msg.targetType === 'staff') {
-        return String(msg.staffPhone || '');
-    }
-    if (msg.targetType === 'customer') {
-        return String(msg.customerPhone || '');
-    }
-    return '';
+    return String(msg.phone || '');
 }
 
 /**
- * Group messages by recipient name
- * v3.10.20: Sadece backend alanlarını kullan - recipientName ve phone
+ * Group messages by phone number
+ * Backend sets recipientName and phone correctly when logging
  */
 function groupByContact(): void {
     const contactMap = new Map<string, Contact>();
 
     allMessages.forEach(msg => {
-        // Alıcı adını al (sadece backend'den)
         const recipientName = getRecipientName(msg);
         const recipientPhone = getRecipientPhone(msg);
-
-        // Key olarak normalize edilmiş telefon numarasını kullan
         const normalizedPhone = normalizePhone(recipientPhone);
-        const key = normalizedPhone || 'unknown';
 
-        if (!contactMap.has(key)) {
-            contactMap.set(key, {
+        // Telefon yoksa bu mesajı atla
+        if (!normalizedPhone) return;
+
+        if (!contactMap.has(normalizedPhone)) {
+            contactMap.set(normalizedPhone, {
                 phone: normalizedPhone,
-                name: recipientName || (recipientPhone ? formatPhoneDisplay(recipientPhone) : 'Bilinmeyen'),
+                name: recipientName || formatPhoneDisplay(recipientPhone),
                 customerPhone: recipientPhone,
                 lastMessage: '',
                 lastMessageTime: msg.timestamp || msg.sentAt || '',
                 unreadCount: 0,
                 lastDirection: msg.direction
             });
-        } else {
-            // Mevcut contact varsa ve bu mesajda isim varsa, ismi güncelle
-            const existingContact = contactMap.get(key)!;
-            if (recipientName && !existingContact.name.startsWith('+')) {
-                // Zaten isim varsa dokunma, yoksa güncelle
-            } else if (recipientName) {
-                existingContact.name = recipientName;
+        } else if (recipientName) {
+            // İsim varsa ve mevcut isim telefon formatındaysa güncelle
+            const existing = contactMap.get(normalizedPhone)!;
+            if (existing.name.startsWith('+') || existing.name.startsWith('0')) {
+                existing.name = recipientName;
             }
         }
     });
