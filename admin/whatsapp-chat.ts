@@ -180,18 +180,34 @@ async function loadAllMessages(): Promise<void> {
 }
 
 /**
- * Get recipient name from message (no parsing - direct from backend)
- * v3.10.20: Sadece backend alanlarını kullan, mesaj içeriğinden parse etme
+ * Get recipient name from message based on targetType
+ * targetType = 'staff' → staffName
+ * targetType = 'customer' → customerName
  */
 function getRecipientName(msg: WhatsAppMessage): string {
+    if (msg.targetType === 'staff') {
+        return msg.staffName || '';
+    }
+    if (msg.targetType === 'customer') {
+        return msg.customerName || '';
+    }
+    // Fallback: recipientName veya boş
     return msg.recipientName || '';
 }
 
 /**
- * Get recipient phone from message (no parsing - direct from backend)
- * v3.10.20: Sadece backend alanlarını kullan, mesaj içeriğinden parse etme
+ * Get recipient phone from message based on targetType
+ * targetType = 'staff' → staffPhone
+ * targetType = 'customer' → customerPhone
  */
 function getRecipientPhone(msg: WhatsAppMessage): string {
+    if (msg.targetType === 'staff') {
+        return String(msg.staffPhone || '');
+    }
+    if (msg.targetType === 'customer') {
+        return String(msg.customerPhone || '');
+    }
+    // Fallback: phone alanı
     return String(msg.phone || '');
 }
 
