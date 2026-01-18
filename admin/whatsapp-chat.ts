@@ -1,6 +1,6 @@
 /**
  * WHATSAPP CHAT UI - Mesajlaşma arayüzü (Site tasarımına uygun)
- * v3.10.18: Kişi listesi + Mesaj görünümü
+ * v3.10.20: Template content entegrasyonu - mesaj içeriği template'ten oluşturulur
  */
 
 import { apiCall } from '../api-service';
@@ -11,6 +11,7 @@ interface WhatsAppMessage {
     phone: string | number;        // Alıcı telefonu (recipient phone)
     recipientName?: string;        // Alıcı adı (customer veya staff)
     templateName?: string;
+    templateId?: string;
     messageContent?: string;
     status: 'sent' | 'delivered' | 'read' | 'failed';
     direction: 'incoming' | 'outgoing';
@@ -23,6 +24,13 @@ interface WhatsAppMessage {
     customerPhone?: string;
     staffName?: string;
     staffPhone?: string;
+}
+
+interface WhatsAppTemplate {
+    id: string;
+    name: string;
+    content?: string;
+    variableCount?: number;
 }
 
 interface Contact {
@@ -40,13 +48,79 @@ let allMessages: WhatsAppMessage[] = [];
 let contacts: Contact[] = [];
 let selectedCustomer: string | null = null; // Müşteri adı (lowercase key)
 let searchTerm = '';
+let templatesCache: Map<string, WhatsAppTemplate> = new Map(); // name -> template
 
 /**
  * Initialize WhatsApp chat UI
  */
 export async function initWhatsAppChat(): Promise<void> {
+    await loadTemplates();
     await loadAllMessages();
     setupEventListeners();
+}
+
+/**
+ * Load WhatsApp templates for content formatting
+ */
+async function loadTemplates(): Promise<void> {
+    try {
+        const response = await apiCall<WhatsAppTemplate[]>('getWhatsAppTemplates');
+        if (response.success && response.data) {
+            templatesCache.clear();
+            response.data.forEach(t => {
+                templatesCache.set(t.name, t);
+            });
+            console.log('[WhatsApp Chat] Loaded', templatesCache.size, 'templates');
+        }
+    } catch (error) {
+        console.error('Error loading templates:', error);
+    }
+}
+
+/**
+ * Format message content using template content + parameters
+ * Eski format: "param1 | param2 | param3" -> Template content ile birleştir
+ * Yeni format: Zaten formatlanmış -> Olduğu gibi göster
+ */
+function formatMessageContent(msg: WhatsAppMessage): string {
+    const content = msg.messageContent || '';
+
+    // Gelen mesajlar için olduğu gibi göster
+    if (msg.direction === 'incoming') {
+        return content || '[Mesaj içeriği yok]';
+    }
+
+    // Template adı yoksa olduğu gibi göster
+    if (!msg.templateName) {
+        return content || '[Mesaj içeriği yok]';
+    }
+
+    // Template'i bul
+    const template = templatesCache.get(msg.templateName);
+
+    // Template bulunamadı veya content'i yoksa olduğu gibi göster
+    if (!template || !template.content) {
+        return content || `[Şablon: ${msg.templateName}]`;
+    }
+
+    // Content zaten template formatında mı kontrol et (| ile ayrılmamış)
+    // Eğer içerikte birden fazla " | " yoksa, zaten formatlanmış demektir
+    const pipeCount = (content.match(/ \| /g) || []).length;
+    if (pipeCount < 2) {
+        // Muhtemelen yeni format veya zaten formatlanmış
+        return content || template.content;
+    }
+
+    // Eski format: parametreleri ayır ve template'e yerleştir
+    const params = content.split(' | ');
+    let formattedContent = template.content;
+
+    params.forEach((param, index) => {
+        const placeholder = `{{${index + 1}}}`;
+        formattedContent = formattedContent.replace(placeholder, param);
+    });
+
+    return formattedContent;
 }
 
 /**
@@ -322,10 +396,10 @@ function renderMessages(customerKey: string): void {
         const bubble = document.createElement('div');
         bubble.className = 'wa-message-bubble';
 
-        // Tam mesaj içeriğini göster
+        // Template content + parameters ile formatlanmış mesaj içeriği
         const content = document.createElement('div');
         content.className = 'wa-message-content';
-        content.textContent = msg.messageContent || msg.templateName || '[Mesaj içeriği yok]';
+        content.textContent = formatMessageContent(msg);
 
         const footer = document.createElement('div');
         footer.className = 'wa-message-footer';
@@ -533,23 +607,12 @@ function getInitial(name: string): string {
 }
 
 function getMessagePreview(msg: WhatsAppMessage): string {
-    if (msg.messageContent) {
-        return msg.messageContent.substring(0, 50) + (msg.messageContent.length > 50 ? '...' : '');
-    }
-    if (msg.templateName) {
-        return `📄 ${msg.templateName}`;
-    }
-    return 'Mesaj';
+    const formatted = formatMessageContent(msg);
+    return formatted.substring(0, 50) + (formatted.length > 50 ? '...' : '');
 }
 
 function getMessageContent(msg: WhatsAppMessage): string {
-    if (msg.messageContent) {
-        return msg.messageContent;
-    }
-    if (msg.templateName) {
-        return `[Şablon: ${msg.templateName}]`;
-    }
-    return '[Mesaj içeriği yok]';
+    return formatMessageContent(msg);
 }
 
 function formatRelativeTime(timestamp: string): string {
