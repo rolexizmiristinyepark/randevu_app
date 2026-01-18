@@ -42,7 +42,7 @@ const SheetStorageService = {
     shifts: ['date', 'staffId', 'shiftType', 'createdAt'],
     settings: ['key', 'value', 'updatedAt'],
     audit_log: ['timestamp', 'action', 'data', 'userId'],
-    message_log: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'flowId', 'triggeredBy', 'profile', 'messageContent'],
+    message_log: ['id', 'timestamp', 'direction', 'appointmentId', 'phone', 'recipientName', 'templateName', 'templateId', 'status', 'messageId', 'errorMessage', 'staffId', 'staffName', 'staffPhone', 'flowId', 'triggeredBy', 'profile', 'messageContent', 'targetType', 'customerName', 'customerPhone'],
     sessions: ['token', 'odaSifresi', 'staffId', 'staffName', 'staffEmail', 'role', 'permissions', 'createdAt', 'expiresAt'],
     notification_flows: ['id', 'name', 'description', 'trigger', 'profiles', 'whatsappTemplateIds', 'mailTemplateIds', 'active', 'createdAt', 'updatedAt'],
     whatsapp_templates: ['id', 'name', 'content', 'variables', 'active', 'createdAt', 'updatedAt'],
@@ -758,11 +758,16 @@ const SheetStorageService = {
       errorMessage: messageData.errorMessage || '',
       staffId: messageData.staffId || '',
       staffName: messageData.staffName || '',
+      staffPhone: messageData.staffPhone || '',
       flowId: messageData.flowId || '',
       triggeredBy: messageData.triggeredBy || 'manual',
       profile: messageData.profile || '',
       // v3.10.10: Mesaj içeriği eklendi
-      messageContent: messageData.messageContent || ''
+      messageContent: messageData.messageContent || '',
+      // v3.10.19: targetType, customerName, customerPhone eklendi
+      targetType: messageData.targetType || '', // 'customer' veya 'staff'
+      customerName: messageData.customerName || '',
+      customerPhone: messageData.customerPhone || ''
     };
 
     this.appendRow(this.SHEET_NAMES.MESSAGE_LOG, logEntry);

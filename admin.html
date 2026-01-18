@@ -152,18 +152,38 @@
                     </div>
                 </div>
 
-                <!-- Mesajlar -->
+                <!-- Mesajlar - WhatsApp Style -->
                 <div id="whatsappMessages" class="inner-tab-content">
-                    <div class="card">
-                        <div class="card-title">Gönderilen Mesajlar</div>
-                        <div id="sentMessagesList">
-                            <p style="color: #888; font-size: 13px;">Henüz mesaj yok.</p>
+                    <div class="wa-chat-container">
+                        <!-- Sol Panel: Kişi Listesi -->
+                        <div class="wa-contacts-panel">
+                            <div class="wa-contacts-header">
+                                <span class="wa-header-title">Mesajlar</span>
+                            </div>
+                            <div class="wa-search-box">
+                                <input type="text" id="waContactSearch" placeholder="Kişi veya numara ara...">
+                            </div>
+                            <div class="wa-contacts-list" id="waContactsList">
+                                <div class="wa-loading">Yükleniyor...</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="card">
-                        <div class="card-title">Alınan Mesajlar</div>
-                        <div id="receivedMessagesList">
-                            <p style="color: #888; font-size: 13px;">Henüz mesaj yok.</p>
+
+                        <!-- Sağ Panel: Mesajlar -->
+                        <div class="wa-chat-panel">
+                            <div class="wa-chat-header" id="waChatHeader">
+                                <div class="wa-chat-header-info">
+                                    <div class="wa-avatar-placeholder"></div>
+                                    <div class="wa-chat-header-text">
+                                        <span class="wa-chat-name">Bir kişi seçin</span>
+                                        <span class="wa-chat-status"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="wa-messages-area" id="waMessagesArea">
+                                <div class="wa-empty-state">
+                                    <p>Mesajları görüntülemek için<br>soldan bir kişi seçin</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -946,6 +966,11 @@
                     <div class="input-group">
                         <label for="templateDescription">DESCRIPTION</label>
                         <input type="text" id="templateDescription" placeholder="Reminder message for appointment">
+                    </div>
+                    <div class="input-group">
+                        <label for="templateContent">CONTENT (WhatsApp Şablon Metni)</label>
+                        <textarea id="templateContent" rows="5" placeholder="Sayın {{1}}, {{2}} tarihli randevunuz için hatırlatma..."></textarea>
+                        <small class="input-help">WhatsApp Business'taki şablon metnini olduğu gibi yapıştırın. Değişkenler: {{1}}, {{2}}, ...</small>
                     </div>
                     <div class="input-group">
                         <label for="templateTargetType">TARGET</label>

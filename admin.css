@@ -1653,3 +1653,446 @@
         padding: 8px 12px;
     }
 }
+
+/* ==================== Chat Style (Site Uyumlu) ==================== */
+
+.wa-chat-container {
+    display: flex;
+    height: 600px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid #E8E8E8;
+}
+
+/* Sol Panel - Kişi Listesi */
+.wa-contacts-panel {
+    width: 350px;
+    min-width: 300px;
+    border-right: 1px solid #E8E8E8;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+}
+
+.wa-contacts-header {
+    padding: 16px 20px;
+    background: #FAFAFA;
+    border-bottom: 1px solid #E8E8E8;
+}
+
+.wa-header-title {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1A1A2E;
+    letter-spacing: 0.5px;
+}
+
+.wa-search-box {
+    padding: 10px 12px;
+    background: #FAFAFA;
+}
+
+.wa-search-box input {
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid #E8E8E8;
+    border-radius: 4px;
+    background: #fff;
+    font-size: 13px;
+    outline: none;
+    font-family: inherit;
+}
+
+.wa-search-box input:focus {
+    border-color: #1A1A2E;
+}
+
+.wa-contacts-list {
+    flex: 1;
+    overflow-y: auto;
+}
+
+.wa-contact-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #F5F5F5;
+}
+
+.wa-contact-item:hover {
+    background: #FAFAFA;
+}
+
+.wa-contact-item.active {
+    background: #F0F0F0;
+    border-left: 3px solid #1A1A2E;
+}
+
+.wa-contact-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: #1A1A2E;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 500;
+    font-size: 16px;
+    margin-right: 12px;
+    flex-shrink: 0;
+}
+
+.wa-contact-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.wa-contact-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a1a1a;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.wa-contact-phone {
+    font-size: 12px;
+    color: #667781;
+    margin-bottom: 2px;
+}
+
+.wa-contact-preview {
+    font-size: 13px;
+    color: #667781;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.wa-contact-preview .wa-tick {
+    color: #1A1A2E;
+    font-size: 14px;
+}
+
+.wa-contact-meta {
+    text-align: right;
+    flex-shrink: 0;
+    margin-left: 8px;
+}
+
+.wa-contact-time {
+    font-size: 12px;
+    color: #667781;
+}
+
+.wa-contact-badge {
+    background: #1A1A2E;
+    color: #fff;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    margin-top: 4px;
+    display: inline-block;
+}
+
+/* Sağ Panel - Mesajlar */
+.wa-chat-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: #F5F5F5;
+}
+
+.wa-chat-header {
+    padding: 12px 20px;
+    background: #f0f2f5;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.wa-chat-header-info {
+    display: flex;
+    align-items: center;
+}
+
+.wa-avatar-placeholder {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: #1A1A2E;
+    margin-right: 14px;
+}
+
+.wa-chat-header-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.wa-chat-name {
+    font-size: 16px;
+    font-weight: 500;
+    color: #1a1a1a;
+}
+
+.wa-chat-status {
+    font-size: 13px;
+    color: #667781;
+}
+
+.wa-messages-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.wa-empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #667781;
+    text-align: center;
+}
+
+.wa-empty-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.wa-empty-state p {
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Mesaj Balonları */
+.wa-message {
+    max-width: 65%;
+    margin-bottom: 8px;
+    display: flex;
+    flex-direction: column;
+}
+
+.wa-message.outgoing {
+    align-self: flex-end;
+}
+
+.wa-message.incoming {
+    align-self: flex-start;
+}
+
+.wa-message-bubble {
+    padding: 8px 12px;
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+}
+
+.wa-message.outgoing .wa-message-bubble {
+    background: #E8E8E8;
+    border-top-right-radius: 0;
+}
+
+.wa-message.incoming .wa-message-bubble {
+    background: #fff;
+    border-top-left-radius: 0;
+}
+
+.wa-message-content {
+    font-size: 14px;
+    color: #111b21;
+    line-height: 1.4;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.wa-message-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+.wa-message-time {
+    font-size: 11px;
+    color: #667781;
+}
+
+.wa-message-status {
+    font-size: 14px;
+    color: #1A1A2E;
+}
+
+.wa-message-status.failed {
+    color: #ea4335;
+}
+
+/* Tarih Ayracı */
+.wa-date-divider {
+    text-align: center;
+    margin: 16px 0;
+}
+
+.wa-date-divider span {
+    background: #E8E8E8;
+    color: #1A1A2E;
+    font-size: 12px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+}
+
+/* Loading */
+.wa-loading {
+    text-align: center;
+    padding: 40px;
+    color: #667781;
+}
+
+/* Message clickable */
+.wa-message-bubble {
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.wa-message-bubble:hover {
+    transform: scale(1.01);
+}
+
+/* Message Details Modal */
+.wa-message-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.2s ease;
+}
+
+.wa-message-modal.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.wa-message-modal-content {
+    background: #fff;
+    border-radius: 8px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+}
+
+.wa-message-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid #E8E8E8;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.wa-message-modal-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #1A1A2E;
+}
+
+.wa-message-modal-close {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #667781;
+    padding: 0;
+    line-height: 1;
+}
+
+.wa-message-modal-close:hover {
+    color: #1A1A2E;
+}
+
+.wa-message-modal-body {
+    padding: 20px;
+}
+
+.wa-detail-row {
+    margin-bottom: 16px;
+}
+
+.wa-detail-label {
+    font-size: 12px;
+    color: #667781;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.wa-detail-value {
+    font-size: 14px;
+    color: #1a1a1a;
+    line-height: 1.5;
+}
+
+.wa-detail-value.success {
+    color: #28a745;
+}
+
+.wa-detail-value.error {
+    color: #ea4335;
+}
+
+.wa-message-full-content {
+    background: #F5F5F5;
+    padding: 12px;
+    border-radius: 4px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+    .wa-chat-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .wa-contacts-panel {
+        width: 100%;
+        max-height: 300px;
+        border-right: none;
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .wa-chat-panel {
+        min-height: 400px;
+    }
+
+    .wa-message {
+        max-width: 85%;
+    }
+}

@@ -49,6 +49,7 @@ interface WhatsAppTemplate {
     variables: Record<string, string>;
     targetType: 'customer' | 'staff';
     language: string;
+    content?: string;          // v3.10.19: WhatsApp şablon içeriği (Meta'daki orijinal metin)
 }
 
 interface WhatsAppMessage {
@@ -768,6 +769,7 @@ function resetTemplateForm(): void {
     (document.getElementById('templateDisplayName') as HTMLInputElement).value = '';
     (document.getElementById('templateName') as HTMLInputElement).value = '';
     (document.getElementById('templateDescription') as HTMLInputElement).value = '';
+    (document.getElementById('templateContent') as HTMLTextAreaElement).value = ''; // v3.10.19
     (document.getElementById('templateTargetType') as HTMLSelectElement).value = 'customer';
     (document.getElementById('templateLanguage') as HTMLSelectElement).value = 'tr';
     (document.getElementById('templateVariableCount') as HTMLInputElement).value = '0';
@@ -789,6 +791,7 @@ function populateTemplateForm(template: WhatsAppTemplate): void {
     (document.getElementById('templateDisplayName') as HTMLInputElement).value = template.name || '';
     (document.getElementById('templateName') as HTMLInputElement).value = template.metaTemplateName || '';
     (document.getElementById('templateDescription') as HTMLInputElement).value = template.description || '';
+    (document.getElementById('templateContent') as HTMLTextAreaElement).value = template.content || ''; // v3.10.19
     (document.getElementById('templateTargetType') as HTMLSelectElement).value = template.targetType;
     (document.getElementById('templateLanguage') as HTMLSelectElement).value = template.language || 'tr';
     (document.getElementById('templateVariableCount') as HTMLInputElement).value = String(template.variableCount || 0);
@@ -891,6 +894,7 @@ async function saveTemplate(): Promise<void> {
     const displayName = (document.getElementById('templateDisplayName') as HTMLInputElement).value.trim();
     const metaTemplateName = (document.getElementById('templateName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('templateDescription') as HTMLInputElement).value.trim();
+    const content = (document.getElementById('templateContent') as HTMLTextAreaElement).value.trim(); // v3.10.19
     const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value as 'customer' | 'staff';
     const language = (document.getElementById('templateLanguage') as HTMLSelectElement).value;
     const variableCount = parseInt((document.getElementById('templateVariableCount') as HTMLInputElement).value) || 0;
@@ -915,11 +919,12 @@ async function saveTemplate(): Promise<void> {
         }
     }
 
-    // Build template data
+    // Build template data (v3.10.19: content eklendi)
     const templateData: Partial<WhatsAppTemplate> = {
         name: displayName,
         metaTemplateName,
         description,
+        content,
         targetType,
         language,
         variableCount,

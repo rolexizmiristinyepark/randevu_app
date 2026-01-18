@@ -492,7 +492,8 @@ async function saveEdit(): Promise<void> {
     }
 
     try {
-        const response = await apiCall('updateStaff', {
+        // v3.10.18: updateStaffV3 kullan - role ve isAdmin kaydetmek için
+        const response = await apiCall('updateStaffV3', {
             id: currentEditId,
             name: name,
             phone: phone,
@@ -508,7 +509,7 @@ async function saveEdit(): Promise<void> {
             closeEditModal();
             getUI().showAlert('Personel güncellendi!', 'success');
         } else {
-            ErrorUtils.handleApiError(response as any, 'updateStaff', getUI().showAlert.bind(getUI()));
+            ErrorUtils.handleApiError(response as any, 'updateStaffV3', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
         ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(getUI()));

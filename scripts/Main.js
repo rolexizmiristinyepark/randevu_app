@@ -77,6 +77,7 @@ const PUBLIC_ADMIN_ACTIONS = [
   'getWhatsAppTemplates', 'getWhatsAppVariableOptions',
   'getWhatsAppMessages', 'getWhatsAppMessageStats', 'getAppointmentMessages',
   'getMailFlows', 'getMailTemplates', 'getMailInfoCards',
+  'getDebugLogs',  // Debug logları okuma
   'getUnifiedFlows',  // v3.10: Unified notification flows
   'getMessageVariables', 'getTriggers', 'getRecipients',
   'debugNotificationFlows'  // v3.10.7: Diagnostic endpoint
@@ -357,6 +358,7 @@ const ACTION_HANDLERS = {
   'updateWhatsAppTemplate': (e) => updateWhatsAppTemplate({
     id: e.parameter.id,
     name: e.parameter.name,
+    metaTemplateName: e.parameter.metaTemplateName, // v3.10.17: Added missing parameter
     description: e.parameter.description,
     variableCount: e.parameter.variableCount,
     language: e.parameter.language,
@@ -538,6 +540,9 @@ const ACTION_HANDLERS = {
 
   // Unified Notification Flows (v3.10)
   'getUnifiedFlows': () => getNotificationFlows(),
+
+  // Debug logları okuma
+  'getDebugLogs': (e) => getDebugLogs(parseInt(e.parameter.limit) || 50),
 
   // v3.10.7: Debug endpoint for diagnosing notification flow issues
   'debugNotificationFlows': (e) => {

@@ -12,7 +12,8 @@ import { initStaffManager } from './admin/staff-manager';
 import { initShiftManager } from './admin/shift-manager';
 import { initAppointmentManager, loadAppointments } from './admin/appointment-manager';
 import { initSettingsManager } from './admin/settings-manager';
-import { initWhatsAppManager, loadSentMessages, loadReceivedMessages } from './admin/whatsapp-manager';
+import { initWhatsAppManager } from './admin/whatsapp-manager';
+import { initWhatsAppChat } from './admin/whatsapp-chat';
 import { initMailManager } from './admin/mail-manager';
 import { initUnifiedFlowManager } from './admin/unified-flow-manager';
 import { initPermissionManager } from './admin/permission-manager';
@@ -304,8 +305,7 @@ function setupTabs(): void {
 
                 // Load messages when switching to WhatsApp messages tab
                 if (innerTabName === 'whatsappMessages') {
-                    loadSentMessages();
-                    loadReceivedMessages();
+                    initWhatsAppChat();
                 }
             }
         });

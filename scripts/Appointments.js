@@ -166,6 +166,10 @@ const AppointmentService = {
       // WhatsApp Flow tetikle - RANDEVU_IPTAL
       try {
         // v3.9: Profil bazlı çalışma (profilTag yukarıda alındı)
+        // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız)
+        const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const formattedDateTr = startTime.getDate() + ' ' + TR_MONTHS[startTime.getMonth()] + ' ' + startTime.getFullYear() + ', ' + TR_DAYS[startTime.getDay()];
         const eventData = {
           eventId: eventId,
           customerName: customerName,
@@ -173,10 +177,10 @@ const AppointmentService = {
           customerEmail: customerEmail,
           staffId: staffId,
           staffName: staff ? staff.name : 'Atanacak',
-          appointmentDate: Utilities.formatDate(startTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
+          appointmentDate: formattedDateTr,
           appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
           appointmentType: appointmentType,
-          profil: profilTag
+          profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
         };
 
         const flowResult = triggerFlowForEvent('RANDEVU_İPTAL', eventData);
@@ -314,6 +318,10 @@ const AppointmentService = {
           const data = StorageService.getData();
           const staff = data.staff.find(s => s.id == staffId);
 
+          // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız)
+          const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+          const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+          const formattedDateTr = newStartDateTime.getDate() + ' ' + TR_MONTHS[newStartDateTime.getMonth()] + ' ' + newStartDateTime.getFullYear() + ', ' + TR_DAYS[newStartDateTime.getDay()];
           const eventData = {
             eventId: eventId,
             customerName: customerName,
@@ -321,10 +329,10 @@ const AppointmentService = {
             customerEmail: customerEmail,
             staffId: staffId,
             staffName: staff ? staff.name : 'Atanacak',
-            appointmentDate: Utilities.formatDate(newStartDateTime, 'Europe/Istanbul', 'dd MMMM yyyy'),
+            appointmentDate: formattedDateTr,
             appointmentTime: newTime,
             appointmentType: appointmentType,
-            profil: profilTag  // v3.9: Profil bazlı
+            profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
           };
 
           const flowResult = triggerFlowForEvent('RANDEVU_GÜNCELLE', eventData);
@@ -465,19 +473,33 @@ const AppointmentService = {
         const customerPhone = event.getTag('customerPhone') || '';
         const customerEmail = event.getTag('customerEmail') || '';
         const appointmentType = event.getTag('appointmentType') || '';
-        const profilTag = event.getTag('profil') || 'g';  // Profil bazlı
+        const customerNote = event.getTag('customerNote') || event.getDescription() || '';  // v3.10.17
 
+        // v3.10.18: Profil key'i koda çevir (genel→g, personel→s, vb.)
+        const PROFILE_KEY_TO_CODE = {
+          'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
+          'yonetim': 'm', 'personel': 's', 'vip': 'v'
+        };
+        const rawProfil = event.getTag('profil') || 'genel';
+        const profilTag = PROFILE_KEY_TO_CODE[rawProfil] || rawProfil || 'g';
+
+        // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız) + customerNote eklendi
+        const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const startDt = event.getStartTime();
+        const formattedDateTr = startDt.getDate() + ' ' + TR_MONTHS[startDt.getMonth()] + ' ' + startDt.getFullYear() + ', ' + TR_DAYS[startDt.getDay()];
         const eventData = {
           eventId: eventId,
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail,
+          customerNote: customerNote,  // v3.10.17: Ek bilgi eklendi
           staffId: staffId,
           staffName: staff.name,
-          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
-          appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
+          appointmentDate: formattedDateTr,
+          appointmentTime: Utilities.formatDate(startDt, 'Europe/Istanbul', 'HH:mm'),
           appointmentType: appointmentType,
-          profil: profilTag
+          profile: profilTag  // v3.10.18: Profil kodu (g, s, v, vb.)
         };
 
         const flowResult = triggerFlowForEvent('ILGILI_ATANDI', eventData);
@@ -796,7 +818,7 @@ const AvailabilityService = {
    * @param {number} slotLimit - Max appointments per slot (0 = unlimited)
    * @returns {{success: boolean, data: {slots: Array<{time: string, available: boolean, count: number}>}}}
    */
-  getSlotAvailability: function(date, slotGrid = 60, slotLimit = 1) {
+  getSlotAvailability: function(date, slotGrid = 60, slotLimit = 1, appointmentDuration = 60) {
     try {
       const calendar = CalendarService.getCalendar();
 
@@ -807,7 +829,9 @@ const AvailabilityService = {
 
       // Generate all possible slots based on slotGrid
       const slots = [];
-      const duration = slotGrid; // Assume duration = slotGrid for overlap calculation
+      // v3.10.18: Use actual appointment duration (default 60 min), NOT slotGrid
+      // slotGrid is just display interval, appointmentDuration is how long appointments last
+      const duration = appointmentDuration;
 
       for (let hour = 11; hour <= 20; hour++) {
         // Full hour slot
@@ -860,7 +884,7 @@ const AvailabilityService = {
         }
       }
 
-      log.info('getSlotAvailability result:', { date, slotGrid, slotLimit, totalSlots: slots.length, availableSlots: slots.filter(s => s.available).length });
+      log.info('getSlotAvailability result:', { date, slotGrid, slotLimit, appointmentDuration: duration, totalSlots: slots.length, availableSlots: slots.filter(s => s.available).length });
 
       return {
         success: true,

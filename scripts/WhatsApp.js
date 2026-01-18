@@ -204,7 +204,7 @@ function cleanupOldMessageContent() {
  */
 function debugSheetLog(message, data) {
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     let sheet = ss.getSheetByName('FlowDebugLog');
 
     // Sheet yoksa oluştur
@@ -226,6 +226,42 @@ function debugSheetLog(message, data) {
   } catch (e) {
     // Sheet log hatası ana işlemi etkilemesin
     console.error('debugSheetLog error:', e);
+  }
+}
+
+/**
+ * Debug loglarını oku (API endpoint)
+ * @param {number} limit - Kaç satır döndürülsün (default: 50)
+ * @returns {Object} { success: true, data: [...] }
+ */
+function getDebugLogs(limit) {
+  try {
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('FlowDebugLog');
+
+    if (!sheet) {
+      return { success: true, data: [], message: 'FlowDebugLog sheet bulunamadı' };
+    }
+
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      return { success: true, data: [], message: 'Log yok' };
+    }
+
+    const numRows = Math.min(limit || 50, lastRow - 1);
+    const startRow = Math.max(2, lastRow - numRows + 1);
+    const data = sheet.getRange(startRow, 1, numRows, 3).getValues();
+
+    // En yeniden eskiye sırala
+    const logs = data.reverse().map(row => ({
+      timestamp: row[0],
+      message: row[1],
+      data: row[2]
+    }));
+
+    return { success: true, data: logs };
+  } catch (e) {
+    return { success: false, error: e.toString() };
   }
 }
 
@@ -841,26 +877,44 @@ const WhatsAppService = {
       if (responseCode === 200) {
         const messageId = responseData.messages[0].id;
 
-        // v3.10.10: Mesaj içeriğini oluştur (template parametrelerinden)
-        const messageContent = parameters.map(p => p.text || '').join(' | ');
+        // v3.10.19: Mesaj içeriğini template content'ten oluştur (değişkenleri doldurarak)
+        let messageContent = '';
+        if (template.content) {
+          // Template content'indeki {{1}}, {{2}} gibi placeholders'ları değerlerle değiştir
+          messageContent = template.content;
+          parameters.forEach((p, index) => {
+            const placeholder = '{{' + (index + 1) + '}}';
+            messageContent = messageContent.replace(placeholder, p.text || '');
+          });
+        } else {
+          // Fallback: parametrelerden oluştur (eski davranış)
+          messageContent = parameters.map(p => p.text || '').join(' | ');
+        }
 
         // MESSAGE_LOG: Başarılı gönderimi logla
         try {
+          // v3.10.19: targetType'a göre recipientName belirle
+          const isCustomerMessage = template.targetType === 'customer';
           SheetStorageService.addMessageLog({
             direction: 'outgoing',
             appointmentId: appointmentData.eventId || '',
             phone: cleanPhone,
-            recipientName: appointmentData.customerName || appointmentData.staffName || '',
+            recipientName: isCustomerMessage ? appointmentData.customerName : appointmentData.staffName || '',
             templateName: template.name,
             templateId: template.id || '',
             status: 'sent',
             messageId: messageId,
             staffId: appointmentData.staffId || '',
             staffName: appointmentData.staffName || '',
+            staffPhone: appointmentData.staffPhone || '',
             flowId: appointmentData._flowId || '',
             triggeredBy: appointmentData._triggeredBy || 'manual',
             profile: appointmentData.profile || appointmentData.linkType || '',
-            messageContent: messageContent // v3.10.10: Mesaj içeriği
+            messageContent: messageContent,
+            // v3.10.19: Yeni alanlar
+            targetType: template.targetType || '',
+            customerName: appointmentData.customerName || '',
+            customerPhone: appointmentData.customerPhone || ''
           });
         } catch (logError) {
           console.error('Message log error (non-critical):', logError);
@@ -876,14 +930,25 @@ const WhatsAppService = {
         log.error('WhatsApp API hatası:', responseData);
 
         // MESSAGE_LOG: Başarısız gönderimi logla
-        // v3.10.10: Mesaj içeriğini oluştur (hata durumunda da)
-        const failedMessageContent = parameters.map(p => p.text || '').join(' | ');
+        // v3.10.19: Mesaj içeriğini template content'ten oluştur (hata durumunda da)
+        let failedMessageContent = '';
+        if (template.content) {
+          failedMessageContent = template.content;
+          parameters.forEach((p, index) => {
+            const placeholder = '{{' + (index + 1) + '}}';
+            failedMessageContent = failedMessageContent.replace(placeholder, p.text || '');
+          });
+        } else {
+          failedMessageContent = parameters.map(p => p.text || '').join(' | ');
+        }
         try {
+          // v3.10.19: targetType'a göre recipientName belirle
+          const isCustomerMessageFailed = template.targetType === 'customer';
           SheetStorageService.addMessageLog({
             direction: 'outgoing',
             appointmentId: appointmentData.eventId || '',
             phone: cleanPhone,
-            recipientName: appointmentData.customerName || appointmentData.staffName || '',
+            recipientName: isCustomerMessageFailed ? appointmentData.customerName : appointmentData.staffName || '',
             templateName: template.name,
             templateId: template.id || '',
             status: 'failed',
@@ -891,10 +956,15 @@ const WhatsAppService = {
             errorMessage: responseData.error?.message || 'Bilinmeyen hata',
             staffId: appointmentData.staffId || '',
             staffName: appointmentData.staffName || '',
+            staffPhone: appointmentData.staffPhone || '',
             flowId: appointmentData._flowId || '',
             triggeredBy: appointmentData._triggeredBy || 'manual',
             profile: appointmentData.profile || appointmentData.linkType || '',
-            messageContent: failedMessageContent // v3.10.10: Mesaj içeriği
+            messageContent: failedMessageContent,
+            // v3.10.19: Yeni alanlar
+            targetType: template.targetType || '',
+            customerName: appointmentData.customerName || '',
+            customerPhone: appointmentData.customerPhone || ''
           });
         } catch (logError) {
           console.error('Message log error (non-critical):', logError);
@@ -2340,8 +2410,6 @@ function _maskPhoneNumber(phone) {
  */
 function triggerFlowForEvent(trigger, eventData) {
   try {
-    // 🔍 DEBUG: Sheet'e yaz (doPost'ta da görünür!)
-    debugSheetLog('TRIGGER_FLOW_START', { trigger, staffId: eventData.staffId, profile: eventData.profile, customerName: eventData.customerName });
     console.log('🔥 [triggerFlowForEvent] START - trigger:', trigger);
 
     // Aktif flow'ları getir
@@ -2474,26 +2542,20 @@ function processFlowTemplate(template, eventData) {
         break;
         
       case 'staff':
-        // 🔍 DEBUG: Sheet'e yaz (doPost'ta da görünür!)
-        debugSheetLog('STAFF_CASE_START', { staffId: eventData.staffId, staffIdType: typeof eventData.staffId });
         console.log(`[processFlowTemplate] STAFF case - eventData.staffId: ${eventData.staffId}`);
         if (eventData.staffId) {
           const staff = getStaffById(eventData.staffId);
-          debugSheetLog('STAFF_CASE_GETSTAFFBYID', { staffId: eventData.staffId, result: staff ? { id: staff.id, name: staff.name, phone: staff.phone } : null });
           console.log(`[processFlowTemplate] STAFF case - getStaffById result:`, JSON.stringify(staff));
           if (staff && staff.phone) {
             console.log(`[processFlowTemplate] STAFF case - Adding recipient: ${staff.name}, phone: ${staff.phone}`);
-            debugSheetLog('STAFF_CASE_ADDING_RECIPIENT', { name: staff.name, phone: staff.phone });
             recipients.push({
               phone: staff.phone,
               name: staff.name
             });
           } else {
-            debugSheetLog('STAFF_CASE_NOT_FOUND_OR_NO_PHONE', { staff: staff ? `name=${staff.name}, phone=${staff.phone}` : 'null' });
             console.log(`[processFlowTemplate] STAFF case - Staff not found or no phone! staff:`, staff ? `name=${staff.name}, phone=${staff.phone}` : 'null');
           }
         } else {
-          debugSheetLog('STAFF_CASE_NO_STAFFID', { eventDataKeys: Object.keys(eventData || {}) });
           console.log(`[processFlowTemplate] STAFF case - No staffId in eventData!`);
         }
         break;
@@ -2537,11 +2599,11 @@ function processFlowTemplate(template, eventData) {
       console.log(`[processFlowTemplate] No recipients found for targetType: ${template.targetType}`);
       return { success: false, message: `Alıcı bulunamadı (targetType: ${template.targetType})` };
     }
-    
+
     // Her alıcıya mesaj gönder
     let sentCount = 0;
     const errors = [];
-    
+
     for (const recipient of recipients) {
       try {
         console.log(`[processFlowTemplate] Sending to: ${recipient.name}, phone: ${recipient.phone}`);
@@ -2869,7 +2931,8 @@ function deleteWhatsAppFlow(params) {
 function createWhatsAppTemplate(params) {
   try {
     console.log('[createWhatsAppTemplate] params:', JSON.stringify(params));
-    const { name, metaTemplateName, description, variableCount, variables, targetType, language } = params;
+    // v3.10.19: content alanı eklendi
+    const { name, metaTemplateName, description, variableCount, variables, targetType, language, content } = params;
 
     if (!name || !metaTemplateName || !targetType || variableCount === undefined) {
       console.log('[createWhatsAppTemplate] Missing required fields - name:', name, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'variableCount:', variableCount);
@@ -2879,11 +2942,11 @@ function createWhatsAppTemplate(params) {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     let sheet = ss.getSheetByName('whatsapp_templates');
 
-    // TEMPLATES sheet yoksa oluştur (META_TEMPLATE_NAME kolonu ile)
+    // TEMPLATES sheet yoksa oluştur (v3.10.19: CONTENT kolonu eklendi)
     if (!sheet) {
       console.log('[createWhatsAppTemplate] TEMPLATES sheet not found, creating...');
       sheet = ss.insertSheet('whatsapp_templates');
-      sheet.getRange(1, 1, 1, 8).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
+      sheet.getRange(1, 1, 1, 9).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT']]);
       console.log('[createWhatsAppTemplate] TEMPLATES sheet created with headers');
     } else {
       // Mevcut sheet'e META_TEMPLATE_NAME ve LANGUAGE kolonu yoksa ekle
@@ -2902,13 +2965,19 @@ function createWhatsAppTemplate(params) {
         sheet.getRange(1, lastCol).setValue('LANGUAGE');
         console.log('[createWhatsAppTemplate] LANGUAGE column added to existing sheet');
       }
+      // v3.10.19: CONTENT kolonu yoksa ekle
+      if (!headers.includes('CONTENT')) {
+        const lastCol = sheet.getLastColumn() + 1;
+        sheet.getRange(1, lastCol).setValue('CONTENT');
+        console.log('[createWhatsAppTemplate] CONTENT column added to existing sheet');
+      }
     }
 
     // Re-read headers after potential column additions
     const currentHeaders = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     const templateId = 'tmpl_' + Date.now();
 
-    // Build row based on current headers
+    // Build row based on current headers (v3.10.19: content eklendi)
     const newRow = currentHeaders.map(function(header) {
       switch(header) {
         case 'ID': return templateId;
@@ -2919,6 +2988,7 @@ function createWhatsAppTemplate(params) {
         case 'VARIABLES': return JSON.stringify(variables || {});
         case 'TARGET_TYPE': return targetType;
         case 'LANGUAGE': return language || 'en';
+        case 'CONTENT': return content || '';
         default: return '';
       }
     });
@@ -2937,11 +3007,13 @@ function createWhatsAppTemplate(params) {
 /**
  * Template güncelle (yeni basitleştirilmiş sistem)
  * v3.10.14: Added metaTemplateName field support
+ * v3.10.19: Added content field support
  */
 function updateWhatsAppTemplate(params) {
   try {
     console.log('[updateWhatsAppTemplate] params:', JSON.stringify(params));
-    const { id, name, metaTemplateName, description, variableCount, variables, targetType, language } = params;
+    // v3.10.19: content alanı eklendi
+    const { id, name, metaTemplateName, description, variableCount, variables, targetType, language, content } = params;
     console.log('[updateWhatsAppTemplate] id:', id, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'language:', language);
 
     if (!id) return { success: false, message: 'Template ID gerekli' };
@@ -2950,7 +3022,7 @@ function updateWhatsAppTemplate(params) {
     const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) return { success: false, message: 'Template sheet bulunamadı' };
 
-    // Get headers and ensure META_TEMPLATE_NAME and LANGUAGE columns exist
+    // Get headers and ensure META_TEMPLATE_NAME, LANGUAGE and CONTENT columns exist
     var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
 
     // Add META_TEMPLATE_NAME column if missing
@@ -2973,6 +3045,14 @@ function updateWhatsAppTemplate(params) {
       headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
 
+    // v3.10.19: Add CONTENT column if missing
+    if (!headers.includes('CONTENT')) {
+      const lastCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, lastCol).setValue('CONTENT');
+      console.log('[updateWhatsAppTemplate] CONTENT column added');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    }
+
     const data = sheet.getDataRange().getValues();
     console.log('[updateWhatsAppTemplate] sheet data rows:', data.length);
 
@@ -2992,6 +3072,8 @@ function updateWhatsAppTemplate(params) {
     if (variables) sheet.getRange(rowIndex + 1, getColIndex('VARIABLES')).setValue(JSON.stringify(variables));
     if (targetType) sheet.getRange(rowIndex + 1, getColIndex('TARGET_TYPE')).setValue(targetType);
     if (language) sheet.getRange(rowIndex + 1, getColIndex('LANGUAGE')).setValue(language);
+    // v3.10.19: content alanı güncelleme
+    if (content !== undefined) sheet.getRange(rowIndex + 1, getColIndex('CONTENT')).setValue(content);
 
     return { success: true, message: 'Template başarıyla güncellendi' };
   } catch (error) {
@@ -3009,9 +3091,9 @@ function getWhatsAppTemplates() {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) {
-      // Eğer TEMPLATES sheet'i yoksa oluştur (META_TEMPLATE_NAME kolonu ile)
+      // Eğer TEMPLATES sheet'i yoksa oluştur (v3.10.19: CONTENT kolonu eklendi)
       const templates = ss.insertSheet('whatsapp_templates');
-      templates.getRange(1, 1, 1, 8).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE']]);
+      templates.getRange(1, 1, 1, 9).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT']]);
       return { success: true, data: [] };
     }
 
@@ -3037,6 +3119,10 @@ function getWhatsAppTemplates() {
 
       // v3.10.16: metaTemplateName boşsa boş bırak - _sendToSingleRecipient zaten fallback yapıyor
 
+      // v3.10.19: content alanı eklendi
+      var contentCol = getColIndex('CONTENT');
+      var content = contentCol >= 0 ? (row[contentCol] || '') : '';
+
       return {
         id: row[getColIndex('ID')] || '',
         name: displayName,
@@ -3045,7 +3131,8 @@ function getWhatsAppTemplates() {
         variableCount: Number(row[getColIndex('VARIABLE_COUNT')]) || 0,
         variables: variables,
         targetType: row[getColIndex('TARGET_TYPE')] || '',
-        language: row[getColIndex('LANGUAGE')] || 'en'
+        language: row[getColIndex('LANGUAGE')] || 'en',
+        content: content // v3.10.19: WhatsApp şablon içeriği
       };
     }).filter(function(template) { return template.id; });
 

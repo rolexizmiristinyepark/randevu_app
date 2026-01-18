@@ -94,12 +94,12 @@ const ApiService = {
         'addWhatsAppFlow',              // v3.4: WhatsApp Flow Sistemi
         'updateWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
         'deleteWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
+        'createWhatsAppTemplate',       // v3.10.20: Template CRUD (POST için - content uzun olabilir)
+        'updateWhatsAppTemplate',       // v3.10.20: Template CRUD (POST için - content uzun olabilir)
+        'deleteWhatsAppTemplate',       // v3.10.20: Template CRUD
         'addWhatsAppDailyTask',         // v3.4: WhatsApp Günlük Görevler
         'updateWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
         'deleteWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
-        'createWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
-        'updateWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
-        'deleteWhatsAppTemplate',       // v3.4: WhatsApp Template CRUD
         'getWhatsAppTemplates',         // v3.4: WhatsApp Template CRUD
         'getAllLinks',                  // v3.0: Session auth
         'getWhatsAppVariableOptions',   // v3.4: WhatsApp Template CRUD
