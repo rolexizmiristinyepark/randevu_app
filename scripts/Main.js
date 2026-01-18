@@ -342,11 +342,13 @@ const ACTION_HANDLERS = {
     try {
       const params = {
         name: e.parameter.name,
+        metaTemplateName: e.parameter.metaTemplateName,
         description: e.parameter.description,
         variableCount: e.parameter.variableCount,
         variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
         targetType: e.parameter.targetType,
-        language: e.parameter.language || 'en'
+        language: e.parameter.language || 'en',
+        content: e.parameter.content || '' // v3.10.20: WhatsApp şablon içeriği
       };
       log.info('[createWhatsAppTemplate-handler] params:', JSON.stringify(params));
       return createWhatsAppTemplate(params);
@@ -358,12 +360,13 @@ const ACTION_HANDLERS = {
   'updateWhatsAppTemplate': (e) => updateWhatsAppTemplate({
     id: e.parameter.id,
     name: e.parameter.name,
-    metaTemplateName: e.parameter.metaTemplateName, // v3.10.17: Added missing parameter
+    metaTemplateName: e.parameter.metaTemplateName,
     description: e.parameter.description,
     variableCount: e.parameter.variableCount,
     language: e.parameter.language,
     variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
-    targetType: e.parameter.targetType
+    targetType: e.parameter.targetType,
+    content: e.parameter.content // v3.10.20: WhatsApp şablon içeriği
   }),
   'deleteWhatsAppTemplate': (e) => deleteWhatsAppTemplate({ id: e.parameter.id }),
   'getWhatsAppVariableOptions': () => getWhatsAppVariableOptions(),
