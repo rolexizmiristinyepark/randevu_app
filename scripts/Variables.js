@@ -25,7 +25,7 @@
  */
 var MESSAGE_VARIABLES = {
   musteri: {
-    label: 'Müşteri: Ahmet Yılmaz',
+    label: 'customer: Ahmet Yılmaz',
     getValue: function(data) {
       // Ad ve soyad birleşik olarak geliyorsa direkt döndür
       if (data.customerName && data.customerName.includes(' ')) {
@@ -42,21 +42,21 @@ var MESSAGE_VARIABLES = {
   },
 
   musteri_tel: {
-    label: 'Müşteri Tel: +905323112522',
+    label: 'customer phone: +905323112522',
     getValue: function(data) {
       return formatPhoneWithCountryCode(data.customerPhone || data.phone);
     }
   },
 
   musteri_mail: {
-    label: 'Müşteri Mail: ahmet@email.com',
+    label: 'customer email: ahmet@email.com',
     getValue: function(data) {
       return data.customerEmail || data.email || '';
     }
   },
 
   randevu_tarihi: {
-    label: 'Randevu Tarihi: 25 Aralık 2025, Cuma',
+    label: 'appointment date: 25 December 2025, Friday',
     getValue: function(data) {
       var dateStr = data.date || data.appointmentDate;
       if (!dateStr) return '';
@@ -93,49 +93,49 @@ var MESSAGE_VARIABLES = {
   },
 
   randevu_saati: {
-    label: 'Randevu Saati: 14:00',
+    label: 'appointment time: 14:00',
     getValue: function(data) {
       return data.time || data.appointmentTime || data.startTime || '';
     }
   },
 
   randevu_ek_bilgi: {
-    label: 'Randevu Ek Bilgi: Müşteri notu buraya gelir',
+    label: 'appointment note: customer note goes here',
     getValue: function(data) {
       return data.customerNote || data.extraInfo || data.description || data.notes || data.note || '';
     }
   },
 
   personel: {
-    label: 'Personel: Mehmet Kaya',
+    label: 'staff: Mehmet Kaya',
     getValue: function(data) {
       return data.staffName || data.assignedStaff || data.linkedStaffName || '';
     }
   },
 
   personel_id: {
-    label: 'Personel ID: 123',
+    label: 'staff id: 123',
     getValue: function(data) {
       return data.staffId || data.linkedStaffId || data.assignedStaffId || '';
     }
   },
 
   personel_tel: {
-    label: 'Personel Tel: +905551234567',
+    label: 'staff phone: +905551234567',
     getValue: function(data) {
       return formatPhoneWithCountryCode(data.staffPhone);
     }
   },
 
   personel_mail: {
-    label: 'Personel Mail: mehmet@rolex.com',
+    label: 'staff email: mehmet@rolex.com',
     getValue: function(data) {
       return data.staffEmail || '';
     }
   },
 
   randevu_turu: {
-    label: 'Randevu Türü: Görüşme',
+    label: 'appointment type: meeting',
     getValue: function(data) {
       var type = data.appointmentType || data.type || '';
       var typeLabels = {
@@ -154,7 +154,7 @@ var MESSAGE_VARIABLES = {
   },
 
   randevu_profili: {
-    label: 'Randevu Profili: Genel',
+    label: 'appointment profile: general',
     getValue: function(data) {
       var profile = data.profile || data.linkType || '';
       var profileLabels = {
@@ -214,18 +214,18 @@ function getTriggers() {
  * - Dinamik: Koşula bağlı gruplar
  */
 var MESSAGE_RECIPIENTS = {
-  // Bireysel alıcılar
-  'customer': 'Müşteri',
-  'staff': 'Atanan Personel',
-  'admin': 'Tüm Adminler',
+  // Individual recipients
+  'admin': 'all admins',
+  'customer': 'customer',
+  'staff': 'assigned staff',
 
-  // Dinamik alıcılar - Bugün
-  'today_customers': 'Bugün Randevusu Olan Müşteriler',
-  'today_staffs': 'Bugün Randevusu Olan Personeller',
+  // Dynamic recipients - Today
+  'today_customers': "today's customers",
+  'today_staffs': "today's staff",
 
-  // Dinamik alıcılar - Yarın
-  'tomorrow_customers': 'Yarın Randevusu Olan Müşteriler',
-  'tomorrow_staffs': 'Yarın Randevusu Olan Personeller'
+  // Dynamic recipients - Tomorrow
+  'tomorrow_customers': "tomorrow's customers",
+  'tomorrow_staffs': "tomorrow's staff"
 };
 
 /**

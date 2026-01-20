@@ -220,12 +220,15 @@ function populateButtonVariableSelect(): void {
         select.removeChild(select.firstChild);
     }
 
-    Object.entries(messageVariables).forEach(([key, label]) => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = label;
-        select.appendChild(option);
-    });
+    // Sort alphabetically by label (A-Z)
+    Object.entries(messageVariables)
+        .sort((a, b) => a[1].localeCompare(b[1]))
+        .forEach(([key, label]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = label;
+            select.appendChild(option);
+        });
 }
 
 /**
@@ -971,20 +974,22 @@ function generateVariableInputs(count: number): void {
         // Add default empty option
         const defaultOpt = document.createElement('option');
         defaultOpt.value = '';
-        defaultOpt.textContent = 'Seçiniz...';
+        defaultOpt.textContent = 'Select...';
         select.appendChild(defaultOpt);
 
-        // Add options from loaded messageVariables
-        for (const [key, labelText] of Object.entries(messageVariables)) {
-            const optionEl = document.createElement('option');
-            optionEl.value = key;
-            optionEl.textContent = labelText;
-            // Restore previously selected value
-            if (existingValues[String(i)] === key) {
-                optionEl.selected = true;
-            }
-            select.appendChild(optionEl);
-        }
+        // Add options from loaded messageVariables (sorted A-Z by label)
+        Object.entries(messageVariables)
+            .sort((a, b) => a[1].localeCompare(b[1]))
+            .forEach(([key, labelText]) => {
+                const optionEl = document.createElement('option');
+                optionEl.value = key;
+                optionEl.textContent = labelText;
+                // Restore previously selected value
+                if (existingValues[String(i)] === key) {
+                    optionEl.selected = true;
+                }
+                select.appendChild(optionEl);
+            });
 
         selectWrapper.appendChild(select);
         row.appendChild(badge);
