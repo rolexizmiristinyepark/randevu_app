@@ -1005,31 +1005,11 @@
                         <small class="input-help">WhatsApp şablonunuzda dinamik URL düğmesi varsa işaretleyin</small>
                     </div>
                     <div id="templateButtonVariableContainer" style="display: none;">
-                        <!-- Düğme Tipi Seçimi -->
                         <div class="input-group">
-                            <label>DÜĞME TİPİ</label>
-                            <div style="display: flex; gap: 15px; margin-top: 5px;">
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                    <input type="radio" name="buttonType" value="dynamic" checked style="width: auto;">
-                                    <span>Dinamik</span>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
-                                    <input type="radio" name="buttonType" value="static" style="width: auto;">
-                                    <span>Statik</span>
-                                </label>
-                            </div>
-                        </div>
-                        <!-- Dinamik seçenek - değişken dropdown -->
-                        <div id="buttonDynamicContainer" class="input-group">
-                            <label for="templateButtonVariable">DEĞİŞKEN</label>
+                            <label for="templateButtonVariable">DÜĞME DEĞİŞKENİ</label>
                             <select id="templateButtonVariable">
                                 <!-- Değişkenler dinamik yüklenecek -->
                             </select>
-                        </div>
-                        <!-- Serbest yazı seçeneği - text input -->
-                        <div id="buttonStaticContainer" class="input-group" style="display: none;">
-                            <label for="templateButtonStaticValue">DEĞER</label>
-                            <input type="text" id="templateButtonStaticValue" placeholder="Düğme değerini yazın...">
                         </div>
                     </div>
 

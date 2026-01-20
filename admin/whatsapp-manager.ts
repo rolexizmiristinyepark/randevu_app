@@ -50,10 +50,8 @@ interface WhatsAppTemplate {
     targetType: string;
     language: string;
     content?: string;          // v3.10.19: WhatsApp şablon içeriği (Meta'daki orijinal metin)
-    hasButton?: boolean;       // v3.10.22: WhatsApp şablonunda düğme var mı
-    buttonType?: 'dynamic' | 'static';  // v3.10.23: Düğme tipi (dinamik değişken / serbest yazı)
-    buttonVariable?: string;   // v3.10.22: Düğme için kullanılacak değişken (dynamic için)
-    buttonStaticValue?: string; // v3.10.23: Düğme için serbest yazı değeri (static için)
+    hasButton?: boolean;       // v3.10.22: WhatsApp şablonunda dinamik düğme var mı
+    buttonVariable?: string;   // v3.10.22: Düğme için kullanılacak değişken
 }
 
 interface WhatsAppMessage {
@@ -275,17 +273,6 @@ function setupEventListeners(): void {
                 populateButtonVariableSelect();
             }
         }
-    });
-
-    // v3.10.23: Button type radio change - show/hide dynamic/static containers
-    document.querySelectorAll('input[name="buttonType"]').forEach(radio => {
-        radio.addEventListener('change', (e) => {
-            const type = (e.target as HTMLInputElement).value;
-            const dynamicContainer = document.getElementById('buttonDynamicContainer');
-            const staticContainer = document.getElementById('buttonStaticContainer');
-            if (dynamicContainer) dynamicContainer.style.display = type === 'dynamic' ? 'block' : 'none';
-            if (staticContainer) staticContainer.style.display = type === 'static' ? 'block' : 'none';
-        });
     });
 
     // Modal close handlers (escape key)
@@ -888,16 +875,6 @@ function resetTemplateForm(): void {
     const buttonContainer = document.getElementById('templateButtonVariableContainer');
     if (buttonContainer) buttonContainer.style.display = 'none';
 
-    // v3.10.23: Reset button type to dynamic and clear static value
-    const dynamicRadio = document.querySelector('input[name="buttonType"][value="dynamic"]') as HTMLInputElement;
-    if (dynamicRadio) dynamicRadio.checked = true;
-    const dynamicContainer = document.getElementById('buttonDynamicContainer');
-    if (dynamicContainer) dynamicContainer.style.display = 'block';
-    const staticContainer = document.getElementById('buttonStaticContainer');
-    if (staticContainer) staticContainer.style.display = 'none';
-    const staticInput = document.getElementById('templateButtonStaticValue') as HTMLInputElement;
-    if (staticInput) staticInput.value = '';
-
     // Clear variable inputs
     const container = document.getElementById('templateVariablesContainer');
     if (container) {
@@ -937,28 +914,10 @@ function populateTemplateForm(template: WhatsAppTemplate): void {
         hasButtonCheckbox.checked = template.hasButton || false;
         buttonContainer.style.display = template.hasButton ? 'block' : 'none';
         if (template.hasButton) {
-            // v3.10.23: Set button type radio
-            const buttonType = template.buttonType || 'dynamic';
-            const typeRadio = document.querySelector(`input[name="buttonType"][value="${buttonType}"]`) as HTMLInputElement;
-            if (typeRadio) typeRadio.checked = true;
-
-            // Show/hide appropriate containers
-            const dynamicContainer = document.getElementById('buttonDynamicContainer');
-            const staticContainer = document.getElementById('buttonStaticContainer');
-            if (dynamicContainer) dynamicContainer.style.display = buttonType === 'dynamic' ? 'block' : 'none';
-            if (staticContainer) staticContainer.style.display = buttonType === 'static' ? 'block' : 'none';
-
-            // Populate dynamic variable select
             populateButtonVariableSelect();
             const buttonSelect = document.getElementById('templateButtonVariable') as HTMLSelectElement;
             if (buttonSelect && template.buttonVariable) {
                 buttonSelect.value = template.buttonVariable;
-            }
-
-            // Populate static value input
-            const staticInput = document.getElementById('templateButtonStaticValue') as HTMLInputElement;
-            if (staticInput && template.buttonStaticValue) {
-                staticInput.value = template.buttonStaticValue;
             }
         }
     }
@@ -1075,17 +1034,13 @@ async function saveTemplate(): Promise<void> {
         }
     }
 
-    // Get button fields (v3.10.23: buttonType ve buttonStaticValue eklendi)
+    // Get button fields
     const hasButton = (document.getElementById('templateHasButton') as HTMLInputElement)?.checked || false;
-    const buttonType = (document.querySelector('input[name="buttonType"]:checked') as HTMLInputElement)?.value as 'dynamic' | 'static' || 'dynamic';
-    const buttonVariable = hasButton && buttonType === 'dynamic'
+    const buttonVariable = hasButton
         ? (document.getElementById('templateButtonVariable') as HTMLSelectElement)?.value || ''
         : '';
-    const buttonStaticValue = hasButton && buttonType === 'static'
-        ? (document.getElementById('templateButtonStaticValue') as HTMLInputElement)?.value || ''
-        : '';
 
-    // Build template data (v3.10.19: content eklendi, v3.10.22: button fields, v3.10.23: buttonType/staticValue)
+    // Build template data
     const templateData: Partial<WhatsAppTemplate> = {
         name: displayName,
         metaTemplateName,
@@ -1096,9 +1051,7 @@ async function saveTemplate(): Promise<void> {
         variableCount,
         variables,
         hasButton,
-        buttonType,
-        buttonVariable,
-        buttonStaticValue
+        buttonVariable
     };
 
     // v3.10.20: Debug log - content gönderilip gönderilmediğini kontrol et
