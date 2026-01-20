@@ -261,11 +261,11 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     // Type/Trigger row - show differently for time-based vs event-based
     const isTimeBased = flow.trigger === 'HATIRLATMA';
     if (isTimeBased) {
-        details.appendChild(createRow('Type', 'Time Based'));
+        details.appendChild(createRow('Type', 'time based'));
         const hour = flow.scheduleHour || '10';
         details.appendChild(createRow('Schedule', `Daily at ${hour}:00`));
     } else {
-        details.appendChild(createRow('Type', 'Event Based'));
+        details.appendChild(createRow('Type', 'event based'));
         const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
         details.appendChild(createRow('Trigger', triggerLabel));
     }
@@ -321,9 +321,7 @@ async function openFlowModal(flowId?: string): Promise<void> {
     resetFlowForm();
     populateTriggerOptions();
 
-    // Always refresh templates from API to get latest data
-    await Promise.all([loadWhatsAppTemplates(), loadMailTemplates()]);
-
+    // Use cached templates for instant modal open
     populateWhatsAppTemplateOptions();
     populateMailTemplateOptions();
 

@@ -790,10 +790,10 @@
                         <label>Flow Type</label>
                         <div class="radio-group">
                             <label class="radio-label">
-                                <input type="radio" name="unifiedFlowType" value="event" checked> Event Based
+                                <input type="radio" name="unifiedFlowType" value="event" checked> event based
                             </label>
                             <label class="radio-label">
-                                <input type="radio" name="unifiedFlowType" value="time"> Time Based
+                                <input type="radio" name="unifiedFlowType" value="time"> time based
                             </label>
                         </div>
                     </div>
@@ -870,50 +870,50 @@
                 <div class="modal-header">New WhatsApp Flow</div>
                 <div class="modal-body">
                     <div class="input-group">
-                        <label for="flowName">Flow Adı</label>
-                        <input type="text" id="flowName" placeholder="Randevu Hatırlatma">
+                        <label for="flowName">Name</label>
+                        <input type="text" id="flowName" placeholder="Appointment reminder">
                     </div>
                     <div class="input-group">
-                        <label for="flowDescription">Açıklama</label>
-                        <input type="text" id="flowDescription" placeholder="1 gün önce gönderilecek hatırlatma">
+                        <label for="flowDescription">Description</label>
+                        <input type="text" id="flowDescription" placeholder="Reminder sent 1 day before">
                     </div>
                     <div class="input-group">
-                        <label for="flowTriggerType">Tetikleme Türü</label>
+                        <label for="flowTriggerType">Trigger type</label>
                         <select id="flowTriggerType">
-                            <option value="time">Zaman Bazlı</option>
-                            <option value="event">Olay Bazlı</option>
+                            <option value="time">time based</option>
+                            <option value="event">event based</option>
                         </select>
                     </div>
-                    <!-- Zaman Bazlı Seçenekler -->
+                    <!-- Time Based Options -->
                     <div id="timeBasedOptions">
                         <div class="input-group">
-                            <label for="flowTime">Gönderim Saati</label>
+                            <label for="flowTime">Send time</label>
                             <input type="time" id="flowTime" value="09:00">
                         </div>
                         <div class="input-group">
-                            <label for="flowTimeBefore">Ne Zaman Önce</label>
+                            <label for="flowTimeBefore">When</label>
                             <select id="flowTimeBefore">
-                                <option value="1_gun_once">1 gün önce</option>
-                                <option value="2_saat_once">2 saat önce</option>
-                                <option value="1_saat_once">1 saat önce</option>
-                                <option value="30_dk_once">30 dakika önce</option>
+                                <option value="1_gun_once">1 day before</option>
+                                <option value="2_saat_once">2 hours before</option>
+                                <option value="1_saat_once">1 hour before</option>
+                                <option value="30_dk_once">30 minutes before</option>
                             </select>
                         </div>
                     </div>
-                    <!-- Olay Bazlı Seçenekler -->
+                    <!-- Event Based Options -->
                     <div id="eventBasedOptions" style="display: none;">
                         <div class="input-group">
-                            <label for="flowTrigger">Tetikleyici Olay</label>
+                            <label for="flowTrigger">Trigger event</label>
                             <select id="flowTrigger">
-                                <option value="RANDEVU_OLUŞTUR">Randevu Oluşturuldu</option>
-                                <option value="RANDEVU_İPTAL">Randevu İptal Edildi</option>
-                                <option value="RANDEVU_GÜNCELLE">Randevu Güncellendi</option>
-                                <option value="PERSONEL_ATAMA">Personel Atandı</option>
+                                <option value="RANDEVU_OLUŞTUR">appointment created</option>
+                                <option value="RANDEVU_İPTAL">appointment cancelled</option>
+                                <option value="RANDEVU_GÜNCELLE">appointment updated</option>
+                                <option value="PERSONEL_ATAMA">staff assigned</option>
                             </select>
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Profile</label>
+                        <label>Profiles</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="flowProfiles" value="g"> general
@@ -936,11 +936,11 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="flowTemplates">Kullanılacak Şablonlar</label>
+                        <label for="flowTemplates">Templates</label>
                         <select id="flowTemplates" multiple style="min-height: 80px;">
-                            <!-- Dinamik yüklenecek -->
+                            <!-- Dynamically loaded -->
                         </select>
-                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Ctrl/Cmd ile çoklu seçim yapabilirsiniz</small>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Use Ctrl/Cmd for multiple selection</small>
                     </div>
                     <input type="hidden" id="flowEditId" value="">
                 </div>
@@ -958,38 +958,38 @@
                 <div class="modal-header">Add WhatsApp Template</div>
                 <div class="modal-body">
                     <div class="input-group">
-                        <label for="templateDisplayName">TEMPLATE NAME</label>
-                        <input type="text" id="templateDisplayName" placeholder="Randevu Hatırlatma">
+                        <label for="templateDisplayName">Template name</label>
+                        <input type="text" id="templateDisplayName" placeholder="Appointment reminder">
                     </div>
                     <div class="input-group">
-                        <label for="templateName">META TEMPLATE NAME</label>
-                        <input type="text" id="templateName" placeholder="randevu_hatirlatma">
+                        <label for="templateName">Meta template name</label>
+                        <input type="text" id="templateName" placeholder="appointment_reminder">
                     </div>
                     <div class="input-group">
-                        <label for="templateDescription">DESCRIPTION</label>
+                        <label for="templateDescription">Description</label>
                         <input type="text" id="templateDescription" placeholder="Reminder message for appointment">
                     </div>
                     <div class="input-group">
-                        <label for="templateContent">CONTENT (WhatsApp Şablon Metni)</label>
-                        <textarea id="templateContent" rows="5" placeholder="Sayın {{1}}, {{2}} tarihli randevunuz için hatırlatma..."></textarea>
-                        <small class="input-help">WhatsApp Business'taki şablon metnini olduğu gibi yapıştırın. Değişkenler: {{1}}, {{2}}, ...</small>
+                        <label for="templateContent">Content</label>
+                        <textarea id="templateContent" rows="5" placeholder="Dear {{1}}, reminder for your appointment on {{2}}..."></textarea>
+                        <small class="input-help">Paste the template text from WhatsApp Business. Variables: {{1}}, {{2}}, ...</small>
                     </div>
                     <div class="input-group">
-                        <label for="templateTargetType">TARGET</label>
+                        <label for="templateTargetType">Target</label>
                         <select id="templateTargetType">
-                            <option value="customer">Customer</option>
-                            <option value="staff">Staff</option>
+                            <option value="customer">customer</option>
+                            <option value="staff">staff</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="templateLanguage">LANGUAGE</label>
+                        <label for="templateLanguage">Language</label>
                         <select id="templateLanguage">
-                            <option value="tr" selected>Turkish (tr)</option>
-                            <option value="en">English (en)</option>
+                            <option value="tr" selected>turkish (tr)</option>
+                            <option value="en">english (en)</option>
                         </select>
                     </div>
                     <div class="input-group">
-                        <label for="templateVariableCount">VARIABLE COUNT</label>
+                        <label for="templateVariableCount">Variable count</label>
                         <input type="number" id="templateVariableCount" min="0" max="10" value="0">
                     </div>
                     <div id="templateVariablesContainer">
@@ -1000,15 +1000,15 @@
                     <div class="input-group" style="margin-top: 15px;">
                         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
                             <input type="checkbox" id="templateHasButton" style="width: auto;">
-                            <span>Düğme Değişkeni Var</span>
+                            <span>Has button variable</span>
                         </label>
-                        <small class="input-help">WhatsApp şablonunuzda dinamik URL düğmesi varsa işaretleyin</small>
+                        <small class="input-help">Check if your WhatsApp template has a dynamic URL button</small>
                     </div>
                     <div id="templateButtonVariableContainer" style="display: none;">
                         <div class="input-group">
-                            <label for="templateButtonVariable">DÜĞME DEĞİŞKENİ</label>
+                            <label for="templateButtonVariable">Button variable</label>
                             <select id="templateButtonVariable">
-                                <!-- Değişkenler dinamik yüklenecek -->
+                                <!-- Dynamically loaded -->
                             </select>
                         </div>
                     </div>
@@ -1056,7 +1056,7 @@
                         </div>
                     </div>
                     <div class="input-group">
-                        <label>Profile</label>
+                        <label>Profiles</label>
                         <div class="checkbox-group">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="mailFlowProfiles" value="g"> general
@@ -1081,15 +1081,15 @@
                     <div class="input-group">
                         <label>Templates</label>
                         <div id="mailFlowTemplatesContainer" class="checkbox-group" style="max-height: 200px; overflow-y: auto; padding: 8px; border: 1px solid #E8E8E8; border-radius: 4px;">
-                            <!-- Dinamik yüklenecek -->
+                            <!-- Dynamically loaded -->
                         </div>
-                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Her template kendi alıcısına gönderim yapar</small>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Each template sends to its own recipient</small>
                     </div>
                     <div class="input-group">
                         <label for="mailFlowInfoCards">Card</label>
                         <select id="mailFlowInfoCards">
-                            <option value="">Default (all fields)</option>
-                            <!-- Dinamik yüklenecek -->
+                            <option value="">default (all fields)</option>
+                            <!-- Dynamically loaded -->
                         </select>
                     </div>
                     <input type="hidden" id="mailFlowEditId" value="">
@@ -1108,35 +1108,35 @@
                 <div class="modal-header">Add Mail Template</div>
                 <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
                     <div class="input-group">
-                        <label for="mailTemplateName">Şablon Adı</label>
-                        <input type="text" id="mailTemplateName" placeholder="randevu_onay">
+                        <label for="mailTemplateName">Template name</label>
+                        <input type="text" id="mailTemplateName" placeholder="appointment_confirm">
                     </div>
                     <div class="input-group">
-                        <label for="mailTemplateSubject">Konu</label>
-                        <input type="text" id="mailTemplateSubject" placeholder="Randevunuz Onaylandı - {{TARIH}}">
+                        <label for="mailTemplateSubject">Subject</label>
+                        <input type="text" id="mailTemplateSubject" placeholder="Your Appointment Confirmed - {{DATE}}">
                     </div>
                     <div class="input-group">
-                        <label for="mailTemplateBody">İçerik (HTML)</label>
-                        <textarea id="mailTemplateBody" rows="10" placeholder="<h1>Merhaba {{ISIM}},</h1><p>Randevunuz onaylanmıştır.</p>" style="font-family: monospace; font-size: 13px;"></textarea>
+                        <label for="mailTemplateBody">Content (HTML)</label>
+                        <textarea id="mailTemplateBody" rows="10" placeholder="<h1>Hello {{NAME}},</h1><p>Your appointment has been confirmed.</p>" style="font-family: monospace; font-size: 13px;"></textarea>
                     </div>
                     <div class="input-group">
-                        <label>Kullanılabilir Değişkenler</label>
+                        <label>Available variables</label>
                         <div id="mailVariablesContainer" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
-                            <!-- Değişkenler mail-manager.ts tarafından dinamik yüklenir -->
+                            <!-- Variables loaded dynamically by mail-manager.ts -->
                         </div>
-                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Değişkene tıklayarak metne ekleyin</small>
+                        <small style="color: #666; font-size: 11px; margin-top: 5px; display: block;">Click variable to insert into text</small>
                     </div>
                     <div class="input-group">
-                        <label>Alıcı</label>
+                        <label>Recipient</label>
                         <div id="mailTemplateRecipientOptions" class="radio-group">
-                            <!-- Dinamik yüklenecek -->
+                            <!-- Dynamically loaded -->
                         </div>
                     </div>
                     <div class="input-group">
-                        <label for="mailTemplateInfoCard">Info Card</label>
+                        <label for="mailTemplateInfoCard">Info card</label>
                         <select id="mailTemplateInfoCard">
-                            <option value="">Varsayılan (tüm alanlar)</option>
-                            <!-- Dinamik yüklenecek -->
+                            <option value="">default (all fields)</option>
+                            <!-- Dynamically loaded -->
                         </select>
                     </div>
                     <input type="hidden" id="mailTemplateEditId" value="">
@@ -1155,29 +1155,29 @@
                 <div class="modal-header">New Info Card</div>
                 <div class="modal-body" style="overflow-y: auto; flex: 1;">
                     <div class="input-group">
-                        <label for="mailInfoCardName">Info Card Adı</label>
-                        <input type="text" id="mailInfoCardName" placeholder="Müşteri Info Card">
+                        <label for="mailInfoCardName">Info card name</label>
+                        <input type="text" id="mailInfoCardName" placeholder="Customer info card">
                     </div>
 
-                    <!-- Değişken Seçici - Tıklanabilir Butonlar -->
+                    <!-- Variable Selector - Clickable Buttons -->
                     <div class="input-group">
-                        <label>Değişken Ekle <small style="color: #666;">(Tıklayarak ekleyin)</small></label>
+                        <label>Add variable <small style="color: #666;">(click to add)</small></label>
                         <div id="infoCardVariableChips" style="display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; border: 1px solid #E8E8E8; border-radius: 4px; background: #FAFAFA;">
-                            <!-- Değişken butonları buraya eklenecek -->
+                            <!-- Variable buttons will be added here -->
                         </div>
                     </div>
 
-                    <!-- Seçili Alanlar Listesi (Sürükle-Bırak) -->
+                    <!-- Selected Fields List (Drag & Drop) -->
                     <div class="input-group">
-                        <label>Seçili Alanlar <small style="color: #666;">(Sıralama için sürükleyin)</small></label>
+                        <label>Selected fields <small style="color: #666;">(drag to reorder)</small></label>
                         <div id="infoCardFieldsList" style="border: 1px solid #E8E8E8; border-radius: 4px; min-height: 100px; padding: 10px; background: #FAFAFA;">
-                            <p id="infoCardFieldsEmpty" style="color: #757575; text-align: center; padding: 20px; margin: 0;">Henüz alan seçilmedi</p>
+                            <p id="infoCardFieldsEmpty" style="color: #757575; text-align: center; padding: 20px; margin: 0;">No fields selected</p>
                         </div>
                     </div>
 
-                    <!-- Canlı Önizleme -->
+                    <!-- Live Preview -->
                     <div class="input-group">
-                        <label>Önizleme</label>
+                        <label>Preview</label>
                         <div id="infoCardPreview" style="border-left: 4px solid #C9A55A; border-radius: 4px; padding: 20px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                             <!-- Önizleme burada oluşturulacak -->
                         </div>
