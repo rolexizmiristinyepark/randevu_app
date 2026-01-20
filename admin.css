@@ -1676,26 +1676,28 @@
 }
 
 .wa-contacts-header {
-    padding: 16px 20px;
+    padding: 10px 16px;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    background: #FAFAFA;
+}
+
+.wa-header-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #1A1A2E;
+}
+
+.wa-search-box {
+    padding: 8px 12px;
     background: #FAFAFA;
     border-bottom: 1px solid #E8E8E8;
 }
 
-.wa-header-title {
-    font-size: 16px;
-    font-weight: 500;
-    color: #1A1A2E;
-    letter-spacing: 0.5px;
-}
-
-.wa-search-box {
-    padding: 10px 12px;
-    background: #FAFAFA;
-}
-
 .wa-search-box input {
     width: 100%;
-    padding: 10px 16px;
+    padding: 8px 12px;
     border: 1px solid #E8E8E8;
     border-radius: 4px;
     background: #fff;
@@ -1735,15 +1737,17 @@
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    background: #1A1A2E;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    font-weight: 500;
-    font-size: 16px;
     margin-right: 12px;
     flex-shrink: 0;
+    overflow: hidden;
+}
+
+.wa-contact-avatar svg {
+    width: 100%;
+    height: 100%;
 }
 
 .wa-contact-info {
@@ -1752,8 +1756,8 @@
 }
 
 .wa-contact-name {
-    font-size: 16px;
-    font-weight: 500;
+    font-size: 15px;
+    font-weight: 400;
     color: #1a1a1a;
     margin-bottom: 2px;
     white-space: nowrap;
@@ -1813,9 +1817,11 @@
 }
 
 .wa-chat-header {
-    padding: 12px 20px;
-    background: #f0f2f5;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 10px 16px;
+    min-height: 70px;
+    box-sizing: border-box;
+    background: #FAFAFA;
+    border-bottom: 1px solid #E8E8E8;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -1827,11 +1833,19 @@
 }
 
 .wa-avatar-placeholder {
-    width: 42px;
-    height: 42px;
+    width: 36px;
+    height: 36px;
     border-radius: 50%;
-    background: #1A1A2E;
-    margin-right: 14px;
+    margin-right: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.wa-avatar-placeholder svg {
+    width: 100%;
+    height: 100%;
 }
 
 .wa-chat-header-text {
@@ -1841,7 +1855,7 @@
 
 .wa-chat-name {
     font-size: 16px;
-    font-weight: 500;
+    font-weight: 400;
     color: #1a1a1a;
 }
 
@@ -1936,6 +1950,10 @@
 .wa-message-status {
     font-size: 14px;
     color: #1A1A2E;
+}
+
+.wa-message-status.success {
+    color: #25D366;
 }
 
 .wa-message-status.failed {
@@ -2074,22 +2092,89 @@
     line-height: 1.5;
 }
 
-/* Responsive */
+/* Chat panel hidden initially */
+.wa-chat-panel.hidden {
+    display: none;
+}
+
+/* Back button - hidden on desktop */
+.wa-back-btn {
+    display: none;
+    background: none;
+    border: none;
+    padding: 8px;
+    margin-right: 8px;
+    cursor: pointer;
+    color: #1a1a1a;
+}
+
+.wa-back-btn svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Loading spinner center */
+.wa-loading-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 200px;
+}
+
+.wa-loading-center .loading-spinner {
+    width: 40px;
+    height: 40px;
+}
+
+/* Responsive - Mobile WhatsApp Style */
 @media (max-width: 900px) {
     .wa-chat-container {
         flex-direction: column;
-        height: auto;
+        height: 600px;
+        position: relative;
     }
 
     .wa-contacts-panel {
         width: 100%;
-        max-height: 300px;
+        height: 100%;
         border-right: none;
-        border-bottom: 1px solid #e0e0e0;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 1;
+        background: #fff;
+        transition: transform 0.3s ease;
+    }
+
+    .wa-contacts-panel.hidden {
+        transform: translateX(-100%);
     }
 
     .wa-chat-panel {
-        min-height: 400px;
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        z-index: 2;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    }
+
+    .wa-chat-panel.active {
+        transform: translateX(0);
+    }
+
+    .wa-chat-panel.hidden {
+        display: flex;
+        transform: translateX(100%);
+    }
+
+    .wa-back-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .wa-message {

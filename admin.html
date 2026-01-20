@@ -164,25 +164,27 @@
                                 <input type="text" id="waContactSearch" placeholder="Kişi veya numara ara...">
                             </div>
                             <div class="wa-contacts-list" id="waContactsList">
-                                <div class="wa-loading">Yükleniyor...</div>
+                                <div class="wa-loading-center"><div class="loading-spinner"></div></div>
                             </div>
                         </div>
 
                         <!-- Sağ Panel: Mesajlar -->
-                        <div class="wa-chat-panel">
+                        <div class="wa-chat-panel hidden" id="waChatPanel">
                             <div class="wa-chat-header" id="waChatHeader">
                                 <div class="wa-chat-header-info">
-                                    <div class="wa-avatar-placeholder"></div>
+                                    <button class="wa-back-btn" id="waBackBtn">
+                                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+                                    </button>
+                                    <div class="wa-avatar-placeholder">
+                                        <svg viewBox="0 0 212 212"><path fill="#DFE5E7" d="M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z"/><path fill="#FFF" d="M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-6.64-6.982 72.651 72.651 0 0 0-3.798-3.305 73.699 73.699 0 0 0-8.099-5.77c-1.168-.732-2.365-1.427-3.586-2.086l-.016.016C138.2 153.9 122.887 160 106.25 160c-16.637 0-31.95-6.1-43.675-16.197a67.348 67.348 0 0 0-3.586 2.086 73.699 73.699 0 0 0-8.099 5.77 72.607 72.607 0 0 0-3.798 3.305 70.112 70.112 0 0 0-6.64 6.982 67.7 67.7 0 0 0-2.609 3.299 62.767 62.767 0 0 0-2.064 2.955 71.036 71.036 0 0 0 12.344 11.91C62.189 191.735 83.035 199.5 106.25 199.5c23.215 0 44.061-7.765 58.127-19.385a71.036 71.036 0 0 0 9.184-8.5zM106.25 53c-23.912 0-43.25 19.338-43.25 43.25S82.338 139.5 106.25 139.5s43.25-19.338 43.25-43.25S130.162 53 106.25 53z"/></svg>
+                                    </div>
                                     <div class="wa-chat-header-text">
-                                        <span class="wa-chat-name">Bir kişi seçin</span>
+                                        <span class="wa-chat-name"></span>
                                         <span class="wa-chat-status"></span>
                                     </div>
                                 </div>
                             </div>
                             <div class="wa-messages-area" id="waMessagesArea">
-                                <div class="wa-empty-state">
-                                    <p>Mesajları görüntülemek için<br>soldan bir kişi seçin</p>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -992,6 +994,23 @@
                     </div>
                     <div id="templateVariablesContainer">
                         <!-- Değişken alanları dinamik olarak eklenecek -->
+                    </div>
+
+                    <!-- Button Variable (for WhatsApp templates with buttons) -->
+                    <div class="input-group" style="margin-top: 15px;">
+                        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                            <input type="checkbox" id="templateHasButton" style="width: auto;">
+                            <span>Düğme Değişkeni Var</span>
+                        </label>
+                        <small class="input-help">WhatsApp şablonunuzda dinamik URL düğmesi varsa işaretleyin</small>
+                    </div>
+                    <div id="templateButtonVariableContainer" style="display: none;">
+                        <div class="input-group">
+                            <label for="templateButtonVariable">DÜĞME DEĞİŞKENİ</label>
+                            <select id="templateButtonVariable">
+                                <!-- Değişkenler dinamik yüklenecek -->
+                            </select>
+                        </div>
                     </div>
 
                     <input type="hidden" id="templateEditId" value="">

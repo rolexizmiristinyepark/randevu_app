@@ -47,9 +47,11 @@ interface WhatsAppTemplate {
     description: string;
     variableCount: number;
     variables: Record<string, string>;
-    targetType: 'customer' | 'staff';
+    targetType: string;
     language: string;
     content?: string;          // v3.10.19: WhatsApp şablon içeriği (Meta'daki orijinal metin)
+    hasButton?: boolean;       // v3.10.22: WhatsApp şablonunda düğme var mı
+    buttonVariable?: string;   // v3.10.22: Düğme için kullanılacak değişken
 }
 
 interface WhatsAppMessage {
@@ -78,6 +80,9 @@ const PROFILE_LABELS: Record<string, string> = {
 
 // TRIGGER_LABELS: API'den yüklenir (Variables.js - MESSAGE_TRIGGERS)
 let triggerLabels: Record<string, string> = {};
+
+// RECIPIENT_LABELS: API'den yüklenir (Variables.js - MESSAGE_RECIPIENTS)
+let recipientLabels: Record<string, string> = {};
 
 const HATIRLATMA_ZAMAN_LABELS: Record<string, string> = {
     '1_gun_once': '1 gün önce',
@@ -118,8 +123,12 @@ export async function initWhatsAppManager(store: DataStore): Promise<void> {
     await Promise.all([
         loadTemplates(),
         loadMessageVariables(),
-        loadTriggers()
+        loadTriggers(),
+        loadRecipients()
     ]);
+
+    // Populate target select with recipients
+    populateTargetSelect();
 
     // Show deprecation message in flow container
     const flowContainer = document.getElementById('whatsappFlowList');
@@ -165,6 +174,61 @@ async function loadTriggers(): Promise<void> {
 }
 
 /**
+ * Load recipients from backend (Variables.js - MESSAGE_RECIPIENTS)
+ */
+async function loadRecipients(): Promise<void> {
+    try {
+        const response = await ApiService.call('getRecipients', {}) as ApiResponse<Record<string, string>>;
+
+        if (response.success && response.data) {
+            recipientLabels = response.data;
+        }
+    } catch (error) {
+        logError(error, { action: 'loadRecipients' });
+    }
+}
+
+/**
+ * Populate target select with recipients from backend
+ */
+function populateTargetSelect(): void {
+    const select = document.getElementById('templateTargetType') as HTMLSelectElement;
+    if (!select) return;
+
+    // Clear existing options
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
+    }
+
+    Object.entries(recipientLabels).forEach(([key, label]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = label;
+        select.appendChild(option);
+    });
+}
+
+/**
+ * Populate button variable select with message variables
+ */
+function populateButtonVariableSelect(): void {
+    const select = document.getElementById('templateButtonVariable') as HTMLSelectElement;
+    if (!select) return;
+
+    // Clear existing options
+    while (select.firstChild) {
+        select.removeChild(select.firstChild);
+    }
+
+    Object.entries(messageVariables).forEach(([key, label]) => {
+        const option = document.createElement('option');
+        option.value = key;
+        option.textContent = label;
+        select.appendChild(option);
+    });
+}
+
+/**
  * Setup all event listeners
  */
 function setupEventListeners(): void {
@@ -197,6 +261,18 @@ function setupEventListeners(): void {
     document.getElementById('templateVariableCount')?.addEventListener('change', (e) => {
         const count = parseInt((e.target as HTMLInputElement).value) || 0;
         generateVariableInputs(count);
+    });
+
+    // Button checkbox change - show/hide button variable selector
+    document.getElementById('templateHasButton')?.addEventListener('change', (e) => {
+        const checked = (e.target as HTMLInputElement).checked;
+        const container = document.getElementById('templateButtonVariableContainer');
+        if (container) {
+            container.style.display = checked ? 'block' : 'none';
+            if (checked) {
+                populateButtonVariableSelect();
+            }
+        }
     });
 
     // Modal close handlers (escape key)
@@ -446,7 +522,8 @@ function populateTemplateSelect(): void {
     templates.forEach(template => {
         const option = document.createElement('option');
         option.value = template.id;
-        option.textContent = `${template.name} (${template.targetType === 'customer' ? 'Müşteri' : 'Personel'})`;
+        const targetLabel = recipientLabels[template.targetType] || template.targetType;
+        option.textContent = `${template.name} (${targetLabel})`;
         select.appendChild(option);
     });
 }
@@ -625,6 +702,22 @@ async function loadTemplates(): Promise<void> {
 }
 
 /**
+ * Get badge color based on target type
+ */
+function getBadgeColor(targetType: string): string {
+    const colors: Record<string, string> = {
+        'customer': '#2196F3',
+        'staff': '#9C27B0',
+        'admin': '#F44336',
+        'today_customers': '#4CAF50',
+        'today_staffs': '#FF9800',
+        'tomorrow_customers': '#00BCD4',
+        'tomorrow_staffs': '#795548'
+    };
+    return colors[targetType] || '#607D8B';
+}
+
+/**
  * Render templates list
  */
 function renderTemplates(): void {
@@ -665,8 +758,9 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     name.textContent = template.name;
 
     const targetBadge = document.createElement('span');
-    targetBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${template.targetType === 'customer' ? '#2196F3' : '#9C27B0'}; color: white;`;
-    targetBadge.textContent = template.targetType === 'customer' ? 'Customer' : 'Staff';
+    const badgeColor = getBadgeColor(template.targetType);
+    targetBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${badgeColor}; color: white;`;
+    targetBadge.textContent = recipientLabels[template.targetType] || template.targetType;
 
     left.appendChild(name);
     left.appendChild(targetBadge);
@@ -775,6 +869,12 @@ function resetTemplateForm(): void {
     (document.getElementById('templateVariableCount') as HTMLInputElement).value = '0';
     (document.getElementById('templateEditId') as HTMLInputElement).value = '';
 
+    // Reset button fields
+    const hasButtonCheckbox = document.getElementById('templateHasButton') as HTMLInputElement;
+    if (hasButtonCheckbox) hasButtonCheckbox.checked = false;
+    const buttonContainer = document.getElementById('templateButtonVariableContainer');
+    if (buttonContainer) buttonContainer.style.display = 'none';
+
     // Clear variable inputs
     const container = document.getElementById('templateVariablesContainer');
     if (container) {
@@ -805,6 +905,21 @@ function populateTemplateForm(template: WhatsAppTemplate): void {
             const input = document.getElementById(`var_${key}`) as HTMLInputElement;
             if (input) input.value = value;
         });
+    }
+
+    // Populate button fields
+    const hasButtonCheckbox = document.getElementById('templateHasButton') as HTMLInputElement;
+    const buttonContainer = document.getElementById('templateButtonVariableContainer');
+    if (hasButtonCheckbox && buttonContainer) {
+        hasButtonCheckbox.checked = template.hasButton || false;
+        buttonContainer.style.display = template.hasButton ? 'block' : 'none';
+        if (template.hasButton) {
+            populateButtonVariableSelect();
+            const buttonSelect = document.getElementById('templateButtonVariable') as HTMLSelectElement;
+            if (buttonSelect && template.buttonVariable) {
+                buttonSelect.value = template.buttonVariable;
+            }
+        }
     }
 }
 
@@ -895,7 +1010,7 @@ async function saveTemplate(): Promise<void> {
     const metaTemplateName = (document.getElementById('templateName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('templateDescription') as HTMLInputElement).value.trim();
     const content = (document.getElementById('templateContent') as HTMLTextAreaElement).value.trim(); // v3.10.19
-    const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value as 'customer' | 'staff';
+    const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value;
     const language = (document.getElementById('templateLanguage') as HTMLSelectElement).value;
     const variableCount = parseInt((document.getElementById('templateVariableCount') as HTMLInputElement).value) || 0;
     const editId = (document.getElementById('templateEditId') as HTMLInputElement).value;
@@ -919,7 +1034,11 @@ async function saveTemplate(): Promise<void> {
         }
     }
 
-    // Build template data (v3.10.19: content eklendi)
+    // Get button fields
+    const hasButton = (document.getElementById('templateHasButton') as HTMLInputElement)?.checked || false;
+    const buttonVariable = hasButton ? (document.getElementById('templateButtonVariable') as HTMLSelectElement)?.value || '' : '';
+
+    // Build template data (v3.10.19: content eklendi, v3.10.22: button fields eklendi)
     const templateData: Partial<WhatsAppTemplate> = {
         name: displayName,
         metaTemplateName,
@@ -928,7 +1047,9 @@ async function saveTemplate(): Promise<void> {
         targetType,
         language,
         variableCount,
-        variables
+        variables,
+        hasButton,
+        buttonVariable
     };
 
     // v3.10.20: Debug log - content gönderilip gönderilmediğini kontrol et

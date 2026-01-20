@@ -127,10 +127,10 @@ function formatMessageContent(msg: WhatsAppMessage): string {
  * Load all messages and group by contact
  */
 async function loadAllMessages(): Promise<void> {
-    // Global spinner göster
+    // Center loading spinner göster
     const container = document.getElementById('waContactsList');
     if (container) {
-        container.innerHTML = '<div class="loading-spinner"></div>';
+        container.innerHTML = '<div class="wa-loading-center"><div class="loading-spinner"></div></div>';
     }
 
     try {
@@ -198,10 +198,29 @@ function getRecipientPhone(msg: WhatsAppMessage): string {
 /**
  * Group messages by phone number
  * Backend sets recipientName and phone correctly when logging
+ *
+ * İsim önceliği:
+ * 1. Outgoing mesajdaki recipientName (sistemdeki gerçek müşteri/personel adı)
+ * 2. Incoming mesajdaki recipientName (WhatsApp profil adı - fallback)
  */
 function groupByContact(): void {
     const contactMap = new Map<string, Contact>();
+    // Outgoing mesajlardan isimleri topla (öncelikli)
+    const outgoingNames = new Map<string, string>();
 
+    // İlk pass: Outgoing mesajlardan isimleri topla
+    allMessages.forEach(msg => {
+        if (msg.direction === 'outgoing') {
+            const recipientName = getRecipientName(msg);
+            const recipientPhone = getRecipientPhone(msg);
+            const normalizedPhone = normalizePhone(recipientPhone);
+            if (normalizedPhone && recipientName && !outgoingNames.has(normalizedPhone)) {
+                outgoingNames.set(normalizedPhone, recipientName);
+            }
+        }
+    });
+
+    // İkinci pass: Tüm mesajları grupla
     allMessages.forEach(msg => {
         const recipientName = getRecipientName(msg);
         const recipientPhone = getRecipientPhone(msg);
@@ -211,21 +230,18 @@ function groupByContact(): void {
         if (!normalizedPhone) return;
 
         if (!contactMap.has(normalizedPhone)) {
+            // Outgoing mesajdaki ismi öncelikle kullan, yoksa incoming'den al
+            const displayName = outgoingNames.get(normalizedPhone) || recipientName || formatPhoneDisplay(recipientPhone);
+
             contactMap.set(normalizedPhone, {
                 phone: normalizedPhone,
-                name: recipientName || formatPhoneDisplay(recipientPhone),
+                name: displayName,
                 customerPhone: recipientPhone,
                 lastMessage: '',
                 lastMessageTime: msg.timestamp || msg.sentAt || '',
                 unreadCount: 0,
                 lastDirection: msg.direction
             });
-        } else if (recipientName) {
-            // İsim varsa ve mevcut isim telefon formatındaysa güncelle
-            const existing = contactMap.get(normalizedPhone)!;
-            if (existing.name.startsWith('+') || existing.name.startsWith('0')) {
-                existing.name = recipientName;
-            }
         }
     });
 
@@ -275,10 +291,10 @@ function renderContacts(): void {
         item.className = `wa-contact-item${selectedCustomer === customerKey ? ' active' : ''}`;
         item.dataset.customer = customerKey;
 
-        // Avatar
+        // Avatar - WhatsApp default person icon
         const avatar = document.createElement('div');
         avatar.className = 'wa-contact-avatar';
-        avatar.textContent = getInitial(contact.name);
+        avatar.innerHTML = '<svg viewBox="0 0 212 212"><path fill="#DFE5E7" d="M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z"/><path fill="#FFF" d="M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-6.64-6.982 72.651 72.651 0 0 0-3.798-3.305 73.699 73.699 0 0 0-8.099-5.77c-1.168-.732-2.365-1.427-3.586-2.086l-.016.016C138.2 153.9 122.887 160 106.25 160c-16.637 0-31.95-6.1-43.675-16.197a67.348 67.348 0 0 0-3.586 2.086 73.699 73.699 0 0 0-8.099 5.77 72.607 72.607 0 0 0-3.798 3.305 70.112 70.112 0 0 0-6.64 6.982 67.7 67.7 0 0 0-2.609 3.299 62.767 62.767 0 0 0-2.064 2.955 71.036 71.036 0 0 0 12.344 11.91C62.189 191.735 83.035 199.5 106.25 199.5c23.215 0 44.061-7.765 58.127-19.385a71.036 71.036 0 0 0 9.184-8.5zM106.25 53c-23.912 0-43.25 19.338-43.25 43.25S82.338 139.5 106.25 139.5s43.25-19.338 43.25-43.25S130.162 53 106.25 53z"/></svg>';
 
         // Info container - sadece isim ve telefon
         const info = document.createElement('div');
@@ -327,6 +343,18 @@ function selectContact(customerKey: string, customerName: string): void {
         item.classList.toggle('active', (item as HTMLElement).dataset.customer === customerKey);
     });
 
+    // Show chat panel
+    const chatPanel = document.getElementById('waChatPanel');
+    const contactsPanel = document.querySelector('.wa-contacts-panel');
+    if (chatPanel) {
+        chatPanel.classList.remove('hidden');
+        chatPanel.classList.add('active');
+    }
+    // Mobile: hide contacts panel
+    if (contactsPanel && window.innerWidth <= 900) {
+        contactsPanel.classList.add('hidden');
+    }
+
     // Update header
     const headerName = document.querySelector('.wa-chat-name');
     const headerStatus = document.querySelector('.wa-chat-status');
@@ -340,6 +368,29 @@ function selectContact(customerKey: string, customerName: string): void {
 
     // Render messages for this customer
     renderMessages(customerKey);
+}
+
+/**
+ * Go back to contacts list (mobile)
+ */
+function goBackToContacts(): void {
+    selectedCustomer = null;
+
+    const chatPanel = document.getElementById('waChatPanel');
+    const contactsPanel = document.querySelector('.wa-contacts-panel');
+
+    if (chatPanel) {
+        chatPanel.classList.add('hidden');
+        chatPanel.classList.remove('active');
+    }
+    if (contactsPanel) {
+        contactsPanel.classList.remove('hidden');
+    }
+
+    // Remove active state from contacts
+    document.querySelectorAll('.wa-contact-item').forEach(item => {
+        item.classList.remove('active');
+    });
 }
 
 /**
@@ -420,10 +471,9 @@ function renderMessages(customerKey: string): void {
             if (msg.status === 'failed') {
                 status.classList.add('failed');
                 status.textContent = '✗';
-            } else if (msg.status === 'read' || msg.status === 'delivered') {
-                status.textContent = '✓✓';
             } else {
-                status.style.color = '#667781';
+                // Başarılı gönderimler (sent, delivered, read) yeşil tik
+                status.classList.add('success');
                 status.textContent = '✓';
             }
             footer.appendChild(status);
@@ -453,6 +503,12 @@ function setupEventListeners(): void {
             searchTerm = (e.target as HTMLInputElement).value;
             renderContacts();
         });
+    }
+
+    // Back button for mobile
+    const backBtn = document.getElementById('waBackBtn');
+    if (backBtn) {
+        backBtn.addEventListener('click', goBackToContacts);
     }
 }
 

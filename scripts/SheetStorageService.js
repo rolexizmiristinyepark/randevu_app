@@ -1433,4 +1433,20 @@ function debugNotificationFlowsHeaders() {
   }
 }
 
+/**
+ * message_log sheet header'larını senkronize et
+ * Eksik kolonları otomatik ekler
+ * @returns {{success: boolean, message: string, addedColumns?: string[]}}
+ */
+function syncMessageLogHeaders() {
+  try {
+    const result = SheetStorageService.syncSheetHeaders('message_log');
+    console.log('syncMessageLogHeaders sonucu:', JSON.stringify(result, null, 2));
+    return result;
+  } catch (error) {
+    console.error('syncMessageLogHeaders hatası:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // STORAGE_FEATURE_FLAG artık Storage.js'de tanımlı

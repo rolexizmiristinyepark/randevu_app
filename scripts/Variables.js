@@ -113,6 +113,13 @@ var MESSAGE_VARIABLES = {
     }
   },
 
+  personel_id: {
+    label: 'Personel ID: 123',
+    getValue: function(data) {
+      return data.staffId || data.linkedStaffId || data.assignedStaffId || '';
+    }
+  },
+
   personel_tel: {
     label: 'Personel Tel: +905551234567',
     getValue: function(data) {
@@ -212,12 +219,13 @@ var MESSAGE_RECIPIENTS = {
   'staff': 'Atanan Personel',
   'admin': 'Tüm Adminler',
 
-  // Rol bazlı alıcılar
-  'role_sales': 'Satış Rolündekiler',
-  'role_greeter': 'Karşılayıcı Rolündekiler',
+  // Dinamik alıcılar - Bugün
+  'today_customers': 'Bugün Randevusu Olan Müşteriler',
+  'today_staffs': 'Bugün Randevusu Olan Personeller',
 
-  // Dinamik alıcılar
-  'tomorrow_customers': 'Yarın Randevusu Olan Müşteriler'
+  // Dinamik alıcılar - Yarın
+  'tomorrow_customers': 'Yarın Randevusu Olan Müşteriler',
+  'tomorrow_staffs': 'Yarın Randevusu Olan Personeller'
 };
 
 /**
