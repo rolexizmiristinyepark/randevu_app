@@ -348,7 +348,10 @@ const ACTION_HANDLERS = {
         variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
         targetType: e.parameter.targetType,
         language: e.parameter.language || 'en',
-        content: e.parameter.content || '' // v3.10.20: WhatsApp şablon içeriği
+        content: e.parameter.content || '',
+        // v3.10.24: Button fields
+        hasButton: e.parameter.hasButton === 'true' || e.parameter.hasButton === true,
+        buttonVariable: e.parameter.buttonVariable || ''
       };
       log.info('[createWhatsAppTemplate-handler] params:', JSON.stringify(params));
       return createWhatsAppTemplate(params);
@@ -372,7 +375,10 @@ const ACTION_HANDLERS = {
       language: e.parameter.language,
       variables: typeof e.parameter.variables === 'string' ? JSON.parse(e.parameter.variables) : (e.parameter.variables || {}),
       targetType: e.parameter.targetType,
-      content: e.parameter.content
+      content: e.parameter.content,
+      // v3.10.24: Button fields
+      hasButton: e.parameter.hasButton === 'true' || e.parameter.hasButton === true,
+      buttonVariable: e.parameter.buttonVariable || ''
     };
 
     log.info('[updateWhatsAppTemplate-handler] params:', JSON.stringify(params));
