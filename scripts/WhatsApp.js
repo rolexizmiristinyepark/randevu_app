@@ -2931,8 +2931,8 @@ function deleteWhatsAppFlow(params) {
 function createWhatsAppTemplate(params) {
   try {
     console.log('[createWhatsAppTemplate] params:', JSON.stringify(params));
-    // v3.10.19: content alanı eklendi, v3.10.22: hasButton ve buttonVariable eklendi
-    const { name, metaTemplateName, description, variableCount, variables, targetType, language, content, hasButton, buttonVariable } = params;
+    // v3.10.23: buttonType ve buttonStaticValue eklendi
+    const { name, metaTemplateName, description, variableCount, variables, targetType, language, content, hasButton, buttonType, buttonVariable, buttonStaticValue } = params;
 
     if (!name || !metaTemplateName || !targetType || variableCount === undefined) {
       console.log('[createWhatsAppTemplate] Missing required fields - name:', name, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'variableCount:', variableCount);
@@ -2942,11 +2942,11 @@ function createWhatsAppTemplate(params) {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     let sheet = ss.getSheetByName('whatsapp_templates');
 
-    // TEMPLATES sheet yoksa oluştur (v3.10.19: CONTENT, v3.10.22: HAS_BUTTON, BUTTON_VARIABLE eklendi)
+    // TEMPLATES sheet yoksa oluştur (v3.10.23: BUTTON_TYPE, BUTTON_STATIC_VALUE eklendi)
     if (!sheet) {
       console.log('[createWhatsAppTemplate] TEMPLATES sheet not found, creating...');
       sheet = ss.insertSheet('whatsapp_templates');
-      sheet.getRange(1, 1, 1, 11).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT', 'HAS_BUTTON', 'BUTTON_VARIABLE']]);
+      sheet.getRange(1, 1, 1, 13).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT', 'HAS_BUTTON', 'BUTTON_TYPE', 'BUTTON_VARIABLE', 'BUTTON_STATIC_VALUE']]);
       console.log('[createWhatsAppTemplate] TEMPLATES sheet created with headers');
     } else {
       // Mevcut sheet'e eksik kolonları ekle
@@ -2979,11 +2979,25 @@ function createWhatsAppTemplate(params) {
         console.log('[createWhatsAppTemplate] HAS_BUTTON column added to existing sheet');
         headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
       }
+      // v3.10.23: BUTTON_TYPE kolonu yoksa ekle
+      if (!headers.includes('BUTTON_TYPE')) {
+        const lastCol = sheet.getLastColumn() + 1;
+        sheet.getRange(1, lastCol).setValue('BUTTON_TYPE');
+        console.log('[createWhatsAppTemplate] BUTTON_TYPE column added to existing sheet');
+        headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      }
       // v3.10.22: BUTTON_VARIABLE kolonu yoksa ekle
       if (!headers.includes('BUTTON_VARIABLE')) {
         const lastCol = sheet.getLastColumn() + 1;
         sheet.getRange(1, lastCol).setValue('BUTTON_VARIABLE');
         console.log('[createWhatsAppTemplate] BUTTON_VARIABLE column added to existing sheet');
+        headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      }
+      // v3.10.23: BUTTON_STATIC_VALUE kolonu yoksa ekle
+      if (!headers.includes('BUTTON_STATIC_VALUE')) {
+        const lastCol = sheet.getLastColumn() + 1;
+        sheet.getRange(1, lastCol).setValue('BUTTON_STATIC_VALUE');
+        console.log('[createWhatsAppTemplate] BUTTON_STATIC_VALUE column added to existing sheet');
       }
     }
 
@@ -3004,7 +3018,9 @@ function createWhatsAppTemplate(params) {
         case 'LANGUAGE': return language || 'en';
         case 'CONTENT': return content || '';
         case 'HAS_BUTTON': return hasButton ? 'true' : 'false';
+        case 'BUTTON_TYPE': return buttonType || 'dynamic';
         case 'BUTTON_VARIABLE': return buttonVariable || '';
+        case 'BUTTON_STATIC_VALUE': return buttonStaticValue || '';
         default: return '';
       }
     });
@@ -3024,13 +3040,13 @@ function createWhatsAppTemplate(params) {
  * Template güncelle (yeni basitleştirilmiş sistem)
  * v3.10.14: Added metaTemplateName field support
  * v3.10.19: Added content field support
- * v3.10.22: Added hasButton and buttonVariable field support
+ * v3.10.23: Added buttonType and buttonStaticValue field support
  */
 function updateWhatsAppTemplate(params) {
   try {
     console.log('[updateWhatsAppTemplate] params:', JSON.stringify(params));
-    // v3.10.19: content alanı eklendi, v3.10.22: hasButton ve buttonVariable eklendi
-    const { id, name, metaTemplateName, description, variableCount, variables, targetType, language, content, hasButton, buttonVariable } = params;
+    // v3.10.23: buttonType ve buttonStaticValue eklendi
+    const { id, name, metaTemplateName, description, variableCount, variables, targetType, language, content, hasButton, buttonType, buttonVariable, buttonStaticValue } = params;
     console.log('[updateWhatsAppTemplate] id:', id, 'metaTemplateName:', metaTemplateName, 'targetType:', targetType, 'language:', language);
 
     if (!id) return { success: false, message: 'Template ID gerekli' };
@@ -3077,11 +3093,27 @@ function updateWhatsAppTemplate(params) {
       headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
 
+    // v3.10.23: Add BUTTON_TYPE column if missing
+    if (!headers.includes('BUTTON_TYPE')) {
+      const lastCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, lastCol).setValue('BUTTON_TYPE');
+      console.log('[updateWhatsAppTemplate] BUTTON_TYPE column added');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    }
+
     // v3.10.22: Add BUTTON_VARIABLE column if missing
     if (!headers.includes('BUTTON_VARIABLE')) {
       const lastCol = sheet.getLastColumn() + 1;
       sheet.getRange(1, lastCol).setValue('BUTTON_VARIABLE');
       console.log('[updateWhatsAppTemplate] BUTTON_VARIABLE column added');
+      headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+    }
+
+    // v3.10.23: Add BUTTON_STATIC_VALUE column if missing
+    if (!headers.includes('BUTTON_STATIC_VALUE')) {
+      const lastCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, lastCol).setValue('BUTTON_STATIC_VALUE');
+      console.log('[updateWhatsAppTemplate] BUTTON_STATIC_VALUE column added');
       headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
     }
 
@@ -3106,9 +3138,11 @@ function updateWhatsAppTemplate(params) {
     if (language) sheet.getRange(rowIndex + 1, getColIndex('LANGUAGE')).setValue(language);
     // v3.10.19: content alanı güncelleme
     if (content !== undefined) sheet.getRange(rowIndex + 1, getColIndex('CONTENT')).setValue(content);
-    // v3.10.22: hasButton ve buttonVariable güncelleme
+    // v3.10.23: hasButton, buttonType, buttonVariable, buttonStaticValue güncelleme
     if (hasButton !== undefined) sheet.getRange(rowIndex + 1, getColIndex('HAS_BUTTON')).setValue(hasButton ? 'true' : 'false');
+    if (buttonType !== undefined) sheet.getRange(rowIndex + 1, getColIndex('BUTTON_TYPE')).setValue(buttonType);
     if (buttonVariable !== undefined) sheet.getRange(rowIndex + 1, getColIndex('BUTTON_VARIABLE')).setValue(buttonVariable);
+    if (buttonStaticValue !== undefined) sheet.getRange(rowIndex + 1, getColIndex('BUTTON_STATIC_VALUE')).setValue(buttonStaticValue);
 
     return { success: true, message: 'Template başarıyla güncellendi' };
   } catch (error) {
@@ -3126,9 +3160,9 @@ function getWhatsAppTemplates() {
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     const sheet = ss.getSheetByName('whatsapp_templates');
     if (!sheet) {
-      // Eğer TEMPLATES sheet'i yoksa oluştur (v3.10.22: HAS_BUTTON, BUTTON_VARIABLE kolonları eklendi)
+      // Eğer TEMPLATES sheet'i yoksa oluştur (v3.10.23: BUTTON_TYPE, BUTTON_STATIC_VALUE kolonları eklendi)
       const templates = ss.insertSheet('whatsapp_templates');
-      templates.getRange(1, 1, 1, 11).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT', 'HAS_BUTTON', 'BUTTON_VARIABLE']]);
+      templates.getRange(1, 1, 1, 13).setValues([['ID', 'NAME', 'META_TEMPLATE_NAME', 'DESCRIPTION', 'VARIABLE_COUNT', 'VARIABLES', 'TARGET_TYPE', 'LANGUAGE', 'CONTENT', 'HAS_BUTTON', 'BUTTON_TYPE', 'BUTTON_VARIABLE', 'BUTTON_STATIC_VALUE']]);
       return { success: true, data: [] };
     }
 
@@ -3158,11 +3192,15 @@ function getWhatsAppTemplates() {
       var contentCol = getColIndex('CONTENT');
       var content = contentCol >= 0 ? (row[contentCol] || '') : '';
 
-      // v3.10.22: Button alanları eklendi
+      // v3.10.23: Button alanları eklendi (buttonType, buttonStaticValue)
       var hasButtonCol = getColIndex('HAS_BUTTON');
       var hasButton = hasButtonCol >= 0 ? (row[hasButtonCol] === 'true' || row[hasButtonCol] === true) : false;
+      var buttonTypeCol = getColIndex('BUTTON_TYPE');
+      var buttonType = buttonTypeCol >= 0 ? (row[buttonTypeCol] || 'dynamic') : 'dynamic';
       var buttonVariableCol = getColIndex('BUTTON_VARIABLE');
       var buttonVariable = buttonVariableCol >= 0 ? (row[buttonVariableCol] || '') : '';
+      var buttonStaticValueCol = getColIndex('BUTTON_STATIC_VALUE');
+      var buttonStaticValue = buttonStaticValueCol >= 0 ? (row[buttonStaticValueCol] || '') : '';
 
       return {
         id: row[getColIndex('ID')] || '',
@@ -3175,7 +3213,9 @@ function getWhatsAppTemplates() {
         language: row[getColIndex('LANGUAGE')] || 'en',
         content: content, // v3.10.19: WhatsApp şablon içeriği
         hasButton: hasButton, // v3.10.22: Düğme var mı?
-        buttonVariable: buttonVariable // v3.10.22: Düğme değişkeni
+        buttonType: buttonType, // v3.10.23: Düğme tipi (dynamic/static)
+        buttonVariable: buttonVariable, // v3.10.22: Düğme değişkeni (dynamic için)
+        buttonStaticValue: buttonStaticValue // v3.10.23: Düğme serbest yazı değeri (static için)
       };
     }).filter(function(template) { return template.id; });
 
