@@ -71,7 +71,8 @@ type ProtectedAction =
     // v3.10: Unified Notification Flows
     | 'createUnifiedFlow'
     | 'updateUnifiedFlow'
-    | 'deleteUnifiedFlow';
+    | 'deleteUnifiedFlow'
+    | 'testUnifiedFlow';
 
 /** API action type (protected + public) */
 type ApiAction = ProtectedAction | string;
@@ -132,7 +133,8 @@ const ApiService = {
         // v3.10: Unified Notification Flows
         'createUnifiedFlow',            // Yeni unified flow
         'updateUnifiedFlow',            // Unified flow güncelle
-        'deleteUnifiedFlow'             // Unified flow sil
+        'deleteUnifiedFlow',            // Unified flow sil
+        'testUnifiedFlow'               // v3.10.26: Test unified flow
     ] as const,
 
     // Validation map for actions that support Zod validation
