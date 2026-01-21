@@ -241,10 +241,13 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
 
     // v3.10.15: Inactive/Active instead of Stop/Start
     const toggleBtn = createButton(flow.active ? 'Inactive' : 'Active', 'btn-secondary btn-small', () => toggleFlow(flow.id));
+    const testBtn = createButton('Test', 'btn-secondary btn-small', () => testFlow(flow.id));
+    testBtn.style.cssText = 'background: #E8F5E9; border-color: #4CAF50; color: #2E7D32;';
     const editBtn = createButton('Edit', 'btn-secondary btn-small', () => openFlowModal(flow.id));
     const deleteBtn = createButton('Delete', 'btn-secondary btn-small', () => deleteFlow(flow.id));
 
     right.appendChild(toggleBtn);
+    right.appendChild(testBtn);
     right.appendChild(editBtn);
     right.appendChild(deleteBtn);
 
@@ -612,5 +615,56 @@ async function deleteFlow(flowId: string): Promise<void> {
     } catch (error) {
         logError(error, { action: 'deleteUnifiedFlow' });
         getUI().showAlert('Error: ' + (error as Error).message, 'error');
+    }
+}
+
+/**
+ * Test flow with predefined test data
+ */
+async function testFlow(flowId: string): Promise<void> {
+    const flow = unifiedFlows.find(f => f.id === flowId);
+    if (!flow) return;
+
+    if (!confirm(`"${flow.name}" flow'unu test etmek istiyor musunuz?\n\nTest bildirimi gönderilecek.`)) return;
+
+    // Get tomorrow's date formatted
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const turkishMonths = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+                           'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+    const days = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+    const formattedDate = `${tomorrow.getDate()} ${turkishMonths[tomorrow.getMonth()]} ${tomorrow.getFullYear()}, ${days[tomorrow.getDay()]}`;
+
+    // Predefined test data
+    const testData = {
+        customerName: 'Ahmet Metin',
+        customerPhone: '+905323112522',
+        customerEmail: 'serdarbenliauth@gmail.com',
+        staffName: 'Serdar Benli',
+        staffPhone: '+905323112522',
+        staffEmail: 'serdarbenliauth@gmail.com',
+        date: formattedDate,
+        time: '21:00',
+        appointmentType: 'meeting',
+        profile: flow.profiles[0] || 'g', // Use first profile from flow
+        customerNote: 'Test randevusu - bu bir test mesajıdır'
+    };
+
+    getUI().showAlert('Test gönderiliyor...', 'info');
+
+    try {
+        const response = await ApiService.call('testUnifiedFlow', {
+            flowId,
+            testData
+        }) as ApiResponse;
+
+        if (response.success) {
+            getUI().showAlert('Test bildirimi gönderildi!', 'success');
+        } else {
+            throw new Error(response.error || 'Test error');
+        }
+    } catch (error) {
+        logError(error, { action: 'testUnifiedFlow', flowId });
+        getUI().showAlert('Test hatası: ' + (error as Error).message, 'error');
     }
 }

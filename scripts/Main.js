@@ -63,7 +63,7 @@ const SESSION_ADMIN_ACTIONS = [
   // Mail Info Cards (v3.9.35) - get public, write protected
   'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
   // Unified Notification Flows (v3.10) - get public, write protected
-  'createUnifiedFlow', 'updateUnifiedFlow', 'deleteUnifiedFlow',
+  'createUnifiedFlow', 'updateUnifiedFlow', 'deleteUnifiedFlow', 'testUnifiedFlow',
   // Sheet Migration (v3.9.40)
   'fixMailInfoCardsSheet',
   // Header Sync (v3.9.47)
@@ -667,7 +667,11 @@ const ACTION_HANDLERS = {
       return { success: false, error: handlerError.toString() };
     }
   },
-  'deleteUnifiedFlow': (e) => deleteNotificationFlow({ id: e.parameter.id })
+  'deleteUnifiedFlow': (e) => deleteNotificationFlow({ id: e.parameter.id }),
+  'testUnifiedFlow': (e) => testNotificationFlow({
+    flowId: e.parameter.flowId,
+    testData: typeof e.parameter.testData === 'string' ? JSON.parse(e.parameter.testData) : e.parameter.testData
+  })
 };
 
 /**

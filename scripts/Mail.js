@@ -1315,6 +1315,219 @@ function deleteUnifiedFlow(params) {
   return deleteNotificationFlow(params);
 }
 
+/**
+ * Test a notification flow with predefined test data
+ * v3.10.26: Test flow without creating real appointment
+ */
+function testNotificationFlow(params) {
+  try {
+    var flowId = params.flowId;
+    var testData = params.testData;
+
+    if (!flowId) {
+      return { success: false, error: 'Flow ID gerekli' };
+    }
+
+    // Get the flow
+    var flowsResult = getNotificationFlows();
+    if (!flowsResult.success) {
+      return { success: false, error: 'Flow listesi alınamadı' };
+    }
+
+    var flow = flowsResult.data.find(function(f) { return f.id === flowId; });
+    if (!flow) {
+      return { success: false, error: 'Flow bulunamadı: ' + flowId };
+    }
+
+    log.info('[testNotificationFlow] Testing flow:', flow.name);
+    log.info('[testNotificationFlow] Test data:', JSON.stringify(testData));
+
+    var results = {
+      whatsapp: [],
+      mail: []
+    };
+
+    // Test WhatsApp templates
+    if (flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0) {
+      var waTemplatesResult = getWhatsAppTemplates();
+      if (waTemplatesResult.success && waTemplatesResult.data) {
+        flow.whatsappTemplateIds.forEach(function(templateId) {
+          var template = waTemplatesResult.data.find(function(t) { return t.id === templateId; });
+          if (template) {
+            try {
+              // Send test WhatsApp message
+              var waResult = sendTestWhatsAppNotification(template, testData);
+              results.whatsapp.push({
+                template: template.name,
+                success: waResult.success,
+                error: waResult.error
+              });
+            } catch (waError) {
+              results.whatsapp.push({
+                template: template.name,
+                success: false,
+                error: waError.toString()
+              });
+            }
+          }
+        });
+      }
+    }
+
+    // Test Mail templates
+    if (flow.mailTemplateIds && flow.mailTemplateIds.length > 0) {
+      var mailTemplatesResult = getMailTemplates();
+      if (mailTemplatesResult.success && mailTemplatesResult.data) {
+        flow.mailTemplateIds.forEach(function(templateId) {
+          var template = mailTemplatesResult.data.find(function(t) { return t.id === templateId; });
+          if (template) {
+            try {
+              // Send test email
+              var mailResult = sendTestMailNotification(template, testData, flow.infoCardId);
+              results.mail.push({
+                template: template.name,
+                success: mailResult.success,
+                error: mailResult.error
+              });
+            } catch (mailError) {
+              results.mail.push({
+                template: template.name,
+                success: false,
+                error: mailError.toString()
+              });
+            }
+          }
+        });
+      }
+    }
+
+    log.info('[testNotificationFlow] Results:', JSON.stringify(results));
+
+    return {
+      success: true,
+      message: 'Test tamamlandı',
+      results: results
+    };
+
+  } catch (error) {
+    log.error('[testNotificationFlow] Error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Send test WhatsApp notification
+ */
+function sendTestWhatsAppNotification(template, testData) {
+  try {
+    // Build appointment-like data for variable replacement
+    var appointmentData = {
+      customerName: testData.customerName,
+      customerPhone: testData.customerPhone,
+      customerEmail: testData.customerEmail,
+      staffName: testData.staffName,
+      staffPhone: testData.staffPhone,
+      staffEmail: testData.staffEmail,
+      date: testData.date,
+      time: testData.time,
+      appointmentType: testData.appointmentType,
+      profile: testData.profile,
+      customerNote: testData.customerNote
+    };
+
+    // Determine recipient phone based on template target
+    var recipientPhone = testData.customerPhone; // Default to customer
+    if (template.targetType === 'staff') {
+      recipientPhone = testData.staffPhone;
+    } else if (template.targetType === 'admin') {
+      // For admin, send to the test phone
+      recipientPhone = testData.customerPhone;
+    }
+
+    // Call WhatsApp send function
+    var result = sendWhatsAppTemplateMessage(
+      recipientPhone,
+      template.metaTemplateName,
+      template.language || 'tr',
+      appointmentData,
+      template.variables || {},
+      template.hasButton ? template.buttonVariable : null
+    );
+
+    return result;
+  } catch (error) {
+    log.error('[sendTestWhatsAppNotification] Error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
+/**
+ * Send test Mail notification
+ */
+function sendTestMailNotification(template, testData, infoCardId) {
+  try {
+    // Build appointment-like data for variable replacement
+    var appointmentData = {
+      customerName: testData.customerName,
+      customerPhone: testData.customerPhone,
+      customerEmail: testData.customerEmail,
+      staffName: testData.staffName,
+      staffPhone: testData.staffPhone,
+      staffEmail: testData.staffEmail,
+      date: testData.date,
+      time: testData.time,
+      appointmentType: testData.appointmentType,
+      profile: testData.profile,
+      customerNote: testData.customerNote
+    };
+
+    // Replace variables in subject and body
+    var subject = replaceMessageVariables(template.subject, appointmentData);
+    var body = replaceMessageVariables(template.body, appointmentData);
+
+    // Get info card if specified
+    var infoCardHtml = '';
+    if (infoCardId) {
+      var infoCardsResult = getMailInfoCards();
+      if (infoCardsResult.success && infoCardsResult.data) {
+        var infoCard = infoCardsResult.data.find(function(c) { return c.id === infoCardId; });
+        if (infoCard) {
+          infoCardHtml = replaceMessageVariables(infoCard.content, appointmentData);
+        }
+      }
+    }
+
+    // Combine body with info card
+    var fullBody = body;
+    if (infoCardHtml) {
+      fullBody = body + '<br><br>' + infoCardHtml;
+    }
+
+    // Determine recipient email based on template target
+    var recipientEmail = testData.customerEmail; // Default to customer
+    if (template.targetType === 'staff') {
+      recipientEmail = testData.staffEmail;
+    } else if (template.targetType === 'admin') {
+      // For admin, send to the test email
+      recipientEmail = testData.customerEmail;
+    }
+
+    // Send email
+    MailApp.sendEmail({
+      to: recipientEmail,
+      subject: '[TEST] ' + subject,
+      htmlBody: fullBody
+    });
+
+    log.info('[sendTestMailNotification] Email sent to:', recipientEmail);
+
+    return { success: true };
+  } catch (error) {
+    log.error('[sendTestMailNotification] Error:', error);
+    return { success: false, error: error.toString() };
+  }
+}
+
 // ==================== HELPER FUNCTIONS ====================
 
 /**
