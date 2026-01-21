@@ -230,10 +230,7 @@
             gap: 16px;
         }
 
-        /* Tek kalan son kart tüm genişliği kaplasın */
-        .link-cards-grid .link-card:last-child:nth-child(odd) {
-            grid-column: 1 / -1;
-        }
+        /* All cards maintain consistent width - no full-width stretching */
 
         .link-card {
             background: #fff;

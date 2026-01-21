@@ -17,6 +17,7 @@ import { logError } from '../monitoring';
 import { closeModal } from '../ui-utils';
 import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
+import { refreshWhatsAppTemplatesCache } from './unified-flow-manager';
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -1080,6 +1081,10 @@ async function saveTemplate(): Promise<void> {
                 ButtonAnimator.success(saveBtn);
             }
             getUI().showAlert(editId ? 'Şablon güncellendi' : 'Şablon oluşturuldu', 'success');
+
+            // Refresh unified flow manager cache in background
+            refreshWhatsAppTemplatesCache();
+
             setTimeout(() => {
                 closeModal('whatsappTemplateModal');
                 loadTemplates();
@@ -1114,6 +1119,10 @@ async function deleteTemplate(templateId: string): Promise<void> {
 
         if (response.success) {
             getUI().showAlert('Şablon silindi', 'success');
+
+            // Refresh unified flow manager cache in background
+            refreshWhatsAppTemplatesCache();
+
             await loadTemplates();
         } else {
             getUI().showAlert('Hata: ' + (response.error || 'Bilinmeyen hata'), 'error');

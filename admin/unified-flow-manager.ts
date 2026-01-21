@@ -166,6 +166,17 @@ async function loadMailTemplates(): Promise<void> {
     }
 }
 
+/**
+ * Exported for other managers to refresh cache after template changes
+ */
+export async function refreshWhatsAppTemplatesCache(): Promise<void> {
+    await loadWhatsAppTemplates();
+}
+
+export async function refreshMailTemplatesCache(): Promise<void> {
+    await loadMailTemplates();
+}
+
 async function loadUnifiedFlows(): Promise<void> {
     try {
         const response = await ApiService.call('getUnifiedFlows', {}) as ApiResponse<UnifiedFlow[]>;
