@@ -174,6 +174,13 @@ var MESSAGE_VARIABLES = {
       };
       return profileLabels[profile.toLowerCase()] || profile;
     }
+  },
+
+  profil_sahibi: {
+    label: 'profile owner: Serdar Benli',
+    getValue: function(data) {
+      return data.linkedStaffName || data.staffName || data.profileOwner || '';
+    }
   }
 };
 
