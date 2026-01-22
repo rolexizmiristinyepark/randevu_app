@@ -1318,6 +1318,7 @@ function deleteUnifiedFlow(params) {
 /**
  * Test a notification flow with predefined test data
  * v3.10.26: Test flow without creating real appointment
+ * v3.10.32: Get actual staff data from system for "Serdar Benli"
  */
 function testNotificationFlow(params) {
   try {
@@ -1337,6 +1338,26 @@ function testNotificationFlow(params) {
     var flow = flowsResult.data.find(function(f) { return f.id === flowId; });
     if (!flow) {
       return { success: false, error: 'Flow bulunamadı: ' + flowId };
+    }
+
+    // v3.10.32: Get actual staff data for "Serdar Benli" from system
+    var staffList = SheetStorageService.getStaff() || [];
+    var serdarBenli = staffList.find(function(s) {
+      return s.name && s.name.toLowerCase().includes('serdar');
+    });
+
+    if (serdarBenli) {
+      log.info('[testNotificationFlow] Found Serdar Benli in system:', JSON.stringify({
+        name: serdarBenli.name,
+        phone: serdarBenli.phone,
+        email: serdarBenli.email
+      }));
+      // Override test data with actual staff info
+      testData.staffName = serdarBenli.name || testData.staffName;
+      testData.staffPhone = serdarBenli.phone || testData.staffPhone;
+      testData.staffEmail = serdarBenli.email || testData.staffEmail;
+    } else {
+      log.warn('[testNotificationFlow] Serdar Benli not found in staff list, using provided test data');
     }
 
     log.info('[testNotificationFlow] Testing flow:', flow.name);
@@ -1382,8 +1403,8 @@ function testNotificationFlow(params) {
           var template = mailTemplatesResult.data.find(function(t) { return t.id === templateId; });
           if (template) {
             try {
-              // Send test email
-              var mailResult = sendTestMailNotification(template, testData, flow.infoCardId);
+              // Send test email - infoCardId is on template, not flow!
+              var mailResult = sendTestMailNotification(template, testData, template.infoCardId);
               results.mail.push({
                 template: template.name,
                 success: mailResult.success,
@@ -1417,10 +1438,11 @@ function testNotificationFlow(params) {
 
 /**
  * Send test WhatsApp notification
+ * v3.10.31: Convert targetType to recipientType/recipientTarget for WhatsAppService
  */
 function sendTestWhatsAppNotification(template, testData) {
   try {
-    // Build appointment-like data for variable replacement
+    // Build appointment-like data for WhatsAppService
     var appointmentData = {
       customerName: testData.customerName,
       customerPhone: testData.customerPhone,
@@ -1428,6 +1450,8 @@ function sendTestWhatsAppNotification(template, testData) {
       staffName: testData.staffName,
       staffPhone: testData.staffPhone,
       staffEmail: testData.staffEmail,
+      linkedStaffName: testData.staffName,
+      linkedStaffPhone: testData.staffPhone,
       date: testData.date,
       time: testData.time,
       appointmentType: testData.appointmentType,
@@ -1435,24 +1459,33 @@ function sendTestWhatsAppNotification(template, testData) {
       customerNote: testData.customerNote
     };
 
-    // Determine recipient phone based on template target
-    var recipientPhone = testData.customerPhone; // Default to customer
-    if (template.targetType === 'staff') {
-      recipientPhone = testData.staffPhone;
-    } else if (template.targetType === 'admin') {
-      // For admin, send to the test phone
-      recipientPhone = testData.customerPhone;
+    log.info('[sendTestWhatsAppNotification] Sending with template:', template.name, 'targetType:', template.targetType);
+
+    // Convert targetType to recipientType/recipientTarget for WhatsAppService
+    var templateWithRecipient = Object.assign({}, template);
+    var targetType = template.targetType || 'customer';
+
+    if (targetType === 'customer') {
+      templateWithRecipient.recipientType = 'individual';
+      templateWithRecipient.recipientTarget = 'customer';
+    } else if (targetType === 'staff') {
+      // For staff target, send to the staffPhone from testData
+      templateWithRecipient.recipientType = 'individual';
+      templateWithRecipient.recipientTarget = 'customer'; // Trick: use customer path but with staff phone
+      appointmentData.customerPhone = testData.staffPhone; // Override to send to staff
+      appointmentData.customerName = testData.staffName;
+    } else if (targetType === 'admin' || targetType === 'sales' || targetType === 'reception') {
+      // For role-based targets, use team type
+      templateWithRecipient.recipientType = 'team';
+      templateWithRecipient.recipientTarget = targetType.toUpperCase();
     }
 
-    // Call WhatsApp send function
-    var result = sendWhatsAppTemplateMessage(
-      recipientPhone,
-      template.metaTemplateName,
-      template.language || 'tr',
-      appointmentData,
-      template.variables || {},
-      template.hasButton ? template.buttonVariable : null
-    );
+    log.info('[sendTestWhatsAppNotification] Using recipientType:', templateWithRecipient.recipientType, 'recipientTarget:', templateWithRecipient.recipientTarget);
+
+    // Use WhatsAppService to send the message
+    var result = WhatsAppService.sendWhatsAppMessageWithTemplate(appointmentData, templateWithRecipient);
+
+    log.info('[sendTestWhatsAppNotification] Result:', JSON.stringify(result));
 
     return result;
   } catch (error) {
@@ -1463,9 +1496,15 @@ function sendTestWhatsAppNotification(template, testData) {
 
 /**
  * Send test Mail notification
+ * v3.10.31: Debug logging for info card, recipient based on template.recipient
  */
 function sendTestMailNotification(template, testData, infoCardId) {
   try {
+    log.info('[sendTestMailNotification] template:', template.name);
+    log.info('[sendTestMailNotification] template.infoCardId:', template.infoCardId);
+    log.info('[sendTestMailNotification] param infoCardId:', infoCardId);
+    log.info('[sendTestMailNotification] template.recipient:', template.recipient);
+
     // Build appointment-like data for variable replacement
     var appointmentData = {
       customerName: testData.customerName,
@@ -1474,6 +1513,7 @@ function sendTestMailNotification(template, testData, infoCardId) {
       staffName: testData.staffName,
       staffPhone: testData.staffPhone,
       staffEmail: testData.staffEmail,
+      linkedStaffName: testData.staffName,
       date: testData.date,
       time: testData.time,
       appointmentType: testData.appointmentType,
@@ -1483,34 +1523,44 @@ function sendTestMailNotification(template, testData, infoCardId) {
 
     // Replace variables in subject and body
     var subject = replaceMessageVariables(template.subject, appointmentData);
-    var body = replaceMessageVariables(template.body, appointmentData);
+    var bodyRaw = replaceMessageVariables(template.body, appointmentData);
 
-    // Get info card if specified
+    // Convert newlines to HTML (same as regular mail sending)
+    var body = bodyRaw
+      ? bodyRaw
+          .replace(/\r\n/g, '\n')           // Windows satır sonlarını normalize et
+          .replace(/\n\n+/g, '</p><p>')     // Çift+ satır sonu = yeni paragraf
+          .replace(/\n/g, '<br>')           // Tek satır sonu = <br>
+      : '';
+
+    // Generate info card HTML using the same function as regular mail
     var infoCardHtml = '';
-    if (infoCardId) {
-      var infoCardsResult = getMailInfoCards();
-      if (infoCardsResult.success && infoCardsResult.data) {
-        var infoCard = infoCardsResult.data.find(function(c) { return c.id === infoCardId; });
-        if (infoCard) {
-          infoCardHtml = replaceMessageVariables(infoCard.content, appointmentData);
-        }
-      }
+    var effectiveInfoCardId = infoCardId || template.infoCardId;
+    log.info('[sendTestMailNotification] effectiveInfoCardId:', effectiveInfoCardId);
+
+    if (effectiveInfoCardId) {
+      infoCardHtml = generateAppointmentInfoBox(appointmentData, effectiveInfoCardId);
+      log.info('[sendTestMailNotification] infoCardHtml length:', infoCardHtml ? infoCardHtml.length : 0);
     }
 
-    // Combine body with info card
+    // Combine info card with body (info card FIRST, then body text)
     var fullBody = body;
     if (infoCardHtml) {
-      fullBody = body + '<br><br>' + infoCardHtml;
+      fullBody = infoCardHtml + '<br><br>' + body;
     }
 
-    // Determine recipient email based on template target
+    // Determine recipient email based on template.recipient (not targetType)
     var recipientEmail = testData.customerEmail; // Default to customer
-    if (template.targetType === 'staff') {
+    var recipient = template.recipient || 'customer';
+
+    if (recipient === 'staff') {
       recipientEmail = testData.staffEmail;
-    } else if (template.targetType === 'admin') {
+    } else if (recipient === 'admin') {
       // For admin, send to the test email
       recipientEmail = testData.customerEmail;
     }
+
+    log.info('[sendTestMailNotification] sending to:', recipientEmail, 'recipient type:', recipient);
 
     // Send email
     MailApp.sendEmail({

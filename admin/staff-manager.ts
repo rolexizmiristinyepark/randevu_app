@@ -491,15 +491,21 @@ async function saveEdit(): Promise<void> {
         return;
     }
 
+    // v3.10.34: Get current staff's active status to preserve it
+    const currentStaff = dataStore.staff.find(s => s.id === currentEditId);
+    const currentActive = currentStaff?.active !== false; // Default to true if undefined
+
     try {
         // v3.10.18: updateStaffV3 kullan - role ve isAdmin kaydetmek için
+        // v3.10.34: active alanını da gönder (mevcut değeri koru)
         const response = await apiCall('updateStaffV3', {
             id: currentEditId,
             name: name,
             phone: phone,
             email: email,
             role: role,
-            isAdmin: isAdmin ? 'true' : 'false'
+            isAdmin: isAdmin ? 'true' : 'false',
+            active: currentActive ? 'true' : 'false'
         });
 
         if (response.success) {
