@@ -249,7 +249,27 @@ function render(): void {
         const staffInfo = createElement('div', { className: 'staff-info' });
 
         const infoDiv = createElement('div');
-        const nameDiv = createElement('div', { className: 'staff-name' }, s.name);
+        const nameDiv = createElement('div', { className: 'staff-name' });
+        nameDiv.textContent = s.name;
+
+        // v3.10.34: Admin rozeti
+        if (s.isAdmin) {
+            const adminBadge = createElement('span', {
+                className: 'admin-badge',
+                style: {
+                    marginLeft: '8px',
+                    padding: '2px 6px',
+                    fontSize: '10px',
+                    fontWeight: '600',
+                    backgroundColor: '#7c3aed',
+                    color: '#fff',
+                    borderRadius: '4px',
+                    verticalAlign: 'middle'
+                }
+            }, 'ADMIN');
+            nameDiv.appendChild(adminBadge);
+        }
+
         // Telefon numarasını +90 formatında göster
         const displayPhone = s.phone ? formatPhoneForDisplay(s.phone) : 'Telefon yok';
         const detailsDiv = createElement('div', {
