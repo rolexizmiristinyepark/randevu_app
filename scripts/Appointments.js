@@ -190,6 +190,44 @@ const AppointmentService = {
         // Flow hatası ana işlemi etkilemesin
       }
 
+      // Mail Flow tetikle - RANDEVU_İPTAL (v3.10.36)
+      try {
+        const PROFILE_KEY_TO_CODE = {
+          'genel': 'g',
+          'gunluk': 'w',
+          'boutique': 'b',
+          'yonetim': 'm',
+          'personel': 's',
+          'vip': 'v'
+        };
+        const profileCode = PROFILE_KEY_TO_CODE[profilTag] || profilTag || 'g';
+
+        // Türkçe tarih formatı
+        const TR_MONTHS_MAIL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+        const TR_DAYS_MAIL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const formattedDateMail = startTime.getDate() + ' ' + TR_MONTHS_MAIL[startTime.getMonth()] + ' ' + startTime.getFullYear() + ', ' + TR_DAYS_MAIL[startTime.getDay()];
+
+        const mailData = {
+          eventId: eventId,
+          customerName: customerName,
+          customerPhone: customerPhone,
+          customerEmail: customerEmail,
+          staffId: staffId,
+          staffName: staff ? staff.name : 'Atanacak',
+          staffEmail: staff ? staff.email : '',
+          appointmentDate: formattedDateMail,
+          appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
+          appointmentType: appointmentType,
+          profile: profileCode
+        };
+
+        sendMailByTrigger('RANDEVU_İPTAL', profileCode, mailData);
+        log.info('RANDEVU_İPTAL mail flow tetiklendi:', profileCode);
+      } catch (mailFlowError) {
+        log.error('RANDEVU_İPTAL mail flow error:', mailFlowError);
+        // Mail flow hatası ana işlemi etkilemesin
+      }
+
       // Cache invalidation: Version increment
       VersionService.incrementDataVersion();
 
