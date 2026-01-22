@@ -484,6 +484,10 @@ function openEditModal(staffId: string): void {
  * Close edit modal
  */
 function closeEditModal(): void {
+    // Reset save button animation state
+    const saveBtn = document.getElementById('saveEditStaffBtn');
+    if (saveBtn) ButtonAnimator.reset(saveBtn);
+
     // Destroy dirty state
     if (editModalDirtyState) {
         editModalDirtyState.destroy();
@@ -497,6 +501,7 @@ function closeEditModal(): void {
  * Save staff edits
  */
 async function saveEdit(): Promise<void> {
+    const saveBtn = document.getElementById('saveEditStaffBtn') as HTMLButtonElement;
     const name = (document.getElementById('editStaffName') as HTMLInputElement).value.trim();
     // Telefonu intl-tel-input'tan al (E.164 format, + olmadan: 905321234567)
     const phone = getPhoneNumber('editStaffPhone');
@@ -515,6 +520,9 @@ async function saveEdit(): Promise<void> {
     const currentStaff = dataStore.staff.find(s => s.id === currentEditId);
     const currentActive = currentStaff?.active !== false; // Default to true if undefined
 
+    // Start button animation
+    if (saveBtn) ButtonAnimator.start(saveBtn);
+
     try {
         // v3.10.18: updateStaffV3 kullan - role ve isAdmin kaydetmek için
         // v3.10.34: active alanını da gönder (mevcut değeri koru)
@@ -529,15 +537,20 @@ async function saveEdit(): Promise<void> {
         });
 
         if (response.success) {
+            if (saveBtn) ButtonAnimator.success(saveBtn, false);
             // Backend doesn't return updated list, reload from API
-            await dataStore.loadStaff();
-            render();
-            closeEditModal();
+            setTimeout(async () => {
+                await dataStore.loadStaff();
+                render();
+                closeEditModal();
+            }, 500);
             getUI().showAlert('Personel güncellendi!', 'success');
         } else {
+            if (saveBtn) ButtonAnimator.error(saveBtn);
             ErrorUtils.handleApiError(response as any, 'updateStaffV3', getUI().showAlert.bind(getUI()));
         }
     } catch (error) {
+        if (saveBtn) ButtonAnimator.error(saveBtn);
         ErrorUtils.handleException(error, 'Güncelleme', getUI().showAlert.bind(getUI()));
     }
 }
