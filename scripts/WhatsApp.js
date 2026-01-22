@@ -1527,17 +1527,20 @@ const WhatsAppTemplateService = {
 
   /**
    * Template için WhatsApp API parametrelerini oluştur
+   * v3.10.35: Her slot için parametre ekle (eksik değişkenler için '-' kullan)
    */
   buildTemplateParameters: function(template, appointmentData) {
     const parameters = [];
 
     // Template'deki değişkenleri sırayla işle
+    // ÖNEMLİ: Meta API tam olarak variableCount kadar parametre bekler
     for (var i = 1; i <= template.variableCount; i++) {
       var variableKey = template.variables[i];
+      var value = '-'; // Default değer (tanımsız değişkenler için)
       if (variableKey) {
-        var value = this.getVariableValue(variableKey, appointmentData);
-        parameters.push({ type: "text", text: value || '-' });
+        value = this.getVariableValue(variableKey, appointmentData) || '-';
       }
+      parameters.push({ type: "text", text: value });
     }
 
     return parameters;
