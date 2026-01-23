@@ -647,8 +647,26 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     };
     const triggerKey = TRIGGER_TO_FLOW_KEY[trigger] || trigger;
 
+    // v3.10.39: Profile code → İngilizce flow profile dönüşümü
+    const PROFILE_TO_FLOW_KEY = {
+      'genel': 'general',
+      'gunluk': 'walk-in',
+      'personel': 'individual',
+      'boutique': 'boutique',
+      'yonetim': 'management',
+      'vip': 'vip',
+      // Tek harfli kodlar için de destek
+      'g': 'general',
+      'w': 'walk-in',
+      's': 'individual',
+      'b': 'boutique',
+      'm': 'management',
+      'v': 'vip'
+    };
+    const profileKey = PROFILE_TO_FLOW_KEY[profileCode] || profileCode;
+
     // v3.9.49: Debug - appointmentData içeriğini logla
-    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, '→', triggerKey, 'profile:', profileCode);
+    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, '→', triggerKey, 'profile:', profileCode, '→', profileKey);
     log.info('[Mail] appointmentData keys:', Object.keys(appointmentData || {}).join(', '));
     log.info('[Mail] appointmentData.formattedDate:', appointmentData?.formattedDate);
     log.info('[Mail] appointmentData.appointmentDate:', appointmentData?.appointmentDate);
@@ -691,9 +709,9 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         return false;
       }
       const profiles = parseJsonSafe(flow.profiles, []);
-      const hasProfile = profiles.includes(profileCode);
+      const hasProfile = profiles.includes(profileKey);
       if (!hasProfile) {
-        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', profiles, 'expected:', profileCode);
+        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', profiles, 'expected:', profileKey);
         return false;
       }
       log.info('[Mail] DEBUG - Flow MATCHED:', flow.name);

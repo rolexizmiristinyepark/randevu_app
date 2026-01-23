@@ -2457,10 +2457,28 @@ function triggerFlowForEvent(trigger, eventData) {
     let totalSent = 0;
     const errors = [];
 
-    // Event'ten profil bilgisini al
-    const appointmentProfile = eventData.profile || extractProfileFromAppointment(eventData);
+    // Event'ten profil bilgisini al ve İngilizce'ye çevir (flow'lar İngilizce profile key bekler)
+    const rawProfile = eventData.profile || extractProfileFromAppointment(eventData);
 
-    console.log(`[triggerFlowForEvent] trigger: ${trigger}, eventData.profile: ${eventData.profile}, appointmentProfile: ${appointmentProfile}`);
+    // v3.10.39: Türkçe profile → İngilizce flow profile dönüşümü
+    const PROFILE_TR_TO_EN = {
+      'genel': 'general',
+      'gunluk': 'walk-in',
+      'personel': 'individual',
+      'boutique': 'boutique',
+      'yonetim': 'management',
+      'vip': 'vip',
+      // Tek harfli kodlar için de destek
+      'g': 'general',
+      'w': 'walk-in',
+      's': 'individual',
+      'b': 'boutique',
+      'm': 'management',
+      'v': 'vip'
+    };
+    const appointmentProfile = PROFILE_TR_TO_EN[rawProfile] || rawProfile;
+
+    console.log(`[triggerFlowForEvent] trigger: ${trigger}, rawProfile: ${rawProfile}, appointmentProfile (EN): ${appointmentProfile}`);
     console.log(`[triggerFlowForEvent] activeFlows count: ${activeFlows.length}`);
 
     for (const flow of activeFlows) {
