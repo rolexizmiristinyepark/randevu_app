@@ -187,10 +187,15 @@
         }
 
         .btn:disabled {
-            opacity: 0.35;
+            opacity: 0.5;
             cursor: not-allowed;
-            background: #FAFAFA;
-            color: #BDBDBD;
+        }
+
+        /* v3.10.44: Disabled primary button should still be visible */
+        .btn-primary:disabled {
+            background: linear-gradient(135deg, #C9A55A 0%, #B8944A 100%);
+            border-color: #C9A55A;
+            color: white;
         }
 
         .btn-small {

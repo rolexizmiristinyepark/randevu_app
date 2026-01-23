@@ -15,6 +15,8 @@ let currentEditingAppointment: any = null;
 let currentAssigningAppointment: any = null;
 let editModalDirtyState: FormDirtyState | null = null;
 let assignModalDirtyState: FormDirtyState | null = null;
+// v3.10.44: Store event listener reference for cleanup
+let editModalDirtyCheckFn: (() => void) | null = null;
 
 // Global references (accessed via window)
 declare const window: Window & {
@@ -213,18 +215,55 @@ function openEditModal(appointment: any): void {
         // Format time using TimeUtils
         const currentTime = TimeUtils.toTimeString(startDate);
 
+        // Get input elements
+        const dateInput = document.getElementById('editAppointmentDate') as HTMLInputElement;
+        const timeSelect = document.getElementById('editAppointmentTime') as HTMLSelectElement;
+        const saveBtn = document.getElementById('saveEditAppointmentBtn') as HTMLButtonElement;
+
         // Set date and time values
-        (document.getElementById('editAppointmentDate') as HTMLInputElement).value = dateStr;
-        (document.getElementById('editAppointmentTime') as HTMLInputElement).value = currentTime;
+        dateInput.value = dateStr;
+        timeSelect.value = currentTime;
 
         // Show modal first (so elements are visible for FormDirtyState)
         document.getElementById('editAppointmentModal')?.classList.add('active');
 
-        // Initialize FormDirtyState - button disabled until changes made
+        // v3.10.44: Store original values for manual comparison
+        const originalDate = dateStr;
+        const originalTime = currentTime;
+
+        // Manual dirty check function (workaround for native date picker issues)
+        editModalDirtyCheckFn = () => {
+            const hasChanges = dateInput.value !== originalDate || timeSelect.value !== originalTime;
+            if (saveBtn) {
+                saveBtn.disabled = !hasChanges;
+                if (hasChanges) {
+                    saveBtn.classList.remove('btn-pristine');
+                    saveBtn.classList.add('btn-dirty');
+                } else {
+                    saveBtn.classList.add('btn-pristine');
+                    saveBtn.classList.remove('btn-dirty');
+                }
+            }
+        };
+
+        // Add event listeners for both input types
+        // Using multiple events to ensure we catch all changes (especially for native date picker)
+        dateInput.addEventListener('input', editModalDirtyCheckFn);
+        dateInput.addEventListener('change', editModalDirtyCheckFn);
+        dateInput.addEventListener('blur', editModalDirtyCheckFn);
+        timeSelect.addEventListener('change', editModalDirtyCheckFn);
+
+        // Initialize FormDirtyState as backup (for any other inputs that might be added)
         editModalDirtyState = new FormDirtyState({
             container: '#editAppointmentModal .modal-content',
             saveButton: '#saveEditAppointmentBtn'
         });
+
+        // Initial state - button disabled
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.classList.add('btn-pristine');
+        }
     } catch (error) {
         console.error('Modal açma hatası:', error, appointment);
         getUI().showAlert('Randevu tarihi okunamadı', 'error');
@@ -235,6 +274,21 @@ function openEditModal(appointment: any): void {
  * Close edit appointment modal
  */
 function closeEditModal(): void {
+    // v3.10.44: Remove manual event listeners
+    if (editModalDirtyCheckFn) {
+        const dateInput = document.getElementById('editAppointmentDate');
+        const timeSelect = document.getElementById('editAppointmentTime');
+        if (dateInput) {
+            dateInput.removeEventListener('input', editModalDirtyCheckFn);
+            dateInput.removeEventListener('change', editModalDirtyCheckFn);
+            dateInput.removeEventListener('blur', editModalDirtyCheckFn);
+        }
+        if (timeSelect) {
+            timeSelect.removeEventListener('change', editModalDirtyCheckFn);
+        }
+        editModalDirtyCheckFn = null;
+    }
+
     // Destroy dirty state
     if (editModalDirtyState) {
         editModalDirtyState.destroy();
