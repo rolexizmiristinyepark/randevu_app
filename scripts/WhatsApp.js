@@ -267,7 +267,7 @@ function getDebugLogs(limit) {
 
 /**
  * 🧪 TEST FUNCTION - Apps Script editöründen çalıştır
- * Flow sistemini test eder - GENEL profil ile RANDEVU_OLUŞTUR tetikler
+ * Flow sistemini test eder - GENEL profil ile APPOINTMENT_CREATE tetikler
  *
  * KULLANIM:
  * 1. Apps Script editörüne git
@@ -317,7 +317,7 @@ function testFlowTrigger() {
 
     // 3. Flow tetikle
     Logger.log('🚀 Triggering flow...');
-    const result = triggerFlowForEvent('RANDEVU_OLUŞTUR', testEventData);
+    const result = triggerFlowForEvent('APPOINTMENT_CREATE', testEventData);
     Logger.log('✅ triggerFlowForEvent result: ' + JSON.stringify(result));
   } catch (error) {
     Logger.log('❌ ERROR: ' + error.toString());
@@ -415,8 +415,8 @@ function testRealAppointmentFlow() {
   Logger.log('📋 eventData: ' + JSON.stringify(eventData));
 
   // 3. triggerFlowForEvent çağır (createAppointment'ın yaptığı gibi)
-  Logger.log('🚀 Calling triggerFlowForEvent("RANDEVU_OLUŞTUR", eventData)...');
-  const result = triggerFlowForEvent('RANDEVU_OLUŞTUR', eventData);
+  Logger.log('🚀 Calling triggerFlowForEvent("APPOINTMENT_CREATE", eventData)...');
+  const result = triggerFlowForEvent('APPOINTMENT_CREATE', eventData);
   Logger.log('📋 triggerFlowForEvent result: ' + JSON.stringify(result));
 
   Logger.log('=== TEST REAL APPOINTMENT FLOW END ===');
@@ -2407,7 +2407,7 @@ function _maskPhoneNumber(phone) {
 
 /**
  * Event tetiklendiğinde ilgili flow'ları çalıştır
- * @param {string} trigger - Trigger türü (RANDEVU_OLUŞTUR, RANDEVU_GÜNCELLE, vb.)
+ * @param {string} trigger - Trigger türü (APPOINTMENT_CREATE, APPOINTMENT_UPDATE, vb.)
  * @param {Object} eventData - Event bilgileri
  * @returns {Object} Sonuç
  */
@@ -2415,14 +2415,14 @@ function triggerFlowForEvent(trigger, eventData) {
   try {
     console.log('🔥 [triggerFlowForEvent] START - trigger:', trigger);
 
-    // v3.10.37: Türkçe trigger → İngilizce dönüşümü (Flow'lar İngilizce key ile kayıtlı)
-    const TRIGGER_TR_TO_EN = {
-      'RANDEVU_OLUŞTUR': 'create',
-      'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update',
-      'ILGILI_ATANDI': 'assign'
+    // v3.10.38: Trigger constant → flow key mapping (flows stored with lowercase keys)
+    const TRIGGER_TO_FLOW_KEY = {
+      'APPOINTMENT_CREATE': 'create',
+      'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update',
+      'STAFF_ASSIGNED': 'assign'
     };
-    const triggerKey = TRIGGER_TR_TO_EN[trigger] || trigger;
+    const triggerKey = TRIGGER_TO_FLOW_KEY[trigger] || trigger;
     console.log('🔥 [triggerFlowForEvent] triggerKey (converted):', triggerKey);
 
     // Aktif flow'ları getir

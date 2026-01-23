@@ -566,7 +566,7 @@ const ACTION_HANDLERS = {
   // v3.10.7: Debug endpoint for diagnosing notification flow issues
   'debugNotificationFlows': (e) => {
     try {
-      const trigger = e.parameter.trigger || 'RANDEVU_OLUŞTUR';
+      const trigger = e.parameter.trigger || 'APPOINTMENT_CREATE';
       const profileCode = e.parameter.profileCode || 's';
 
       // Get raw data from sheet

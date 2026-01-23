@@ -632,20 +632,20 @@ function escapeHtmlAttr(str) {
  * 2. Template body (özelleştirilebilir)
  * 3. ICS takvim eki (müşteri mailleri için)
  *
- * @param {string} trigger - Trigger türü (RANDEVU_OLUŞTUR, RANDEVU_İPTAL, etc.)
+ * @param {string} trigger - Trigger türü (APPOINTMENT_CREATE, APPOINTMENT_CANCEL, etc.)
  * @param {string} profileCode - Profil kodu (g, w, b, m, s, v)
  * @param {Object} appointmentData - Randevu bilgileri
  */
 function sendMailByTrigger(trigger, profileCode, appointmentData) {
   try {
-    // v3.10.37: Türkçe trigger → İngilizce dönüşümü (Flow'lar İngilizce key ile kayıtlı)
-    const TRIGGER_TR_TO_EN = {
-      'RANDEVU_OLUŞTUR': 'create',
-      'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update',
-      'ILGILI_ATANDI': 'assign'
+    // v3.10.38: Trigger constant → flow key mapping (flows stored with lowercase keys)
+    const TRIGGER_TO_FLOW_KEY = {
+      'APPOINTMENT_CREATE': 'create',
+      'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update',
+      'STAFF_ASSIGNED': 'assign'
     };
-    const triggerKey = TRIGGER_TR_TO_EN[trigger] || trigger;
+    const triggerKey = TRIGGER_TO_FLOW_KEY[trigger] || trigger;
 
     // v3.9.49: Debug - appointmentData içeriğini logla
     log.info('[Mail] sendMailByTrigger called with trigger:', trigger, '→', triggerKey, 'profile:', profileCode);
@@ -800,7 +800,7 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
           continue;
         }
 
-        // ===== EMAIL BODY OLUŞTUR =====
+        // ===== BUILD EMAIL BODY =====
         // 1. Randevu Bilgileri kutusu (v3.10.0: infoCardId sadece template'de)
         const infoCardId = template.infoCardId || '';
         log.info('[Mail] Template infoCardId:', template.infoCardId, ', templateId:', templateId);
@@ -840,7 +840,7 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
 
         // ===== ICS EKİ (Sadece müşteri mailleri için) =====
         let attachments = [];
-        if (target === 'customer' && trigger !== 'RANDEVU_İPTAL') {
+        if (target === 'customer' && trigger !== 'APPOINTMENT_CANCEL') {
           try {
             const icsContent = generateMailICS(appointmentData);
             const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');

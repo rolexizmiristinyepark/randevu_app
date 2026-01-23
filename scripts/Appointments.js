@@ -163,7 +163,7 @@ const AppointmentService = {
         appointmentType: appointmentType
       });
 
-      // WhatsApp Flow tetikle - RANDEVU_IPTAL
+      // WhatsApp Flow tetikle - APPOINTMENT_CANCEL
       try {
         // v3.9: Profil bazlı çalışma (profilTag yukarıda alındı)
         // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız)
@@ -183,14 +183,14 @@ const AppointmentService = {
           profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
         };
 
-        const flowResult = triggerFlowForEvent('RANDEVU_İPTAL', eventData);
-        log.info('RANDEVU_İPTAL flow result:', flowResult);
+        const flowResult = triggerFlowForEvent('APPOINTMENT_CANCEL', eventData);
+        log.info('APPOINTMENT_CANCEL flow result:', flowResult);
       } catch (flowError) {
-        log.error('RANDEVU_İPTAL flow error:', flowError);
+        log.error('APPOINTMENT_CANCEL flow error:', flowError);
         // Flow hatası ana işlemi etkilemesin
       }
 
-      // Mail Flow tetikle - RANDEVU_İPTAL (v3.10.36)
+      // Mail Flow tetikle - APPOINTMENT_CANCEL (v3.10.36)
       try {
         const PROFILE_KEY_TO_CODE = {
           'genel': 'g',
@@ -221,10 +221,10 @@ const AppointmentService = {
           profile: profileCode
         };
 
-        sendMailByTrigger('RANDEVU_İPTAL', profileCode, mailData);
-        log.info('RANDEVU_İPTAL mail flow tetiklendi:', profileCode);
+        sendMailByTrigger('APPOINTMENT_CANCEL', profileCode, mailData);
+        log.info('APPOINTMENT_CANCEL mail flow tetiklendi:', profileCode);
       } catch (mailFlowError) {
-        log.error('RANDEVU_İPTAL mail flow error:', mailFlowError);
+        log.error('APPOINTMENT_CANCEL mail flow error:', mailFlowError);
         // Mail flow hatası ana işlemi etkilemesin
       }
 
@@ -343,7 +343,7 @@ const AppointmentService = {
       if (updateResult && updateResult.success) {
         VersionService.incrementDataVersion();
         
-        // WhatsApp Flow tetikle - RANDEVU_GÜNCELLE
+        // WhatsApp Flow tetikle - APPOINTMENT_UPDATE
         try {
           const customerName = event.getTitle().split(' - ')[0] || '';
           const customerPhone = event.getTag('customerPhone') || '';
@@ -373,14 +373,14 @@ const AppointmentService = {
             profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
           };
 
-          const flowResult = triggerFlowForEvent('RANDEVU_GÜNCELLE', eventData);
-          log.info('RANDEVU_GÜNCELLE flow result:', flowResult);
+          const flowResult = triggerFlowForEvent('APPOINTMENT_UPDATE', eventData);
+          log.info('APPOINTMENT_UPDATE flow result:', flowResult);
         } catch (flowError) {
-          log.error('RANDEVU_GÜNCELLE flow error:', flowError);
+          log.error('APPOINTMENT_UPDATE flow error:', flowError);
           // Flow hatası ana işlemi etkilemesin
         }
 
-        // Mail Flow tetikle - RANDEVU_GÜNCELLE (v3.10.37)
+        // Mail Flow tetikle - APPOINTMENT_UPDATE (v3.10.37)
         try {
           const customerName = event.getTitle().split(' - ')[0] || '';
           const customerPhone = event.getTag('customerPhone') || '';
@@ -420,10 +420,10 @@ const AppointmentService = {
             profile: profileCode
           };
 
-          sendMailByTrigger('RANDEVU_GÜNCELLE', profileCode, mailData);
-          log.info('RANDEVU_GÜNCELLE mail flow tetiklendi:', profileCode);
+          sendMailByTrigger('APPOINTMENT_UPDATE', profileCode, mailData);
+          log.info('APPOINTMENT_UPDATE mail flow tetiklendi:', profileCode);
         } catch (mailFlowError) {
-          log.error('RANDEVU_GÜNCELLE mail flow error:', mailFlowError);
+          log.error('APPOINTMENT_UPDATE mail flow error:', mailFlowError);
           // Mail flow hatası ana işlemi etkilemesin
         }
       }
@@ -552,7 +552,7 @@ const AppointmentService = {
 
       log.info('Personel atandı:', eventId, staffId, staff.name);
 
-      // WhatsApp Flow tetikle - ILGILI_ATANDI
+      // WhatsApp Flow tetikle - STAFF_ASSIGNED
       try {
         const customerName = event.getTitle().split(' - ')[0] || '';
         const customerPhone = event.getTag('customerPhone') || '';
@@ -587,13 +587,13 @@ const AppointmentService = {
           profile: profilTag  // v3.10.18: Profil kodu (g, s, v, vb.)
         };
 
-        const flowResult = triggerFlowForEvent('ILGILI_ATANDI', eventData);
-        log.info('ILGILI_ATANDI flow result:', flowResult);
+        const flowResult = triggerFlowForEvent('STAFF_ASSIGNED', eventData);
+        log.info('STAFF_ASSIGNED flow result:', flowResult);
       } catch (flowError) {
-        log.error('ILGILI_ATANDI flow error:', flowError);
+        log.error('STAFF_ASSIGNED flow error:', flowError);
       }
 
-      // Mail Flow tetikle - ILGILI_ATANDI
+      // Mail Flow tetikle - STAFF_ASSIGNED
       try {
         const customerName = event.getTitle().split(' - ')[0] || '';
         const customerPhone = event.getTag('customerPhone') || '';
@@ -636,10 +636,10 @@ const AppointmentService = {
           profile: rawProfil
         };
 
-        sendMailByTrigger('ILGILI_ATANDI', profilTag, mailData);
-        log.info('[assignStaff] Mail flow tetiklendi:', 'ILGILI_ATANDI', profilTag);
+        sendMailByTrigger('STAFF_ASSIGNED', profilTag, mailData);
+        log.info('[assignStaff] Mail flow tetiklendi:', 'STAFF_ASSIGNED', profilTag);
       } catch (mailFlowError) {
-        log.error('ILGILI_ATANDI mail flow error:', mailFlowError);
+        log.error('STAFF_ASSIGNED mail flow error:', mailFlowError);
       }
 
       return {
@@ -728,7 +728,7 @@ const AppointmentService = {
         try {
           const formattedDate = DateUtils.toTurkishDate(date);
 
-          // Mail Flow sistemi - RANDEVU_OLUŞTUR
+          // Mail Flow sistemi - APPOINTMENT_CREATE
           // v3.9.49: profileName eklendi
           const PROFILE_NAMES = {
             'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
@@ -765,8 +765,8 @@ const AppointmentService = {
           };
           const profileCode = PROFILE_KEY_TO_CODE[params.profil] || params.profil || 'g';
 
-          sendMailByTrigger('RANDEVU_OLUŞTUR', profileCode, appointmentData);
-          log.info('[Manual] Mail flow tetiklendi:', 'RANDEVU_OLUŞTUR', profileCode);
+          sendMailByTrigger('APPOINTMENT_CREATE', profileCode, appointmentData);
+          log.info('[Manual] Mail flow tetiklendi:', 'APPOINTMENT_CREATE', profileCode);
         } catch (flowError) {
           log.error('Manuel randevu mail flow hatası:', flowError);
         }
@@ -1352,7 +1352,7 @@ function _sendNotifications(params) {
     date, time, formattedDate, appointmentType, durationNum, data, profil
   } = params;
 
-  // Mail Flow sistemini tetikle - RANDEVU_OLUŞTUR
+  // Mail Flow sistemini tetikle - APPOINTMENT_CREATE
   try {
     // v3.9.49: profileName eklendi
     const PROFILE_NAMES = {
@@ -1400,9 +1400,9 @@ function _sendNotifications(params) {
     const profileCode = PROFILE_KEY_TO_CODE[profil] || profil || 'g';
 
     // Flow sisteminden mail gönder
-    sendMailByTrigger('RANDEVU_OLUŞTUR', profileCode, appointmentData);
+    sendMailByTrigger('APPOINTMENT_CREATE', profileCode, appointmentData);
 
-    log.info('[Notifications] Mail flow tetiklendi:', 'RANDEVU_OLUŞTUR', profileCode);
+    log.info('[Notifications] Mail flow tetiklendi:', 'APPOINTMENT_CREATE', profileCode);
   } catch (flowError) {
     log.error('Mail flow hatası:', flowError);
   }
@@ -1445,13 +1445,13 @@ function _triggerWhatsAppFlow(params) {
     };
 
     log.info('[FLOW] Calling triggerFlowForEvent with:', JSON.stringify({
-      trigger: 'RANDEVU_OLUŞTUR',
+      trigger: 'APPOINTMENT_CREATE',
       profile: eventData.profile,
       customerName: eventData.customerName,
       staffId: eventData.staffId
     }));
 
-    const flowResult = triggerFlowForEvent('RANDEVU_OLUŞTUR', eventData);
+    const flowResult = triggerFlowForEvent('APPOINTMENT_CREATE', eventData);
     log.info('[FLOW] triggerFlowForEvent result:', JSON.stringify(flowResult));
   } catch (flowError) {
     log.error('[FLOW] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);

@@ -192,10 +192,10 @@ var MESSAGE_VARIABLES = {
  */
 // Event-based triggers (for real-time notifications)
 var MESSAGE_TRIGGERS = {
-  'RANDEVU_OLUŞTUR': 'create',
-  'RANDEVU_İPTAL': 'cancel',
-  'RANDEVU_GÜNCELLE': 'update',
-  'ILGILI_ATANDI': 'assign'
+  'APPOINTMENT_CREATE': 'create',
+  'APPOINTMENT_CANCEL': 'cancel',
+  'APPOINTMENT_UPDATE': 'update',
+  'STAFF_ASSIGNED': 'assign'
 };
 
 // Time-based trigger (for scheduled notifications - runs at 10:00 AM TR)
