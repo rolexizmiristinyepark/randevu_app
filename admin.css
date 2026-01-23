@@ -294,14 +294,14 @@
 
         /* Staff/VIP Links Grid - 2 column layout */
         .link-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 16px;
+            display: grid !important;
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 16px !important;
         }
 
         /* Last item spans full width when odd number of items */
-        .link-grid > .link-card:last-child:nth-child(odd) {
-            grid-column: span 2;
+        .link-grid .link-card:last-child:nth-child(odd) {
+            grid-column: 1 / -1 !important;
         }
 
         .link-btn-primary:hover {
