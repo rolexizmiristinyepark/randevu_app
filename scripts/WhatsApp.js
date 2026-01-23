@@ -2471,20 +2471,36 @@ function triggerFlowForEvent(trigger, eventData) {
     // Bu trigger için aktif flow'ları filtrele
     // triggerType boşsa veya EVENT ise kabul et (default: EVENT)
     // v3.10.37: triggerKey (İngilizce) kullan
-    const activeFlows = flowsResult.data.filter(flow =>
-      flow.active &&
-      flow.trigger === triggerKey &&
-      (!flow.triggerType || flow.triggerType === 'EVENT')
-    );
+    // v3.10.47: Flow'un trigger değerini de normalize et (eski Türkçe flow'lar için)
+    const FLOW_TRIGGER_TO_KEY = {
+      'RANDEVU_OLUŞTUR': 'create',
+      'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update',
+      'ILGILI_ATANDI': 'assign',
+      // İngilizce olanlar için identity
+      'create': 'create',
+      'cancel': 'cancel',
+      'update': 'update',
+      'assign': 'assign'
+    };
+
+    const activeFlows = flowsResult.data.filter(flow => {
+      const normalizedFlowTrigger = FLOW_TRIGGER_TO_KEY[flow.trigger] || flow.trigger;
+      return flow.active &&
+        normalizedFlowTrigger === triggerKey &&
+        (!flow.triggerType || flow.triggerType === 'EVENT');
+    });
 
     console.log('🔥 [triggerFlowForEvent] Filtered activeFlows count:', activeFlows.length);
 
     // v3.10.43: Sheet debug log - filtrelenmiş flow sayısı
+    // v3.10.47: Normalize edilmiş trigger bilgisi ekle
     debugSheetLog('triggerFlowForEvent FLOWS', {
       triggerKey: triggerKey,
       totalFlowsWithWhatsApp: flowsResult.data.length,
       activeFlowsForTrigger: activeFlows.length,
-      flowNames: activeFlows.map(f => f.name).join(', ')
+      flowNames: activeFlows.map(f => f.name).join(', '),
+      flowTriggers: flowsResult.data.map(f => `${f.name}:${f.trigger}→${FLOW_TRIGGER_TO_KEY[f.trigger] || f.trigger}`).join(', ')
     });
 
     if (activeFlows.length === 0) {
