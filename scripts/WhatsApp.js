@@ -2471,13 +2471,19 @@ function triggerFlowForEvent(trigger, eventData) {
     // Bu trigger için aktif flow'ları filtrele
     // triggerType boşsa veya EVENT ise kabul et (default: EVENT)
     // v3.10.37: triggerKey (İngilizce) kullan
-    // v3.10.47: Flow'un trigger değerini de normalize et (eski Türkçe flow'lar için)
+    // v3.10.47: Flow'un trigger değerini de normalize et (tüm formatlar için)
     const FLOW_TRIGGER_TO_KEY = {
+      // Eski Türkçe trigger'lar
       'RANDEVU_OLUŞTUR': 'create',
       'RANDEVU_İPTAL': 'cancel',
       'RANDEVU_GÜNCELLE': 'update',
       'ILGILI_ATANDI': 'assign',
-      // İngilizce olanlar için identity
+      // Yeni İngilizce constant'lar (MESSAGE_TRIGGERS key'leri)
+      'APPOINTMENT_CREATE': 'create',
+      'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update',
+      'STAFF_ASSIGNED': 'assign',
+      // Doğrudan key'ler için identity
       'create': 'create',
       'cancel': 'cancel',
       'update': 'update',
@@ -2945,13 +2951,17 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    // v3.10.41: Sheet'teki Türkçe trigger'ları İngilizce'ye dönüştür
+    // v3.10.47: Sheet'teki trigger'ları normalize et (tüm formatlar)
     const TRIGGER_TR_TO_EN = {
       'RANDEVU_OLUŞTUR': 'create',
       'RANDEVU_İPTAL': 'cancel',
       'RANDEVU_GÜNCELLE': 'update',
       'ILGILI_ATANDI': 'assign',
-      'HATIRLATMA': 'reminder'
+      'HATIRLATMA': 'reminder',
+      'APPOINTMENT_CREATE': 'create',
+      'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update',
+      'STAFF_ASSIGNED': 'assign'
     };
 
     // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür

@@ -593,10 +593,12 @@ const ACTION_HANDLERS = {
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
 
-      // v3.10.41: Flow normalizasyon mapping'leri
+      // v3.10.47: Flow normalizasyon mapping'leri (tüm formatlar)
       const TRIGGER_TR_TO_EN_DEBUG = {
         'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
-        'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign', 'HATIRLATMA': 'reminder'
+        'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign', 'HATIRLATMA': 'reminder',
+        'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
+        'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
       };
       const PROFILE_SHORT_TO_EN_DEBUG = {
         'g': 'general', 'w': 'walk-in', 's': 'individual',

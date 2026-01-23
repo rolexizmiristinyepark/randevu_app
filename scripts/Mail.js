@@ -680,13 +680,19 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
     const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
 
-    // v3.10.41: Sheet'teki Türkçe trigger'ları İngilizce'ye dönüştür
+    // v3.10.47: Sheet'teki trigger'ları normalize et (tüm formatlar)
     const TRIGGER_TR_TO_EN_MAIL = {
+      // Eski Türkçe trigger'lar
       'RANDEVU_OLUŞTUR': 'create',
       'RANDEVU_İPTAL': 'cancel',
       'RANDEVU_GÜNCELLE': 'update',
       'ILGILI_ATANDI': 'assign',
-      'HATIRLATMA': 'reminder'
+      'HATIRLATMA': 'reminder',
+      // Yeni İngilizce constant'lar (MESSAGE_TRIGGERS key'leri)
+      'APPOINTMENT_CREATE': 'create',
+      'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update',
+      'STAFF_ASSIGNED': 'assign'
     };
 
     // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür
