@@ -235,6 +235,8 @@ function render(): void {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         list.appendChild(emptyMsg);
+        // v3.10.46: Staff yoksa da links bölümünü render et (boş mesaj göstermek için)
+        renderLinks();
         return;
     }
 
@@ -394,6 +396,113 @@ function renderLinks(): void {
     });
 
     container.appendChild(gridContainer);
+
+    // v3.10.46: VIP links bölümünü de render et
+    renderVipLinks();
+}
+
+/**
+ * Render VIP links section (Özel Müşteri)
+ * v3.10.46: VIP müşteri linkleri (#v/staffId formatında)
+ */
+function renderVipLinks(): void {
+    const container = document.getElementById('vipLinksGrid');
+    if (!container) return;
+
+    // Clear
+    container.textContent = '';
+
+    const activeStaff = dataStore.staff.filter(s => s.active);
+
+    if (activeStaff.length === 0) {
+        const emptyMsg = createElement('p', {
+            style: { textAlign: 'center', color: '#999', padding: '20px' }
+        }, 'VIP linkler için önce personel ekleyin');
+        container.appendChild(emptyMsg);
+        return;
+    }
+
+    // Grid layout
+    const gridContainer = createElement('div', { className: 'link-grid' });
+
+    activeStaff.forEach(s => {
+        const vipLink = `${getConfig().BASE_URL}#v/${s.id}`;
+
+        // Link card
+        const linkCard = createElement('div', { className: 'link-card' });
+
+        // Header
+        const header = createElement('div', { className: 'link-card-header' }, `${s.name} (VIP)`);
+
+        // Body
+        const body = createElement('div', { className: 'link-card-body' });
+
+        // Link input
+        const linkInput = createElement('input', {
+            type: 'text',
+            value: vipLink,
+            readonly: true,
+            id: `vipLink_${s.id}`,
+            className: 'link-input'
+        }) as HTMLInputElement;
+
+        // Actions
+        const actions = createElement('div', { className: 'link-actions' });
+
+        const copyBtn = createElement('button', {
+            className: 'btn btn-small btn-secondary'
+        }, 'Copy');
+        copyBtn.addEventListener('click', () => copyVipLink(s.id));
+
+        const openBtn = createElement('button', {
+            className: 'btn btn-small'
+        }, 'Open');
+        openBtn.addEventListener('click', () => openVipLink(s.id));
+
+        actions.appendChild(copyBtn);
+        actions.appendChild(openBtn);
+
+        body.appendChild(linkInput);
+        body.appendChild(actions);
+
+        linkCard.appendChild(header);
+        linkCard.appendChild(body);
+        gridContainer.appendChild(linkCard);
+    });
+
+    container.appendChild(gridContainer);
+}
+
+/**
+ * Copy VIP link to clipboard
+ */
+async function copyVipLink(staffId: string): Promise<void> {
+    const input = document.getElementById(`vipLink_${staffId}`) as HTMLInputElement;
+    if (!input) {
+        getUI().showAlert('Link bulunamadı!', 'error');
+        return;
+    }
+
+    try {
+        await navigator.clipboard.writeText(input.value);
+        getUI().showAlert('VIP link kopyalandı!', 'success');
+    } catch {
+        input.select();
+        document.execCommand('copy');
+        getUI().showAlert('VIP link kopyalandı!', 'success');
+    }
+}
+
+/**
+ * Open VIP link in new tab
+ */
+function openVipLink(staffId: string): void {
+    const input = document.getElementById(`vipLink_${staffId}`) as HTMLInputElement;
+    if (!input) {
+        getUI().showAlert('Link bulunamadı!', 'error');
+        return;
+    }
+    window.open(input.value, '_blank');
 }
 
 /**
