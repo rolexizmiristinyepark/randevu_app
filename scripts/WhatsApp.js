@@ -847,6 +847,28 @@ const WhatsAppService = {
         }
       ];
 
+      // v3.10.46: Dinamik URL butonu desteği
+      // Template'de buttonVariable tanımlıysa button component ekle
+      if (template.buttonVariable) {
+        const buttonValue = WhatsAppTemplateService.getVariableValue(template.buttonVariable, appointmentData) || '';
+        if (buttonValue) {
+          components.push({
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [
+              {
+                type: "text",
+                text: String(buttonValue)
+              }
+            ]
+          });
+          console.log(`[_sendToSingleRecipient] Button component added: buttonVariable=${template.buttonVariable}, value=${buttonValue}`);
+        } else {
+          console.log(`[_sendToSingleRecipient] Warning: buttonVariable=${template.buttonVariable} resolved to empty value`);
+        }
+      }
+
       // WhatsApp template payload
       // v3.10.14: Use metaTemplateName for Meta API, fallback to name for backwards compatibility
       const metaTemplateName = template.metaTemplateName || template.name;
