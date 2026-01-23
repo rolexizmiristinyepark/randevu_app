@@ -375,9 +375,12 @@ function generateMailICS(data) {
 
   // Tarih parse et (YYYY-MM-DD formatına çevir)
   let dateStr = date;
-  if (!dateStr || dateStr.includes(',')) {
-    // formattedDate'den parse et: "31 Aralık 2025, Çarşamba" gibi
-    const dateMatch = formattedDate.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
+  // v3.10.42: Sadece YYYY-MM-DD formatı değilse parse et (virgül kontrolü yetersizdi)
+  const isValidDateFormat = dateStr && /^\d{4}-\d{2}-\d{2}$/.test(dateStr);
+  if (!isValidDateFormat) {
+    // Türkçe tarih formatından parse et: "26 Ocak 2026" veya "31 Aralık 2025, Çarşamba" gibi
+    const sourceDate = dateStr || formattedDate || '';
+    const dateMatch = sourceDate.match(/(\d{1,2})\s+(\w+)\s+(\d{4})/);
     if (dateMatch) {
       const months = { 'Ocak': '01', 'Şubat': '02', 'Mart': '03', 'Nisan': '04', 'Mayıs': '05', 'Haziran': '06', 'Temmuz': '07', 'Ağustos': '08', 'Eylül': '09', 'Ekim': '10', 'Kasım': '11', 'Aralık': '12' };
       const day = dateMatch[1].padStart(2, '0');
