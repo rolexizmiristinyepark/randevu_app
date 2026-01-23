@@ -220,6 +220,14 @@ function openEditModal(appointment: any): void {
         const timeSelect = document.getElementById('editAppointmentTime') as HTMLSelectElement;
         const saveBtn = document.getElementById('saveEditAppointmentBtn') as HTMLButtonElement;
 
+        // v3.10.45: Reset button state when modal opens (fix empty button bug)
+        // ButtonAnimator.start() clears button content, must restore it
+        if (saveBtn) {
+            saveBtn.classList.remove('btn-animating', 'btn-loading', 'btn-success', 'btn-error');
+            saveBtn.textContent = 'Save';
+            saveBtn.disabled = true;
+        }
+
         // Set date and time values
         dateInput.value = dateStr;
         timeSelect.value = currentTime;
@@ -258,12 +266,6 @@ function openEditModal(appointment: any): void {
             container: '#editAppointmentModal .modal-content',
             saveButton: '#saveEditAppointmentBtn'
         });
-
-        // Initial state - button disabled
-        if (saveBtn) {
-            saveBtn.disabled = true;
-            saveBtn.classList.add('btn-pristine');
-        }
     } catch (error) {
         console.error('Modal açma hatası:', error, appointment);
         getUI().showAlert('Randevu tarihi okunamadı', 'error');
