@@ -638,8 +638,17 @@ function escapeHtmlAttr(str) {
  */
 function sendMailByTrigger(trigger, profileCode, appointmentData) {
   try {
+    // v3.10.37: Türkçe trigger → İngilizce dönüşümü (Flow'lar İngilizce key ile kayıtlı)
+    const TRIGGER_TR_TO_EN = {
+      'RANDEVU_OLUŞTUR': 'create',
+      'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update',
+      'ILGILI_ATANDI': 'assign'
+    };
+    const triggerKey = TRIGGER_TR_TO_EN[trigger] || trigger;
+
     // v3.9.49: Debug - appointmentData içeriğini logla
-    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, 'profile:', profileCode);
+    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, '→', triggerKey, 'profile:', profileCode);
     log.info('[Mail] appointmentData keys:', Object.keys(appointmentData || {}).join(', '));
     log.info('[Mail] appointmentData.formattedDate:', appointmentData?.formattedDate);
     log.info('[Mail] appointmentData.appointmentDate:', appointmentData?.appointmentDate);
@@ -675,9 +684,10 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         return false;
       }
       // v3.10.0: trigger artık tek değer (array değil)
+      // v3.10.37: triggerKey (İngilizce) ile karşılaştır
       const flowTrigger = String(flow.trigger || '');
-      if (flowTrigger !== trigger) {
-        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flowTrigger, 'expected:', trigger);
+      if (flowTrigger !== triggerKey) {
+        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flowTrigger, 'expected:', triggerKey);
         return false;
       }
       const profiles = parseJsonSafe(flow.profiles, []);

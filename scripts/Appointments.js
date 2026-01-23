@@ -379,6 +379,53 @@ const AppointmentService = {
           log.error('RANDEVU_GÜNCELLE flow error:', flowError);
           // Flow hatası ana işlemi etkilemesin
         }
+
+        // Mail Flow tetikle - RANDEVU_GÜNCELLE (v3.10.37)
+        try {
+          const customerName = event.getTitle().split(' - ')[0] || '';
+          const customerPhone = event.getTag('customerPhone') || '';
+          const customerEmail = event.getTag('customerEmail') || '';
+          const staffId = event.getTag('staffId') || '';
+          const appointmentType = event.getTag('appointmentType') || '';
+          const profilTag = event.getTag('profil') || 'genel';
+
+          const data = StorageService.getData();
+          const staff = data.staff.find(s => s.id == staffId);
+
+          const PROFILE_KEY_TO_CODE = {
+            'genel': 'g',
+            'gunluk': 'w',
+            'boutique': 'b',
+            'yonetim': 'm',
+            'personel': 's',
+            'vip': 'v'
+          };
+          const profileCode = PROFILE_KEY_TO_CODE[profilTag] || profilTag || 'g';
+
+          const TR_MONTHS_MAIL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+          const TR_DAYS_MAIL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+          const formattedDateMail = newStartDateTime.getDate() + ' ' + TR_MONTHS_MAIL[newStartDateTime.getMonth()] + ' ' + newStartDateTime.getFullYear() + ', ' + TR_DAYS_MAIL[newStartDateTime.getDay()];
+
+          const mailData = {
+            eventId: eventId,
+            customerName: customerName,
+            customerPhone: customerPhone,
+            customerEmail: customerEmail,
+            staffId: staffId,
+            staffName: staff ? staff.name : 'Atanacak',
+            staffEmail: staff ? staff.email : '',
+            appointmentDate: formattedDateMail,
+            appointmentTime: newTime,
+            appointmentType: appointmentType,
+            profile: profileCode
+          };
+
+          sendMailByTrigger('RANDEVU_GÜNCELLE', profileCode, mailData);
+          log.info('RANDEVU_GÜNCELLE mail flow tetiklendi:', profileCode);
+        } catch (mailFlowError) {
+          log.error('RANDEVU_GÜNCELLE mail flow error:', mailFlowError);
+          // Mail flow hatası ana işlemi etkilemesin
+        }
       }
 
       return updateResult;

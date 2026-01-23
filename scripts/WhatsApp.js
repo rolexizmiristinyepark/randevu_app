@@ -2415,6 +2415,16 @@ function triggerFlowForEvent(trigger, eventData) {
   try {
     console.log('🔥 [triggerFlowForEvent] START - trigger:', trigger);
 
+    // v3.10.37: Türkçe trigger → İngilizce dönüşümü (Flow'lar İngilizce key ile kayıtlı)
+    const TRIGGER_TR_TO_EN = {
+      'RANDEVU_OLUŞTUR': 'create',
+      'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update',
+      'ILGILI_ATANDI': 'assign'
+    };
+    const triggerKey = TRIGGER_TR_TO_EN[trigger] || trigger;
+    console.log('🔥 [triggerFlowForEvent] triggerKey (converted):', triggerKey);
+
     // Aktif flow'ları getir
     const flowsResult = getWhatsAppFlows();
     console.log('🔥 [triggerFlowForEvent] getWhatsAppFlows result:', JSON.stringify(flowsResult));
@@ -2430,9 +2440,10 @@ function triggerFlowForEvent(trigger, eventData) {
 
     // Bu trigger için aktif flow'ları filtrele
     // triggerType boşsa veya EVENT ise kabul et (default: EVENT)
+    // v3.10.37: triggerKey (İngilizce) kullan
     const activeFlows = flowsResult.data.filter(flow =>
       flow.active &&
-      flow.trigger === trigger &&
+      flow.trigger === triggerKey &&
       (!flow.triggerType || flow.triggerType === 'EVENT')
     );
 
