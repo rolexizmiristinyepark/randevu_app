@@ -2415,6 +2415,14 @@ function triggerFlowForEvent(trigger, eventData) {
   try {
     console.log('🔥 [triggerFlowForEvent] START - trigger:', trigger);
 
+    // v3.10.43: Sheet debug log - WhatsApp flow tetiklenme anını kaydet
+    debugSheetLog('triggerFlowForEvent START', {
+      trigger: trigger,
+      profile: eventData.profile,
+      customerPhone: eventData.customerPhone ? 'SET' : 'EMPTY',
+      staffId: eventData.staffId
+    });
+
     // v3.10.38: Trigger constant → flow key mapping (flows stored with lowercase keys)
     const TRIGGER_TO_FLOW_KEY = {
       'APPOINTMENT_CREATE': 'create',
@@ -2449,8 +2457,17 @@ function triggerFlowForEvent(trigger, eventData) {
 
     console.log('🔥 [triggerFlowForEvent] Filtered activeFlows count:', activeFlows.length);
 
+    // v3.10.43: Sheet debug log - filtrelenmiş flow sayısı
+    debugSheetLog('triggerFlowForEvent FLOWS', {
+      triggerKey: triggerKey,
+      totalFlowsWithWhatsApp: flowsResult.data.length,
+      activeFlowsForTrigger: activeFlows.length,
+      flowNames: activeFlows.map(f => f.name).join(', ')
+    });
+
     if (activeFlows.length === 0) {
       console.log(`🔥 [triggerFlowForEvent] ${trigger} için aktif flow bulunamadı`);
+      debugSheetLog('triggerFlowForEvent NO FLOWS', { trigger, triggerKey, totalFlowsChecked: flowsResult.data.length });
       return { success: true, message: 'Aktif flow yok', sentCount: 0 };
     }
     
@@ -2488,6 +2505,12 @@ function triggerFlowForEvent(trigger, eventData) {
       if (flow.profiles && flow.profiles.length > 0) {
         if (!flow.profiles.includes(appointmentProfile)) {
           console.log(`Flow ${flow.name} profil eşleşmedi. Beklenen: ${flow.profiles.join(',')}, Gelen: ${appointmentProfile}`);
+          // v3.10.43: Sheet debug log - profil eşleşmedi
+          debugSheetLog('PROFILE MISMATCH', {
+            flowName: flow.name,
+            flowProfiles: flow.profiles,
+            appointmentProfile: appointmentProfile
+          });
           continue;
         }
         console.log(`[triggerFlowForEvent] Flow ${flow.name} profil eşleşti!`);
@@ -2535,15 +2558,26 @@ function triggerFlowForEvent(trigger, eventData) {
       }
     }
     
+    // v3.10.43: Sheet debug log - sonuç
+    debugSheetLog('triggerFlowForEvent RESULT', {
+      trigger: trigger,
+      triggerKey: triggerKey,
+      profile: appointmentProfile,
+      totalSent: totalSent,
+      errorsCount: errors.length,
+      errors: errors.slice(0, 3) // İlk 3 hata
+    });
+
     return {
       success: true,
       message: `${totalSent} mesaj gönderildi`,
       sentCount: totalSent,
       errors: errors.length > 0 ? errors : undefined
     };
-    
+
   } catch (error) {
     console.error('triggerFlowForEvent error:', error);
+    debugSheetLog('triggerFlowForEvent ERROR', { trigger, error: error.toString() });
     return { success: false, message: error.toString() };
   }
 }
