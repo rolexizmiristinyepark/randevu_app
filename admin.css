@@ -292,6 +292,18 @@
             border-color: #1A1A2E;
         }
 
+        /* Staff/VIP Links Grid - 2 column layout */
+        .link-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 16px;
+        }
+
+        /* Last item spans full width when odd number of items */
+        .link-grid > .link-card:last-child:nth-child(odd) {
+            grid-column: span 2;
+        }
+
         .link-btn-primary:hover {
             background: #C9A55A;
             border-color: #C9A55A;
@@ -711,6 +723,15 @@
             .link-btn {
                 padding: 7px 16px;
                 font-size: 10px;
+            }
+
+            /* Staff/VIP links grid responsive */
+            .link-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .link-grid > .link-card:last-child:nth-child(odd) {
+                grid-column: span 1;
             }
         }
 
