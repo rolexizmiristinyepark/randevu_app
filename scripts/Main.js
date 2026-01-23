@@ -564,25 +564,62 @@ const ACTION_HANDLERS = {
   'getDebugLogs': (e) => getDebugLogs(parseInt(e.parameter.limit) || 50),
 
   // v3.10.7: Debug endpoint for diagnosing notification flow issues
+  // v3.10.40: FIX - Trigger ve profile dönüşümleri eklendi (gerçek flow mantığı ile uyumlu)
   'debugNotificationFlows': (e) => {
     try {
-      const trigger = e.parameter.trigger || 'APPOINTMENT_CREATE';
-      const profileCode = e.parameter.profileCode || 's';
+      const triggerInput = e.parameter.trigger || 'APPOINTMENT_CREATE';
+      const profileCodeInput = e.parameter.profileCode || 's';
+
+      // v3.10.40: Trigger constant → flow key mapping (APPOINTMENT_UPDATE → update)
+      const TRIGGER_TO_FLOW_KEY = {
+        'APPOINTMENT_CREATE': 'create',
+        'APPOINTMENT_CANCEL': 'cancel',
+        'APPOINTMENT_UPDATE': 'update',
+        'STAFF_ASSIGNED': 'assign'
+      };
+      const triggerKey = TRIGGER_TO_FLOW_KEY[triggerInput] || triggerInput;
+
+      // v3.10.40: Profile code → English profile mapping (s → individual)
+      const PROFILE_TO_EN = {
+        'genel': 'general', 'gunluk': 'walk-in', 'personel': 'individual',
+        'boutique': 'boutique', 'yonetim': 'management', 'vip': 'vip',
+        'g': 'general', 'w': 'walk-in', 's': 'individual',
+        'b': 'boutique', 'm': 'management', 'v': 'vip'
+      };
+      const profileKey = PROFILE_TO_EN[profileCodeInput] || profileCodeInput;
 
       // Get raw data from sheet
       const allFlows = SheetStorageService.getAll('notification_flows');
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
 
+      // v3.10.41: Flow normalizasyon mapping'leri
+      const TRIGGER_TR_TO_EN_DEBUG = {
+        'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
+        'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign', 'HATIRLATMA': 'reminder'
+      };
+      const PROFILE_SHORT_TO_EN_DEBUG = {
+        'g': 'general', 'w': 'walk-in', 's': 'individual',
+        'b': 'boutique', 'm': 'management', 'v': 'vip'
+      };
+
       // Analyze each flow
       const flowAnalysis = allFlows.map((flow, idx) => {
-        const profiles = parseJsonSafeMain(flow.profiles, []);
+        const rawProfiles = parseJsonSafeMain(flow.profiles, []);
         const mailTemplateIds = parseJsonSafeMain(flow.mailTemplateIds, []);
         const whatsappTemplateIds = parseJsonSafeMain(flow.whatsappTemplateIds, []);
 
+        // v3.10.41: Normalize trigger and profiles
+        const rawTrigger = String(flow.trigger || '');
+        const normalizedTrigger = TRIGGER_TR_TO_EN_DEBUG[rawTrigger] || rawTrigger;
+        const normalizedProfiles = Array.isArray(rawProfiles)
+          ? rawProfiles.map(p => PROFILE_SHORT_TO_EN_DEBUG[p] || p)
+          : rawProfiles;
+
         const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
-        const triggerMatches = String(flow.trigger || '') === trigger;
-        const profileMatches = profiles.includes(profileCode);
+        // v3.10.41: Normalize edilmiş değerlerle karşılaştır
+        const triggerMatches = normalizedTrigger === triggerKey;
+        const profileMatches = normalizedProfiles.includes(profileKey);
 
         return {
           index: idx,
@@ -596,9 +633,12 @@ const ACTION_HANDLERS = {
             mailTemplateIds: flow.mailTemplateIds,
             whatsappTemplateIds: flow.whatsappTemplateIds
           },
+          normalized: {
+            trigger: normalizedTrigger,
+            profiles: normalizedProfiles
+          },
           parsed: {
             isActive,
-            profiles,
             mailTemplateIds,
             whatsappTemplateIds
           },
@@ -614,8 +654,11 @@ const ACTION_HANDLERS = {
       return {
         success: true,
         data: {
-          testTrigger: trigger,
-          testProfileCode: profileCode,
+          // v3.10.40: Hem input hem dönüştürülmüş değerleri göster
+          testTriggerInput: triggerInput,
+          testTriggerKey: triggerKey,
+          testProfileCodeInput: profileCodeInput,
+          testProfileKey: profileKey,
           sheetHeaders: {
             notification_flows: SheetStorageService.HEADERS.notification_flows
           },

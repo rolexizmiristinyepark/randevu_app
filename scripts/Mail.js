@@ -675,21 +675,49 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     log.info('[Mail] appointmentData.profileName:', appointmentData?.profileName);
 
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
-    const allFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
+    const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
+
+    // v3.10.41: Sheet'teki Türkçe trigger'ları İngilizce'ye dönüştür
+    const TRIGGER_TR_TO_EN_MAIL = {
+      'RANDEVU_OLUŞTUR': 'create',
+      'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update',
+      'ILGILI_ATANDI': 'assign',
+      'HATIRLATMA': 'reminder'
+    };
+
+    // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür
+    const PROFILE_SHORT_TO_EN_MAIL = {
+      'g': 'general', 'w': 'walk-in', 's': 'individual',
+      'b': 'boutique', 'm': 'management', 'v': 'vip'
+    };
+
+    // v3.10.41: Flow'ları normalize et
+    const allFlows = rawFlows.map(flow => {
+      const rawTrigger = String(flow.trigger || '');
+      const rawProfiles = parseJsonSafe(flow.profiles, []);
+      const normalizedProfiles = Array.isArray(rawProfiles)
+        ? rawProfiles.map(p => PROFILE_SHORT_TO_EN_MAIL[p] || p)
+        : rawProfiles;
+      return {
+        ...flow,
+        trigger: TRIGGER_TR_TO_EN_MAIL[rawTrigger] || rawTrigger,
+        profiles: normalizedProfiles
+      };
+    });
 
     // v3.10.6: Debug - tüm flow'ları ve filtreleme sürecini logla
     log.info('[Mail] DEBUG - Total flows from sheet:', allFlows.length);
     allFlows.forEach((flow, idx) => {
-      const profiles = parseJsonSafe(flow.profiles, []);
       log.info('[Mail] DEBUG - Flow[' + idx + ']:', JSON.stringify({
         id: flow.id,
         name: flow.name,
         trigger: flow.trigger,
-        triggerMatch: flow.trigger === trigger,
+        triggerMatch: flow.trigger === triggerKey,
         active: flow.active,
         activeType: typeof flow.active,
-        profiles: profiles,
-        profileMatch: profiles.includes(profileCode),
+        profiles: flow.profiles,
+        profileMatch: flow.profiles.includes(profileKey),
         mailTemplateIds: parseJsonSafe(flow.mailTemplateIds, [])
       }));
     });
@@ -702,16 +730,15 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
         return false;
       }
       // v3.10.0: trigger artık tek değer (array değil)
-      // v3.10.37: triggerKey (İngilizce) ile karşılaştır
-      const flowTrigger = String(flow.trigger || '');
-      if (flowTrigger !== triggerKey) {
-        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flowTrigger, 'expected:', triggerKey);
+      // v3.10.41: Normalize edilmiş triggerKey ile karşılaştır
+      if (flow.trigger !== triggerKey) {
+        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flow.trigger, 'expected:', triggerKey);
         return false;
       }
-      const profiles = parseJsonSafe(flow.profiles, []);
-      const hasProfile = profiles.includes(profileKey);
+      // v3.10.41: Normalize edilmiş profiles ile karşılaştır
+      const hasProfile = flow.profiles.includes(profileKey);
       if (!hasProfile) {
-        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', profiles, 'expected:', profileKey);
+        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', flow.profiles, 'expected:', profileKey);
         return false;
       }
       log.info('[Mail] DEBUG - Flow MATCHED:', flow.name);

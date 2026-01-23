@@ -2873,19 +2873,44 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
+    // v3.10.41: Sheet'teki Türkçe trigger'ları İngilizce'ye dönüştür
+    const TRIGGER_TR_TO_EN = {
+      'RANDEVU_OLUŞTUR': 'create',
+      'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update',
+      'ILGILI_ATANDI': 'assign',
+      'HATIRLATMA': 'reminder'
+    };
+
+    // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür
+    const PROFILE_SHORT_TO_EN = {
+      'g': 'general', 'w': 'walk-in', 's': 'individual',
+      'b': 'boutique', 'm': 'management', 'v': 'vip'
+    };
+
+    const normalizeProfiles = (profiles) => {
+      if (!Array.isArray(profiles)) return profiles;
+      return profiles.map(p => PROFILE_SHORT_TO_EN[p] || p);
+    };
+
     // v3.10.5: Header-based parsing ile gelen veriyi kullan
-    const flows = allFlows.map(row => ({
-      id: String(row.id || ''),
-      name: String(row.name || ''),
-      description: String(row.description || ''),
-      trigger: String(row.trigger || ''),
-      profiles: parseJsonSafe(row.profiles, []),
-      whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
-      mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
-      active: row.active === true || row.active === 'TRUE' || row.active === 'true',
-      createdAt: row.createdAt || '',
-      updatedAt: row.updatedAt || ''
-    })).filter(flow => flow.id && flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0);
+    // v3.10.41: trigger ve profiles normalize edildi
+    const flows = allFlows.map(row => {
+      const rawTrigger = String(row.trigger || '');
+      const rawProfiles = parseJsonSafe(row.profiles, []);
+      return {
+        id: String(row.id || ''),
+        name: String(row.name || ''),
+        description: String(row.description || ''),
+        trigger: TRIGGER_TR_TO_EN[rawTrigger] || rawTrigger, // Türkçe → İngilizce
+        profiles: normalizeProfiles(rawProfiles), // tek harf → İngilizce
+        whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
+        mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
+        active: row.active === true || row.active === 'TRUE' || row.active === 'true',
+        createdAt: row.createdAt || '',
+        updatedAt: row.updatedAt || ''
+      };
+    }).filter(flow => flow.id && flow.whatsappTemplateIds && flow.whatsappTemplateIds.length > 0);
 
     console.log('[getNotificationFlowsForWhatsApp] Found', flows.length, 'flows with WhatsApp templates');
 
