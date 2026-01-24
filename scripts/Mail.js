@@ -635,7 +635,7 @@ function escapeHtmlAttr(str) {
  * 2. Template body (özelleştirilebilir)
  * 3. ICS takvim eki (müşteri mailleri için)
  *
- * @param {string} trigger - Trigger türü (APPOINTMENT_CREATE, APPOINTMENT_CANCEL, etc.)
+ * @param {string} trigger - Trigger türü (appointment_create, appointment_cancel, etc.)
  * @param {string} profileCode - Profil kodu (g, w, b, m, s, v)
  * @param {Object} appointmentData - Randevu bilgileri
  */
@@ -872,7 +872,7 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
 
         // ===== ICS EKİ (Sadece müşteri mailleri için) =====
         let attachments = [];
-        if (target === 'customer' && trigger !== 'APPOINTMENT_CANCEL') {
+        if (target === 'customer' && trigger !== 'appointment_cancel') {
           try {
             const icsContent = generateMailICS(appointmentData);
             const icsBlob = Utilities.newBlob(icsContent, 'text/calendar', 'randevu.ics');

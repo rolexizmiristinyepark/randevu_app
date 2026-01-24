@@ -267,7 +267,7 @@ function getDebugLogs(limit) {
 
 /**
  * 🧪 TEST FUNCTION - Apps Script editöründen çalıştır
- * Flow sistemini test eder - GENEL profil ile APPOINTMENT_CREATE tetikler
+ * Flow sistemini test eder - GENEL profil ile appointment_create tetikler
  *
  * KULLANIM:
  * 1. Apps Script editörüne git
@@ -317,7 +317,7 @@ function testFlowTrigger() {
 
     // 3. Flow tetikle
     Logger.log('🚀 Triggering flow...');
-    const result = triggerFlowForEvent('APPOINTMENT_CREATE', testEventData);
+    const result = triggerFlowForEvent('appointment_create', testEventData);
     Logger.log('✅ triggerFlowForEvent result: ' + JSON.stringify(result));
   } catch (error) {
     Logger.log('❌ ERROR: ' + error.toString());
@@ -415,8 +415,8 @@ function testRealAppointmentFlow() {
   Logger.log('📋 eventData: ' + JSON.stringify(eventData));
 
   // 3. triggerFlowForEvent çağır (createAppointment'ın yaptığı gibi)
-  Logger.log('🚀 Calling triggerFlowForEvent("APPOINTMENT_CREATE", eventData)...');
-  const result = triggerFlowForEvent('APPOINTMENT_CREATE', eventData);
+  Logger.log('🚀 Calling triggerFlowForEvent("appointment_create", eventData)...');
+  const result = triggerFlowForEvent('appointment_create', eventData);
   Logger.log('📋 triggerFlowForEvent result: ' + JSON.stringify(result));
 
   Logger.log('=== TEST REAL APPOINTMENT FLOW END ===');
@@ -2429,7 +2429,7 @@ function _maskPhoneNumber(phone) {
 
 /**
  * Event tetiklendiğinde ilgili flow'ları çalıştır
- * @param {string} trigger - Trigger türü (APPOINTMENT_CREATE, APPOINTMENT_UPDATE, vb.)
+ * @param {string} trigger - Trigger türü (appointment_create, appointment_update, vb.)
  * @param {Object} eventData - Event bilgileri
  * @returns {Object} Sonuç
  */
