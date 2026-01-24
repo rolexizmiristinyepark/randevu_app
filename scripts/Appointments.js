@@ -24,8 +24,9 @@
  * - Security.gs (SecurityService, LockServiceWrapper, log)
  */
 
-// v3.10.54: Profile shortcode conversion - single source of truth
-const PROFILE_TO_CODE = {
+// v3.10.55: Profile shortcode conversion - single source of truth
+// CRITICAL: Use "var" not "const" - const is file-scoped in GAS V8, var is global
+var PROFILE_TO_CODE = {
   'genel': 'g', 'general': 'g', 'g': 'g',
   'gunluk': 'w', 'walk-in': 'w', 'walkin': 'w', 'w': 'w',
   'boutique': 'b', 'butik': 'b', 'b': 'b',
@@ -34,14 +35,19 @@ const PROFILE_TO_CODE = {
   'vip': 'v', 'v': 'v'
 };
 
+/**
+ * Convert any profile format to shortcode (g, w, b, s, m, v)
+ * @param {string} profile - Profile in any format
+ * @returns {string} Shortcode (defaults to 'g')
+ */
 function toProfileCode(profile) {
   if (!profile) return 'g';
   return PROFILE_TO_CODE[String(profile).toLowerCase()] || profile;
 }
 
 // Turkish date formatter for display
-const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+var TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+var TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
 
 function formatTurkishDate(date) {
   return date.getDate() + ' ' + TR_MONTHS[date.getMonth()] + ' ' + date.getFullYear() + ', ' + TR_DAYS[date.getDay()];

@@ -2698,27 +2698,15 @@ function processFlowTemplate(template, eventData) {
 }
 
 /**
- * Randevudan profil bilgisini çıkar
- * @param {Object} eventData - Event bilgileri
- * @returns {string} Profil kodu
+ * Extract profile shortcode from appointment data
+ * @param {Object} eventData - Event data
+ * @returns {string} Profile shortcode (g, w, b, s, m, v)
  */
 function extractProfileFromAppointment(eventData) {
-  // v3.10.4: Önce eventData.profil kontrol et (eski format uyumluluğu)
-  if (eventData.profil) {
-    const PROFILE_KEY_TO_CODE = {
-      'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
-      'yonetim': 'm', 'personel': 's', 'vip': 'v'
-    };
-    return PROFILE_KEY_TO_CODE[eventData.profil] || eventData.profil || 'g';
-  }
-
-  // linkType'dan profili belirle (tek harfli kod formatında)
-  if (eventData.linkType === 'vip') return 'v';
-  if (eventData.linkType === 'staff') return 's';
-  if (eventData.linkType === 'walkin') return 'w';
-  if (eventData.linkType === 'management') return 'm';
-  if (eventData.linkType === 'boutique') return 'b';
-  return 'g'; // default: genel
+  // v3.10.55: Use global toProfileCode() - single source of truth
+  // Check all possible profile fields
+  var profile = eventData.profile || eventData.profil || eventData.linkType || 'g';
+  return toProfileCode(profile);
 }
 
 /**
@@ -2896,26 +2884,14 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    // v3.10.50: Profile normalization (URL short codes → flow profile names)
-    const PROFILE_MAP = {
-      'g': 'general', 'w': 'walk-in', 's': 'individual',
-      'b': 'boutique', 'm': 'management', 'v': 'vip'
-    };
-
-    const normalizeProfiles = (profiles) => {
-      if (!Array.isArray(profiles)) return profiles;
-      return profiles.map(p => PROFILE_MAP[p] || p);
-    };
-
-    // v3.10.50: Parse flows - trigger direkt kullanılır
+    // v3.10.55: Profiles are shortcodes (g, w, b, s, m, v) - NO conversion needed
     const flows = allFlows.map(row => {
-      const rawProfiles = parseJsonSafe(row.profiles, []);
       return {
         id: String(row.id || ''),
         name: String(row.name || ''),
         description: String(row.description || ''),
         trigger: String(row.trigger || ''),
-        profiles: normalizeProfiles(rawProfiles),
+        profiles: parseJsonSafe(row.profiles, []),  // Keep as shortcodes
         whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
         mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
         active: row.active === true || row.active === 'TRUE' || row.active === 'true',

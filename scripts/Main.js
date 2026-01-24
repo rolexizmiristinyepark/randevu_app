@@ -564,34 +564,20 @@ const ACTION_HANDLERS = {
   'getDebugLogs': (e) => getDebugLogs(parseInt(e.parameter.limit) || 50),
 
   // v3.10.7: Debug endpoint for diagnosing notification flow issues
-  // v3.10.40: FIX - Trigger ve profile dönüşümleri eklendi (gerçek flow mantığı ile uyumlu)
+  // v3.10.55: All profiles are shortcodes (g, w, b, s, m, v) - no conversion needed
   'debugNotificationFlows': (e) => {
     try {
       const triggerInput = e.parameter.trigger || 'appointment_create';
       const profileCodeInput = e.parameter.profileCode || 's';
 
-      // v3.10.49: Trigger artık direkt appointment_* formatında
+      // v3.10.55: Both trigger and profile are used directly (no conversion)
       const triggerKey = triggerInput;
-
-      // v3.10.40: Profile code → English profile mapping (s → individual)
-      const PROFILE_TO_EN = {
-        'genel': 'general', 'gunluk': 'walk-in', 'personel': 'individual',
-        'boutique': 'boutique', 'yonetim': 'management', 'vip': 'vip',
-        'g': 'general', 'w': 'walk-in', 's': 'individual',
-        'b': 'boutique', 'm': 'management', 'v': 'vip'
-      };
-      const profileKey = PROFILE_TO_EN[profileCodeInput] || profileCodeInput;
+      const profileKey = profileCodeInput;  // Already a shortcode
 
       // Get raw data from sheet
       const allFlows = SheetStorageService.getAll('notification_flows');
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
-
-      // v3.10.50: Profile normalization (URL short codes → flow profile names)
-      const PROFILE_MAP = {
-        'g': 'general', 'w': 'walk-in', 's': 'individual',
-        'b': 'boutique', 'm': 'management', 'v': 'vip'
-      };
 
       // Analyze each flow
       const flowAnalysis = allFlows.map((flow, idx) => {
@@ -599,16 +585,14 @@ const ACTION_HANDLERS = {
         const mailTemplateIds = parseJsonSafeMain(flow.mailTemplateIds, []);
         const whatsappTemplateIds = parseJsonSafeMain(flow.whatsappTemplateIds, []);
 
-        // v3.10.50: Trigger direkt kullanılır, profile normalize edilir
+        // v3.10.55: Direct comparison - profiles are shortcodes in sheet
         const flowTrigger = String(flow.trigger || '');
-        const normalizedProfiles = Array.isArray(rawProfiles)
-          ? rawProfiles.map(p => PROFILE_MAP[p] || p)
-          : rawProfiles;
+        const flowProfiles = Array.isArray(rawProfiles) ? rawProfiles : [];
 
         const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
-        // v3.10.50: Direkt karşılaştırma
+        // v3.10.55: Direct shortcode comparison
         const triggerMatches = flowTrigger === triggerKey;
-        const profileMatches = normalizedProfiles.includes(profileKey);
+        const profileMatches = flowProfiles.includes(profileKey);
 
         return {
           index: idx,
@@ -622,11 +606,9 @@ const ACTION_HANDLERS = {
             mailTemplateIds: flow.mailTemplateIds,
             whatsappTemplateIds: flow.whatsappTemplateIds
           },
-          normalized: {
-            trigger: flowTrigger,
-            profiles: normalizedProfiles
-          },
           parsed: {
+            trigger: flowTrigger,
+            profiles: flowProfiles,  // v3.10.55: Shortcodes as stored
             isActive,
             mailTemplateIds,
             whatsappTemplateIds
