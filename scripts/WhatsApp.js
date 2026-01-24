@@ -2445,7 +2445,7 @@ function triggerFlowForEvent(trigger, eventData) {
       staffId: eventData.staffId
     });
 
-    // v3.10.48: Trigger artık direkt 'create', 'cancel' vs. olarak geliyor
+    // v3.10.49: Trigger artık direkt 'appointment_create', 'appointment_cancel' vs. olarak geliyor
     const triggerKey = trigger;
     console.log('🔥 [triggerFlowForEvent] triggerKey:', triggerKey);
 
@@ -2455,12 +2455,14 @@ function triggerFlowForEvent(trigger, eventData) {
 
     console.log('🔥 [triggerFlowForEvent] Total flows:', flowsResult.data.length);
 
-    // v3.10.48: Legacy Türkçe trigger'ları normalize et (eski flow'lar için)
+    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
     const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
-      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
+      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
+      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
+      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
+      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
+      'create': 'appointment_create', 'cancel': 'appointment_cancel',
+      'update': 'appointment_update', 'assign': 'appointment_assign'
     };
 
     const activeFlows = flowsResult.data.filter(flow => {
@@ -2921,13 +2923,15 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    // v3.10.48: Legacy trigger normalization (eski flow'lar için)
+    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
     const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
+      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
+      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
       'HATIRLATMA': 'reminder',
-      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
+      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
+      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
+      'create': 'appointment_create', 'cancel': 'appointment_cancel',
+      'update': 'appointment_update', 'assign': 'appointment_assign'
     };
 
     // v3.10.48: Legacy profile normalization (eski flow'lar için)

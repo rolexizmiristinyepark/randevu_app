@@ -183,7 +183,7 @@ const AppointmentService = {
           profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
         };
 
-        const flowResult = triggerFlowForEvent('APPOINTMENT_CANCEL', eventData);
+        const flowResult = triggerFlowForEvent('appointment_cancel', eventData);
         log.info('APPOINTMENT_CANCEL flow result:', flowResult);
       } catch (flowError) {
         log.error('APPOINTMENT_CANCEL flow error:', flowError);
@@ -373,7 +373,7 @@ const AppointmentService = {
             profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
           };
 
-          const flowResult = triggerFlowForEvent('APPOINTMENT_UPDATE', eventData);
+          const flowResult = triggerFlowForEvent('appointment_update', eventData);
           log.info('APPOINTMENT_UPDATE flow result:', flowResult);
         } catch (flowError) {
           log.error('APPOINTMENT_UPDATE flow error:', flowError);
@@ -587,7 +587,7 @@ const AppointmentService = {
           profile: profilTag  // v3.10.18: Profil kodu (g, s, v, vb.)
         };
 
-        const flowResult = triggerFlowForEvent('STAFF_ASSIGNED', eventData);
+        const flowResult = triggerFlowForEvent('appointment_assign', eventData);
         log.info('STAFF_ASSIGNED flow result:', flowResult);
       } catch (flowError) {
         log.error('STAFF_ASSIGNED flow error:', flowError);
@@ -1451,7 +1451,7 @@ function _triggerWhatsAppFlow(params) {
       staffId: eventData.staffId
     }));
 
-    const flowResult = triggerFlowForEvent('APPOINTMENT_CREATE', eventData);
+    const flowResult = triggerFlowForEvent('appointment_create', eventData);
     log.info('[FLOW] triggerFlowForEvent result:', JSON.stringify(flowResult));
   } catch (flowError) {
     log.error('[FLOW] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);

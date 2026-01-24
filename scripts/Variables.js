@@ -191,10 +191,10 @@ var MESSAGE_VARIABLES = {
  * v3.10.48: Simplified - key = stored value, value = display label
  */
 var MESSAGE_TRIGGERS = {
-  'create': 'Create',
-  'cancel': 'Cancel',
-  'update': 'Update',
-  'assign': 'Assign'
+  'appointment_create': 'appointment_create',
+  'appointment_cancel': 'appointment_cancel',
+  'appointment_update': 'appointment_update',
+  'appointment_assign': 'appointment_assign'
 };
 
 // Time-based trigger

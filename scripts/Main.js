@@ -567,17 +567,11 @@ const ACTION_HANDLERS = {
   // v3.10.40: FIX - Trigger ve profile dönüşümleri eklendi (gerçek flow mantığı ile uyumlu)
   'debugNotificationFlows': (e) => {
     try {
-      const triggerInput = e.parameter.trigger || 'APPOINTMENT_CREATE';
+      const triggerInput = e.parameter.trigger || 'appointment_create';
       const profileCodeInput = e.parameter.profileCode || 's';
 
-      // v3.10.40: Trigger constant → flow key mapping (APPOINTMENT_UPDATE → update)
-      const TRIGGER_TO_FLOW_KEY = {
-        'APPOINTMENT_CREATE': 'create',
-        'APPOINTMENT_CANCEL': 'cancel',
-        'APPOINTMENT_UPDATE': 'update',
-        'STAFF_ASSIGNED': 'assign'
-      };
-      const triggerKey = TRIGGER_TO_FLOW_KEY[triggerInput] || triggerInput;
+      // v3.10.49: Trigger artık direkt appointment_* formatında
+      const triggerKey = triggerInput;
 
       // v3.10.40: Profile code → English profile mapping (s → individual)
       const PROFILE_TO_EN = {
@@ -593,12 +587,14 @@ const ACTION_HANDLERS = {
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
 
-      // v3.10.48: Legacy normalization (eski flow'lar için)
+      // v3.10.49: Legacy normalization - all formats → appointment_*
       const LEGACY_TRIGGER = {
-        'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
-        'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign', 'HATIRLATMA': 'reminder',
-        'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
-        'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
+        'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
+        'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign', 'HATIRLATMA': 'reminder',
+        'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
+        'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
+        'create': 'appointment_create', 'cancel': 'appointment_cancel',
+        'update': 'appointment_update', 'assign': 'appointment_assign'
       };
       const LEGACY_PROFILE = {
         'g': 'general', 'w': 'walk-in', 's': 'individual',

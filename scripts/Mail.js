@@ -641,14 +641,8 @@ function escapeHtmlAttr(str) {
  */
 function sendMailByTrigger(trigger, profileCode, appointmentData) {
   try {
-    // v3.10.38: Trigger constant → flow key mapping (flows stored with lowercase keys)
-    const TRIGGER_TO_FLOW_KEY = {
-      'APPOINTMENT_CREATE': 'create',
-      'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update',
-      'STAFF_ASSIGNED': 'assign'
-    };
-    const triggerKey = TRIGGER_TO_FLOW_KEY[trigger] || trigger;
+    // v3.10.49: Trigger artık direkt appointment_* formatında geliyor
+    const triggerKey = trigger;
 
     // v3.10.39: Profile code → İngilizce flow profile dönüşümü
     const PROFILE_TO_FLOW_KEY = {
@@ -680,13 +674,15 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
     const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
 
-    // v3.10.48: Legacy normalization (eski flow'lar için)
+    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
     const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
+      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
+      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
       'HATIRLATMA': 'reminder',
-      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
+      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
+      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
+      'create': 'appointment_create', 'cancel': 'appointment_cancel',
+      'update': 'appointment_update', 'assign': 'appointment_assign'
     };
     const LEGACY_PROFILE = {
       'g': 'general', 'w': 'walk-in', 's': 'individual',
