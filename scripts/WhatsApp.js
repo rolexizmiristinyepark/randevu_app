@@ -565,6 +565,10 @@ const WhatsAppService = {
         const dateStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'yyyy-MM-dd');
         const timeStr = Utilities.formatDate(eventDateTime, CONFIG.TIMEZONE, 'HH:mm');
 
+        // v3.10.55: Profile shortcode for flow matching
+        const rawProfil = event.getTag('profil') || 'genel';
+        const profile = toProfileCode(rawProfil);
+
         // WhatsApp Web linki (eski link formatı - artık sadece görüntüleme için)
         const message = `Sayın ${customerName}, ${timeStr}'teki ${staffName} ile ${appointmentTypeName} randevunuz var.`;
         const encodedMessage = encodeURIComponent(message);
@@ -580,8 +584,9 @@ const WhatsAppService = {
           time: timeStr,           // HH:MM formatı
           startTime: timeStr,      // Eski uyumluluk için
           staffName,
-          staffPhone,              // YENİ: Personel telefonu
+          staffPhone,              // Personel telefonu
           appointmentType: appointmentTypeName,
+          profile,                 // v3.10.55: Profile shortcode for flow matching
           link
         };
       }).filter(Boolean); // null'ları filtrele
