@@ -678,12 +678,17 @@ function displayVipLinks(vipList: Array<{ id: string; name: string }>): void {
         return;
     }
 
-    // Grid layout
-    container.className = 'link-cards-grid';
+    // Grid layout - 2 column
+    container.className = 'link-grid';
 
     vipList.forEach(vip => {
         container.appendChild(createLinkCard(vip.name, 'v', vip.id));
     });
+
+    // Son tek karta full-width class ekle
+    if (vipList.length % 2 === 1 && container.lastElementChild) {
+        container.lastElementChild.classList.add('link-card-full');
+    }
 }
 
 /**
@@ -705,12 +710,17 @@ function displayStaffLinks(staffList: Array<{ id: string; name: string }>): void
         return;
     }
 
-    // Grid layout
-    container.className = 'link-cards-grid';
+    // Grid layout - 2 column
+    container.className = 'link-grid';
 
     staffList.forEach(s => {
         container.appendChild(createLinkCard(s.name, 's', s.id));
     });
+
+    // Son tek karta full-width class ekle
+    if (staffList.length % 2 === 1 && container.lastElementChild) {
+        container.lastElementChild.classList.add('link-card-full');
+    }
 }
 
 /**
