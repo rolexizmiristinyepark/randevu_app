@@ -2480,46 +2480,29 @@ function triggerFlowForEvent(trigger, eventData) {
     let totalSent = 0;
     const errors = [];
 
-    // Event'ten profil bilgisini al ve İngilizce'ye çevir (flow'lar İngilizce profile key bekler)
-    const rawProfile = eventData.profile || extractProfileFromAppointment(eventData);
+    // v3.10.54: Profil zaten shortcode olarak geliyor (g, w, b, s, m, v)
+    // Appointments.js shortcode gönderiyor, notification_flows sheet shortcode tutuyor
+    // Dönüşüm gereksiz - direkt karşılaştır
+    const profile = eventData.profile || extractProfileFromAppointment(eventData);
 
-    // v3.10.53: Profil normalizasyonu - tüm formatları destekle
-    // Flow'lar kısa kod ('g', 'w', 'b', 's', 'm', 'v') tutuyor
-    // eventData.profile kısa veya uzun isim olabilir
-    const PROFILE_TO_SHORTCODE = {
-      // Uzun isimler → kısa kod
-      'general': 'g', 'genel': 'g', 'g': 'g',
-      'walk-in': 'w', 'walkin': 'w', 'gunluk': 'w', 'w': 'w',
-      'individual': 's', 'staff': 's', 'personel': 's', 's': 's',
-      'boutique': 'b', 'butik': 'b', 'b': 'b',
-      'management': 'm', 'yonetim': 'm', 'm': 'm',
-      'vip': 'v', 'v': 'v'
-    };
-
-    // Ham profili kısa koda çevir (flow'larla karşılaştırma için)
-    const profileShortcode = PROFILE_TO_SHORTCODE[String(rawProfile).toLowerCase()] || rawProfile;
-
-    console.log(`[triggerFlowForEvent] trigger: ${trigger}, rawProfile: ${rawProfile}, profileShortcode: ${profileShortcode}`);
+    console.log(`[triggerFlowForEvent] trigger: ${trigger}, profile: ${profile}`);
     console.log(`[triggerFlowForEvent] activeFlows count: ${activeFlows.length}`);
 
     for (const flow of activeFlows) {
       console.log(`[triggerFlowForEvent] Checking flow: ${flow.name}, flow.profiles: ${JSON.stringify(flow.profiles)}`);
 
-      // v3.10.53: Profil kontrolü - kısa kod ile karşılaştır
+      // v3.10.54: Direkt shortcode karşılaştırması
       if (flow.profiles && flow.profiles.length > 0) {
-        // Flow profiles'ı da normalize et (büyük harf olabilir)
-        const normalizedFlowProfiles = flow.profiles.map(p => String(p).toLowerCase());
-
-        if (!normalizedFlowProfiles.includes(profileShortcode)) {
-          console.log(`Flow ${flow.name} profil eşleşmedi. Beklenen: ${normalizedFlowProfiles.join(',')}, Gelen: ${profileShortcode}`);
+        if (!flow.profiles.includes(profile)) {
+          console.log(`Flow ${flow.name} profil eşleşmedi. Beklenen: ${flow.profiles.join(',')}, Gelen: ${profile}`);
           debugSheetLog('PROFILE MISMATCH', {
             flowName: flow.name,
-            flowProfiles: normalizedFlowProfiles,
-            profileShortcode: profileShortcode
+            flowProfiles: flow.profiles,
+            profile: profile
           });
           continue;
         }
-        console.log(`[triggerFlowForEvent] Flow ${flow.name} profil eşleşti! (${profileShortcode} in [${normalizedFlowProfiles.join(',')}])`);
+        console.log(`[triggerFlowForEvent] Flow ${flow.name} profil eşleşti!`);
       }
       
       // Template'leri al
@@ -2568,7 +2551,7 @@ function triggerFlowForEvent(trigger, eventData) {
     debugSheetLog('triggerFlowForEvent RESULT', {
       trigger: trigger,
       triggerKey: triggerKey,
-      profile: profileShortcode,
+      profile: profile,
       totalSent: totalSent,
       errorsCount: errors.length,
       errors: errors.slice(0, 3) // İlk 3 hata

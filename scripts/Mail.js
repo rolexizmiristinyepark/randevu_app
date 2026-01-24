@@ -639,101 +639,39 @@ function escapeHtmlAttr(str) {
  * @param {string} profileCode - Profil kodu (g, w, b, m, s, v)
  * @param {Object} appointmentData - Randevu bilgileri
  */
-function sendMailByTrigger(trigger, profileCode, appointmentData) {
+function sendMailByTrigger(trigger, profile, appointmentData) {
   try {
-    // v3.10.49: Trigger artık direkt appointment_* formatında geliyor
-    const triggerKey = trigger;
+    // v3.10.54: Her şey shortcode (g, w, b, s, m, v)
+    // Appointments.js shortcode gönderiyor, notification_flows sheet shortcode tutuyor
+    // Dönüşüm gereksiz - direkt karşılaştır
 
-    // v3.10.39: Profile code → İngilizce flow profile dönüşümü
-    const PROFILE_TO_FLOW_KEY = {
-      'genel': 'general',
-      'gunluk': 'walk-in',
-      'personel': 'individual',
-      'boutique': 'boutique',
-      'yonetim': 'management',
-      'vip': 'vip',
-      // Tek harfli kodlar için de destek
-      'g': 'general',
-      'w': 'walk-in',
-      's': 'individual',
-      'b': 'boutique',
-      'm': 'management',
-      'v': 'vip'
-    };
-    const profileKey = PROFILE_TO_FLOW_KEY[profileCode] || profileCode;
+    log.info('[Mail] sendMailByTrigger - trigger:', trigger, 'profile:', profile);
 
-    // v3.9.49: Debug - appointmentData içeriğini logla
-    log.info('[Mail] sendMailByTrigger called with trigger:', trigger, '→', triggerKey, 'profile:', profileCode, '→', profileKey);
-    log.info('[Mail] appointmentData keys:', Object.keys(appointmentData || {}).join(', '));
-    log.info('[Mail] appointmentData.formattedDate:', appointmentData?.formattedDate);
-    log.info('[Mail] appointmentData.appointmentDate:', appointmentData?.appointmentDate);
-    log.info('[Mail] appointmentData.date:', appointmentData?.date);
-    log.info('[Mail] appointmentData.time:', appointmentData?.time);
-    log.info('[Mail] appointmentData.profileName:', appointmentData?.profileName);
-
-    // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
+    // Flow'ları al ve parse et
     const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
+    const allFlows = rawFlows.map(flow => ({
+      ...flow,
+      trigger: String(flow.trigger || ''),
+      profiles: parseJsonSafe(flow.profiles, [])
+    }));
 
-    // v3.10.50: Profile normalization (URL short codes → flow profile names)
-    const PROFILE_MAP = {
-      'g': 'general', 'w': 'walk-in', 's': 'individual',
-      'b': 'boutique', 'm': 'management', 'v': 'vip'
-    };
+    log.info('[Mail] Total flows:', allFlows.length);
 
-    // v3.10.50: Parse flows - trigger direkt kullanılır
-    const allFlows = rawFlows.map(flow => {
-      const rawProfiles = parseJsonSafe(flow.profiles, []);
-      const normalizedProfiles = Array.isArray(rawProfiles)
-        ? rawProfiles.map(p => PROFILE_MAP[p] || p)
-        : rawProfiles;
-      return {
-        ...flow,
-        trigger: String(flow.trigger || ''),
-        profiles: normalizedProfiles
-      };
-    });
-
-    // v3.10.6: Debug - tüm flow'ları ve filtreleme sürecini logla
-    log.info('[Mail] DEBUG - Total flows from sheet:', allFlows.length);
-    allFlows.forEach((flow, idx) => {
-      log.info('[Mail] DEBUG - Flow[' + idx + ']:', JSON.stringify({
-        id: flow.id,
-        name: flow.name,
-        trigger: flow.trigger,
-        triggerMatch: flow.trigger === triggerKey,
-        active: flow.active,
-        activeType: typeof flow.active,
-        profiles: flow.profiles,
-        profileMatch: flow.profiles.includes(profileKey),
-        mailTemplateIds: parseJsonSafe(flow.mailTemplateIds, [])
-      }));
-    });
-
+    // v3.10.54: Direkt shortcode karşılaştırması
     const matchingFlows = allFlows.filter(flow => {
-      // v3.10.6: Active kontrolü - 'TRUE' (büyük harf) desteği eklendi
       const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
-      if (!isActive) {
-        log.info('[Mail] DEBUG - Flow excluded (not active):', flow.name, 'active:', flow.active);
+      if (!isActive) return false;
+      if (flow.trigger !== trigger) return false;
+      if (!flow.profiles.includes(profile)) {
+        log.info('[Mail] Profile mismatch:', flow.name, 'expects:', flow.profiles, 'got:', profile);
         return false;
       }
-      // v3.10.0: trigger artık tek değer (array değil)
-      // v3.10.41: Normalize edilmiş triggerKey ile karşılaştır
-      if (flow.trigger !== triggerKey) {
-        log.info('[Mail] DEBUG - Flow excluded (trigger mismatch):', flow.name, 'flow.trigger:', flow.trigger, 'expected:', triggerKey);
-        return false;
-      }
-      // v3.10.41: Normalize edilmiş profiles ile karşılaştır
-      const hasProfile = flow.profiles.includes(profileKey);
-      if (!hasProfile) {
-        log.info('[Mail] DEBUG - Flow excluded (profile mismatch):', flow.name, 'profiles:', flow.profiles, 'expected:', profileKey);
-        return false;
-      }
-      log.info('[Mail] DEBUG - Flow MATCHED:', flow.name);
+      log.info('[Mail] Flow MATCHED:', flow.name);
       return true;
     });
 
     if (matchingFlows.length === 0) {
-      log.info('[Mail] Bu trigger ve profil için notification flow bulunamadı:', trigger, profileCode);
+      log.info('[Mail] No matching flows for trigger:', trigger, 'profile:', profile);
       return { success: true, message: 'No matching flows' };
     }
 

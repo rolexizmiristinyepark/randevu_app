@@ -24,6 +24,29 @@
  * - Security.gs (SecurityService, LockServiceWrapper, log)
  */
 
+// v3.10.54: Profile shortcode conversion - single source of truth
+const PROFILE_TO_CODE = {
+  'genel': 'g', 'general': 'g', 'g': 'g',
+  'gunluk': 'w', 'walk-in': 'w', 'walkin': 'w', 'w': 'w',
+  'boutique': 'b', 'butik': 'b', 'b': 'b',
+  'yonetim': 'm', 'management': 'm', 'm': 'm',
+  'personel': 's', 'individual': 's', 'staff': 's', 's': 's',
+  'vip': 'v', 'v': 'v'
+};
+
+function toProfileCode(profile) {
+  if (!profile) return 'g';
+  return PROFILE_TO_CODE[String(profile).toLowerCase()] || profile;
+}
+
+// Turkish date formatter for display
+const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
+function formatTurkishDate(date) {
+  return date.getDate() + ' ' + TR_MONTHS[date.getMonth()] + ' ' + date.getFullYear() + ', ' + TR_DAYS[date.getDay()];
+}
+
 // --- Appointments Management ---
 /**
  * Appointment CRUD service - Google Calendar integration
@@ -144,9 +167,11 @@ const AppointmentService = {
       const customerEmail = event.getTag('customerEmail') || '';
       const staffId = event.getTag('staffId') || '';
       const appointmentType = event.getTag('appointmentType') || '';
-      const profilTag = event.getTag('profil') || 'genel';  // v3.9: Profil bazlı
-      const startTime = event.getStartTime(); // Silmeden önce tarihi al
-      
+      const rawProfil = event.getTag('profil') || 'genel';
+      // v3.10.54: Profil her zaman shortcode olarak kullanılır
+      const profile = toProfileCode(rawProfil);
+      const startTime = event.getStartTime();
+
       // Staff bilgisini al
       const data = StorageService.getData();
       const staff = data.staff.find(s => s.id == staffId);
@@ -163,69 +188,36 @@ const AppointmentService = {
         appointmentType: appointmentType
       });
 
-      // WhatsApp Flow tetikle - appointment_cancel
-      try {
-        // v3.9: Profil bazlı çalışma (profilTag yukarıda alındı)
-        // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız)
-        const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-        const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-        const formattedDateTr = startTime.getDate() + ' ' + TR_MONTHS[startTime.getMonth()] + ' ' + startTime.getFullYear() + ', ' + TR_DAYS[startTime.getDay()];
-        const eventData = {
-          eventId: eventId,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          customerEmail: customerEmail,
-          staffId: staffId,
-          staffName: staff ? staff.name : 'Atanacak',
-          appointmentDate: formattedDateTr,
-          appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
-          appointmentType: appointmentType,
-          profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
-        };
+      // v3.10.54: Ortak tarih formatı ve eventData
+      const formattedDate = formatTurkishDate(startTime);
+      const eventData = {
+        eventId: eventId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        customerEmail: customerEmail,
+        staffId: staffId,
+        staffName: staff ? staff.name : 'Atanacak',
+        staffEmail: staff ? staff.email : '',
+        appointmentDate: formattedDate,
+        appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
+        appointmentType: appointmentType,
+        profile: profile  // shortcode: g, w, b, m, s, v
+      };
 
+      // WhatsApp Flow tetikle
+      try {
         const flowResult = triggerFlowForEvent('appointment_cancel', eventData);
         log.info('appointment_cancel flow result:', flowResult);
       } catch (flowError) {
         log.error('appointment_cancel flow error:', flowError);
-        // Flow hatası ana işlemi etkilemesin
       }
 
-      // Mail Flow tetikle - appointment_cancel (v3.10.36)
+      // Mail Flow tetikle
       try {
-        const PROFILE_KEY_TO_CODE = {
-          'genel': 'g',
-          'gunluk': 'w',
-          'boutique': 'b',
-          'yonetim': 'm',
-          'personel': 's',
-          'vip': 'v'
-        };
-        const profileCode = PROFILE_KEY_TO_CODE[profilTag] || profilTag || 'g';
-
-        // Türkçe tarih formatı
-        const TR_MONTHS_MAIL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-        const TR_DAYS_MAIL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-        const formattedDateMail = startTime.getDate() + ' ' + TR_MONTHS_MAIL[startTime.getMonth()] + ' ' + startTime.getFullYear() + ', ' + TR_DAYS_MAIL[startTime.getDay()];
-
-        const mailData = {
-          eventId: eventId,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          customerEmail: customerEmail,
-          staffId: staffId,
-          staffName: staff ? staff.name : 'Atanacak',
-          staffEmail: staff ? staff.email : '',
-          appointmentDate: formattedDateMail,
-          appointmentTime: Utilities.formatDate(startTime, 'Europe/Istanbul', 'HH:mm'),
-          appointmentType: appointmentType,
-          profile: profileCode
-        };
-
-        sendMailByTrigger('appointment_cancel', profileCode, mailData);
-        log.info('appointment_cancel mail flow tetiklendi:', profileCode);
+        sendMailByTrigger('appointment_cancel', profile, eventData);
+        log.info('appointment_cancel mail flow tetiklendi:', profile);
       } catch (mailFlowError) {
         log.error('appointment_cancel mail flow error:', mailFlowError);
-        // Mail flow hatası ana işlemi etkilemesin
       }
 
       // Cache invalidation: Version increment
@@ -342,24 +334,20 @@ const AppointmentService = {
       // Cache invalidation: Version increment (only if update successful)
       if (updateResult && updateResult.success) {
         VersionService.incrementDataVersion();
-        
-        // WhatsApp Flow tetikle - appointment_update
+
+        // v3.10.54: Consolidated flow triggering
         try {
           const customerName = event.getTitle().split(' - ')[0] || '';
           const customerPhone = event.getTag('customerPhone') || '';
           const customerEmail = event.getTag('customerEmail') || '';
           const staffId = event.getTag('staffId') || '';
           const appointmentType = event.getTag('appointmentType') || '';
-          const profilTag = event.getTag('profil') || 'genel';  // v3.9: Profil bazlı
+          const rawProfil = event.getTag('profil') || 'genel';
+          const profile = toProfileCode(rawProfil);
 
-          // Staff bilgisini al
           const data = StorageService.getData();
           const staff = data.staff.find(s => s.id == staffId);
 
-          // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız)
-          const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-          const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-          const formattedDateTr = newStartDateTime.getDate() + ' ' + TR_MONTHS[newStartDateTime.getMonth()] + ' ' + newStartDateTime.getFullYear() + ', ' + TR_DAYS[newStartDateTime.getDay()];
           const eventData = {
             eventId: eventId,
             customerName: customerName,
@@ -367,64 +355,30 @@ const AppointmentService = {
             customerEmail: customerEmail,
             staffId: staffId,
             staffName: staff ? staff.name : 'Atanacak',
-            appointmentDate: formattedDateTr,
-            appointmentTime: newTime,
-            appointmentType: appointmentType,
-            profile: profilTag  // v3.10.17: profil→profile for Variables.js compatibility
-          };
-
-          const flowResult = triggerFlowForEvent('appointment_update', eventData);
-          log.info('appointment_update flow result:', flowResult);
-        } catch (flowError) {
-          log.error('appointment_update flow error:', flowError);
-          // Flow hatası ana işlemi etkilemesin
-        }
-
-        // Mail Flow tetikle - appointment_update (v3.10.37)
-        try {
-          const customerName = event.getTitle().split(' - ')[0] || '';
-          const customerPhone = event.getTag('customerPhone') || '';
-          const customerEmail = event.getTag('customerEmail') || '';
-          const staffId = event.getTag('staffId') || '';
-          const appointmentType = event.getTag('appointmentType') || '';
-          const profilTag = event.getTag('profil') || 'genel';
-
-          const data = StorageService.getData();
-          const staff = data.staff.find(s => s.id == staffId);
-
-          const PROFILE_KEY_TO_CODE = {
-            'genel': 'g',
-            'gunluk': 'w',
-            'boutique': 'b',
-            'yonetim': 'm',
-            'personel': 's',
-            'vip': 'v'
-          };
-          const profileCode = PROFILE_KEY_TO_CODE[profilTag] || profilTag || 'g';
-
-          const TR_MONTHS_MAIL = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-          const TR_DAYS_MAIL = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
-          const formattedDateMail = newStartDateTime.getDate() + ' ' + TR_MONTHS_MAIL[newStartDateTime.getMonth()] + ' ' + newStartDateTime.getFullYear() + ', ' + TR_DAYS_MAIL[newStartDateTime.getDay()];
-
-          const mailData = {
-            eventId: eventId,
-            customerName: customerName,
-            customerPhone: customerPhone,
-            customerEmail: customerEmail,
-            staffId: staffId,
-            staffName: staff ? staff.name : 'Atanacak',
             staffEmail: staff ? staff.email : '',
-            appointmentDate: formattedDateMail,
+            appointmentDate: formatTurkishDate(newStartDateTime),
             appointmentTime: newTime,
             appointmentType: appointmentType,
-            profile: profileCode
+            profile: profile
           };
 
-          sendMailByTrigger('appointment_update', profileCode, mailData);
-          log.info('appointment_update mail flow tetiklendi:', profileCode);
-        } catch (mailFlowError) {
-          log.error('appointment_update mail flow error:', mailFlowError);
-          // Mail flow hatası ana işlemi etkilemesin
+          // WhatsApp Flow
+          try {
+            const flowResult = triggerFlowForEvent('appointment_update', eventData);
+            log.info('appointment_update flow result:', flowResult);
+          } catch (flowError) {
+            log.error('appointment_update flow error:', flowError);
+          }
+
+          // Mail Flow
+          try {
+            sendMailByTrigger('appointment_update', profile, eventData);
+            log.info('appointment_update mail flow:', profile);
+          } catch (mailFlowError) {
+            log.error('appointment_update mail flow error:', mailFlowError);
+          }
+        } catch (err) {
+          log.error('Flow trigger error:', err);
         }
       }
 
@@ -552,68 +506,19 @@ const AppointmentService = {
 
       log.info('Personel atandı:', eventId, staffId, staff.name);
 
-      // WhatsApp Flow tetikle - appointment_assign
+      // v3.10.54: Consolidated flow triggering
       try {
         const customerName = event.getTitle().split(' - ')[0] || '';
         const customerPhone = event.getTag('customerPhone') || '';
         const customerEmail = event.getTag('customerEmail') || '';
         const appointmentType = event.getTag('appointmentType') || '';
-        const customerNote = event.getTag('customerNote') || event.getDescription() || '';  // v3.10.17
-
-        // v3.10.18: Profil key'i koda çevir (genel→g, personel→s, vb.)
-        const PROFILE_KEY_TO_CODE = {
-          'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
-          'yonetim': 'm', 'personel': 's', 'vip': 'v'
-        };
+        const customerNote = event.getTag('customerNote') || event.getDescription() || '';
         const rawProfil = event.getTag('profil') || 'genel';
-        const profilTag = PROFILE_KEY_TO_CODE[rawProfil] || rawProfil || 'g';
-
-        // v3.10.18: Türkçe tarih formatı (local array - CONFIG bağımsız) + customerNote eklendi
-        const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-        const TR_DAYS = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+        const profile = toProfileCode(rawProfil);
         const startDt = event.getStartTime();
-        const formattedDateTr = startDt.getDate() + ' ' + TR_MONTHS[startDt.getMonth()] + ' ' + startDt.getFullYear() + ', ' + TR_DAYS[startDt.getDay()];
+
         const eventData = {
           eventId: eventId,
-          customerName: customerName,
-          customerPhone: customerPhone,
-          customerEmail: customerEmail,
-          customerNote: customerNote,  // v3.10.17: Ek bilgi eklendi
-          staffId: staffId,
-          staffName: staff.name,
-          appointmentDate: formattedDateTr,
-          appointmentTime: Utilities.formatDate(startDt, 'Europe/Istanbul', 'HH:mm'),
-          appointmentType: appointmentType,
-          profile: profilTag  // v3.10.18: Profil kodu (g, s, v, vb.)
-        };
-
-        const flowResult = triggerFlowForEvent('appointment_assign', eventData);
-        log.info('appointment_assign flow result:', flowResult);
-      } catch (flowError) {
-        log.error('appointment_assign flow error:', flowError);
-      }
-
-      // Mail Flow tetikle - appointment_assign
-      try {
-        const customerName = event.getTitle().split(' - ')[0] || '';
-        const customerPhone = event.getTag('customerPhone') || '';
-        const customerEmail = event.getTag('customerEmail') || '';
-        const appointmentType = event.getTag('appointmentType') || '';
-        // Profil anahtarını koda çevir
-        const PROFILE_KEY_TO_CODE = {
-          'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
-          'yonetim': 'm', 'personel': 's', 'vip': 'v'
-        };
-        const rawProfil = event.getTag('profil') || 'genel';
-        const profilTag = PROFILE_KEY_TO_CODE[rawProfil] || rawProfil || 'g';
-
-        // v3.9.49: Tüm gerekli alanlar eklendi
-        const PROFILE_NAMES = {
-          'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
-          'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
-        };
-        const customerNote = event.getTag('customerNote') || event.getDescription() || '';
-        const mailData = {
           customerName: customerName,
           customerPhone: customerPhone,
           customerEmail: customerEmail,
@@ -626,20 +531,32 @@ const AppointmentService = {
           staffPhone: staff.phone || '',
           staffEmail: staff.email || '',
           linkedStaffEmail: staff.email || '',
-          date: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'yyyy-MM-dd'),
-          formattedDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
-          appointmentDate: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'dd MMMM yyyy, EEEE'),
-          time: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
-          appointmentTime: Utilities.formatDate(event.getStartTime(), 'Europe/Istanbul', 'HH:mm'),
+          date: Utilities.formatDate(startDt, 'Europe/Istanbul', 'yyyy-MM-dd'),
+          appointmentDate: formatTurkishDate(startDt),
+          formattedDate: formatTurkishDate(startDt),
+          time: Utilities.formatDate(startDt, 'Europe/Istanbul', 'HH:mm'),
+          appointmentTime: Utilities.formatDate(startDt, 'Europe/Istanbul', 'HH:mm'),
           appointmentType: appointmentType,
-          profileName: PROFILE_NAMES[rawProfil] || rawProfil || 'Genel',
-          profile: rawProfil
+          profile: profile
         };
 
-        sendMailByTrigger('appointment_assign', profilTag, mailData);
-        log.info('[assignStaff] Mail flow tetiklendi:', 'appointment_assign', profilTag);
-      } catch (mailFlowError) {
-        log.error('appointment_assign mail flow error:', mailFlowError);
+        // WhatsApp Flow
+        try {
+          const flowResult = triggerFlowForEvent('appointment_assign', eventData);
+          log.info('appointment_assign flow result:', flowResult);
+        } catch (flowError) {
+          log.error('appointment_assign flow error:', flowError);
+        }
+
+        // Mail Flow
+        try {
+          sendMailByTrigger('appointment_assign', profile, eventData);
+          log.info('appointment_assign mail flow:', profile);
+        } catch (mailFlowError) {
+          log.error('appointment_assign mail flow error:', mailFlowError);
+        }
+      } catch (err) {
+        log.error('Flow trigger error:', err);
       }
 
       return {
@@ -723,17 +640,12 @@ const AppointmentService = {
         };
       }
 
-      // YÖNETİM randevusu değilse, Mail Flow sistemini tetikle
+      // v3.10.54: Mail Flow for non-management appointments
       if (!isManagement) {
         try {
+          const profile = toProfileCode(params.profil);
           const formattedDate = DateUtils.toTurkishDate(date);
 
-          // Mail Flow sistemi - appointment_create
-          // v3.9.49: profileName eklendi
-          const PROFILE_NAMES = {
-            'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
-            'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
-          };
           const appointmentData = {
             customerName: sanitizedCustomerName,
             customerPhone: sanitizedCustomerPhone,
@@ -754,21 +666,13 @@ const AppointmentService = {
             appointmentDate: formattedDate,
             appointmentType,
             duration: durationNum,
-            profileName: PROFILE_NAMES[params.profil] || params.profil || 'Genel',
-            profile: params.profil || 'genel'
+            profile: profile
           };
 
-          // Profil anahtarını koda çevir
-          const PROFILE_KEY_TO_CODE = {
-            'genel': 'g', 'gunluk': 'w', 'boutique': 'b',
-            'yonetim': 'm', 'personel': 's', 'vip': 'v'
-          };
-          const profileCode = PROFILE_KEY_TO_CODE[params.profil] || params.profil || 'g';
-
-          sendMailByTrigger('appointment_create', profileCode, appointmentData);
-          log.info('[Manual] Mail flow tetiklendi:', 'appointment_create', profileCode);
+          sendMailByTrigger('appointment_create', profile, appointmentData);
+          log.info('[Manual] Mail flow:', 'appointment_create', profile);
         } catch (flowError) {
-          log.error('appointment_create mail flow hatası:', flowError);
+          log.error('appointment_create mail flow error:', flowError);
         }
       }
 
@@ -1352,59 +1256,37 @@ function _sendNotifications(params) {
     date, time, formattedDate, appointmentType, durationNum, data, profil
   } = params;
 
-  // Mail Flow sistemini tetikle - appointment_create
+  // v3.10.54: Mail Flow - appointment_create
   try {
-    // v3.9.49: profileName eklendi
-    const PROFILE_NAMES = {
-      'genel': 'Genel', 'gunluk': 'Walk-in', 'boutique': 'Butik',
-      'yonetim': 'Yönetim', 'personel': 'Bireysel', 'vip': 'Özel Müşteri'
-    };
+    const profile = toProfileCode(profil);
+
     const appointmentData = {
-      // Müşteri bilgileri
       customerName,
       customerPhone,
       customerEmail,
-      email: customerEmail, // Alternatif key
+      email: customerEmail,
       customerNote,
-      notes: customerNote, // Alternatif key
-
-      // Personel bilgileri
+      notes: customerNote,
       staffId,
       staffName,
-      linkedStaffName: staffName, // Alternatif key
+      linkedStaffName: staffName,
       staffPhone,
       staffEmail,
-      linkedStaffEmail: staffEmail, // Alternatif key
-
-      // Randevu bilgileri
+      linkedStaffEmail: staffEmail,
       date,
       time,
-      appointmentTime: time, // Alternatif key
+      appointmentTime: time,
       formattedDate,
-      appointmentDate: formattedDate, // Alternatif key
+      appointmentDate: formattedDate,
       appointmentType,
       duration: durationNum,
-      profileName: PROFILE_NAMES[profil] || profil || 'Genel',
-      profile: profil || 'genel'
+      profile: profile
     };
 
-    // Profil anahtarını koda çevir (personel → s, genel → g, vb.)
-    const PROFILE_KEY_TO_CODE = {
-      'genel': 'g',
-      'gunluk': 'w',
-      'boutique': 'b',
-      'yonetim': 'm',
-      'personel': 's',
-      'vip': 'v'
-    };
-    const profileCode = PROFILE_KEY_TO_CODE[profil] || profil || 'g';
-
-    // Flow sisteminden mail gönder
-    sendMailByTrigger('appointment_create', profileCode, appointmentData);
-
-    log.info('[Notifications] Mail flow tetiklendi:', 'appointment_create', profileCode);
+    sendMailByTrigger('appointment_create', profile, appointmentData);
+    log.info('[Notifications] Mail flow:', 'appointment_create', profile);
   } catch (flowError) {
-    log.error('Mail flow hatası:', flowError);
+    log.error('Mail flow error:', flowError);
   }
 }
 
@@ -1418,16 +1300,8 @@ function _triggerWhatsAppFlow(params) {
           staffId, staffName, formattedDate, time, appointmentType, profil, assignByAdmin } = params;
 
   try {
-    // v3.10.4: Profil kodunu doğru formata çevir (WhatsApp flow eşleşmesi için)
-    const PROFILE_KEY_TO_CODE = {
-      'genel': 'g',
-      'gunluk': 'w',
-      'boutique': 'b',
-      'yonetim': 'm',
-      'personel': 's',
-      'vip': 'v'
-    };
-    const profileCode = PROFILE_KEY_TO_CODE[profil] || profil || 'g';
+    // v3.10.54: Use global profile converter
+    const profile = toProfileCode(profil);
 
     const eventData = {
       eventId: event.getId(),
@@ -1440,22 +1314,15 @@ function _triggerWhatsAppFlow(params) {
       appointmentDate: formattedDate,
       appointmentTime: time,
       appointmentType,
-      profile: profileCode, // v3.10.4: 'profil' yerine 'profile' ve doğru kod
+      profile: profile,
       assignByAdmin: assignByAdmin || false
     };
 
-    log.info('[FLOW] Calling triggerFlowForEvent with:', JSON.stringify({
-      trigger: 'appointment_create',
-      profile: eventData.profile,
-      customerName: eventData.customerName,
-      staffId: eventData.staffId
-    }));
-
+    log.info('[FLOW] triggerFlowForEvent:', 'appointment_create', profile);
     const flowResult = triggerFlowForEvent('appointment_create', eventData);
-    log.info('[FLOW] triggerFlowForEvent result:', JSON.stringify(flowResult));
+    log.info('[FLOW] Result:', JSON.stringify(flowResult));
   } catch (flowError) {
-    log.error('[FLOW] triggerFlowForEvent ERROR:', flowError.toString(), flowError.stack);
-    // Flow hatası ana işlemi etkilemesin
+    log.error('[FLOW] Error:', flowError.toString());
   }
 }
 
