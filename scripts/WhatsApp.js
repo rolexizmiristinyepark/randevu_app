@@ -2253,10 +2253,10 @@ function runHourlyScheduledFlows() {
       return { success: false, error: 'Flow\'lar yüklenemedi' };
     }
 
-    // HATIRLATMA trigger'lı ve scheduleHour'u şimdiki saate eşit olan flow'ları filtrele
+    // v3.10.52: TIME_BASED_TRIGGER (reminder) trigger'lı ve scheduleHour'u şimdiki saate eşit olan flow'ları filtrele
     var matchingFlows = flowsResult.data.filter(function(flow) {
       var flowHour = parseInt(flow.scheduleHour || '10');
-      var isTimeBased = flow.trigger === 'HATIRLATMA';
+      var isTimeBased = flow.trigger === TIME_BASED_TRIGGER; // 'reminder'
       var isActive = flow.active === true || flow.active === 'true';
       var hourMatches = flowHour === currentHour;
 
