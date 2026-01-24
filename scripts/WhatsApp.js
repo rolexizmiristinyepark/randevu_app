@@ -2445,68 +2445,38 @@ function triggerFlowForEvent(trigger, eventData) {
       staffId: eventData.staffId
     });
 
-    // v3.10.38: Trigger constant → flow key mapping (flows stored with lowercase keys)
-    const TRIGGER_TO_FLOW_KEY = {
-      'APPOINTMENT_CREATE': 'create',
-      'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update',
-      'STAFF_ASSIGNED': 'assign'
-    };
-    const triggerKey = TRIGGER_TO_FLOW_KEY[trigger] || trigger;
-    console.log('🔥 [triggerFlowForEvent] triggerKey (converted):', triggerKey);
+    // v3.10.48: Trigger artık direkt 'create', 'cancel' vs. olarak geliyor
+    const triggerKey = trigger;
+    console.log('🔥 [triggerFlowForEvent] triggerKey:', triggerKey);
 
     // Aktif flow'ları getir
     const flowsResult = getWhatsAppFlows();
-    console.log('🔥 [triggerFlowForEvent] getWhatsAppFlows result:', JSON.stringify(flowsResult));
-
     if (!flowsResult.success) return { success: false, message: 'Flow\'lar yüklenemedi' };
 
     console.log('🔥 [triggerFlowForEvent] Total flows:', flowsResult.data.length);
 
-    // Debug: Tüm flow'ları logla
-    flowsResult.data.forEach((flow, idx) => {
-      console.log(`🔥 [triggerFlowForEvent] Flow[${idx}]: name=${flow.name}, trigger=${flow.trigger}, triggerType=${flow.triggerType}, active=${flow.active}, profiles=${JSON.stringify(flow.profiles)}`);
-    });
-
-    // Bu trigger için aktif flow'ları filtrele
-    // triggerType boşsa veya EVENT ise kabul et (default: EVENT)
-    // v3.10.37: triggerKey (İngilizce) kullan
-    // v3.10.47: Flow'un trigger değerini de normalize et (tüm formatlar için)
-    const FLOW_TRIGGER_TO_KEY = {
-      // Eski Türkçe trigger'lar
-      'RANDEVU_OLUŞTUR': 'create',
-      'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update',
-      'ILGILI_ATANDI': 'assign',
-      // Yeni İngilizce constant'lar (MESSAGE_TRIGGERS key'leri)
-      'APPOINTMENT_CREATE': 'create',
-      'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update',
-      'STAFF_ASSIGNED': 'assign',
-      // Doğrudan key'ler için identity
-      'create': 'create',
-      'cancel': 'cancel',
-      'update': 'update',
-      'assign': 'assign'
+    // v3.10.48: Legacy Türkçe trigger'ları normalize et (eski flow'lar için)
+    const LEGACY_TRIGGER = {
+      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
+      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
     };
 
     const activeFlows = flowsResult.data.filter(flow => {
-      const normalizedFlowTrigger = FLOW_TRIGGER_TO_KEY[flow.trigger] || flow.trigger;
-      return flow.active &&
-        normalizedFlowTrigger === triggerKey &&
+      const normalized = LEGACY_TRIGGER[flow.trigger] || flow.trigger;
+      return flow.active && normalized === triggerKey &&
         (!flow.triggerType || flow.triggerType === 'EVENT');
     });
 
     console.log('🔥 [triggerFlowForEvent] Filtered activeFlows count:', activeFlows.length);
 
-    // v3.10.43: Sheet debug log - filtrelenmiş flow sayısı
-    // v3.10.47: Normalize edilmiş trigger bilgisi ekle
+    // v3.10.48: Sheet debug log
     debugSheetLog('triggerFlowForEvent FLOWS', {
       triggerKey: triggerKey,
-      totalFlowsWithWhatsApp: flowsResult.data.length,
-      activeFlowsForTrigger: activeFlows.length,
-      flowNames: activeFlows.map(f => f.name).join(', '),
-      flowTriggers: flowsResult.data.map(f => `${f.name}:${f.trigger}→${FLOW_TRIGGER_TO_KEY[f.trigger] || f.trigger}`).join(', ')
+      totalFlows: flowsResult.data.length,
+      activeFlows: activeFlows.length,
+      flowNames: activeFlows.map(f => f.name).join(', ')
     });
 
     if (activeFlows.length === 0) {
@@ -2951,32 +2921,27 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    // v3.10.47: Sheet'teki trigger'ları normalize et (tüm formatlar)
-    const TRIGGER_TR_TO_EN = {
-      'RANDEVU_OLUŞTUR': 'create',
-      'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update',
-      'ILGILI_ATANDI': 'assign',
+    // v3.10.48: Legacy trigger normalization (eski flow'lar için)
+    const LEGACY_TRIGGER = {
+      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
       'HATIRLATMA': 'reminder',
-      'APPOINTMENT_CREATE': 'create',
-      'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update',
-      'STAFF_ASSIGNED': 'assign'
+      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
     };
 
-    // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür
-    const PROFILE_SHORT_TO_EN = {
+    // v3.10.48: Legacy profile normalization (eski flow'lar için)
+    const LEGACY_PROFILE = {
       'g': 'general', 'w': 'walk-in', 's': 'individual',
       'b': 'boutique', 'm': 'management', 'v': 'vip'
     };
 
     const normalizeProfiles = (profiles) => {
       if (!Array.isArray(profiles)) return profiles;
-      return profiles.map(p => PROFILE_SHORT_TO_EN[p] || p);
+      return profiles.map(p => LEGACY_PROFILE[p] || p);
     };
 
-    // v3.10.5: Header-based parsing ile gelen veriyi kullan
-    // v3.10.41: trigger ve profiles normalize edildi
+    // v3.10.48: Parse and normalize flows
     const flows = allFlows.map(row => {
       const rawTrigger = String(row.trigger || '');
       const rawProfiles = parseJsonSafe(row.profiles, []);
@@ -2984,8 +2949,8 @@ function getNotificationFlowsForWhatsApp() {
         id: String(row.id || ''),
         name: String(row.name || ''),
         description: String(row.description || ''),
-        trigger: TRIGGER_TR_TO_EN[rawTrigger] || rawTrigger, // Türkçe → İngilizce
-        profiles: normalizeProfiles(rawProfiles), // tek harf → İngilizce
+        trigger: LEGACY_TRIGGER[rawTrigger] || rawTrigger,
+        profiles: normalizeProfiles(rawProfiles),
         whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
         mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
         active: row.active === true || row.active === 'TRUE' || row.active === 'true',

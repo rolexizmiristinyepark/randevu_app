@@ -593,14 +593,14 @@ const ACTION_HANDLERS = {
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
 
-      // v3.10.47: Flow normalizasyon mapping'leri (tüm formatlar)
-      const TRIGGER_TR_TO_EN_DEBUG = {
+      // v3.10.48: Legacy normalization (eski flow'lar için)
+      const LEGACY_TRIGGER = {
         'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
         'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign', 'HATIRLATMA': 'reminder',
         'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
         'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
       };
-      const PROFILE_SHORT_TO_EN_DEBUG = {
+      const LEGACY_PROFILE = {
         'g': 'general', 'w': 'walk-in', 's': 'individual',
         'b': 'boutique', 'm': 'management', 'v': 'vip'
       };
@@ -611,11 +611,11 @@ const ACTION_HANDLERS = {
         const mailTemplateIds = parseJsonSafeMain(flow.mailTemplateIds, []);
         const whatsappTemplateIds = parseJsonSafeMain(flow.whatsappTemplateIds, []);
 
-        // v3.10.41: Normalize trigger and profiles
+        // v3.10.48: Normalize trigger and profiles
         const rawTrigger = String(flow.trigger || '');
-        const normalizedTrigger = TRIGGER_TR_TO_EN_DEBUG[rawTrigger] || rawTrigger;
+        const normalizedTrigger = LEGACY_TRIGGER[rawTrigger] || rawTrigger;
         const normalizedProfiles = Array.isArray(rawProfiles)
-          ? rawProfiles.map(p => PROFILE_SHORT_TO_EN_DEBUG[p] || p)
+          ? rawProfiles.map(p => LEGACY_PROFILE[p] || p)
           : rawProfiles;
 
         const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';

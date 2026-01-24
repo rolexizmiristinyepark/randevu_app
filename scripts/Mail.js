@@ -680,37 +680,29 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
     const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
 
-    // v3.10.47: Sheet'teki trigger'ları normalize et (tüm formatlar)
-    const TRIGGER_TR_TO_EN_MAIL = {
-      // Eski Türkçe trigger'lar
-      'RANDEVU_OLUŞTUR': 'create',
-      'RANDEVU_İPTAL': 'cancel',
-      'RANDEVU_GÜNCELLE': 'update',
-      'ILGILI_ATANDI': 'assign',
+    // v3.10.48: Legacy normalization (eski flow'lar için)
+    const LEGACY_TRIGGER = {
+      'RANDEVU_OLUŞTUR': 'create', 'RANDEVU_İPTAL': 'cancel',
+      'RANDEVU_GÜNCELLE': 'update', 'ILGILI_ATANDI': 'assign',
       'HATIRLATMA': 'reminder',
-      // Yeni İngilizce constant'lar (MESSAGE_TRIGGERS key'leri)
-      'APPOINTMENT_CREATE': 'create',
-      'APPOINTMENT_CANCEL': 'cancel',
-      'APPOINTMENT_UPDATE': 'update',
-      'STAFF_ASSIGNED': 'assign'
+      'APPOINTMENT_CREATE': 'create', 'APPOINTMENT_CANCEL': 'cancel',
+      'APPOINTMENT_UPDATE': 'update', 'STAFF_ASSIGNED': 'assign'
     };
-
-    // v3.10.41: Tek harfli profile'ları İngilizce'ye dönüştür
-    const PROFILE_SHORT_TO_EN_MAIL = {
+    const LEGACY_PROFILE = {
       'g': 'general', 'w': 'walk-in', 's': 'individual',
       'b': 'boutique', 'm': 'management', 'v': 'vip'
     };
 
-    // v3.10.41: Flow'ları normalize et
+    // v3.10.48: Normalize flows
     const allFlows = rawFlows.map(flow => {
       const rawTrigger = String(flow.trigger || '');
       const rawProfiles = parseJsonSafe(flow.profiles, []);
       const normalizedProfiles = Array.isArray(rawProfiles)
-        ? rawProfiles.map(p => PROFILE_SHORT_TO_EN_MAIL[p] || p)
+        ? rawProfiles.map(p => LEGACY_PROFILE[p] || p)
         : rawProfiles;
       return {
         ...flow,
-        trigger: TRIGGER_TR_TO_EN_MAIL[rawTrigger] || rawTrigger,
+        trigger: LEGACY_TRIGGER[rawTrigger] || rawTrigger,
         profiles: normalizedProfiles
       };
     });

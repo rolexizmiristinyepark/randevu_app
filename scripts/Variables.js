@@ -188,17 +188,16 @@ var MESSAGE_VARIABLES = {
 
 /**
  * Merkezi trigger tanımları - Mail ve WhatsApp için ortak
- * v3.9.72: Global trigger listesi
+ * v3.10.48: Simplified - key = stored value, value = display label
  */
-// Event-based triggers (for real-time notifications)
 var MESSAGE_TRIGGERS = {
-  'APPOINTMENT_CREATE': 'create',
-  'APPOINTMENT_CANCEL': 'cancel',
-  'APPOINTMENT_UPDATE': 'update',
-  'STAFF_ASSIGNED': 'assign'
+  'create': 'Create',
+  'cancel': 'Cancel',
+  'update': 'Update',
+  'assign': 'Assign'
 };
 
-// Time-based trigger (for scheduled notifications - runs at 10:00 AM TR)
+// Time-based trigger
 var TIME_BASED_TRIGGER = 'reminder';
 
 /**
