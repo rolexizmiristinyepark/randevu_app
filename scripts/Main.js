@@ -587,16 +587,8 @@ const ACTION_HANDLERS = {
       const allMailTemplates = SheetStorageService.getAll('mail_templates');
       const allWhatsAppTemplates = SheetStorageService.getAll('whatsapp_templates');
 
-      // v3.10.49: Legacy normalization - all formats → appointment_*
-      const LEGACY_TRIGGER = {
-        'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
-        'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign', 'HATIRLATMA': 'reminder',
-        'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
-        'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
-        'create': 'appointment_create', 'cancel': 'appointment_cancel',
-        'update': 'appointment_update', 'assign': 'appointment_assign'
-      };
-      const LEGACY_PROFILE = {
+      // v3.10.50: Profile normalization (URL short codes → flow profile names)
+      const PROFILE_MAP = {
         'g': 'general', 'w': 'walk-in', 's': 'individual',
         'b': 'boutique', 'm': 'management', 'v': 'vip'
       };
@@ -607,16 +599,15 @@ const ACTION_HANDLERS = {
         const mailTemplateIds = parseJsonSafeMain(flow.mailTemplateIds, []);
         const whatsappTemplateIds = parseJsonSafeMain(flow.whatsappTemplateIds, []);
 
-        // v3.10.48: Normalize trigger and profiles
-        const rawTrigger = String(flow.trigger || '');
-        const normalizedTrigger = LEGACY_TRIGGER[rawTrigger] || rawTrigger;
+        // v3.10.50: Trigger direkt kullanılır, profile normalize edilir
+        const flowTrigger = String(flow.trigger || '');
         const normalizedProfiles = Array.isArray(rawProfiles)
-          ? rawProfiles.map(p => LEGACY_PROFILE[p] || p)
+          ? rawProfiles.map(p => PROFILE_MAP[p] || p)
           : rawProfiles;
 
         const isActive = flow.active === true || flow.active === 'true' || flow.active === 'TRUE';
-        // v3.10.41: Normalize edilmiş değerlerle karşılaştır
-        const triggerMatches = normalizedTrigger === triggerKey;
+        // v3.10.50: Direkt karşılaştırma
+        const triggerMatches = flowTrigger === triggerKey;
         const profileMatches = normalizedProfiles.includes(profileKey);
 
         return {
@@ -632,7 +623,7 @@ const ACTION_HANDLERS = {
             whatsappTemplateIds: flow.whatsappTemplateIds
           },
           normalized: {
-            trigger: normalizedTrigger,
+            trigger: flowTrigger,
             profiles: normalizedProfiles
           },
           parsed: {

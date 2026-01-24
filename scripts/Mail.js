@@ -674,31 +674,21 @@ function sendMailByTrigger(trigger, profileCode, appointmentData) {
     // v3.10.0: Aktif ve bu trigger + profile için tanımlı notification flow'ları bul
     const rawFlows = SheetStorageService.getAll(NOTIFICATION_FLOWS_SHEET);
 
-    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
-    const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
-      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
-      'HATIRLATMA': 'reminder',
-      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
-      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
-      'create': 'appointment_create', 'cancel': 'appointment_cancel',
-      'update': 'appointment_update', 'assign': 'appointment_assign'
-    };
-    const LEGACY_PROFILE = {
+    // v3.10.50: Profile normalization (URL short codes → flow profile names)
+    const PROFILE_MAP = {
       'g': 'general', 'w': 'walk-in', 's': 'individual',
       'b': 'boutique', 'm': 'management', 'v': 'vip'
     };
 
-    // v3.10.48: Normalize flows
+    // v3.10.50: Parse flows - trigger direkt kullanılır
     const allFlows = rawFlows.map(flow => {
-      const rawTrigger = String(flow.trigger || '');
       const rawProfiles = parseJsonSafe(flow.profiles, []);
       const normalizedProfiles = Array.isArray(rawProfiles)
-        ? rawProfiles.map(p => LEGACY_PROFILE[p] || p)
+        ? rawProfiles.map(p => PROFILE_MAP[p] || p)
         : rawProfiles;
       return {
         ...flow,
-        trigger: LEGACY_TRIGGER[rawTrigger] || rawTrigger,
+        trigger: String(flow.trigger || ''),
         profiles: normalizedProfiles
       };
     });

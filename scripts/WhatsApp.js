@@ -2455,19 +2455,9 @@ function triggerFlowForEvent(trigger, eventData) {
 
     console.log('🔥 [triggerFlowForEvent] Total flows:', flowsResult.data.length);
 
-    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
-    const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
-      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
-      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
-      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
-      'create': 'appointment_create', 'cancel': 'appointment_cancel',
-      'update': 'appointment_update', 'assign': 'appointment_assign'
-    };
-
+    // v3.10.50: Direkt karşılaştırma - trigger = flow.trigger
     const activeFlows = flowsResult.data.filter(flow => {
-      const normalized = LEGACY_TRIGGER[flow.trigger] || flow.trigger;
-      return flow.active && normalized === triggerKey &&
+      return flow.active && flow.trigger === triggerKey &&
         (!flow.triggerType || flow.triggerType === 'EVENT');
     });
 
@@ -2923,37 +2913,25 @@ function getNotificationFlowsForWhatsApp() {
       }
     };
 
-    // v3.10.49: Legacy trigger normalization - all formats → appointment_*
-    const LEGACY_TRIGGER = {
-      'RANDEVU_OLUŞTUR': 'appointment_create', 'RANDEVU_İPTAL': 'appointment_cancel',
-      'RANDEVU_GÜNCELLE': 'appointment_update', 'ILGILI_ATANDI': 'appointment_assign',
-      'HATIRLATMA': 'reminder',
-      'APPOINTMENT_CREATE': 'appointment_create', 'APPOINTMENT_CANCEL': 'appointment_cancel',
-      'APPOINTMENT_UPDATE': 'appointment_update', 'STAFF_ASSIGNED': 'appointment_assign',
-      'create': 'appointment_create', 'cancel': 'appointment_cancel',
-      'update': 'appointment_update', 'assign': 'appointment_assign'
-    };
-
-    // v3.10.48: Legacy profile normalization (eski flow'lar için)
-    const LEGACY_PROFILE = {
+    // v3.10.50: Profile normalization (URL short codes → flow profile names)
+    const PROFILE_MAP = {
       'g': 'general', 'w': 'walk-in', 's': 'individual',
       'b': 'boutique', 'm': 'management', 'v': 'vip'
     };
 
     const normalizeProfiles = (profiles) => {
       if (!Array.isArray(profiles)) return profiles;
-      return profiles.map(p => LEGACY_PROFILE[p] || p);
+      return profiles.map(p => PROFILE_MAP[p] || p);
     };
 
-    // v3.10.48: Parse and normalize flows
+    // v3.10.50: Parse flows - trigger direkt kullanılır
     const flows = allFlows.map(row => {
-      const rawTrigger = String(row.trigger || '');
       const rawProfiles = parseJsonSafe(row.profiles, []);
       return {
         id: String(row.id || ''),
         name: String(row.name || ''),
         description: String(row.description || ''),
-        trigger: LEGACY_TRIGGER[rawTrigger] || rawTrigger,
+        trigger: String(row.trigger || ''),
         profiles: normalizeProfiles(rawProfiles),
         whatsappTemplateIds: parseJsonSafe(row.whatsappTemplateIds, []),
         mailTemplateIds: parseJsonSafe(row.mailTemplateIds, []),
