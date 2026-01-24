@@ -299,8 +299,8 @@
             gap: 16px !important;
         }
 
-        /* Last item spans full width when odd number of items */
-        .link-grid .link-card:last-child:nth-child(odd) {
+        /* Full width card (last odd item) */
+        .link-card-full {
             grid-column: 1 / -1 !important;
         }
 
@@ -725,12 +725,12 @@
                 font-size: 10px;
             }
 
-            /* Staff/VIP links grid responsive */
+            /* Staff/VIP links grid responsive - single column */
             .link-grid {
                 grid-template-columns: 1fr;
             }
 
-            .link-grid > .link-card:last-child:nth-child(odd) {
+            .link-card-full {
                 grid-column: span 1;
             }
         }

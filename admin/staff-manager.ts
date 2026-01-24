@@ -395,6 +395,12 @@ function renderLinks(): void {
         gridContainer.appendChild(linkCard);
     });
 
+    // Son tek karta full-width class ekle
+    if (activeStaff.length % 2 === 1) {
+        const lastCard = gridContainer.lastElementChild as HTMLElement;
+        if (lastCard) lastCard.classList.add('link-card-full');
+    }
+
     container.appendChild(gridContainer);
 
     // v3.10.46: VIP links bölümünü de render et
@@ -469,6 +475,12 @@ function renderVipLinks(): void {
         linkCard.appendChild(body);
         gridContainer.appendChild(linkCard);
     });
+
+    // Son tek karta full-width class ekle
+    if (activeStaff.length % 2 === 1) {
+        const lastCard = gridContainer.lastElementChild as HTMLElement;
+        if (lastCard) lastCard.classList.add('link-card-full');
+    }
 
     container.appendChild(gridContainer);
 }
