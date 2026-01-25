@@ -388,7 +388,11 @@ function openAssignStaffModal(appointment: any): void {
     // Populate staff dropdown (mevcut atanmış personeli hariç tut)
     const select = document.getElementById('assignStaffSelect') as HTMLSelectElement;
     const currentStaffId = appointment.extendedProperties?.private?.staffId;
-    const isChanging = !!currentStaffId;  // Değiştirme mi yoksa ilk atama mı?
+    // v3.10.55: Use same logic as list - check if staff is actually assigned
+    const currentStaff = currentStaffId ? dataStore.staff.find(s => String(s.id) === String(currentStaffId)) : null;
+    const currentStaffName = currentStaff?.name || '';
+    const hasNoStaff = !currentStaffId || !currentStaff || currentStaffName === 'Atanacak' || currentStaffName === 'Atanmadı' || currentStaffName === '-';
+    const isChanging = !hasNoStaff;  // Only "Change" if staff is actually assigned
 
     if (select) {
         select.innerHTML = '<option value="">-- Seçin --</option>';
