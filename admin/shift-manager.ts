@@ -55,19 +55,48 @@ function setupEventListeners(): void {
 }
 
 /**
+ * Get Monday date from ISO week string (e.g. "2025-W05")
+ * Uses ISO 8601: Week 1 contains the year's first Thursday
+ */
+function getISOWeekMonday(weekValue: string): Date {
+    const [yearStr, weekStr] = weekValue.split('-W');
+    const year = parseInt(yearStr || '0');
+    const week = parseInt(weekStr || '0');
+
+    // Jan 4 is always in ISO week 1
+    const jan4 = new Date(year, 0, 4);
+    const jan4Day = jan4.getDay() || 7; // Convert Sunday=0 to 7
+    // Monday of week 1
+    const week1Monday = new Date(jan4);
+    week1Monday.setDate(jan4.getDate() - (jan4Day - 1));
+    // Target Monday
+    const target = new Date(week1Monday);
+    target.setDate(week1Monday.getDate() + (week - 1) * 7);
+    return target;
+}
+
+/**
+ * Get ISO week string (e.g. "2025-W05") from a date
+ */
+function getISOWeekString(date: Date): string {
+    const d = new Date(date);
+    d.setHours(0, 0, 0, 0);
+    // Set to nearest Thursday (current date + 4 - current day number, week starts Monday)
+    d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    const year = d.getFullYear();
+    // January 4 is always in week 1
+    const jan4 = new Date(year, 0, 4);
+    const weekNum = 1 + Math.round(((d.getTime() - jan4.getTime()) / 86400000 - 3 + ((jan4.getDay() + 6) % 7)) / 7);
+    return `${year}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+/**
  * Initialize - set current week
  */
 function init(): void {
-    // Set this week (Monday start)
-    const today = new Date();
-    const year = today.getFullYear();
-    const firstDayOfYear = new Date(year, 0, 1);
-    const pastDaysOfYear = (today.getTime() - firstDayOfYear.getTime()) / 86400000;
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
-
     const weekInput = document.getElementById('weekDate') as HTMLInputElement;
     if (weekInput) {
-        weekInput.value = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        weekInput.value = getISOWeekString(new Date());
     }
 
     load();
@@ -85,17 +114,8 @@ async function load(): Promise<void> {
         return;
     }
 
-    // Calculate date range from week value
-    const [year, week] = weekValue.split('-W');
-    const firstDayOfYear = new Date(parseInt(year || '0'), 0, 1);
-    const daysOffset = (parseInt(week || '0') - 1) * 7;
-    const weekStart = new Date(firstDayOfYear.getTime());
-    weekStart.setDate(firstDayOfYear.getDate() + daysOffset);
-
-    // Find Monday
-    const dayOfWeek = weekStart.getDay();
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
-    weekStart.setDate(weekStart.getDate() + diff);
+    // Calculate Monday of the ISO week
+    const weekStart = getISOWeekMonday(weekValue);
 
     // Format date with DateUtils
     currentWeek = DateUtils.toLocalDate(weekStart);
@@ -439,19 +459,11 @@ function renderSaved(): void {
 function loadWeek(weekStart: string): void {
     // Convert date string (YYYY-MM-DD) to week format (YYYY-Www)
     const parts = weekStart.split('-').map(Number);
-    const year = parts[0] || 0;
-    const month = parts[1] || 0;
-    const day = parts[2] || 0;
-    const date = new Date(year, month - 1, day);
-
-    // Calculate ISO week number
-    const firstDayOfYear = new Date(year, 0, 1);
-    const pastDaysOfYear = (date.getTime() - firstDayOfYear.getTime()) / 86400000;
-    const weekNumber = Math.ceil((pastDaysOfYear + firstDayOfYear.getDay() + 1) / 7);
+    const date = new Date(parts[0] || 0, (parts[1] || 1) - 1, parts[2] || 1);
 
     const weekInput = document.getElementById('weekDate') as HTMLInputElement;
     if (weekInput) {
-        weekInput.value = `${year}-W${String(weekNumber).padStart(2, '0')}`;
+        weekInput.value = getISOWeekString(date);
     }
 
     load();
