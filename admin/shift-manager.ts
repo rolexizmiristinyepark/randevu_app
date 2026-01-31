@@ -120,13 +120,24 @@ async function load(): Promise<void> {
     // Format date with DateUtils
     currentWeek = DateUtils.toLocalDate(weekStart);
 
-    // Load month data
-    const monthStr = currentWeek.slice(0, 7); // YYYY-MM part
+    // Load month data - check if week spans two months
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(weekStart.getDate() + 6);
+    const monthStr = currentWeek.slice(0, 7); // Monday's month
+    const endMonthStr = DateUtils.toLocalDate(weekEnd).slice(0, 7); // Sunday's month
 
     try {
         const response = await apiCall('getMonthShifts', { month: monthStr });
         if (response.success) {
             dataStore.shifts = (response.data as any) || {};
+        }
+
+        // If week spans two months, also load the second month
+        if (endMonthStr !== monthStr) {
+            const response2 = await apiCall('getMonthShifts', { month: endMonthStr });
+            if (response2.success) {
+                Object.assign(dataStore.shifts, (response2.data as any) || {});
+            }
         }
     } catch (error) {
         console.error('Vardiyalar yüklenemedi:', error);
