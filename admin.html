@@ -1,0 +1,317 @@
+
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 🔒 SECURITY: Content Security Policy (Defense-in-Depth XSS Protection) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://script.google.com https://script.googleusercontent.com; img-src 'self' data:;">
+    <title>Rolex İzmir İstinyepark - Admin Paneli</title>
+    <link rel="icon" type="image/svg+xml" href="/randevu_app/assets/rolex-logo-CwVza6ql.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@300;400;500;600&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script type="module" crossorigin src="/randevu_app/assets/admin-tAH7V-R_.js"></script>
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/modulepreload-polyfill-YP0FEG5d.js">
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/utils-D-0zHxs0.js">
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/base-layer-Bx4f0JUd.js">
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/security-DtJpU1t3.js">
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/api-RxvzTxrr.js">
+  <link rel="modulepreload" crossorigin href="/randevu_app/assets/flow-components-DEyWMVQ1.js">
+  <link rel="stylesheet" crossorigin href="/randevu_app/assets/admin-Zdizvher.css">
+</head>
+<body>
+    <div class="header">
+        <img src="/randevu_app/assets/rolex-logo-CwVza6ql.svg" class="rolex-logo" alt="Rolex Logo">
+        <h1>Rolex İzmir İstinyepark</h1>
+        <p>Admin Paneli</p>
+    </div>
+
+    <div class="container">
+        <div id="alertContainer"></div>
+
+        <!-- Loading Overlay -->
+        <div id="loadingOverlay" style="display: flex; justify-content: center; align-items: center; padding: 100px 0;">
+            <div style="text-align: center;">
+                <div class="spinner" style="width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #1a1a1a; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+                <p style="color: #666; font-size: 14px;">Yükleniyor...</p>
+            </div>
+        </div>
+
+        <div class="tabs" style="display: none;">
+            <div class="tab active" data-tab="settings">Ayarlar</div>
+            <div class="tab" data-tab="staff">İlgili Personel</div>
+            <div class="tab" data-tab="shifts">Vardiyalar</div>
+            <div class="tab" data-tab="appointments">Randevular</div>
+        </div>
+
+        <!-- AYARLAR -->
+        <div id="settings" class="tab-content active">
+            <div class="card">
+                <div class="card-title">Randevu Ayarları</div>
+                <div class="input-group">
+                    <label for="interval">Randevu Süresi</label>
+                    <select id="interval">
+                        <option value="30">30 Dakika</option>
+                        <option value="60" selected>60 Dakika</option>
+                        <option value="90">90 Dakika</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label for="maxDaily">Günlük Max Teslim Randevusu</label>
+                    <input type="number" id="maxDaily" value="4" min="1">
+                </div>
+                <button class="btn" id="saveSettingsBtn">Kaydet</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Genel Randevu Linki</div>
+                <div class="input-group">
+                    <label for="customerLink">Genel Müşteri Sayfası</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="customerLink" readonly style="background: #FAFAFA; flex: 1;">
+                        <button class="btn btn-small btn-secondary" id="copyLinkBtn">Kopyala</button>
+                        <button class="btn btn-small" id="openCustomerBtn">Aç</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Manuel Randevu Oluşturma</div>
+                <div class="input-group">
+                    <label for="manualLink">Yönetim Randevu Sayfası</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="manualLink" readonly style="background: #FAFAFA; flex: 1;">
+                        <button class="btn btn-small btn-secondary" id="copyManualLinkBtn">Kopyala</button>
+                        <button class="btn btn-small" id="openManualBtn">Aç</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">VIP Yönetim Linkleri</div>
+                <div class="link-grid">
+                    <div class="link-card">
+                        <div class="link-card-header">Haluk Külahçıoğlu</div>
+                        <div class="link-card-body">
+                            <input type="text" id="management1Link" readonly class="link-input">
+                            <div class="link-actions">
+                                <button class="btn btn-small btn-secondary" id="copyManagement1Btn">Kopyala</button>
+                                <button class="btn btn-small" id="openManagement1Btn">Aç</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="link-card">
+                        <div class="link-card-header">Onur Külahçıoğlu</div>
+                        <div class="link-card-body">
+                            <input type="text" id="management2Link" readonly class="link-input">
+                            <div class="link-actions">
+                                <button class="btn btn-small btn-secondary" id="copyManagement2Btn">Kopyala</button>
+                                <button class="btn btn-small" id="openManagement2Btn">Aç</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="link-card">
+                        <div class="link-card-header">H. Murat Külahçıoğlu</div>
+                        <div class="link-card-body">
+                            <input type="text" id="management3Link" readonly class="link-input">
+                            <div class="link-actions">
+                                <button class="btn btn-small btn-secondary" id="copyManagement3Btn">Kopyala</button>
+                                <button class="btn btn-small" id="openManagement3Btn">Aç</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-title">İlgili Personel Özel Linkleri</div>
+                <div id="staffLinks" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+
+        <!-- İLGİLİ PERSONEL -->
+        <div id="staff" class="tab-content">
+            <div class="card">
+                <div class="card-title">Yeni Personel</div>
+                <div class="input-group">
+                    <label for="newStaffName">İsim</label>
+                    <input type="text" id="newStaffName" placeholder="Ahmet Yılmaz">
+                </div>
+                <div class="input-group">
+                    <label for="newStaffPhone">Telefon</label>
+                    <input type="tel" id="newStaffPhone" placeholder="0555 123 4567">
+                </div>
+                <div class="input-group">
+                    <label for="newStaffEmail">E-posta</label>
+                    <input type="email" id="newStaffEmail" placeholder="ahmet@example.com">
+                </div>
+                <button class="btn" id="addStaffBtn">Ekle</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">İlgili Personel (<span id="staffCount">0</span>)</div>
+                <div class="staff-list" id="staffList"></div>
+            </div>
+        </div>
+
+        <!-- VARDİYALAR -->
+        <div id="shifts" class="tab-content">
+            <div class="card">
+                <div class="card-title">Vardiya Planlama</div>
+                <div class="input-group">
+                    <label for="weekDate">Hafta Seç (Pazartesi başlangıç)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="week" id="weekDate" style="flex: 1;">
+                        <button class="btn btn-secondary btn-small" id="nextWeekBtn">Sonraki</button>
+                    </div>
+                </div>
+                <div id="shiftTable"></div>
+                <button class="btn" id="saveShiftsBtn" style="margin-top: 20px;">Kaydet</button>
+            </div>
+
+            <div class="card">
+                <div class="card-title">Kayıtlı Planlar</div>
+                <div id="savedShifts"></div>
+            </div>
+        </div>
+
+        <!-- RANDEVULAR -->
+        <div id="appointments" class="tab-content">
+
+            <!-- WhatsApp Business API Ayarları -->
+            <div class="card">
+                <div class="card-title">WhatsApp Business API Ayarları</div>
+                <div id="whatsappApiStatus" style="margin-bottom: 15px;"></div>
+                <div class="input-group">
+                    <label for="whatsappPhoneNumberId">Phone Number ID</label>
+                    <input type="text" id="whatsappPhoneNumberId" placeholder="123456789012345">
+                </div>
+                <form autocomplete="off" onsubmit="return false;">
+                    <input type="text" name="username" autocomplete="username" style="display:none" aria-hidden="true">
+                    <div class="input-group">
+                        <label for="whatsappAccessToken">Access Token (Permanent)</label>
+                        <input type="password" id="whatsappAccessToken" placeholder="EAAxxxxxxxxxxxxx" autocomplete="new-password">
+                    </div>
+                </form>
+                <button class="btn" id="saveWhatsAppSettingsBtn">Ayarları Kaydet</button>
+            </div>
+
+            <!-- Slack Webhook Ayarları -->
+            <div class="card">
+                <div class="card-title">Slack Webhook Ayarları</div>
+                <div id="slackStatus" style="margin-bottom: 15px;"></div>
+                <div class="input-group">
+                    <label for="slackWebhookUrl">Slack Webhook URL</label>
+                    <input type="text" id="slackWebhookUrl" placeholder="https://hooks.slack.com/services/...">
+                </div>
+                <button class="btn" id="saveSlackSettingsBtn">Ayarları Kaydet</button>
+            </div>
+
+            <!-- Randevu Listesi -->
+            <div class="card">
+                <div class="card-title">Randevular</div>
+                <div class="input-group">
+                    <label for="filterWeek">Hafta Seç</label>
+                    <input type="week" id="filterWeek" style="flex: 1;">
+                </div>
+                <div id="appointmentsList"></div>
+            </div>
+        </div>
+
+        <!-- Personel Düzenleme Modal -->
+        <div id="editStaffModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">Personel Düzenle</div>
+                <div class="input-group">
+                    <label for="editStaffName">İsim</label>
+                    <input type="text" id="editStaffName">
+                </div>
+                <div class="input-group">
+                    <label for="editStaffPhone">Telefon</label>
+                    <input type="tel" id="editStaffPhone">
+                </div>
+                <div class="input-group">
+                    <label for="editStaffEmail">E-posta</label>
+                    <input type="email" id="editStaffEmail">
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelEditStaffBtn">İptal</button>
+                    <button class="btn" id="saveEditStaffBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Randevu Düzenleme Modal -->
+    <div id="editAppointmentModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-body">
+                <h3 style="margin-bottom: 20px;">Randevu Düzenle</h3>
+
+                <!-- Tarih Seçimi -->
+                <div class="input-group">
+                    <label for="editAppointmentDate">Tarih</label>
+                    <input type="date" id="editAppointmentDate">
+                </div>
+
+                <!-- Saat Seçimi -->
+                <div class="input-group">
+                    <label for="editAppointmentTime">Saat</label>
+                    <select id="editAppointmentTime">
+                        <option value="">-- Seçin --</option>
+                        <option value="11:00">11:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="13:00">13:00</option>
+                        <option value="14:00">14:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="16:00">16:00</option>
+                        <option value="17:00">17:00</option>
+                        <option value="18:00">18:00</option>
+                        <option value="19:00">19:00</option>
+                        <option value="20:00">20:00</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelEditAppointmentBtn">İptal</button>
+                    <button class="btn" id="saveEditAppointmentBtn" disabled>Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- İlgili Personel Atama Modal -->
+    <div id="assignStaffModal" class="modal">
+        <div class="modal-overlay"></div>
+        <div class="modal-content">
+            <div class="modal-body">
+                <h3 style="margin-bottom: 20px;">İlgili Personel Ata</h3>
+                <div id="assignStaffInfo" style="margin-bottom: 20px; padding: 12px; background: #FAFAFA; border-radius: 2px;">
+                    <!-- Randevu bilgileri buraya dinamik olarak eklenecek -->
+                </div>
+                <div class="input-group">
+                    <label for="assignStaffSelect">Personel Seçin</label>
+                    <select id="assignStaffSelect">
+                        <option value="">-- Seçin --</option>
+                        <!-- Personel listesi dinamik olarak eklenecek -->
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" id="cancelAssignStaffBtn">İptal</button>
+                    <button class="btn" id="saveAssignStaffBtn">Ata</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Date Utility Functions -->
+    <!-- Güvenlik Helper Fonksiyonları -->
+    <!-- API Service -->
+    <!-- Admin Authentication -->
+
+</body>
+</html>
