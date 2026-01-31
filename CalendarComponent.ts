@@ -329,7 +329,7 @@ export async function loadMonthData(): Promise<void> {
     const specificStaffId = state.get('specificStaffId');
     const startDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
     const endDate = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-    const monthStr = currentMonth.toISOString().slice(0, 7); // YYYY-MM
+    const monthStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM (local timezone)
 
     // ⚡ UX: Show loading overlay immediately (before any checks)
     showCalendarLoading();
@@ -378,6 +378,7 @@ export async function loadMonthData(): Promise<void> {
 
     try {
         // Load shifts and appointments in parallel
+        console.error('[DEBUG] loadMonthData: starting API calls, month:', monthStr, 'staff:', specificStaffId);
         const [shiftsResult, appointmentsResult, calendarResult] = await Promise.all([
             apiCall('getMonthShifts', { month: monthStr }),
             apiCall('getMonthAppointments', { month: monthStr }),
@@ -387,6 +388,12 @@ export async function loadMonthData(): Promise<void> {
                 staffId: specificStaffId || 'all'
             })
         ]);
+
+        console.error('[DEBUG] loadMonthData: API results', {
+            shifts: shiftsResult.success ? Object.keys(shiftsResult.data || {}).length : 'FAIL',
+            appointments: appointmentsResult.success,
+            calendar: calendarResult.success
+        });
 
         if (shiftsResult.success) {
             state.set('dayShifts', (shiftsResult.data || {}) as Record<string, Shift>);
@@ -421,6 +428,7 @@ export async function loadMonthData(): Promise<void> {
         hideCalendarLoading(); // Remove overlay
         hideAlert();
     } catch (error) {
+        console.error('[DEBUG] loadMonthData CATCH ERROR:', error);
         log.error('Data loading error:', error);
         logError(error, { context: 'loadAllData' });
         // Show error in alert instead of replacing entire page

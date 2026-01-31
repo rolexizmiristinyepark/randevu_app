@@ -62,7 +62,14 @@ const _log = {
 // State is initialized in StateManager.ts with default values
 
 // Initialize state with URL parameters and other startup values
-state.set('currentMonth', new Date());
+// If today is the last day of the month, start calendar on next month
+const _today = new Date();
+const _lastDay = new Date(_today.getFullYear(), _today.getMonth() + 1, 0).getDate();
+if (_today.getDate() === _lastDay) {
+    state.set('currentMonth', new Date(_today.getFullYear(), _today.getMonth() + 1, 1));
+} else {
+    state.set('currentMonth', new Date());
+}
 
 // Export state to window for backward compatibility (calendar-integration.js)
 if (typeof window !== 'undefined') {

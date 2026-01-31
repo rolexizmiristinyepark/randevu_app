@@ -26,8 +26,8 @@ export default defineConfig(({ mode }) => {
 
     // TypeScript compilation with esbuild
     esbuild: {
-      drop: mode === 'production' ? ['console', 'debugger'] : [],
-      pure: mode === 'production' ? ['console.log', 'console.info', 'console.debug', 'console.warn'] : []
+      drop: mode === 'production' ? ['debugger'] : [],
+      pure: mode === 'production' ? ['console.log', 'console.info', 'console.debug'] : []
     },
 
     // Multi-page app configuration
@@ -85,9 +85,9 @@ export default defineConfig(({ mode }) => {
       minify: 'terser',
       terserOptions: {
         compress: {
-          drop_console: mode === 'production',
+          drop_console: false,
           drop_debugger: true,
-          pure_funcs: mode === 'production' ? ['console.log', 'console.info', 'console.debug'] : [],
+          pure_funcs: mode === 'production' ? ['console.log', 'console.info', 'console.debug', 'console.warn'] : [],
           passes: 2,
           unsafe_arrows: true,
           unsafe_methods: true
