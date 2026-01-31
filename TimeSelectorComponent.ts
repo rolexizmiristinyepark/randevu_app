@@ -295,9 +295,8 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
         if (kvkkContainer1) kvkkContainer1.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
         const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'block';
 
         // Keep staff section hidden
         hideSection('staffSection');
@@ -311,18 +310,16 @@ export function selectTimeSlot(timeStr: string, element: HTMLElement): void {
         if (kvkkContainer2) kvkkContainer2.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
         const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'block';
     } else {
         revealSection('detailsSection');
         const kvkkContainer3 = document.getElementById('kvkkContainer');
         if (kvkkContainer3) kvkkContainer3.style.display = 'block';
         const turnstileContainer = document.getElementById('turnstileContainer');
         if (turnstileContainer) turnstileContainer.style.display = 'block';
-        // Only show submit if Turnstile already verified
         const submitBtn = document.getElementById('submitBtn');
-        if (submitBtn && (window as any).turnstileVerified) submitBtn.style.display = 'block';
+        if (submitBtn) submitBtn.style.display = 'block';
     }
 }
 
