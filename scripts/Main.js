@@ -353,7 +353,6 @@ const ACTION_HANDLERS = {
         hasButton: e.parameter.hasButton === 'true' || e.parameter.hasButton === true,
         buttonVariable: e.parameter.buttonVariable || ''
       };
-      log.info('[createWhatsAppTemplate-handler] params:', JSON.stringify(params));
       return createWhatsAppTemplate(params);
     } catch (handlerError) {
       log.error('[createWhatsAppTemplate-handler] error:', handlerError);
@@ -361,11 +360,6 @@ const ACTION_HANDLERS = {
     }
   },
   'updateWhatsAppTemplate': (e) => {
-    // v3.10.20: Debug log - content parametresi gelip gelmediğini kontrol et
-    log.info('[updateWhatsAppTemplate-handler] e.parameter keys:', Object.keys(e.parameter || {}).join(', '));
-    log.info('[updateWhatsAppTemplate-handler] content value:', e.parameter.content);
-    log.info('[updateWhatsAppTemplate-handler] content type:', typeof e.parameter.content);
-
     const params = {
       id: e.parameter.id,
       name: e.parameter.name,
@@ -381,7 +375,6 @@ const ACTION_HANDLERS = {
       buttonVariable: e.parameter.buttonVariable || ''
     };
 
-    log.info('[updateWhatsAppTemplate-handler] params:', JSON.stringify(params));
     return updateWhatsAppTemplate(params);
   },
   'deleteWhatsAppTemplate': (e) => deleteWhatsAppTemplate({ id: e.parameter.id }),

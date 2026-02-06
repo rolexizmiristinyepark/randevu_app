@@ -1420,13 +1420,7 @@ function createAppointment(params) {
         const { startDate, endDate } = DateUtils.getDateRange(date);
         const allEventsToday = calendar.getEvents(startDate, endDate);
 
-        // 🔍 DEBUG: O günün tüm randevularını logla
-        log.info('DEBUG: All events today:', allEventsToday.map(e => ({
-          title: e.getTitle(),
-          start: e.getStartTime().toISOString(),
-          end: e.getEndTime().toISOString()
-        })));
-        log.info('DEBUG: New appointment:', { date, time, newStart, newEnd, durationNum });
+        log.debug('Slot check:', { date, time, eventsToday: allEventsToday.length, durationNum });
 
         // Çakışan randevuları filtrele (epoch-minute ile)
         const overlappingEvents = allEventsToday.filter(event => {
@@ -1434,17 +1428,12 @@ function createAppointment(params) {
           const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
 
           // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
-          const isOverlapping = DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
-          log.info('DEBUG: Overlap check:', {
-            eventTitle: event.getTitle(),
-            eventStart, eventEnd, newStart, newEnd, isOverlapping
-          });
-          return isOverlapping;
+          return DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
         });
 
         const overlappingCount = overlappingEvents.length;
 
-        log.info('DEBUG: Overlapping result:', { overlappingCount, maxSlotAppointment, willBlock: overlappingCount >= maxSlotAppointment });
+        log.debug('Overlap result:', { overlappingCount, maxSlotAppointment });
 
         // YÖNETİM RANDEVUSU EXCEPTION: Yönetim randevuları her zaman çakışabilir
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.MANAGEMENT) {
