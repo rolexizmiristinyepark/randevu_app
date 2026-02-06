@@ -207,13 +207,7 @@ declare global {
       companyLocation?: string;
     };
 
-    // Authentication
-    AdminAuth?: {
-      showLoginModal: () => void;
-      getSessionToken: () => string | null;
-      isAuthenticated: () => boolean;
-      logout: () => void;
-    };
+    // Authentication - types.ts'den kaldırıldı, admin-auth.ts'de tanımlı (v3.11)
 
     // UI Utilities
     UI?: {

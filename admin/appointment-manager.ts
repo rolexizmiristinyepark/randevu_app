@@ -8,6 +8,7 @@ import { DateUtils } from '../date-utils';
 import { TimeUtils } from '../time-utils';
 import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
+import { AdminAuth } from '../admin-auth';
 
 // Module-scoped variables
 let dataStore: DataStore;
@@ -172,7 +173,7 @@ async function deleteAppointment(eventId: string, button?: HTMLButtonElement): P
                 // 3 saniye sonra logout
                 setTimeout(() => {
                     if (confirm('Oturum süresi dolmuş. Çıkış yapılsın mı?')) {
-                        (window as any).AdminAuth?.logout();
+                        AdminAuth.logout();
                     }
                 }, 500);
             } else {

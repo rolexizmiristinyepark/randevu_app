@@ -450,22 +450,29 @@ const AdminAuth = {
 
     // İnaktivite takibini başlat
     _startActivityTracking(): void {
+        // Throttle: Her event'te değil, en fazla 30 saniyede 1 kez session yenile
+        let lastRefresh = Date.now();
         this._activityHandler = () => {
             this._lastActivityTime = Date.now();
-            this._refreshSession();
+            const now = Date.now();
+            if (now - lastRefresh > 30_000) {
+                lastRefresh = now;
+                this._refreshSession();
+            }
         };
 
-        document.addEventListener('mousemove', this._activityHandler);
-        document.addEventListener('keypress', this._activityHandler);
-        document.addEventListener('click', this._activityHandler);
-        document.addEventListener('scroll', this._activityHandler);
-        document.addEventListener('touchstart', this._activityHandler);
+        document.addEventListener('mousemove', this._activityHandler, { passive: true });
+        document.addEventListener('keypress', this._activityHandler, { passive: true });
+        document.addEventListener('click', this._activityHandler, { passive: true });
+        document.addEventListener('scroll', this._activityHandler, { passive: true });
+        document.addEventListener('touchstart', this._activityHandler, { passive: true });
 
         // Her 60 saniyede bir kontrol et
         this._activityCheckInterval = setInterval(() => {
             const elapsed = Date.now() - this._lastActivityTime;
             if (elapsed > this.INACTIVITY_TIMEOUT) {
-                alert('⏰ 10 dakika boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.');
+                const hours = Math.floor(SESSION_DURATION / (60 * 60 * 1000));
+                alert(`⏰ ${hours} saat boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.`);
                 this.logout();
             }
         }, 60 * 1000);
@@ -513,7 +520,14 @@ declare global {
     }
 }
 
-// Also expose globally for backward compatibility
+// SECURITY: Object.defineProperty ile tamper-resistant global (v3.11)
+// XSS saldırganının AdminAuth objesini override etmesini önler
+// writable:false + configurable:false = değiştirilemez
 if (typeof window !== 'undefined') {
-    window.AdminAuth = AdminAuth;
+    Object.defineProperty(window, 'AdminAuth', {
+        value: AdminAuth,
+        writable: false,
+        configurable: false,
+        enumerable: true
+    });
 }

@@ -4,6 +4,7 @@
  */
 
 import type { DataStore, StaffMember } from './data-store';
+import { AdminAuth } from '../admin-auth';
 
 //#region Types
 export interface PermissionConfig {
@@ -65,7 +66,7 @@ export async function initPermissionManager(store: DataStore): Promise<void> {
     dataStore = store;
 
     // Get current user from session
-    const authResult = window.AdminAuth?.isAuthenticated();
+    const authResult = AdminAuth.isAuthenticated();
     if (authResult && typeof authResult === 'object' && authResult.id) {
         const staff = dataStore.staff.find(s => s.id === authResult.id);
         currentUser = staff || null;

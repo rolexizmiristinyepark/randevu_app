@@ -20,6 +20,7 @@ import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
+import { AdminAuth } from './admin-auth';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -174,20 +175,13 @@ function initAdmin(): void {
         window.__monitoringInitialized = true;
     }
 
-    // Check if AdminAuth module is loaded
-    if (typeof window.AdminAuth === 'undefined') {
-        // Module not loaded yet, wait a bit and try again
-        setTimeout(initAdmin, 50);
-        return;
-    }
-
-    // Authentication kontrolü
-    if (!window.AdminAuth.isAuthenticated()) {
+    // Authentication kontrolü (ES6 import - window global'e bağımlı değil)
+    if (!AdminAuth.isAuthenticated()) {
         // Loading overlay'i gizle (login modal görünsün)
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
 
-        window.AdminAuth.showLoginModal();
+        AdminAuth.showLoginModal();
         return;
     }
 
@@ -201,10 +195,10 @@ function initAdmin(): void {
 async function startApp(): Promise<void> {
     try {
         // Add logout button
-        window.AdminAuth.addLogoutButton();
+        AdminAuth.addLogoutButton();
 
-        // Start inactivity tracking (15 min timeout)
-        window.AdminAuth._startActivityTracking();
+        // Start inactivity tracking
+        AdminAuth._startActivityTracking();
 
         // Initialize data store
         const dataStore = initDataStore();
