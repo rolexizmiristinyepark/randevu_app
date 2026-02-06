@@ -504,6 +504,7 @@ const DataRetentionService = {
         event.setDescription('[KVKK - Anonimleştirildi]\nTarih: ' + new Date().toISOString());
         
         // Tüm PII tag'leri temizle
+        event.setTag('customerName', '[Anonimleştirildi]');
         event.setTag('customerPhone', '[Anonimleştirildi]');
         event.setTag('customerEmail', '[Anonimleştirildi]');
         event.setTag('customerNote', '');

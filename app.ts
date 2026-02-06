@@ -26,17 +26,11 @@ import EventListenerManager from './event-listener-manager';
 import { initProfileFromURL, applyProfileUI, showInvalidIdError } from './ProfileResolver';
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
-// ⭐ NEW: Config loaded dynamically from backend API
+// ⭐ Config loaded inside DOMContentLoaded to prevent race conditions
 // - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded
 // - Business config (shifts, hours, limits): Fetched from API
 // - Cache: localStorage with 1-hour TTL
 // - Fallback: Default values if API fails
-
-// Initialize config asynchronously
-(async () => {
-    const config = await initConfig();
-    (window as any).CONFIG = config;
-})();
 
 // ==================== UTILITY FONKSİYONLARI ====================
 
@@ -90,14 +84,15 @@ if (typeof window !== 'undefined') {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // Initialize config FIRST (prevents race condition with IIFE)
+    const config = await initConfig();
+    (window as any).CONFIG = config;
+
     // Initialize monitoring (Sentry + Web Vitals)
     initMonitoring();
 
     // Cache senkronizasyonu
     await checkAndInvalidateCache();
-
-    // ⚠️ Config is loaded via initConfig() IIFE (line 22) - no need to load here
-    // CONFIG available globally via window.CONFIG after async initialization
 
     // ==================== TURNSTILE WIDGET INIT ====================
     // Turnstile widget'ı index.html'deki inline script ile render ediliyor

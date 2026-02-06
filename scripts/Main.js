@@ -560,6 +560,9 @@ const ACTION_HANDLERS = {
   // Unified Notification Flows (v3.10)
   'getUnifiedFlows': () => getNotificationFlows(),
 
+  // KVKK Unutulma Hakkı (Right to be Forgotten)
+  'requestDataDeletion': (e) => KVKKRightsService.forgetCustomer(e.parameter.phone),
+
   // Debug logları okuma
   'getDebugLogs': (e) => getDebugLogs(parseInt(e.parameter.limit) || 50),
 

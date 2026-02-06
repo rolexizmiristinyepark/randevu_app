@@ -32,16 +32,10 @@ declare global {
 
 //#region Configuration
 // CONFIG - SINGLE SOURCE OF TRUTH
-// Config loaded dynamically from backend API
+// Config loaded inside initAdmin() to prevent race conditions
 // - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded in config-loader
 // - Business config (shifts, hours, limits): Fetched from API
 // - Cache: localStorage with 1-hour TTL
-
-// Initialize config asynchronously
-(async () => {
-    const config = await initConfig();
-    (window as any).CONFIG = config;
-})();
 //#endregion
 
 //#region UI Utilities
@@ -168,7 +162,11 @@ const copyManagement3Link = () => copyLinkById('management3Link', 'Yönetim-3 li
 /**
  * Initialize admin panel
  */
-function initAdmin(): void {
+async function initAdmin(): Promise<void> {
+    // Initialize config FIRST (prevents race condition with IIFE)
+    const config = await initConfig();
+    (window as any).CONFIG = config;
+
     // Initialize monitoring (Sentry + Web Vitals) - only once
     if (!window.__monitoringInitialized) {
         initMonitoring();
@@ -206,19 +204,23 @@ async function startApp(): Promise<void> {
         // Load profile settings first (needed for appointment manager)
         await dataStore.loadProfilAyarlari();
 
-        // Initialize all manager modules
-        await initStaffManager(dataStore);
-        await initShiftManager(dataStore);
-        await initAppointmentManager(dataStore);
-        await initSettingsManager(dataStore);
-        await initWhatsAppManager(dataStore);
-        await initMailManager(dataStore);
-        await initUnifiedFlowManager(dataStore);
+        // Initialize all manager modules in parallel (performance optimization)
+        await Promise.all([
+            initStaffManager(dataStore),
+            initShiftManager(dataStore),
+            initSettingsManager(dataStore),
+        ]);
 
-        // Initialize permission manager (applies role-based access control)
+        // Second wave: depends on staff/settings being loaded
+        await Promise.all([
+            initAppointmentManager(dataStore),
+            initWhatsAppManager(dataStore),
+            initMailManager(dataStore),
+            initUnifiedFlowManager(dataStore),
+        ]);
+
+        // Permission & profile: depends on all managers being ready
         await initPermissionManager(dataStore);
-
-        // Initialize profile settings manager
         await initProfileSettingsManager();
 
         // Setup tabs
