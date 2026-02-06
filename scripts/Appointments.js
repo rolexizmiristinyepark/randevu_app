@@ -1343,6 +1343,11 @@ function createAppointment(params) {
       profil, assignByAdmin, isVipLink, linkType
     } = params;
 
+    // ===== STEP 0: KVKK CONSENT CHECK =====
+    if (params.kvkkConsent !== true && params.kvkkConsent !== 'true') {
+      return { success: false, error: 'KVKK onayı gereklidir' };
+    }
+
     // ===== STEP 1: SECURITY CHECKS =====
     const securityResult = _validateSecurity(params);
     if (!securityResult.success) {

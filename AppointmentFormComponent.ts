@@ -184,7 +184,7 @@ async function handleFormSubmit(): Promise<void> {
             assignByAdmin: assignByAdmin,  // v3.9: Admin atama flag
             linkedStaffId: linkedStaffId,  // v3.9.17: URL'deki ID (link sahibi)
             linkedStaffName: linkedStaffName,  // v3.9.17: Link sahibinin adı
-            kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
+            kvkkConsent: kvkkConsent.checked  // KVKK onayı (checkbox değeri)
         });
 
         if (result.success) {

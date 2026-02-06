@@ -135,9 +135,14 @@ window.UI = UI;
 function copyLinkById(inputId: string, successMessage: string): void {
     const linkInput = document.getElementById(inputId) as HTMLInputElement;
     if (linkInput) {
-        linkInput.select();
-        document.execCommand('copy');
-        UI.showAlert(successMessage, 'success');
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            UI.showAlert(successMessage, 'success');
+        }).catch(() => {
+            // Fallback for older browsers
+            linkInput.select();
+            try { document.execCommand('copy'); } catch (_) { /* noop */ }
+            UI.showAlert(successMessage, 'success');
+        });
     }
 }
 
