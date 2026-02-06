@@ -8,105 +8,148 @@
 ## 1. GÜVENLİK BULGULARI
 
 ### 1.1 KRITIK - API Key / Token Sızıntısı (api-service.ts)
-- **Satır 236-238:** `console.log` ile request body (API key dahil) loglanıyor
-- **Satır 253-255:** GET isteklerinde apiKey varlığı loglanıyor
-- **Çözüm:** Tüm debug log'ları kaldır
+- **Durum:** ✅ DÜZELTİLDİ (commit 222bc4c)
+- Debug loglar kaldırıldı, API key artık loglanmıyor
 
 ### 1.2 KRITIK - Stack Trace Sızıntısı (Main.js)
-- **Satır 917-919:** `DEBUG` modu açıkken hata detayları ve stack trace client'a gönderiliyor
-- **Çözüm:** Production'da kesinlikle generic hata mesajı döndür
+- **Durum:** ✅ DÜZELTİLDİ (commit 54d0f14)
+- Error ID sistemi eklendi, stack trace client'a gönderilmiyor
 
 ### 1.3 ORTA - Session Token Bilgi Sızıntısı (Auth.js)
-- **Satır 245-247, 431, 450:** Token prefix'leri debug loglara yazılıyor
-- **Çözüm:** Token bilgisi loglardan kaldır
+- **Durum:** ✅ DÜZELTİLDİ (commit 54d0f14)
+- Token prefix'leri loglardan kaldırıldı
 
-### 1.4 ORTA - Global Window Atamaları (security-helpers.ts, api-service.ts)
-- **security-helpers.ts:557-580:** Güvenlik fonksiyonları window'a atanıyor
-- **api-service.ts:364-368:** ApiService window'a atanıyor
-- **Risk:** Saldırgan bu fonksiyonları override edebilir
-- **Çözüm:** Module import kullanılan yerlerde global atamalar kaldır
+### 1.4 ORTA - Global Window Atamaları (admin-auth.ts)
+- **Durum:** ✅ DÜZELTİLDİ (commit 9f3386d)
+- `Object.defineProperty` ile tamper-resistant + ES6 import migration
 
 ### 1.5 DÜŞÜK - Build Loglarında Env Sızıntısı (vite.config.js)
-- **Satır 11-15:** APPS_SCRIPT_URL CI loglarında görünebilir
-- **Çözüm:** URL'yi kısalt veya tamamen kaldır
+- **Durum:** ✅ DÜZELTİLDİ (commit 222bc4c)
+- URL kısaltıldı
 
 ### 1.6 DÜŞÜK - Statik Salt Açığa Çıkması (admin-auth.ts)
-- **Satır 43:** `RLX_ADMIN_2024_SECURE_V3` client kodunda
-- **Risk:** Düşük (salt tek başına yeterli değil)
+- **Risk:** Düşük (salt tek başına yeterli değil, session mekanizması güçlü)
 
 ---
 
 ## 2. PERFORMANS BULGULARI
 
-### 2.1 Activity Handler Throttle Eksikliği (admin-auth.ts)
-- **Satır 453-459:** mousemove, keypress, click, scroll, touchstart dinleniyor
-- **Sorun:** Her mouse hareketi session refresh tetikliyor
-- **Çözüm:** Throttle ile 30 saniyede 1 kez yenile
+### 2.1 Activity Handler Throttle (admin-auth.ts)
+- **Durum:** ✅ DÜZELTİLDİ (commit 9f3386d)
+- 30 saniyelik throttle + passive listener eklendi
 
-### 2.2 Terser + esbuild Duplikasyonu (vite.config.js)
-- **Satır 28-31 ve 86-100:** Hem esbuild hem terser aynı işi yapıyor
-- **Çözüm:** Birini kaldır (esbuild daha hızlı)
+### 2.2 Config IIFE Race Condition (app.ts, admin-panel.ts)
+- **Durum:** ✅ DÜZELTİLDİ (commit 07f0693)
+- initConfig() DOMContentLoaded içine taşındı
 
-### 2.3 Eksik Bağımlılık - zod (package.json)
-- `validation.ts` zod kullanıyor ama package.json'da tanımlı değil
-- **Çözüm:** `npm install zod` ile ekle
+### 2.3 Sequential Manager Init (admin-panel.ts)
+- **Durum:** ✅ DÜZELTİLDİ (commit 07f0693)
+- 7 sequential await → 2 parallel wave (Promise.all)
+
+### 2.4 crypto-js Bundle Size (~200KB)
+- **Durum:** ⬜ AÇIK
+- `crypto-js` tüm modülü import ediliyor
+- **Önerilen Çözüm:** Web Crypto API'ye geçiş veya spesifik import
+
+### 2.5 intl-tel-input Eager Loading (~240KB)
+- **Durum:** ⬜ AÇIK
+- Form gösterilmeden yükleniyor
+- **Önerilen Çözüm:** Lazy import ile form gösterildiğinde yükle
+
+### 2.6 Zod v4 Bundle Size (~60KB)
+- **Durum:** ⬜ AÇIK - Production'da gerekli mi değerlendirilmeli
 
 ---
 
 ## 3. KOD KALİTESİ BULGULARI
 
-### 3.1 SESSION_DURATION Uyumsuzluğu (admin-auth.ts)
-- **Satır 19:** `SESSION_DURATION = 24 saat`
-- **Satır 468:** Alert mesajı "10 dakika" diyor
-- **Çözüm:** Alert mesajını güncelle
+### 3.1 SESSION_DURATION Uyumsuzluğu
+- **Durum:** ✅ DÜZELTİLDİ (commit 9f3386d)
+- Alert mesajı dinamik saat değeri kullanıyor
 
-### 3.2 ApiAction Type Sorunu (api-service.ts)
-- **Satır 78:** `type ApiAction = ProtectedAction | string` - string union ProtectedAction'ı etkisiz kılıyor
+### 3.2 ApiAction Type Safety
+- **Durum:** ✅ DÜZELTİLDİ (commit 5b5e72d)
+- `PublicAction` union type eklendi, `string` kaldırıldı
 
-### 3.3 Gereksiz Yorumlar (Auth.js)
-- **Satır 754:** "Force push" yorumu temizlenmeli
+### 3.3 Zod Bağımlılık Eksikliği
+- **Durum:** ✅ DÜZELTİLDİ (commit 5b5e72d)
+- `npm install zod --save`
 
-### 3.4 Backward Compat Alias (security-helpers.ts)
-- **Satır 543:** `createSafeFragment` alias'ı gereksiz
+### 3.4 Deprecated document.execCommand('copy')
+- **Durum:** ✅ DÜZELTİLDİ (commit ad47a40)
+- `navigator.clipboard.writeText` API'ye geçildi
 
 ---
 
 ## 4. KVKK / GDPR BULGULARI
 
-### 4.1 KVKK Onay Checkbox Zorunluluk Kontrolü
-- index.html'de KVKK checkbox var ama submit'te zorunluluk kontrolü doğrulanmalı
-- AppointmentFormComponent.ts'de kontrol edilmeli
+### 4.1 KRITIK - requestDataDeletion Endpoint Eksik (Main.js)
+- **Durum:** ✅ DÜZELTİLDİ (commit 07f0693)
+- Frontend çağırıyor ama backend handler yoktu
+- `KVKKRightsService.forgetCustomer()` ACTION_HANDLERS'a eklendi
 
-### 4.2 Session Verilerinde PII
-- Auth.js session'da email, name saklanıyor (gerekli ama süresi kontrol edilmeli)
-- Session temizliği günlük çalışıyor (iyi)
+### 4.2 YÜKSEK - customerName Tag Anonimleştirilmemiyor (Storage.js)
+- **Durum:** ✅ DÜZELTİLDİ (commit 07f0693)
+- `DataRetentionService.cleanupOldAppointments()` → `customerName` tag eklendi
 
-### 4.3 Log'larda PII Kontrolü
-- SecurityService.maskEmail/maskPhone kullanılıyor (iyi)
-- Ancak bazı debug log'larda maskelenmemiş veri olabilir
+### 4.3 ORTA - KVKK Consent Hardcoded (AppointmentFormComponent.ts)
+- **Durum:** ✅ DÜZELTİLDİ (commit ad47a40)
+- Hardcoded `true` → gerçek checkbox değeri
 
-### 4.4 Veri Saklama Politikası
-- Session süresi: 24 saat (makul)
-- Cache süresi: 1 saat (makul)
-- Randevu verisi: Kalıcı (KVKK politikası gerekli)
+### 4.4 ORTA - Server-Side KVKK Consent Eksik (Appointments.js)
+- **Durum:** ✅ DÜZELTİLDİ (commit ad47a40)
+- `createAppointment()` → Step 0 KVKK consent check eklendi
+
+### 4.5 Google Calendar PII (Description)
+- **Durum:** ⬜ AÇIK
+- Calendar event description'da müşteri bilgileri açık metin
+
+### 4.6 Data Retention Trigger
+- **Durum:** ⬜ KONTROL GEREKLİ
+- `runDataRetention()` fonksiyonu var ama Apps Script trigger'ı kontrol edilmeli
 
 ---
 
-## 5. DÜZELTME SIRASI
+## 5. DÜZELTME DURUMU
 
-| # | Kategori | Dosya | Durum |
+| # | Kategori | Bulgu | Durum |
 |---|----------|-------|-------|
-| 1 | Güvenlik | api-service.ts - debug loglar | [ ] |
-| 2 | Güvenlik | Main.js - stack trace sızıntısı | [ ] |
-| 3 | Güvenlik | Auth.js - token loglama | [ ] |
-| 4 | Güvenlik | security-helpers.ts - global atamalar | [ ] |
-| 5 | Güvenlik | vite.config.js - env loglama | [ ] |
-| 6 | Performans | admin-auth.ts - activity throttle | [ ] |
-| 7 | Performans | vite.config.js - terser/esbuild | [ ] |
-| 8 | Bağımlılık | package.json - zod eksik | [ ] |
-| 9 | Kod Kalitesi | admin-auth.ts - session mesajı | [ ] |
-| 10 | Kod Kalitesi | Auth.js - force push yorumu | [ ] |
-| 11 | KVKK | Form KVKK zorunluluk kontrolü | [ ] |
+| 1 | Güvenlik | API key sızıntısı | ✅ |
+| 2 | Güvenlik | Stack trace sızıntısı | ✅ |
+| 3 | Güvenlik | Token loglama | ✅ |
+| 4 | Güvenlik | Global override | ✅ |
+| 5 | Güvenlik | Env loglama | ✅ |
+| 6 | Performans | Activity throttle | ✅ |
+| 7 | Performans | Config race condition | ✅ |
+| 8 | Performans | Sequential await | ✅ |
+| 9 | Performans | crypto-js bundle | ⬜ |
+| 10 | Performans | intl-tel-input lazy | ⬜ |
+| 11 | Kod Kalitesi | Session mesajı | ✅ |
+| 12 | Kod Kalitesi | ApiAction type | ✅ |
+| 13 | Kod Kalitesi | Zod bağımlılık | ✅ |
+| 14 | Kod Kalitesi | execCommand | ✅ |
+| 15 | KVKK | requestDataDeletion | ✅ |
+| 16 | KVKK | customerName anonimleştirme | ✅ |
+| 17 | KVKK | Consent hardcoded | ✅ |
+| 18 | KVKK | Server-side consent | ✅ |
+| 19 | KVKK | Calendar PII | ⬜ |
+| 20 | KVKK | Retention trigger | ⬜ |
+
+**Toplam: 16/20 düzeltildi**
+
+---
+
+## 6. COMMIT GEÇMİŞİ
+
+| Commit | Açıklama |
+|--------|----------|
+| 8757fef | audit: Güvenlik, performans, KVKK analiz belgesi oluştur |
+| 222bc4c | security: API key sızıntısı, global override ve env loglama düzelt |
+| 54d0f14 | security: Backend bilgi sızıntısı ve debug logları temizle |
+| 9f3386d | security: AdminAuth tamper-resistant global + ES6 import migration |
+| 5b5e72d | quality: Zod dependency ekle, ApiAction type safety düzelt |
+| 07f0693 | fix: KVKK requestDataDeletion + config race + parallel init |
+| ad47a40 | fix: KVKK consent server-side validation + deprecated execCommand |
 
 ---
 
