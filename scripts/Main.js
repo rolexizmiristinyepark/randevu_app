@@ -912,11 +912,12 @@ function doPost(e) {
       // Generic mesaj, detay sızdırma
       const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
       log.error(`[${errorId}] doPost handler error:`, handlerError);
+      // SECURITY: Stack trace ve hata detayları client'a gönderilmez
+      log.error(`[${errorId}] doPost handler error:`, handlerError.message, handlerError.stack);
       response = {
         success: false,
-        error: DEBUG ? `DEBUG: ${handlerError.message || handlerError.toString()}` : CONFIG.ERROR_MESSAGES.SERVER_ERROR,
-        errorId: errorId,
-        debugStack: DEBUG ? (handlerError.stack || '').substring(0, 500) : undefined
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId
       };
     }
 
@@ -929,12 +930,12 @@ function doPost(e) {
     // Generic mesaj, detay sızdırma
     const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
     log.error(`[${errorId}] doPost ana hata:`, mainError);
+    // SECURITY: Detaylı hata bilgisi yalnızca sunucu loglarında
     return ContentService
       .createTextOutput(JSON.stringify({
         success: false,
-        error: DEBUG ? `DEBUG MAIN: ${mainError.message || mainError.toString()}` : CONFIG.ERROR_MESSAGES.SERVER_ERROR,
-        errorId: errorId,
-        debugStack: DEBUG ? (mainError.stack || '').substring(0, 500) : undefined
+        error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
+        errorId: errorId
       }))
       .setMimeType(ContentService.MimeType.JSON);
   }

@@ -242,20 +242,12 @@ const SessionAuthService = {
       }
 
       var sessions = this.getSessions();
-      log.info('[SESSION-DEBUG] Token prefix: ' + (token ? token.substring(0, 8) : 'null'));
-      log.info('[SESSION-DEBUG] Available sessions count: ' + Object.keys(sessions).length);
-      log.info('[SESSION-DEBUG] Session keys: ' + Object.keys(sessions).map(k => k.substring(0, 8)).join(', '));
       var session = sessions[token];
 
       if (!session) {
         return {
           valid: false,
-          error: 'Gecersiz session - token bulunamadi',
-          debug: {
-            storedCount: Object.keys(sessions).length,
-            lookingFor: token ? token.substring(0, 8) : null,
-            storedPrefixes: Object.keys(sessions).map(function(k) { return k.substring(0, 8); })
-          }
+          error: 'Gecersiz session'
         };
       }
 
@@ -412,24 +404,16 @@ const SessionAuthService = {
   getSessions: function() {
     try {
       var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-      log.info('[SESSION-DEBUG] Spreadsheet ID: ' + CONFIG.SPREADSHEET_ID);
-
       var sheet = ss.getSheetByName('sessions');
-      log.info('[SESSION-DEBUG] Sheet found: ' + (sheet ? 'YES' : 'NO'));
 
       // Sheet yoksa olustur
       if (!sheet) {
-        log.info('[SESSION-DEBUG] Creating SESSIONS sheet');
         sheet = ss.insertSheet('sessions');
         sheet.getRange(1, 1, 1, 4).setValues([['TOKEN', 'DATA', 'EXPIRES_AT', 'CREATED_AT']]);
         return {};
       }
 
       var data = sheet.getDataRange().getValues();
-      log.info('[SESSION-DEBUG] Sheet data rows: ' + data.length);
-      if (data.length > 1) {
-        log.info('[SESSION-DEBUG] First data row: token=' + (data[1][0] ? String(data[1][0]).substring(0, 8) : 'empty') + ', expiresAt=' + data[1][2]);
-      }
       if (data.length <= 1) return {};
 
       var sessions = {};
@@ -447,12 +431,9 @@ const SessionAuthService = {
             var parsedData = typeof sessionData === 'string' ? JSON.parse(sessionData) : sessionData;
             sessions[token] = parsedData;
             sessions[token].expiresAt = expiresAt;
-            log.info('[SESSION-DEBUG] Loaded session for token: ' + token.substring(0, 8) + ', expiresAt: ' + expiresAt + ', now: ' + now);
           } catch (e) {
-            log.warn('[SESSION-DEBUG] Parse error for token: ' + (token ? token.substring(0, 8) : 'null') + ', error: ' + e.message);
+            log.warn('Session parse error');
           }
-        } else if (token) {
-          log.info('[SESSION-DEBUG] Skipping expired/invalid session: token=' + token.substring(0, 8) + ', expiresAt=' + expiresAt + ', now=' + now + ', isNaN=' + isNaN(expiresAt));
         }
       }
 
@@ -751,4 +732,3 @@ function showCurrentApiKey() {
   Logger.log('Current API Key: ' + key);
   return key;
 }
-// Force push 21 Ara 2025 Paz +03 01:23:48
