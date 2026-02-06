@@ -74,8 +74,37 @@ type ProtectedAction =
     | 'deleteUnifiedFlow'
     | 'testUnifiedFlow';
 
-/** API action type (protected + public) */
-type ApiAction = ProtectedAction | string;
+/** Public (unauthenticated) action types */
+type PublicAction =
+    | 'login'
+    | 'resetPassword'
+    | 'getStaff'
+    | 'getConfig'
+    | 'getDataVersion'
+    | 'getSlotAvailability'
+    | 'getDayStatus'
+    | 'getDailySlots'
+    | 'getMonthShifts'
+    | 'getMonthAppointments'
+    | 'getGoogleCalendarEvents'
+    | 'createAppointment'
+    | 'resolveUrl'
+    | 'resolveId'
+    | 'getProfilAyarlari'
+    | 'getAllProfilAyarlari'
+    | 'getWeekAppointments'
+    | 'updateAppointment'
+    | 'getWhatsAppFlows'
+    | 'getMessageVariables'
+    | 'getTriggers'
+    | 'getRecipients'
+    | 'getWhatsAppMessages'
+    | 'getUnifiedFlows'
+    | 'requestDataDeletion'
+    | 'getManagementSlotAvailability';
+
+/** API action type - tüm geçerli action'ların birleşimi */
+type ApiAction = ProtectedAction | PublicAction;
 
 const ApiService = {
     // List of actions that require API key authentication
@@ -348,7 +377,7 @@ function apiCallWithKey<T = unknown>(
 }
 
 // Export types and service
-export type { ApiResponse, ApiAction, ProtectedAction };
+export type { ApiResponse, ApiAction, ProtectedAction, PublicAction };
 export { ApiService, apiCall, apiCallWithKey };
 
 // SECURITY: Global window atamaları kaldırıldı (v3.11)

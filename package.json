@@ -61,6 +61,7 @@
   "private": true,
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "intl-tel-input": "^25.13.3"
+    "intl-tel-input": "^25.13.3",
+    "zod": "^4.3.6"
   }
 }
