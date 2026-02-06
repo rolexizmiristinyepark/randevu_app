@@ -540,7 +540,7 @@ export {
     showAlertSafe,
     renderListSafe,
     createFragmentFromTrustedHtml,
-    createFragmentFromTrustedHtml as createSafeFragment, // Alias for backward compatibility
+    createFragmentFromTrustedHtml as createSafeFragment,
     createLoadingElement,
     createTableRow,
     createSuccessPageSafe,
@@ -553,29 +553,6 @@ export {
 // Type exports
 export type { SanitizeOptions };
 
-// Also expose globally for backward compatibility
-if (typeof window !== 'undefined') {
-    // Input Sanitization
-    (window as any).sanitizeInput = sanitizeInput;
-    (window as any).sanitizePhone = sanitizePhone;
-    (window as any).sanitizeEmail = sanitizeEmail;
-    (window as any).sanitizeName = sanitizeName;
-    // Phone Formatting
-    (window as any).getFullPhone = getFullPhone;
-    (window as any).parsePhone = parsePhone;
-    (window as any).formatPhoneForDisplay = formatPhoneForDisplay;
-    // DOM Security
-    (window as any).escapeHtml = escapeHtml;
-    (window as any).createElement = createElement;
-    (window as any).showAlertSafe = showAlertSafe;
-    (window as any).renderListSafe = renderListSafe;
-    (window as any).createFragmentFromTrustedHtml = createFragmentFromTrustedHtml;
-    (window as any).createSafeFragment = createFragmentFromTrustedHtml; // Alias for backward compatibility
-    (window as any).createLoadingElement = createLoadingElement;
-    (window as any).createTableRow = createTableRow;
-    (window as any).createSuccessPageSafe = createSuccessPageSafe;
-    // PII Masking
-    (window as any).maskEmail = maskEmail;
-    (window as any).maskPhone = maskPhone;
-    (window as any).maskName = maskName;
-}
+// SECURITY: Global window atamaları kaldırıldı (v3.11)
+// Saldırganın güvenlik fonksiyonlarını override etmesini önlemek için
+// Tüm modüller ES6 import kullanmalıdır

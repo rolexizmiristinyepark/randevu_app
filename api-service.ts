@@ -232,11 +232,6 @@ const ApiService = {
                     ...params
                 };
 
-                // v3.10.20: Debug log
-                console.log('[ApiService] POST request:', action);
-                console.log('[ApiService] requestBody keys:', Object.keys(requestBody));
-                console.log('[ApiService] content in body:', (requestBody as any).content);
-
                 response = await fetch(appsScriptUrl, {
                     method: 'POST',
                     mode: 'cors',
@@ -250,10 +245,6 @@ const ApiService = {
                 });
             } else {
                 // ✅ GET - Public actions (API key yok)
-                // v3.10.20: Debug log
-                console.log('[ApiService] GET request (not POST!):', action);
-                console.log('[ApiService] isProtectedAction:', isProtectedAction, 'apiKey:', !!apiKey);
-
                 const queryParams = new URLSearchParams();
                 queryParams.append('action', action);
 
@@ -360,9 +351,5 @@ function apiCallWithKey<T = unknown>(
 export type { ApiResponse, ApiAction, ProtectedAction };
 export { ApiService, apiCall, apiCallWithKey };
 
-// Also expose globally for backward compatibility
-if (typeof window !== 'undefined') {
-    (window as any).ApiService = ApiService;
-    (window as any).apiCall = apiCall;
-    (window as any).apiCallWithKey = apiCallWithKey;
-}
+// SECURITY: Global window atamaları kaldırıldı (v3.11)
+// ES6 import kullanılmalıdır

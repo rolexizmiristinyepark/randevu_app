@@ -7,12 +7,13 @@ export default defineConfig(({ mode }) => {
   // CRITICAL: Load ALL env files (.env, .env.local, .env.[mode], .env.[mode].local)
   const env = loadEnv(mode, process.cwd(), '');
   
-  // ✅ DEBUG: Log loaded environment variables
-  console.log('🔧 Vite Build Configuration:');
-  console.log('   Mode:', mode);
-  console.log('   VITE_APPS_SCRIPT_URL:', env.VITE_APPS_SCRIPT_URL ? `✅ ${env.VITE_APPS_SCRIPT_URL.substring(0, 60)}...` : '❌ Missing');
-  console.log('   VITE_BASE_URL:', env.VITE_BASE_URL ? '✅ Loaded' : '❌ Missing');
-  console.log('   VITE_TURNSTILE_SITE_KEY:', env.VITE_TURNSTILE_SITE_KEY ? '✅ Loaded' : '❌ Missing');
+  // Environment variable varlık kontrolü (değerler loglanmaz)
+  console.log('Build mode:', mode);
+  console.log('Env vars:', {
+    APPS_SCRIPT_URL: env.VITE_APPS_SCRIPT_URL ? 'SET' : 'MISSING',
+    BASE_URL: env.VITE_BASE_URL ? 'SET' : 'MISSING',
+    TURNSTILE_SITE_KEY: env.VITE_TURNSTILE_SITE_KEY ? 'SET' : 'MISSING'
+  });
 
   // ✅ VALIDATION: Fail fast if required env vars are missing
   if (!env.VITE_APPS_SCRIPT_URL) {
@@ -25,10 +26,8 @@ export default defineConfig(({ mode }) => {
     base: '/randevu_app/',
 
     // TypeScript compilation with esbuild
-    esbuild: {
-      drop: mode === 'production' ? ['console', 'debugger'] : [],
-      pure: mode === 'production' ? ['console.log', 'console.info', 'console.debug', 'console.warn'] : []
-    },
+    // console/debugger drop terser'da yapılıyor, burada tekrar gerek yok
+    esbuild: {},
 
     // Multi-page app configuration
     build: {
