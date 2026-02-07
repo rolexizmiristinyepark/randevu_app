@@ -23,6 +23,7 @@ playwright/.cache/
 .env.production
 .env.development
 .env.*.local
+.env.migration
 
 # Configuration files with secrets
 config.local.js
@@ -63,3 +64,8 @@ scripts/apps-script-backend.js
 # Local analysis reports (keep local only)
 ANALIZ.md
 ANALIZ_*.md
+
+# ==================== MIGRATION ====================
+# Migration output files (contain sensitive data)
+migration-scripts/staff-id-mapping.json
+migration-scripts/migration-results.json
