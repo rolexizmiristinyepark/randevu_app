@@ -307,7 +307,7 @@ async function handleGetDataVersion(): Promise<Response> {
 
   return jsonResponse({
     success: true,
-    version: data?.value ?? 0,
+    data: String(data?.value ?? '0'),
   });
 }
 

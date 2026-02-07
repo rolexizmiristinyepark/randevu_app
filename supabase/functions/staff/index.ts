@@ -46,6 +46,8 @@ serve(async (req: Request) => {
         return await handleRegenerateLink(req, body);
       case 'saveShifts':
         return await handleSaveShifts(req, body);
+      case 'getMonthShifts':
+        return await handleGetMonthShifts(body);
 
       default:
         return errorResponse(`Bilinmeyen staff action: ${action}`);
@@ -416,4 +418,44 @@ async function handleSaveShifts(req: Request, body: EdgeFunctionBody): Promise<R
   }
 
   return jsonResponse({ success: true, message: 'Vardiyalar kaydedildi' });
+}
+
+/**
+ * Aylık vardiya verilerini getir
+ * GAS: ShiftService.getMonthShifts
+ * Format: { "2024-02-07": { "1": "morning", "2": "full" }, ... }
+ */
+async function handleGetMonthShifts(body: EdgeFunctionBody): Promise<Response> {
+  const month = String(body.month || ''); // YYYY-MM
+  if (!month || !/^\d{4}-\d{2}$/.test(month)) {
+    return errorResponse('month parametresi gerekli (YYYY-MM)');
+  }
+
+  const supabase = createServiceClient();
+  const startDate = `${month}-01`;
+  // Ay sonu: bir sonraki ayın 1'i
+  const [year, mon] = month.split('-').map(Number);
+  const endDate = new Date(year, mon, 0).toISOString().split('T')[0]; // Son gün
+
+  const { data, error } = await supabase
+    .from('shifts')
+    .select('date, staff_id, shift_type')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date');
+
+  if (error) {
+    console.error('getMonthShifts error:', error);
+    return errorResponse('Vardiyalar yüklenemedi: ' + error.message);
+  }
+
+  // Group by date -> staffId -> shiftType
+  const result: Record<string, Record<string, string>> = {};
+  for (const row of (data || [])) {
+    const dateStr = String(row.date);
+    if (!result[dateStr]) result[dateStr] = {};
+    result[dateStr][String(row.staff_id)] = String(row.shift_type);
+  }
+
+  return jsonResponse({ success: true, data: result });
 }
