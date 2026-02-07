@@ -71,8 +71,8 @@ async function handleResolveUrl(body: EdgeFunctionBody): Promise<Response> {
   if (['s', 'v'].includes(profileCode) && staffGasId) {
     const { data: staff } = await supabase
       .from('staff')
-      .select('id, gas_id, name, email, phone, role, is_admin, is_vip, active')
-      .eq('gas_id', staffGasId)
+      .select('id, personel_id, name, email, phone, role, is_admin, is_vip, active')
+      .eq('personel_id', staffGasId)
       .eq('active', true)
       .single();
 
@@ -87,7 +87,7 @@ async function handleResolveUrl(body: EdgeFunctionBody): Promise<Response> {
 
     result.staff = {
       id: String(staff.id),
-      gas_id: staff.gas_id || null,
+      personel_id: staff.personel_id || null,
       name: staff.name,
       role: staff.role,
     };
@@ -138,12 +138,12 @@ async function handleResolveId(body: EdgeFunctionBody): Promise<Response> {
 
   const supabase = createServiceClient();
 
-  // Önce gas_id ile ara, bulamazsa numeric id ile dene
+  // Önce personel_id ile ara, bulamazsa numeric id ile dene
   let staff = null;
   const { data: byGasId } = await supabase
     .from('staff')
-    .select('id, gas_id, name, active')
-    .eq('gas_id', id)
+    .select('id, personel_id, name, active')
+    .eq('personel_id', id)
     .single();
 
   if (byGasId) {
@@ -151,7 +151,7 @@ async function handleResolveId(body: EdgeFunctionBody): Promise<Response> {
   } else {
     const { data: byNumId } = await supabase
       .from('staff')
-      .select('id, gas_id, name, active')
+      .select('id, personel_id, name, active')
       .eq('id', Number(id) || 0)
       .single();
     staff = byNumId;

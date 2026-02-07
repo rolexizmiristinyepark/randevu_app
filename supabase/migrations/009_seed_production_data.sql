@@ -7,9 +7,9 @@
 BEGIN;
 
 -- =====================================================================
--- 1a. STAFF - gas_id kolonu ekle (GAS orijinal ID'leri, URL'lerde kullanılır)
+-- 1a. STAFF - personel_id kolonu ekle (GAS orijinal ID'leri, URL'lerde kullanılır)
 -- =====================================================================
-ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS gas_id TEXT UNIQUE;
+ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS personel_id TEXT UNIQUE;
 
 -- =====================================================================
 -- 1b. STAFF - Varol Uçan ekleme (diğer 10 personel zaten production DB'de)
@@ -24,16 +24,16 @@ SELECT setval('staff_id_seq', (SELECT MAX(id) FROM public.staff));
 -- =====================================================================
 -- 1c. STAFF - GAS ID'lerini ata (URL lookup için)
 -- =====================================================================
-UPDATE public.staff SET gas_id = '3s54b414' WHERE email = 'serdar.benli@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '5016e7a0' WHERE email = 'ece.argun@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '69059gt2' WHERE email = 'gokhan.tokol@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '18s073k3' WHERE email = 'sirma.karaarslan@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '56t3g148' WHERE email = 'gamze.tekin@kulahcioglu.com';
-UPDATE public.staff SET gas_id = 'u80o4071' WHERE email = 'okan.ustundag@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '3566h06k' WHERE email = 'haluk@kulahcioglu.com';
-UPDATE public.staff SET gas_id = 'k241728o' WHERE email = 'onur@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '340m3k77' WHERE email = 'murat@kulahcioglu.com';
-UPDATE public.staff SET gas_id = '82v34y96' WHERE email = 'istinye@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '3s54b414' WHERE email = 'serdar.benli@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '5016e7a0' WHERE email = 'ece.argun@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '69059gt2' WHERE email = 'gokhan.tokol@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '18s073k3' WHERE email = 'sirma.karaarslan@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '56t3g148' WHERE email = 'gamze.tekin@kulahcioglu.com';
+UPDATE public.staff SET personel_id = 'u80o4071' WHERE email = 'okan.ustundag@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '3566h06k' WHERE email = 'haluk@kulahcioglu.com';
+UPDATE public.staff SET personel_id = 'k241728o' WHERE email = 'onur@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '340m3k77' WHERE email = 'murat@kulahcioglu.com';
+UPDATE public.staff SET personel_id = '82v34y96' WHERE email = 'istinye@kulahcioglu.com';
 
 -- =====================================================================
 -- 2. SHIFTS - Vardiya verisi (Şubat 2026, GAS vardiya API'den)

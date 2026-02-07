@@ -42,7 +42,7 @@ export type StaffRole = 'sales' | 'management' | 'reception' | 'service';
 
 export interface Staff {
   id: string;
-  gas_id?: string;
+  personel_id?: string;
   name: string;
   phone: string;
   email?: string;

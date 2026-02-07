@@ -8,7 +8,7 @@ export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed' | 'no_sh
 
 export interface Staff {
   id: number;
-  gas_id?: string;
+  personel_id?: string;
   auth_user_id?: string;
   name: string;
   phone: string;
