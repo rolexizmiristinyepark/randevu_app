@@ -3,7 +3,10 @@
 // Session-based auth with 10 minute sliding expiration
 
 import { ApiService } from './api-service';
-import CryptoJS from 'crypto-js';
+// Specific submodule imports - sadece SHA256, AES ve Utf8 çekilir (~50KB vs ~200KB full import)
+import SHA256 from 'crypto-js/sha256';
+import AES from 'crypto-js/aes';
+import Utf8 from 'crypto-js/enc-utf8';
 
 // Session storage keys
 const SESSION_KEYS = {
@@ -56,7 +59,7 @@ const getEncryptionKey = (): string => {
     const keySource = staticSalt + '|' + sessionId;
 
     // SHA256 hash olustur ve ilk 32 karakteri al
-    const encryptionKey = CryptoJS.SHA256(keySource).toString().substring(0, 32);
+    const encryptionKey = SHA256(keySource).toString().substring(0, 32);
 
     // Cache'e kaydet - ayni tab icinde tekrar hesaplama yapilmasin
     sessionStorage.setItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE, encryptionKey);
@@ -67,15 +70,15 @@ const getEncryptionKey = (): string => {
 // Encrypt helper
 const encryptData = (data: string): string => {
     const key = getEncryptionKey();
-    return CryptoJS.AES.encrypt(data, key).toString();
+    return AES.encrypt(data, key).toString();
 };
 
 // Decrypt helper
 const decryptData = (encryptedData: string): string | null => {
     try {
         const key = getEncryptionKey();
-        const bytes = CryptoJS.AES.decrypt(encryptedData, key);
-        const decrypted = bytes.toString(CryptoJS.enc.Utf8);
+        const bytes = AES.decrypt(encryptedData, key);
+        const decrypted = bytes.toString(Utf8);
         return decrypted || null;
     } catch {
         return null;
