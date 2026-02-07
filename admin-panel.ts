@@ -180,8 +180,9 @@ async function initAdmin(): Promise<void> {
         window.__monitoringInitialized = true;
     }
 
-    // Authentication kontrolü (ES6 import - window global'e bağımlı değil)
-    if (!AdminAuth.isAuthenticated()) {
+    // Authentication kontrolü - önce Supabase session'ı localStorage'dan yükle
+    const authResult = await AdminAuth.initializeAuth();
+    if (!authResult) {
         // Loading overlay'i gizle (login modal görünsün)
         const loadingOverlay = document.getElementById('loadingOverlay');
         if (loadingOverlay) loadingOverlay.style.display = 'none';
