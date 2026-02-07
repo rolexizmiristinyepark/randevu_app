@@ -21,6 +21,7 @@ import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
 import { AdminAuth } from './admin-auth';
+import { apiCall } from './api-service';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -33,7 +34,7 @@ declare global {
 //#region Configuration
 // CONFIG - SINGLE SOURCE OF TRUTH
 // Config loaded inside initAdmin() to prevent race conditions
-// - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded in config-loader
+// - Environment variables (SUPABASE_URL, BASE_URL): Hardcoded in config-loader
 // - Business config (shifts, hours, limits): Fetched from API
 // - Cache: localStorage with 1-hour TTL
 //#endregion
@@ -631,8 +632,7 @@ function openStaffLink(type: string, id: string): void {
  */
 async function loadProfileLinks(): Promise<void> {
     try {
-        const response = await fetch((window as any).CONFIG.APPS_SCRIPT_URL + '?action=getStaff');
-        const result = await response.json();
+        const result = await apiCall('getStaff');
 
         // API returns { success: true, data: [...] }
         const staffList = result.data || result.staff || [];

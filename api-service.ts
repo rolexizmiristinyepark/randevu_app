@@ -1,7 +1,8 @@
 // ==================== API SERVICE ====================
-// Unified API call handler for both authenticated and unauthenticated requests
-// Eliminates code duplication between admin.html and admin-auth.js
+// Supabase Edge Function adapter - ApiService.call() arayuzu korunuyor
+// GAS -> Supabase gecisi: Tum 89+ action ayni sekilde calisir
 
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { Schemas, validateApiResponse } from './validation';
 
 /** Generic API response structure */
@@ -9,9 +10,15 @@ interface ApiResponse<T = unknown> {
     success: boolean;
     data?: T;
     error?: string;
+    // Login response fields
+    token?: string;
+    staff?: unknown;
+    expiresAt?: number;
+    // Other top-level fields from Edge Functions
+    [key: string]: unknown;
 }
 
-/** Protected action types */
+/** Protected action types - admin JWT gerektirir */
 type ProtectedAction =
     | 'addStaff'
     | 'toggleStaff'
@@ -42,14 +49,12 @@ type ProtectedAction =
     | 'getWhatsAppTemplates'
     | 'getAllLinks'
     | 'getWhatsAppVariableOptions'
-    // v3.5: Backend sync - yeni protected action'lar
     | 'createStaff'
     | 'updateStaffV3'
     | 'createBackup'
     | 'listBackups'
     | 'restoreBackup'
     | 'assignStaffToAppointment'
-    // v3.9.20: Mail Flow & Template CRUD
     | 'getMailFlows'
     | 'createMailFlow'
     | 'updateMailFlow'
@@ -58,21 +63,19 @@ type ProtectedAction =
     | 'createMailTemplate'
     | 'updateMailTemplate'
     | 'deleteMailTemplate'
-    // v3.9.35: Mail Info Card CRUD
     | 'getMailInfoCards'
     | 'createMailInfoCard'
     | 'updateMailInfoCard'
     | 'deleteMailInfoCard'
-    // v3.9.40: Sheet Migration
     | 'fixMailInfoCardsSheet'
-    // v3.9.47: Header Sync
     | 'syncMailSheetHeaders'
     | 'debugMailFlowsHeaders'
-    // v3.10: Unified Notification Flows
     | 'createUnifiedFlow'
     | 'updateUnifiedFlow'
     | 'deleteUnifiedFlow'
-    | 'testUnifiedFlow';
+    | 'testUnifiedFlow'
+    | 'updateProfilAyarlari'
+    | 'resetProfilAyarlari';
 
 /** Public (unauthenticated) action types */
 type PublicAction =
@@ -99,74 +102,203 @@ type PublicAction =
     | 'getTriggers'
     | 'getRecipients'
     | 'getWhatsAppMessages'
+    | 'getWhatsAppMessageStats'
+    | 'getAppointmentMessages'
     | 'getUnifiedFlows'
     | 'requestDataDeletion'
-    | 'getManagementSlotAvailability';
+    | 'getManagementSlotAvailability'
+    | 'debugNotificationFlows'
+    | 'getCalendarStatus'
+    | 'checkTimeSlotAvailability'
+    | 'getAvailableStaffForSlot';
 
-/** API action type - tüm geçerli action'ların birleşimi */
+/** API action type - tum gecerli action'larin birlesimi */
 type ApiAction = ProtectedAction | PublicAction;
 
+/**
+ * Action -> Edge Function esleme tablosu
+ * Her action hangi Edge Function'a yonlendirilecegini belirler
+ */
+const ACTION_TO_FUNCTION: Record<string, string> = {
+    // Auth
+    login: 'auth',
+    logout: 'auth',
+    resetPassword: 'auth',
+    changePassword: 'auth',
+    validateSession: 'auth',
+    regenerateApiKey: 'auth',
+
+    // Appointments
+    createAppointment: 'appointments',
+    getAppointments: 'appointments',
+    getWeekAppointments: 'appointments',
+    getMonthAppointments: 'appointments',
+    deleteAppointment: 'appointments',
+    updateAppointment: 'appointments',
+    assignStaffToAppointment: 'appointments',
+    createManualAppointment: 'appointments',
+    getDayStatus: 'appointments',
+    getDailySlots: 'appointments',
+    getSlotAvailability: 'appointments',
+    getManagementSlotAvailability: 'appointments',
+    getAvailableStaffForSlot: 'appointments',
+    checkTimeSlotAvailability: 'appointments',
+
+    // Staff
+    getStaff: 'staff',
+    createStaff: 'staff',
+    updateStaffV3: 'staff',
+    addStaff: 'staff',
+    updateStaff: 'staff',
+    toggleStaff: 'staff',
+    removeStaff: 'staff',
+    getAllLinks: 'staff',
+    regenerateLink: 'staff',
+    saveShifts: 'staff',
+    getMonthShifts: 'staff',
+
+    // Config
+    getConfig: 'config',
+    getProfilAyarlari: 'config',
+    getAllProfilAyarlari: 'config',
+    updateProfilAyarlari: 'config',
+    resetProfilAyarlari: 'config',
+    getDataVersion: 'config',
+    test: 'config',
+    healthCheck: 'config',
+    getDebugLogs: 'config',
+
+    // Settings
+    getSettings: 'settings',
+    saveSettings: 'settings',
+    resetData: 'settings',
+    createBackup: 'settings',
+    listBackups: 'settings',
+    restoreBackup: 'settings',
+
+    // WhatsApp
+    sendWhatsAppReminders: 'whatsapp',
+    getTodayWhatsAppReminders: 'whatsapp',
+    updateWhatsAppSettings: 'whatsapp',
+    getWhatsAppSettings: 'whatsapp',
+    getWhatsAppMessages: 'whatsapp',
+    getWhatsAppMessageStats: 'whatsapp',
+    getAppointmentMessages: 'whatsapp',
+    createWhatsAppTemplate: 'whatsapp',
+    updateWhatsAppTemplate: 'whatsapp',
+    deleteWhatsAppTemplate: 'whatsapp',
+    getWhatsAppTemplates: 'whatsapp',
+    getWhatsAppVariableOptions: 'whatsapp',
+    getWhatsAppFlows: 'whatsapp',
+    getWhatsAppDailyTasks: 'whatsapp',
+    addWhatsAppFlow: 'whatsapp',
+    createWhatsAppFlow: 'whatsapp',
+    updateWhatsAppFlow: 'whatsapp',
+    deleteWhatsAppFlow: 'whatsapp',
+    addWhatsAppDailyTask: 'whatsapp',
+    updateWhatsAppDailyTask: 'whatsapp',
+    deleteWhatsAppDailyTask: 'whatsapp',
+
+    // Mail & Notifications
+    getMailFlows: 'mail',
+    createMailFlow: 'mail',
+    updateMailFlow: 'mail',
+    deleteMailFlow: 'mail',
+    getMailTemplates: 'mail',
+    createMailTemplate: 'mail',
+    updateMailTemplate: 'mail',
+    deleteMailTemplate: 'mail',
+    getMailInfoCards: 'mail',
+    createMailInfoCard: 'mail',
+    updateMailInfoCard: 'mail',
+    deleteMailInfoCard: 'mail',
+    getUnifiedFlows: 'mail',
+    createUnifiedFlow: 'mail',
+    updateUnifiedFlow: 'mail',
+    deleteUnifiedFlow: 'mail',
+    testUnifiedFlow: 'mail',
+    getMessageVariables: 'mail',
+    getTriggers: 'mail',
+    getRecipients: 'mail',
+    debugNotificationFlows: 'mail',
+    requestDataDeletion: 'mail',
+    fixMailInfoCardsSheet: 'mail',
+    syncMailSheetHeaders: 'mail',
+    debugMailFlowsHeaders: 'mail',
+
+    // Slack
+    updateSlackSettings: 'slack',
+    getSlackSettings: 'slack',
+    sendDailySlackReminders: 'slack',
+
+    // Calendar Sync
+    syncToCalendar: 'calendar-sync',
+    getCalendarEvents: 'calendar-sync',
+    getCalendarStatus: 'calendar-sync',
+    getGoogleCalendarEvents: 'calendar-sync',
+
+    // Links
+    resolveUrl: 'links',
+    resolveId: 'links',
+
+    // Notifications
+    sendEmail: 'notifications',
+    generateICS: 'notifications',
+    triggerNotificationFlow: 'notifications',
+};
+
+/** Supabase client singleton */
+let _supabase: SupabaseClient | null = null;
+
+function getSupabaseClient(): SupabaseClient {
+    if (_supabase) return _supabase;
+
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('VITE_SUPABASE_URL ve VITE_SUPABASE_ANON_KEY .env dosyasinda tanimlanmalidir');
+    }
+
+    _supabase = createClient(supabaseUrl, supabaseAnonKey, {
+        auth: {
+            persistSession: true,
+            autoRefreshToken: true,
+            detectSessionInUrl: false,
+        },
+    });
+
+    return _supabase;
+}
+
+/** Supabase client'i disariya ac (admin-auth, realtime icin) */
+export function getSupabase(): SupabaseClient {
+    return getSupabaseClient();
+}
+
 const ApiService = {
-    // List of actions that require API key authentication
     PROTECTED_ACTIONS: [
         'addStaff', 'toggleStaff', 'removeStaff', 'updateStaff',
         'saveShifts', 'saveSettings', 'deleteAppointment', 'resetData',
         'getSettings', 'regenerateApiKey',
-        'getTodayWhatsAppReminders',    // YENİ: v3.0
-        'createManualAppointment',      // YENİ: v3.0
-        'sendWhatsAppReminders',        // YENİ: WhatsApp Business API
-        'updateWhatsAppSettings',       // YENİ: WhatsApp Business API
-        'getWhatsAppSettings',          // YENİ: WhatsApp Business API
-        'updateSlackSettings',          // YENİ: Slack Webhook
-        'getSlackSettings',             // YENİ: Slack Webhook
-        'updateProfilAyarlari',         // v3.3: Profil ayarları
-        'resetProfilAyarlari',          // v3.3: Profil ayarları sıfırla
-        'addWhatsAppFlow',              // v3.4: WhatsApp Flow Sistemi
-        'updateWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
-        'deleteWhatsAppFlow',           // v3.4: WhatsApp Flow Sistemi
-        'createWhatsAppTemplate',       // v3.10.20: Template CRUD (POST için - content uzun olabilir)
-        'updateWhatsAppTemplate',       // v3.10.20: Template CRUD (POST için - content uzun olabilir)
-        'deleteWhatsAppTemplate',       // v3.10.20: Template CRUD
-        'addWhatsAppDailyTask',         // v3.4: WhatsApp Günlük Görevler
-        'updateWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
-        'deleteWhatsAppDailyTask',      // v3.4: WhatsApp Günlük Görevler
-        'getWhatsAppTemplates',         // v3.4: WhatsApp Template CRUD
-        'getAllLinks',                  // v3.0: Session auth
-        'getWhatsAppVariableOptions',   // v3.4: WhatsApp Template CRUD
-        // v3.5: Backend sync - yeni protected action'lar
-        'createStaff',                  // v3.5: Yeni personel oluştur
-        'updateStaffV3',                // v3.5: Personel güncelle (v3 format)
-        'createBackup',                 // v3.5: Manuel yedek oluştur
-        'listBackups',                  // v3.5: Yedekleri listele
-        'restoreBackup',                // v3.5: Yedek geri yükle
-        'assignStaffToAppointment',     // v3.5: Randevuya personel ata
-        // v3.9.20: Mail Flow & Template CRUD
-        'getMailFlows',                 // Mail flow listesi
-        'createMailFlow',               // Yeni mail flow
-        'updateMailFlow',               // Mail flow güncelle
-        'deleteMailFlow',               // Mail flow sil
-        'getMailTemplates',             // Mail template listesi
-        'createMailTemplate',           // Yeni mail template
-        'updateMailTemplate',           // Mail template güncelle
-        'deleteMailTemplate',           // Mail template sil
-        // v3.9.35: Mail Info Card CRUD
-        'getMailInfoCards',             // Info card listesi
-        'createMailInfoCard',           // Yeni info card
-        'updateMailInfoCard',           // Info card güncelle
-        'deleteMailInfoCard',           // Info card sil
-        // v3.9.40: Sheet Migration
-        'fixMailInfoCardsSheet',        // Info card sheet'ini düzelt
-        // v3.9.47: Header Sync
-        'syncMailSheetHeaders',         // Mail sheet header'larını senkronize et
-        'debugMailFlowsHeaders',        // MAIL_FLOWS header'larını debug et
-        // v3.10: Unified Notification Flows
-        'createUnifiedFlow',            // Yeni unified flow
-        'updateUnifiedFlow',            // Unified flow güncelle
-        'deleteUnifiedFlow',            // Unified flow sil
-        'testUnifiedFlow'               // v3.10.26: Test unified flow
+        'getTodayWhatsAppReminders', 'createManualAppointment',
+        'sendWhatsAppReminders', 'updateWhatsAppSettings', 'getWhatsAppSettings',
+        'updateSlackSettings', 'getSlackSettings',
+        'updateProfilAyarlari', 'resetProfilAyarlari',
+        'addWhatsAppFlow', 'updateWhatsAppFlow', 'deleteWhatsAppFlow',
+        'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate',
+        'addWhatsAppDailyTask', 'updateWhatsAppDailyTask', 'deleteWhatsAppDailyTask',
+        'getWhatsAppTemplates', 'getAllLinks', 'getWhatsAppVariableOptions',
+        'createStaff', 'updateStaffV3',
+        'createBackup', 'listBackups', 'restoreBackup',
+        'assignStaffToAppointment',
+        'getMailFlows', 'createMailFlow', 'updateMailFlow', 'deleteMailFlow',
+        'getMailTemplates', 'createMailTemplate', 'updateMailTemplate', 'deleteMailTemplate',
+        'getMailInfoCards', 'createMailInfoCard', 'updateMailInfoCard', 'deleteMailInfoCard',
+        'fixMailInfoCardsSheet', 'syncMailSheetHeaders', 'debugMailFlowsHeaders',
+        'createUnifiedFlow', 'updateUnifiedFlow', 'deleteUnifiedFlow', 'testUnifiedFlow',
     ] as const,
 
-    // Validation map for actions that support Zod validation
     VALIDATION_MAP: {
         'getStaff': Schemas.GetStaff,
         'getSettings': Schemas.GetSettings,
@@ -183,158 +315,80 @@ const ApiService = {
     call<T = unknown>(
         action: ApiAction,
         params: Record<string, unknown> = {},
-        apiKey: string | null = null
+        _apiKey: string | null = null
     ): Promise<ApiResponse<T>> {
-        // Check if action requires authentication
+        // Protected action'lar icin Supabase Auth session kontrolu
         if (this.PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
-            // Check for API key or AdminAuth session token
-            let key = apiKey;
-
-            if (!key && typeof (window as any).AdminAuth !== 'undefined') {
-                // Try to get session token
-                key = (window as any).AdminAuth.getSessionToken?.() || null;
-                // Token bilgisi loglanmiyor - guvenlik icin
-            }
-
-            // If no API key and AdminAuth is available, show login modal
-            if (!key && typeof (window as any).AdminAuth !== 'undefined') {
-                (window as any).AdminAuth.showLoginModal();
-                return Promise.reject(new Error('Authentication required'));
-            }
-
-            return this._makeRequest<T>(action, params, key);
+            // Supabase Auth session otomatik JWT ekler
+            // Ek kontrol: session yoksa login modal goster
+            const supabase = getSupabaseClient();
+            return supabase.auth.getSession().then(({ data: { session } }) => {
+                if (!session) {
+                    // AdminAuth varsa login modal goster
+                    if (typeof (window as any).AdminAuth !== 'undefined') {
+                        (window as any).AdminAuth.showLoginModal();
+                    }
+                    return Promise.reject(new Error('Authentication required'));
+                }
+                return this._makeRequest<T>(action, params);
+            });
         }
 
-        // Non-protected actions don't need API key
-        return this._makeRequest<T>(action, params, null);
+        return this._makeRequest<T>(action, params);
     },
 
-    /**
-     * Internal method to make the actual Fetch API request
-     * ✅ GÜVENLİK: Protected actions POST + JSON body kullanır (API key URL'de ASLA görünmez)
-     * ✅ Public actions GET kullanır (performans)
-     * @private
-     */
     async _makeRequest<T = unknown>(
         action: ApiAction,
-        params: Record<string, unknown> = {},
-        apiKey: string | null = null
+        params: Record<string, unknown> = {}
     ): Promise<ApiResponse<T>> {
         try {
-            // 🔒 GÜVENLİK: Hardcoded URL kaldırıldı - Environment variable ZORUNLU
-            // Get APPS_SCRIPT_URL - try CONFIG first, then environment variable
-            let appsScriptUrl: string | null = null;
+            const supabase = getSupabaseClient();
 
-            // 1. Try global CONFIG (set after initConfig)
-            if (typeof window !== 'undefined' && (window as any).CONFIG?.APPS_SCRIPT_URL) {
-                appsScriptUrl = (window as any).CONFIG.APPS_SCRIPT_URL;
-            }
-            // 2. Try globalThis CONFIG
-            else if (typeof (globalThis as any).CONFIG?.APPS_SCRIPT_URL !== 'undefined') {
-                appsScriptUrl = (globalThis as any).CONFIG.APPS_SCRIPT_URL;
-            }
-            // 3. Try environment variable (for initial config load)
-            else if (typeof import.meta !== 'undefined' && import.meta.env?.VITE_APPS_SCRIPT_URL && import.meta.env.VITE_APPS_SCRIPT_URL !== 'undefined' && import.meta.env.VITE_APPS_SCRIPT_URL !== '') {
-                appsScriptUrl = import.meta.env.VITE_APPS_SCRIPT_URL;
+            // Action'i Edge Function'a esle
+            const functionName = ACTION_TO_FUNCTION[action];
+            if (!functionName) {
+                throw new Error(`Bilinmeyen action: ${action}`);
             }
 
-            // Final validation - no fallback, environment variable is REQUIRED
-            if (!appsScriptUrl || !appsScriptUrl.startsWith('https://')) {
-                const errorMsg = 'APPS_SCRIPT_URL yapılandırılmamış. .env dosyasında VITE_APPS_SCRIPT_URL tanımlayın.';
-                console.error('❌ API Hatası:', errorMsg);
-                throw new Error(errorMsg);
+            // Edge Function'i cagir - Supabase otomatik JWT header ekler
+            const { data, error } = await supabase.functions.invoke(functionName, {
+                body: { action, ...params },
+            });
+
+            if (error) {
+                // FunctionsHttpError, FunctionsRelayError, FunctionsFetchError
+                const errorMessage = error.message || 'Edge Function hatasi';
+                throw new Error(errorMessage);
             }
 
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000);
+            const response = data as ApiResponse<T>;
 
-            let response: Response;
-
-            // 🔒 GÜVENLİK: Protected actions için POST + JSON body kullan
-            const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
-
-            if (isProtectedAction && apiKey) {
-                // POST + JSON Body - API key guvenli (URL'de gorunmez)
-                const requestBody = {
-                    action,
-                    apiKey,
-                    ...params
-                };
-
-                response = await fetch(appsScriptUrl, {
-                    method: 'POST',
-                    mode: 'cors',
-                    credentials: 'omit',
-                    signal: controller.signal,
-                    headers: {
-                        'Content-Type': 'text/plain',
-                        'Accept': 'application/json'
-                    },
-                    body: JSON.stringify(requestBody)
-                });
-            } else {
-                // ✅ GET - Public actions (API key yok)
-                const queryParams = new URLSearchParams();
-                queryParams.append('action', action);
-
-                for (const [key, value] of Object.entries(params)) {
-                    if (value !== undefined && value !== null) {
-                        queryParams.append(key, typeof value === 'object' ? JSON.stringify(value) : String(value));
-                    }
-                }
-
-                const url = `${appsScriptUrl}?${queryParams.toString()}`;
-
-                response = await fetch(url, {
-                    method: 'GET',
-                    mode: 'cors',
-                    credentials: 'omit',
-                    signal: controller.signal,
-                    headers: {
-                        'Accept': 'application/json'
-                    }
-                });
-            }
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            // JSON response'u parse et
-            const data = await response.json() as ApiResponse<T>;
-
-            // Zod validation (gradual adoption - warn but don't fail)
+            // Zod validation (gradual adoption)
             const validationSchema = ApiService.VALIDATION_MAP[action as keyof typeof ApiService.VALIDATION_MAP];
             if (validationSchema) {
                 try {
                     const validatedData = validateApiResponse(
                         validationSchema as any,
-                        data,
+                        response,
                         action
                     );
                     return validatedData as ApiResponse<T>;
                 } catch (validationError) {
                     console.warn(`[Validation Warning] ${action} validation failed:`, validationError);
-                    console.warn('Continuing with unvalidated data for backward compatibility');
                 }
             }
 
-            // Başarılı response kontrolü
-            if (data && typeof data === 'object') {
-                // Note: requiresAuth is handled by the UI layer, not logged here
-                return data;
+            if (response && typeof response === 'object') {
+                return response;
             } else {
-                throw new Error('Geçersiz API yanıtı');
+                throw new Error('Gecersiz API yaniti');
             }
-
         } catch (error) {
             if (error instanceof Error) {
                 if (error.name === 'AbortError') {
                     throw new Error('Timeout - API cevap vermedi');
                 } else if (error.message.includes('Failed to fetch')) {
-                    throw new Error('API bağlantısı kurulamadı. CORS veya ağ hatası.');
+                    throw new Error('API baglantisi kurulamadi. CORS veya ag hatasi.');
                 } else {
                     throw error;
                 }
@@ -344,19 +398,13 @@ const ApiService = {
         }
     },
 
-    testApiKey(apiKey: string): Promise<ApiResponse> {
-        return this._makeRequest('getSettings', {}, apiKey);
+    testApiKey(_apiKey: string): Promise<ApiResponse> {
+        return this._makeRequest('getSettings', {});
     }
 };
 
 // ==================== LEGACY COMPATIBILITY ====================
-// Backward compatible global functions (geriye dönük uyumluluk için)
-// ✅ Artık modern Fetch API kullanıyor (JSONP değil)
 
-/**
- * Legacy apiCall function for backward compatibility
- * Automatically routes to ApiService with Fetch API
- */
 function apiCall<T = unknown>(
     action: ApiAction,
     params: Record<string, unknown> = {}
@@ -364,21 +412,13 @@ function apiCall<T = unknown>(
     return ApiService.call<T>(action, params);
 }
 
-/**
- * Legacy apiCallWithKey function for backward compatibility
- * Used by admin authentication system - Now uses Fetch API
- */
 function apiCallWithKey<T = unknown>(
     action: ApiAction,
     params: Record<string, unknown> = {},
-    apiKey: string
+    _apiKey: string
 ): Promise<ApiResponse<T>> {
-    return ApiService.call<T>(action, params, apiKey);
+    return ApiService.call<T>(action, params);
 }
 
-// Export types and service
 export type { ApiResponse, ApiAction, ProtectedAction, PublicAction };
 export { ApiService, apiCall, apiCallWithKey };
-
-// SECURITY: Global window atamaları kaldırıldı (v3.11)
-// ES6 import kullanılmalıdır

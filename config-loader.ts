@@ -1,15 +1,9 @@
 /**
- * CONFIG LOADER - Single Source of Truth (Environment Variables Edition)
- *
- * SECURITY IMPROVEMENTS:
- * - Removed hardcoded URLs (now from environment variables)
- * - Added validation for required environment variables
- * - Runtime checks for production safety
- * - ✅ FALLBACK: Hardcoded production values as last resort
+ * CONFIG LOADER - Supabase Edition
  *
  * Architecture:
- * - Environment config (APPS_SCRIPT_URL, BASE_URL): From .env files (build-time)
- * - Business config (shifts, hours, limits): Loaded from API (runtime)
+ * - Environment config (SUPABASE_URL, SUPABASE_ANON_KEY, BASE_URL): From .env files (build-time)
+ * - Business config (shifts, hours, limits): Loaded from Supabase Edge Function (runtime)
  * - Cache: localStorage with TTL (1 hour)
  */
 
@@ -42,16 +36,15 @@ interface DynamicConfig {
 }
 
 interface Config extends DynamicConfig {
-    APPS_SCRIPT_URL: string;
+    SUPABASE_URL: string;
     BASE_URL: string;
     DEBUG: boolean;
     VERSION: string;
 }
 
-// Backend API response format for config
 interface BackendShiftConfig {
-    start: string;  // "11:00" format
-    end: string;    // "21:00" format
+    start: string;
+    end: string;
     label?: string;
 }
 
@@ -64,26 +57,20 @@ interface BackendConfigResponse {
     companyLocation?: string;
 }
 
-// ⚠️ NO FALLBACK VALUES - Environment variables are REQUIRED
-// This prevents accidental exposure of production URLs in source code
-// If env vars are missing, the app will show a clear error message
-
 /**
  * Load and validate environment configuration
- * ⚠️ SECURITY: Environment variables are REQUIRED - no hardcoded fallbacks
  */
-function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string; TURNSTILE_SITE_KEY: string } {
-    const APPS_SCRIPT_URL = import.meta.env.VITE_APPS_SCRIPT_URL;
+function loadEnvironmentConfig(): { SUPABASE_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string; TURNSTILE_SITE_KEY: string } {
+    const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const BASE_URL = import.meta.env.VITE_BASE_URL;
     const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
     const DEBUG = import.meta.env.VITE_DEBUG === 'true';
     const VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 
-    // Collect missing required variables
     const missingVars: string[] = [];
 
-    if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'undefined' || APPS_SCRIPT_URL === '') {
-        missingVars.push('VITE_APPS_SCRIPT_URL');
+    if (!SUPABASE_URL || SUPABASE_URL === 'undefined' || SUPABASE_URL === '') {
+        missingVars.push('VITE_SUPABASE_URL');
     }
 
     if (!BASE_URL || BASE_URL === 'undefined' || BASE_URL === '') {
@@ -94,31 +81,27 @@ function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; D
         missingVars.push('VITE_TURNSTILE_SITE_KEY');
     }
 
-    // Check for missing variables - show error in UI
     if (missingVars.length > 0) {
-        const errorMsg = `❌ Missing required environment variables: ${missingVars.join(', ')}. Check your .env file.`;
+        const errorMsg = `Missing required environment variables: ${missingVars.join(', ')}. Check your .env file.`;
         console.error(errorMsg);
 
-        // Show error to user in UI (non-blocking)
         if (typeof document !== 'undefined') {
             const alertContainer = document.getElementById('alertContainer');
             if (alertContainer) {
                 const errorDiv = document.createElement('div');
                 errorDiv.style.cssText = 'background:#fee;border:1px solid #c00;padding:20px;margin:20px;border-radius:8px;color:#c00;text-align:center;';
-                errorDiv.textContent = 'Yapılandırma Hatası: Uygulama düzgün yapılandırılmamış. Lütfen sistem yöneticisiyle iletişime geçin.';
+                errorDiv.textContent = 'Yapilandirma Hatasi: Uygulama dogru yapilandirilmamis. Lutfen sistem yoneticisiyle iletisime gecin.';
                 alertContainer.appendChild(errorDiv);
             }
         }
 
-        // Throw error to prevent app from running with invalid config
         throw new Error(errorMsg);
     }
 
-    // Validation for existing values
     const errors: string[] = [];
 
-    if (!APPS_SCRIPT_URL.startsWith('https://')) {
-        errors.push('APPS_SCRIPT_URL must use HTTPS protocol');
+    if (!SUPABASE_URL.startsWith('https://') && !SUPABASE_URL.startsWith('http://localhost')) {
+        errors.push('SUPABASE_URL must use HTTPS or be localhost');
     }
 
     if (!BASE_URL.startsWith('http://') && !BASE_URL.startsWith('https://')) {
@@ -126,15 +109,13 @@ function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; D
     }
 
     if (errors.length > 0) {
-        const errorMsg = `❌ Configuration validation errors: ${errors.join(', ')}`;
+        const errorMsg = `Configuration validation errors: ${errors.join(', ')}`;
         console.error(errorMsg);
         throw new Error(errorMsg);
     }
 
-    console.log('🔧 Config loaded from environment variables');
-
     return {
-        APPS_SCRIPT_URL,
+        SUPABASE_URL,
         BASE_URL,
         DEBUG,
         VERSION,
@@ -142,44 +123,32 @@ function loadEnvironmentConfig(): { APPS_SCRIPT_URL: string; BASE_URL: string; D
     };
 }
 
-// Load environment config once at module load time
 const ENV_CONFIG = loadEnvironmentConfig();
 
-// ✅ EXPOSE TURNSTILE_SITE_KEY globally for Turnstile widget
 if (typeof window !== 'undefined') {
     (window as any).TURNSTILE_SITE_KEY = ENV_CONFIG.TURNSTILE_SITE_KEY;
 }
 
-// Cache configuration
 const CACHE_KEY = 'randevu_config_cache';
-const CACHE_TTL = 60 * 60 * 1000; // 1 hour in milliseconds
+const CACHE_TTL = 60 * 60 * 1000;
 
-// Memory cache (faster than localStorage)
 let memoryCache: { config: DynamicConfig; timestamp: number } | null = null;
 
-/**
- * Load config from cache (localStorage or memory)
- * @returns {DynamicConfig | null} Cached config or null if expired/missing
- */
 function loadFromCache(): DynamicConfig | null {
-    // Check memory cache first (fastest)
     if (memoryCache) {
         const age = Date.now() - memoryCache.timestamp;
         if (age < CACHE_TTL) {
             return memoryCache.config;
         }
-        // Expired, clear memory cache
         memoryCache = null;
     }
 
-    // Check localStorage cache
     try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (!cached) return null;
 
         const { config, timestamp, version } = JSON.parse(cached);
 
-        // Version check - invalidate cache if version changed
         if (version !== ENV_CONFIG.VERSION) {
             localStorage.removeItem(CACHE_KEY);
             return null;
@@ -188,12 +157,10 @@ function loadFromCache(): DynamicConfig | null {
         const age = Date.now() - timestamp;
 
         if (age < CACHE_TTL) {
-            // Valid cache, update memory cache
             memoryCache = { config, timestamp };
             return config;
         }
 
-        // Expired, clear cache
         localStorage.removeItem(CACHE_KEY);
         return null;
     } catch (error) {
@@ -202,17 +169,10 @@ function loadFromCache(): DynamicConfig | null {
     }
 }
 
-/**
- * Save config to cache (localStorage + memory)
- * @param {DynamicConfig} config - Config to cache
- */
 function saveToCache(config: DynamicConfig): void {
     const timestamp = Date.now();
-
-    // Save to memory cache
     memoryCache = { config, timestamp };
 
-    // Save to localStorage cache
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify({
             config,
@@ -224,13 +184,7 @@ function saveToCache(config: DynamicConfig): void {
     }
 }
 
-/**
- * Transform backend config response to frontend format
- * @param {BackendConfigResponse} backendConfig - Config from backend API
- * @returns {DynamicConfig} Transformed config
- */
 function transformBackendConfig(backendConfig: BackendConfigResponse): DynamicConfig {
-    // Transform shifts from backend format to frontend format
     const shifts: Record<string, ShiftConfig> = {};
     for (const [key, value] of Object.entries(backendConfig.shifts || {})) {
         const shift = value as BackendShiftConfig;
@@ -241,7 +195,6 @@ function transformBackendConfig(backendConfig: BackendConfigResponse): DynamicCo
         };
     }
 
-    // Transform appointment types from object to array format
     const appointmentTypes: Record<string, string> = backendConfig.appointmentTypeLabels || {};
 
     return {
@@ -254,10 +207,6 @@ function transformBackendConfig(backendConfig: BackendConfigResponse): DynamicCo
     };
 }
 
-/**
- * Load config from backend API
- * @returns {Promise<DynamicConfig>} Config from API
- */
 async function loadFromAPI(): Promise<DynamicConfig> {
     try {
         const response = await apiCall('getConfig');
@@ -267,8 +216,6 @@ async function loadFromAPI(): Promise<DynamicConfig> {
         }
 
         const config = transformBackendConfig(response.data);
-
-        // Save to cache
         saveToCache(config);
 
         return config;
@@ -278,53 +225,33 @@ async function loadFromAPI(): Promise<DynamicConfig> {
     }
 }
 
-/**
- * Get complete config (environment + dynamic)
- *
- * Strategy:
- * 1. Try memory cache (fastest)
- * 2. Try localStorage cache
- * 3. Fetch from API (slowest)
- *
- * @param {boolean} forceRefresh - Force API fetch (skip cache)
- * @returns {Promise<Config>} Complete config
- */
 export async function getConfig(forceRefresh: boolean = false): Promise<Config> {
     let dynamicConfig: DynamicConfig | null = null;
 
-    // Try cache first (unless force refresh)
     if (!forceRefresh) {
         dynamicConfig = loadFromCache();
         if (dynamicConfig) {
-            // Cache hit
             return { ...ENV_CONFIG, ...dynamicConfig };
         }
     }
 
-    // Cache miss or force refresh - fetch from API
     dynamicConfig = await loadFromAPI();
 
     return { ...ENV_CONFIG, ...dynamicConfig };
 }
 
-/**
- * Initialize config and set to window.CONFIG
- * Called on page load
- */
 export async function initConfig(): Promise<Config> {
     try {
         const config = await getConfig();
 
-        // Expose to window for backward compatibility
         if (typeof window !== 'undefined') {
             (window as any).CONFIG = config;
         }
 
-        // Log environment info in debug mode
         if (ENV_CONFIG.DEBUG) {
-            console.log('🔧 Config loaded:', {
+            console.log('Config loaded:', {
                 version: config.VERSION,
-                backend: config.APPS_SCRIPT_URL.substring(0, 50) + '...',
+                backend: config.SUPABASE_URL.substring(0, 50) + '...',
                 debug: config.DEBUG
             });
         }
@@ -333,22 +260,21 @@ export async function initConfig(): Promise<Config> {
     } catch (error) {
         console.error('Config initialization error:', error);
 
-        // Fallback to environment config with defaults
         const fallbackConfig: Config = {
             ...ENV_CONFIG,
             shifts: {
                 'morning': { start: 11, end: 18, label: 'Sabah (11:00-18:00)' },
-                'evening': { start: 14, end: 21, label: 'Akşam (14:00-21:00)' },
+                'evening': { start: 14, end: 21, label: 'Aksam (14:00-21:00)' },
                 'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
             },
             appointmentHours: { earliest: 11, latest: 21, interval: 60 },
             maxDailyDeliveryAppointments: 3,
             appointmentTypes: {
                 'delivery': 'Saat Takdim',
-                'service': 'Servis & Bakım',
-                'consultation': 'Ürün Danışmanlığı',
-                'general': 'Genel Görüşme',
-                'shipping': 'Gönderi'
+                'service': 'Servis & Bakim',
+                'consultation': 'Urun Danismanligi',
+                'general': 'Genel Gorusme',
+                'shipping': 'Gonderi'
             }
         };
 
@@ -360,32 +286,24 @@ export async function initConfig(): Promise<Config> {
     }
 }
 
-/**
- * Backend data version ile frontend cache'i senkronize et
- */
 export async function checkAndInvalidateCache(): Promise<boolean> {
   try {
     const localVersion = localStorage.getItem('data_version');
     const response = await apiCall('getDataVersion');
-    
+
     if (response.success && response.data !== localVersion) {
-      // Version değişmiş, cache'i temizle
       clearConfigCache();
       localStorage.setItem('data_version', response.data);
-      console.debug('[Cache] Invalidated - new version:', response.data);
-      return true; // Cache temizlendi
+      return true;
     }
-    
-    return false; // Cache geçerli
+
+    return false;
   } catch (error) {
     console.warn('[Cache] Version check failed:', error);
     return false;
   }
 }
 
-/**
- * Clear config cache (useful for debugging or forced refresh)
- */
 export function clearConfigCache(): void {
     memoryCache = null;
     try {
@@ -395,12 +313,8 @@ export function clearConfigCache(): void {
     }
 }
 
-/**
- * Get environment config (for API service)
- */
 export function getEnvConfig() {
     return ENV_CONFIG;
 }
 
-// Export types
 export type { Config, DynamicConfig, ShiftConfig, AppointmentHours, AppointmentType };

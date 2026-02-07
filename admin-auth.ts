@@ -1,97 +1,180 @@
-// ==================== ADMIN AUTHENTICATION v3.2 ====================
-// Email + Password auth sistemi (API Key sistemini değiştiriyor)
-// Session-based auth with 10 minute sliding expiration
+// ==================== ADMIN AUTHENTICATION ====================
+// Supabase Auth ile admin giris sistemi
+// GAS session-based auth -> Supabase JWT auth gecisi
 
-import { ApiService } from './api-service';
-// Specific submodule imports - sadece SHA256, AES ve Utf8 çekilir (~50KB vs ~200KB full import)
-import SHA256 from 'crypto-js/sha256';
-import AES from 'crypto-js/aes';
-import Utf8 from 'crypto-js/enc-utf8';
+import { getSupabase } from './api-service';
 
-// Session storage keys
-const SESSION_KEYS = {
-    TOKEN: 'admin_session_token',
-    STAFF: 'admin_session_staff',
-    EXPIRES: 'admin_session_expires',
-    SESSION_ID: 'admin_session_id',
-    // Encryption key cache - browser tab icinde tutulur (guvenlik + tutarlilik)
-    ENCRYPTION_KEY_CACHE: '_enc_key_cache'
-};
-
-// Session duration (24 hours)
-const SESSION_DURATION = 24 * 60 * 60 * 1000; // 24 saat
-
-/**
- * Encryption key olusturur - gelismis guvenlik
- *
- * GUVENLIK NOTU:
- * - Her browser tab icin benzersiz bir session ID olusturulur
- * - Static salt + session ID kombinasyonu kullanilir
- * - Browser fingerprinting ozellikleri (userAgent, screen size vb.) KALDIRILDI
- *   cunku bu degerler tarayici guncellemelerinde degisebilir ve
- *   session'in bozulmasina neden olabilir
- * - sessionStorage tab-specific oldugu icin, ayni tab icinde tutarlilik saglanir
- * - Encryption key cache'lenir - ayni tab icinde tekrar hesaplama yapilmaz
- *
- * @returns {string} 32 karakter uzunlugunda encryption key
- */
-const getEncryptionKey = (): string => {
-    // Eger onceden hesaplanmis key varsa, onu kullan (performans + tutarlilik)
-    const cachedKey = sessionStorage.getItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
-    if (cachedKey) {
-        return cachedKey;
-    }
-
-    // Static salt - uygulama ozgu, degistirilmemeli
-    const staticSalt = 'RLX_ADMIN_2024_SECURE_V3';
-
-    // Session-unique ID - her tab icin farkli
-    let sessionId = sessionStorage.getItem(SESSION_KEYS.SESSION_ID);
-    if (!sessionId) {
-        sessionId = crypto.randomUUID();
-        sessionStorage.setItem(SESSION_KEYS.SESSION_ID, sessionId);
-    }
-
-    // Sadece static salt ve session ID kullan
-    // Browser fingerprinting degerleri (userAgent, screen size vb.) kaldirildi
-    // cunku bu degerler tarayici guncellemelerinde veya zoom degisikliklerinde
-    // degisebilir ve session'in bozulmasina neden olabilir
-    const keySource = staticSalt + '|' + sessionId;
-
-    // SHA256 hash olustur ve ilk 32 karakteri al
-    const encryptionKey = SHA256(keySource).toString().substring(0, 32);
-
-    // Cache'e kaydet - ayni tab icinde tekrar hesaplama yapilmasin
-    sessionStorage.setItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE, encryptionKey);
-
-    return encryptionKey;
-};
-
-// Encrypt helper
-const encryptData = (data: string): string => {
-    const key = getEncryptionKey();
-    return AES.encrypt(data, key).toString();
-};
-
-// Decrypt helper
-const decryptData = (encryptedData: string): string | null => {
-    try {
-        const key = getEncryptionKey();
-        const bytes = AES.decrypt(encryptedData, key);
-        const decrypted = bytes.toString(Utf8);
-        return decrypted || null;
-    } catch {
-        return null;
-    }
-};
+// Session duration (24 hours) - inaktivite timeout
+const SESSION_DURATION = 24 * 60 * 60 * 1000;
 
 // Staff bilgisi interface
 interface StaffInfo {
     id: string;
     name: string;
     email: string;
-    role: 'sales' | 'management';
+    role: 'sales' | 'management' | 'reception' | 'service';
     isAdmin: boolean;
+}
+
+/**
+ * Login modalini DOM API ile olusturur (XSS-safe, innerHTML yok)
+ */
+function createLoginModalDOM(): HTMLElement {
+    const modal = document.createElement('div');
+    modal.id = 'authModal';
+    modal.className = 'admin-auth-modal';
+
+    const content = document.createElement('div');
+    content.className = 'admin-auth-modal-content';
+
+    const title = document.createElement('h2');
+    title.className = 'admin-auth-title';
+    title.textContent = 'Admin Girisi';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'admin-auth-subtitle';
+    subtitle.textContent = 'E-posta ve sifrenizle giris yapin';
+
+    const errorDiv = document.createElement('div');
+    errorDiv.id = 'authError';
+    errorDiv.className = 'admin-auth-error';
+
+    const form = document.createElement('form');
+    form.id = 'loginForm';
+    form.autocomplete = 'on';
+
+    // Email input group
+    const emailGroup = document.createElement('div');
+    emailGroup.className = 'admin-auth-input-group';
+    const emailLabel = document.createElement('label');
+    emailLabel.htmlFor = 'emailInput';
+    emailLabel.className = 'admin-auth-label';
+    emailLabel.textContent = 'E-posta';
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.id = 'emailInput';
+    emailInput.placeholder = 'ornek@email.com';
+    emailInput.className = 'admin-auth-input';
+    emailInput.autocomplete = 'email';
+    emailInput.required = true;
+    emailGroup.appendChild(emailLabel);
+    emailGroup.appendChild(emailInput);
+
+    // Password input group
+    const passGroup = document.createElement('div');
+    passGroup.className = 'admin-auth-input-group';
+    const passLabel = document.createElement('label');
+    passLabel.htmlFor = 'passwordInput';
+    passLabel.className = 'admin-auth-label';
+    passLabel.textContent = 'Sifre';
+    const passInput = document.createElement('input');
+    passInput.type = 'password';
+    passInput.id = 'passwordInput';
+    passInput.placeholder = '--------';
+    passInput.className = 'admin-auth-input';
+    passInput.autocomplete = 'current-password';
+    passInput.required = true;
+    passGroup.appendChild(passLabel);
+    passGroup.appendChild(passInput);
+
+    // Submit button
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.id = 'adminLoginBtn';
+    submitBtn.className = 'admin-auth-btn';
+    submitBtn.textContent = 'Giris Yap';
+
+    form.appendChild(emailGroup);
+    form.appendChild(passGroup);
+    form.appendChild(submitBtn);
+
+    // Forgot password divider
+    const divider = document.createElement('div');
+    divider.className = 'admin-auth-divider';
+    const forgotBtn = document.createElement('button');
+    forgotBtn.id = 'forgotPasswordBtn';
+    forgotBtn.className = 'admin-auth-btn-secondary';
+    forgotBtn.textContent = 'Sifremi Unuttum';
+    divider.appendChild(forgotBtn);
+
+    content.appendChild(title);
+    content.appendChild(subtitle);
+    content.appendChild(errorDiv);
+    content.appendChild(form);
+    content.appendChild(divider);
+    modal.appendChild(content);
+
+    return modal;
+}
+
+/**
+ * Sifre sifirlama formunu DOM API ile olusturur (XSS-safe)
+ */
+function createResetPasswordDOM(container: Element): void {
+    // Mevcut icerigi temizle
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    const title = document.createElement('h2');
+    title.className = 'admin-auth-title';
+    title.textContent = 'Sifre Sifirlama';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'admin-auth-subtitle';
+    subtitle.textContent = 'E-posta adresinize sifirlama linki gonderilecek';
+
+    const errorDiv = document.createElement('div');
+    errorDiv.id = 'authError';
+    errorDiv.className = 'admin-auth-error';
+
+    const successDiv = document.createElement('div');
+    successDiv.id = 'authSuccess';
+    successDiv.className = 'admin-auth-success';
+
+    const form = document.createElement('form');
+    form.id = 'resetForm';
+    form.autocomplete = 'on';
+
+    const emailGroup = document.createElement('div');
+    emailGroup.className = 'admin-auth-input-group';
+    const emailLabel = document.createElement('label');
+    emailLabel.htmlFor = 'resetEmailInput';
+    emailLabel.className = 'admin-auth-label';
+    emailLabel.textContent = 'E-posta';
+    const emailInput = document.createElement('input');
+    emailInput.type = 'email';
+    emailInput.id = 'resetEmailInput';
+    emailInput.placeholder = 'ornek@email.com';
+    emailInput.className = 'admin-auth-input';
+    emailInput.autocomplete = 'email';
+    emailInput.required = true;
+    emailGroup.appendChild(emailLabel);
+    emailGroup.appendChild(emailInput);
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'submit';
+    resetBtn.id = 'resetPasswordBtn';
+    resetBtn.className = 'admin-auth-btn';
+    resetBtn.textContent = 'Sifre Gonder';
+
+    form.appendChild(emailGroup);
+    form.appendChild(resetBtn);
+
+    const divider = document.createElement('div');
+    divider.className = 'admin-auth-divider';
+    const backBtn = document.createElement('button');
+    backBtn.id = 'backToLoginBtn';
+    backBtn.className = 'admin-auth-btn-secondary';
+    backBtn.textContent = 'Giris Sayfasina Don';
+    divider.appendChild(backBtn);
+
+    container.appendChild(title);
+    container.appendChild(subtitle);
+    container.appendChild(errorDiv);
+    container.appendChild(successDiv);
+    container.appendChild(form);
+    container.appendChild(divider);
 }
 
 const AdminAuth = {
@@ -99,139 +182,93 @@ const AdminAuth = {
     _lastActivityTime: Date.now(),
     _activityCheckInterval: null as ReturnType<typeof setInterval> | null,
     _activityHandler: null as (() => void) | null,
+    _cachedStaff: null as StaffInfo | null,
 
-    // Session kontrolü
+    // Session kontrolu - sync, cache'den doner
     isAuthenticated(): StaffInfo | false {
-        const encryptedToken = sessionStorage.getItem(SESSION_KEYS.TOKEN);
-        const encryptedStaff = sessionStorage.getItem(SESSION_KEYS.STAFF);
-        const expiresAt = sessionStorage.getItem(SESSION_KEYS.EXPIRES);
-
-        if (!encryptedToken || !encryptedStaff || !expiresAt) {
-            return false;
+        if (this._cachedStaff) {
+            return this._cachedStaff;
         }
+        return false;
+    },
 
-        // Session suresi dolmus mu?
-        if (Date.now() > parseInt(expiresAt)) {
-            // Session expired - hassas bilgi icermedigi icin log yazmiyoruz
-            this.logout();
-            return false;
-        }
-
-        // Token ve staff bilgisini coz
-        const token = decryptData(encryptedToken);
-        const staffJson = decryptData(encryptedStaff);
-
-        if (!token || !staffJson) {
-            // Decryption failed - guvenlik nedeniyle detay vermiyoruz
-            this.logout();
-            return false;
-        }
-
+    // Async session kontrol - sayfa yuklenmesinde cagrilir
+    async initializeAuth(): Promise<StaffInfo | false> {
         try {
-            const staff = JSON.parse(staffJson) as StaffInfo;
+            const supabase = getSupabase();
+            const { data: { session } } = await supabase.auth.getSession();
 
-            // Session'i yenile (sliding expiration)
-            this._refreshSession();
+            if (!session) {
+                this._cachedStaff = null;
+                return false;
+            }
+
+            const claims = session.user.app_metadata;
+            if (!claims?.staff_id) {
+                this._cachedStaff = null;
+                return false;
+            }
+
+            const staff: StaffInfo = {
+                id: String(claims.staff_id),
+                name: claims.staff_name || session.user.email || '',
+                email: session.user.email || '',
+                role: claims.role || 'sales',
+                isAdmin: !!claims.is_admin,
+            };
+
+            this._cachedStaff = staff;
+            this._lastActivityTime = Date.now();
+            this._startActivityTracking();
 
             return staff;
         } catch {
-            // Parse failed - guvenlik nedeniyle detay vermiyoruz
-            this.logout();
+            this._cachedStaff = null;
             return false;
         }
     },
 
-    // Session'ı yenile
-    _refreshSession(): void {
-        const newExpiry = Date.now() + SESSION_DURATION;
-        sessionStorage.setItem(SESSION_KEYS.EXPIRES, newExpiry.toString());
-        this._lastActivityTime = Date.now();
-    },
-
-    // Session token'ı al (API istekleri için)
+    // Session token
     getSessionToken(): string | null {
-        const encryptedToken = sessionStorage.getItem(SESSION_KEYS.TOKEN);
-        const expiresAt = sessionStorage.getItem(SESSION_KEYS.EXPIRES);
-
-        if (!encryptedToken || !expiresAt) {
-            return null;
-        }
-
-        // Session süresi dolmuş mu?
-        if (Date.now() > parseInt(expiresAt)) {
-            return null;
-        }
-
-        const token = decryptData(encryptedToken);
-        return token || null;
+        return this._cachedStaff ? 'supabase-session-active' : null;
     },
 
     // Session kaydet
-    saveSession(token: string, staff: StaffInfo, expiresAt: number): void {
-        const encryptedToken = encryptData(token);
-        const encryptedStaff = encryptData(JSON.stringify(staff));
-
-        sessionStorage.setItem(SESSION_KEYS.TOKEN, encryptedToken);
-        sessionStorage.setItem(SESSION_KEYS.STAFF, encryptedStaff);
-        sessionStorage.setItem(SESSION_KEYS.EXPIRES, expiresAt.toString());
-
+    saveSession(_token: string, staff: StaffInfo, _expiresAt: number): void {
+        this._cachedStaff = staff;
         this._lastActivityTime = Date.now();
         this._startActivityTracking();
     },
 
     // Cikis yap
-    logout(): void {
-        sessionStorage.removeItem(SESSION_KEYS.TOKEN);
-        sessionStorage.removeItem(SESSION_KEYS.STAFF);
-        sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
-        // Encryption key cache'i de temizle (guvenlik)
-        sessionStorage.removeItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
+    async logout(): Promise<void> {
+        try {
+            const supabase = getSupabase();
+            await supabase.auth.signOut();
+        } catch {
+            // Sessiz hata
+        }
+        this._cachedStaff = null;
         this._stopActivityTracking();
         location.reload();
     },
 
     // Session'i temizle (sayfa yenilemeden)
-    clearSession(): void {
-        sessionStorage.removeItem(SESSION_KEYS.TOKEN);
-        sessionStorage.removeItem(SESSION_KEYS.STAFF);
-        sessionStorage.removeItem(SESSION_KEYS.EXPIRES);
-        // Encryption key cache'i de temizle (guvenlik)
-        sessionStorage.removeItem(SESSION_KEYS.ENCRYPTION_KEY_CACHE);
+    async clearSession(): Promise<void> {
+        try {
+            const supabase = getSupabase();
+            await supabase.auth.signOut();
+        } catch {
+            // Sessiz hata
+        }
+        this._cachedStaff = null;
         this._stopActivityTracking();
     },
 
-    // Login modal göster
+    // Login modal goster (DOM API - XSS-safe)
     showLoginModal(): void {
-        const modalHtml = `
-            <div id="authModal" class="admin-auth-modal">
-                <div class="admin-auth-modal-content">
-                    <h2 class="admin-auth-title">🔐 Admin Girişi</h2>
-                    <p class="admin-auth-subtitle">E-posta ve şifrenizle giriş yapın</p>
-
-                    <div id="authError" class="admin-auth-error"></div>
-
-                    <form id="loginForm" autocomplete="on">
-                        <div class="admin-auth-input-group">
-                            <label for="emailInput" class="admin-auth-label">E-posta</label>
-                            <input type="email" id="emailInput" placeholder="ornek@email.com" class="admin-auth-input" autocomplete="email" required>
-                        </div>
-
-                        <div class="admin-auth-input-group">
-                            <label for="passwordInput" class="admin-auth-label">Şifre</label>
-                            <input type="password" id="passwordInput" placeholder="••••••••" class="admin-auth-input" autocomplete="current-password" required>
-                        </div>
-
-                        <button type="submit" id="adminLoginBtn" class="admin-auth-btn">Giriş Yap</button>
-                    </form>
-
-                    <div class="admin-auth-divider">
-                        <button id="forgotPasswordBtn" class="admin-auth-btn-secondary">🔑 Şifremi Unuttum</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = createLoginModalDOM();
+        document.body.appendChild(modal);
         this._attachModalEvents();
 
         setTimeout(() => {
@@ -239,7 +276,7 @@ const AdminAuth = {
         }, 100);
     },
 
-    // Modal event listener'larını ekle
+    // Modal event listener'larini ekle
     _attachModalEvents(): void {
         const form = document.getElementById('loginForm');
         if (form) {
@@ -255,7 +292,7 @@ const AdminAuth = {
         }
     },
 
-    // Giriş yap
+    // Giris yap - Supabase Auth
     async login(): Promise<void> {
         const emailInput = document.getElementById('emailInput') as HTMLInputElement | null;
         const passwordInput = document.getElementById('passwordInput') as HTMLInputElement | null;
@@ -269,39 +306,55 @@ const AdminAuth = {
 
         if (!email || !password) {
             if (errorDiv) {
-                errorDiv.textContent = '❌ Lütfen e-posta ve şifre girin';
+                errorDiv.textContent = 'Lutfen e-posta ve sifre girin';
                 errorDiv.classList.add('show');
             }
             return;
         }
 
         const originalText = button.textContent;
-        button.textContent = 'Giriş yapılıyor...';
+        button.textContent = 'Giris yapiliyor...';
         button.disabled = true;
 
         try {
-            const response = await ApiService.call('login', { email, password });
+            const supabase = getSupabase();
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
 
-            if (response.success) {
-                // Başarılı giriş
-                this.saveSession(
-                    response.token,
-                    response.staff as StaffInfo,
-                    response.expiresAt as number
-                );
-                document.getElementById('authModal')?.remove();
-                location.reload();
-            } else {
+            if (error) {
                 if (errorDiv) {
-                    errorDiv.textContent = `❌ ${response.error || 'Giriş başarısız'}`;
+                    errorDiv.textContent = error.message === 'Invalid login credentials'
+                        ? 'Gecersiz e-posta veya sifre'
+                        : error.message;
                     errorDiv.classList.add('show');
                 }
                 button.textContent = originalText;
                 button.disabled = false;
+                return;
             }
-        } catch (error) {
+
+            if (data.session) {
+                const claims = data.session.user.app_metadata;
+                const staff: StaffInfo = {
+                    id: String(claims?.staff_id || ''),
+                    name: claims?.staff_name || data.session.user.email || '',
+                    email: data.session.user.email || '',
+                    role: claims?.role || 'sales',
+                    isAdmin: !!claims?.is_admin,
+                };
+
+                this._cachedStaff = staff;
+                this._lastActivityTime = Date.now();
+                this._startActivityTracking();
+
+                document.getElementById('authModal')?.remove();
+                location.reload();
+            }
+        } catch {
             if (errorDiv) {
-                errorDiv.textContent = '❌ Bağlantı hatası';
+                errorDiv.textContent = 'Baglanti hatasi';
                 errorDiv.classList.add('show');
             }
             button.textContent = originalText;
@@ -309,34 +362,13 @@ const AdminAuth = {
         }
     },
 
-    // Şifremi unuttum modal
+    // Sifremi unuttum modal (DOM API - XSS-safe)
     showForgotPasswordModal(): void {
-        // Mevcut modal'ı güncelle
         const modalContent = document.querySelector('.admin-auth-modal-content');
         if (!modalContent) return;
 
-        modalContent.innerHTML = `
-            <h2 class="admin-auth-title">🔑 Şifre Sıfırlama</h2>
-            <p class="admin-auth-subtitle">E-posta adresinize yeni şifre gönderilecek</p>
+        createResetPasswordDOM(modalContent);
 
-            <div id="authError" class="admin-auth-error"></div>
-            <div id="authSuccess" class="admin-auth-success"></div>
-
-            <form id="resetForm" autocomplete="on">
-                <div class="admin-auth-input-group">
-                    <label for="resetEmailInput" class="admin-auth-label">E-posta</label>
-                    <input type="email" id="resetEmailInput" placeholder="ornek@email.com" class="admin-auth-input" autocomplete="email" required>
-                </div>
-
-                <button type="submit" id="resetPasswordBtn" class="admin-auth-btn">Şifre Gönder</button>
-            </form>
-
-            <div class="admin-auth-divider">
-                <button id="backToLoginBtn" class="admin-auth-btn-secondary">← Giriş Sayfasına Dön</button>
-            </div>
-        `;
-
-        // Event listeners
         const form = document.getElementById('resetForm');
         if (form) {
             form.addEventListener('submit', (e) => {
@@ -358,7 +390,7 @@ const AdminAuth = {
         }, 100);
     },
 
-    // Şifre sıfırla
+    // Sifre sifirla - Supabase Auth
     async resetPassword(): Promise<void> {
         const emailInput = document.getElementById('resetEmailInput') as HTMLInputElement | null;
         const errorDiv = document.getElementById('authError');
@@ -371,39 +403,41 @@ const AdminAuth = {
 
         if (!email) {
             if (errorDiv) {
-                errorDiv.textContent = '❌ Lütfen e-posta adresinizi girin';
+                errorDiv.textContent = 'Lutfen e-posta adresinizi girin';
                 errorDiv.classList.add('show');
             }
             return;
         }
 
         const originalText = button.textContent;
-        button.textContent = 'Gönderiliyor...';
+        button.textContent = 'Gonderiliyor...';
         button.disabled = true;
 
         try {
-            const response = await ApiService.call('resetPassword', { email });
+            const supabase = getSupabase();
+            const { error } = await supabase.auth.resetPasswordForEmail(email);
 
-            if (response.success) {
-                if (successDiv) {
-                    successDiv.textContent = '✅ Yeni şifreniz e-posta adresinize gönderildi';
-                    successDiv.classList.add('show');
-                }
+            if (error) {
                 if (errorDiv) {
-                    errorDiv.classList.remove('show');
-                }
-                button.textContent = 'Gönderildi';
-            } else {
-                if (errorDiv) {
-                    errorDiv.textContent = `❌ ${response.error || 'Şifre sıfırlanamadı'}`;
+                    errorDiv.textContent = error.message;
                     errorDiv.classList.add('show');
                 }
                 button.textContent = originalText;
                 button.disabled = false;
+                return;
             }
-        } catch (error) {
+
+            if (successDiv) {
+                successDiv.textContent = 'Sifirlama linki e-posta adresinize gonderildi';
+                successDiv.classList.add('show');
+            }
             if (errorDiv) {
-                errorDiv.textContent = '❌ Bağlantı hatası';
+                errorDiv.classList.remove('show');
+            }
+            button.textContent = 'Gonderildi';
+        } catch {
+            if (errorDiv) {
+                errorDiv.textContent = 'Baglanti hatasi';
                 errorDiv.classList.add('show');
             }
             button.textContent = originalText;
@@ -411,7 +445,7 @@ const AdminAuth = {
         }
     },
 
-    // Çıkış butonu ekle
+    // Cikis butonu ekle
     addLogoutButton(): void {
         const header = document.querySelector('.header') as HTMLElement | null;
         if (!header) return;
@@ -419,13 +453,11 @@ const AdminAuth = {
         const staff = this.isAuthenticated();
         if (!staff) return;
 
-        // Kullanıcı adını "Admin Paneli" yanına ekle
         const userNameSpan = document.getElementById('adminUserName');
         if (userNameSpan) {
             userNameSpan.textContent = ` - ${staff.name}`;
         }
 
-        // Logout button
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
         logoutBtn.textContent = 'Logout';
@@ -439,28 +471,21 @@ const AdminAuth = {
         header.appendChild(logoutBtn);
     },
 
-    // Mevcut kullanıcı bilgisi
     getCurrentUser(): StaffInfo | null {
-        const result = this.isAuthenticated();
-        return result || null;
+        return this._cachedStaff;
     },
 
-    // Admin yetkisi kontrolü
     isAdmin(): boolean {
-        const staff = this.isAuthenticated();
-        return staff ? staff.isAdmin : false;
+        return this._cachedStaff?.isAdmin || false;
     },
 
-    // İnaktivite takibini başlat
     _startActivityTracking(): void {
-        // Throttle: Her event'te değil, en fazla 30 saniyede 1 kez session yenile
         let lastRefresh = Date.now();
         this._activityHandler = () => {
             this._lastActivityTime = Date.now();
             const now = Date.now();
             if (now - lastRefresh > 30_000) {
                 lastRefresh = now;
-                this._refreshSession();
             }
         };
 
@@ -470,18 +495,16 @@ const AdminAuth = {
         document.addEventListener('scroll', this._activityHandler, { passive: true });
         document.addEventListener('touchstart', this._activityHandler, { passive: true });
 
-        // Her 60 saniyede bir kontrol et
         this._activityCheckInterval = setInterval(() => {
             const elapsed = Date.now() - this._lastActivityTime;
             if (elapsed > this.INACTIVITY_TIMEOUT) {
                 const hours = Math.floor(SESSION_DURATION / (60 * 60 * 1000));
-                alert(`⏰ ${hours} saat boyunca işlem yapılmadı. Güvenlik nedeniyle oturum kapatılıyor.`);
+                alert(`${hours} saat boyunca islem yapilmadi. Guvenlik nedeniyle oturum kapatiliyor.`);
                 this.logout();
             }
         }, 60 * 1000);
     },
 
-    // İnaktivite takibini durdur
     _stopActivityTracking(): void {
         if (this._activityCheckInterval) {
             clearInterval(this._activityCheckInterval);
@@ -499,33 +522,48 @@ const AdminAuth = {
     },
 
     // ==================== LEGACY SUPPORT ====================
-    // Eski API key sisteminden geçiş için
-
-    // API key kontrolü (backward compatibility)
     get API_KEY_STORAGE() {
         return 'admin_api_key';
     },
 
-    // Eski API key varsa temizle
     clearLegacyAuth(): void {
         sessionStorage.removeItem('admin_api_key');
         sessionStorage.removeItem('admin_api_key_time');
     }
 };
 
-// Export for ES6 modules
+// Auth state listener
+if (typeof window !== 'undefined') {
+    try {
+        const supabase = getSupabase();
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_OUT') {
+                AdminAuth._cachedStaff = null;
+                AdminAuth._stopActivityTracking();
+            } else if (event === 'SIGNED_IN' && session) {
+                const claims = session.user.app_metadata;
+                AdminAuth._cachedStaff = {
+                    id: String(claims?.staff_id || ''),
+                    name: claims?.staff_name || session.user.email || '',
+                    email: session.user.email || '',
+                    role: claims?.role || 'sales',
+                    isAdmin: !!claims?.is_admin,
+                };
+            }
+        });
+    } catch {
+        // Supabase henuz yapilandirilmamis olabilir
+    }
+}
+
 export { AdminAuth };
 
-// Extend Window interface for TypeScript
 declare global {
     interface Window {
         AdminAuth: typeof AdminAuth;
     }
 }
 
-// SECURITY: Object.defineProperty ile tamper-resistant global (v3.11)
-// XSS saldırganının AdminAuth objesini override etmesini önler
-// writable:false + configurable:false = değiştirilemez
 if (typeof window !== 'undefined') {
     Object.defineProperty(window, 'AdminAuth', {
         value: AdminAuth,

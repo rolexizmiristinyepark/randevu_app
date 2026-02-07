@@ -10,14 +10,19 @@ export default defineConfig(({ mode }) => {
   // Environment variable varlık kontrolü (değerler loglanmaz)
   console.log('Build mode:', mode);
   console.log('Env vars:', {
-    APPS_SCRIPT_URL: env.VITE_APPS_SCRIPT_URL ? 'SET' : 'MISSING',
+    SUPABASE_URL: env.VITE_SUPABASE_URL ? 'SET' : 'MISSING',
+    SUPABASE_ANON_KEY: env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'MISSING',
     BASE_URL: env.VITE_BASE_URL ? 'SET' : 'MISSING',
     TURNSTILE_SITE_KEY: env.VITE_TURNSTILE_SITE_KEY ? 'SET' : 'MISSING'
   });
 
   // ✅ VALIDATION: Fail fast if required env vars are missing
-  if (!env.VITE_APPS_SCRIPT_URL) {
-    console.error('❌ CRITICAL: VITE_APPS_SCRIPT_URL is not defined!');
+  if (!env.VITE_SUPABASE_URL) {
+    console.error('CRITICAL: VITE_SUPABASE_URL is not defined!');
+    console.error('   Please check .env or .env.production file');
+  }
+  if (!env.VITE_SUPABASE_ANON_KEY) {
+    console.error('CRITICAL: VITE_SUPABASE_ANON_KEY is not defined!');
     console.error('   Please check .env or .env.production file');
   }
 
@@ -147,7 +152,8 @@ export default defineConfig(({ mode }) => {
     // This is the key fix - ensures env vars are properly injected at build time
     define: {
       // Use string replacement to inject actual values at build time
-      'import.meta.env.VITE_APPS_SCRIPT_URL': JSON.stringify(env.VITE_APPS_SCRIPT_URL || ''),
+      'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(env.VITE_SUPABASE_URL || ''),
+      'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(env.VITE_SUPABASE_ANON_KEY || ''),
       'import.meta.env.VITE_BASE_URL': JSON.stringify(env.VITE_BASE_URL || ''),
       'import.meta.env.VITE_TURNSTILE_SITE_KEY': JSON.stringify(env.VITE_TURNSTILE_SITE_KEY || ''),
       'import.meta.env.VITE_DEBUG': JSON.stringify(env.VITE_DEBUG || 'false'),

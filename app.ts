@@ -27,7 +27,7 @@ import { initProfileFromURL, applyProfileUI, showInvalidIdError } from './Profil
 
 // ==================== CONFIG - SINGLE SOURCE OF TRUTH ====================
 // ⭐ Config loaded inside DOMContentLoaded to prevent race conditions
-// - Environment variables (APPS_SCRIPT_URL, BASE_URL): Hardcoded
+// - Environment variables (SUPABASE_URL, BASE_URL): Hardcoded
 // - Business config (shifts, hours, limits): Fetched from API
 // - Cache: localStorage with 1-hour TTL
 // - Fallback: Default values if API fails

@@ -23,7 +23,7 @@ export interface AppointmentTypeConfig {
 }
 
 export interface Config {
-  APPS_SCRIPT_URL: string;
+  SUPABASE_URL: string;
   BASE_URL: string;
   DEBUG: boolean;
   SHIFTS: {
@@ -195,7 +195,7 @@ declare global {
   interface Window {
     // Application Configuration
     CONFIG: {
-      APPS_SCRIPT_URL: string;
+      SUPABASE_URL: string;
       BASE_URL: string;
       DEBUG: boolean;
       VERSION: string;
