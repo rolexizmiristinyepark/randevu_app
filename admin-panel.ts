@@ -21,7 +21,7 @@ import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
 import { AdminAuth } from './admin-auth';
-import { apiCall, getSupabase } from './api-service';
+import { getSupabase } from './api-service';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // Extend Window interface for admin panel specific properties
@@ -534,8 +534,8 @@ function setupLinkButtons(): void {
         });
     });
 
-    // Load VIP and Staff links
-    loadProfileLinks();
+    // Staff ve VIP linkler staff-manager.ts tarafından render edilir (dataStore.staff)
+    // Eski loadProfileLinks() kaldırıldı - çift rendering race condition'ı düzeltildi
 }
 
 /**
@@ -610,164 +610,9 @@ function openProfileLink(profile: string): void {
     window.open(link, '_blank');
 }
 
-/**
- * Copy staff link to clipboard
- */
-function copyStaffLink(type: string, id: string): void {
-    const baseUrl = (window as any).CONFIG.BASE_URL;
-    const link = `${baseUrl}#${type}/${id}`;
-    navigator.clipboard.writeText(link).then(() => {
-        UI.showAlert('Link kopyalandı!', 'success');
-    }).catch(() => {
-        UI.showAlert('Kopyalama başarısız', 'error');
-    });
-}
-
-/**
- * Open staff link in new tab
- */
-function openStaffLink(type: string, id: string): void {
-    const baseUrl = (window as any).CONFIG.BASE_URL;
-    const link = `${baseUrl}#${type}/${id}`;
-    window.open(link, '_blank');
-}
-
-/**
- * Load VIP and Staff profile links
- */
-async function loadProfileLinks(): Promise<void> {
-    try {
-        const result = await apiCall('getStaff');
-
-        // API returns { success: true, data: [...] }
-        const staffList = result.data || result.staff || [];
-
-        if (result.success && staffList.length > 0) {
-            // Özel Müşteri = role: management
-            const managementList: Array<{ id: string; name: string }> = [];
-            // Personel = role: sales
-            const salesList: Array<{ id: string; name: string }> = [];
-
-            staffList.forEach((s: any) => {
-                if (!s.active) return;
-                const linkId = s.personel_id || s.id;
-                if (s.role === 'management') {
-                    managementList.push({ id: linkId, name: s.name });
-                } else if (s.role === 'sales') {
-                    salesList.push({ id: linkId, name: s.name });
-                }
-            });
-
-            displayVipLinks(managementList);
-            displayStaffLinks(salesList);
-        }
-    } catch (error) {
-        console.error('Profile links yüklenemedi:', error);
-    }
-}
-
-/**
- * Display VIP links (Management role)
- */
-function displayVipLinks(vipList: Array<{ id: string; name: string }>): void {
-    const container = document.getElementById('vipLinksGrid');
-    if (!container) return;
-
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
-    }
-
-    if (vipList.length === 0) {
-        const emptyP = document.createElement('p');
-        emptyP.style.cssText = 'color:#999;font-size:13px;';
-        emptyP.textContent = 'Yönetim personeli bulunmuyor';
-        container.appendChild(emptyP);
-        return;
-    }
-
-    // Grid layout - 2 column
-    container.className = 'link-grid';
-
-    vipList.forEach(vip => {
-        container.appendChild(createLinkCard(vip.name, 'v', vip.id));
-    });
-
-    // Son tek karta full-width class ekle
-    if (vipList.length % 2 === 1 && container.lastElementChild) {
-        container.lastElementChild.classList.add('link-card-full');
-    }
-}
-
-/**
- * Display Staff links (Sales role)
- */
-function displayStaffLinks(staffList: Array<{ id: string; name: string }>): void {
-    const container = document.getElementById('staffLinks');
-    if (!container) return;
-
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
-    }
-
-    if (staffList.length === 0) {
-        const emptyP = document.createElement('p');
-        emptyP.style.cssText = 'color:#999;font-size:13px;';
-        emptyP.textContent = 'Satış personeli bulunmuyor';
-        container.appendChild(emptyP);
-        return;
-    }
-
-    // Grid layout - 2 column
-    container.className = 'link-grid';
-
-    staffList.forEach(s => {
-        container.appendChild(createLinkCard(s.name, 's', s.id));
-    });
-
-    // Son tek karta full-width class ekle
-    if (staffList.length % 2 === 1 && container.lastElementChild) {
-        container.lastElementChild.classList.add('link-card-full');
-    }
-}
-
-/**
- * Create a link card element
- */
-function createLinkCard(name: string, type: string, id: string): HTMLElement {
-    const card = document.createElement('div');
-    card.className = 'link-card';
-
-    const nameDiv = document.createElement('div');
-    nameDiv.className = 'link-card-name';
-    nameDiv.textContent = name;
-
-    const urlDiv = document.createElement('div');
-    urlDiv.className = 'link-card-url';
-    const baseUrl = (window as any).CONFIG.BASE_URL;
-    urlDiv.textContent = `${baseUrl}#${type}/${id}`;
-
-    const btnsDiv = document.createElement('div');
-    btnsDiv.className = 'link-card-btns';
-
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'link-btn';
-    copyBtn.textContent = 'Copy';
-    copyBtn.addEventListener('click', () => copyStaffLink(type, id));
-
-    const openBtn = document.createElement('button');
-    openBtn.className = 'link-btn link-btn-primary';
-    openBtn.textContent = 'Open';
-    openBtn.addEventListener('click', () => openStaffLink(type, id));
-
-    btnsDiv.appendChild(copyBtn);
-    btnsDiv.appendChild(openBtn);
-
-    card.appendChild(nameDiv);
-    card.appendChild(urlDiv);
-    card.appendChild(btnsDiv);
-
-    return card;
-}
+// copyStaffLink, openStaffLink, loadProfileLinks, displayVipLinks, displayStaffLinks, createLinkCard kaldırıldı
+// Staff ve VIP linkleri staff-manager.ts:renderLinks() ve renderVipLinks() tarafından render edilir
+// Bu çift rendering race condition'ını (aynı DOM elementlerine 2 API call + 2 render) ortadan kaldırır
 //#endregion
 
 //#region Event Listener Cleanup

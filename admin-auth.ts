@@ -415,7 +415,11 @@ const AdminAuth = {
 
         try {
             const supabase = getSupabase();
-            const { error } = await supabase.auth.resetPasswordForEmail(email);
+            // admin.html sayfasına yönlendir (varsayılan index.html'e gider)
+            const redirectUrl = window.location.origin + window.location.pathname;
+            const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                redirectTo: redirectUrl,
+            });
 
             if (error) {
                 if (errorDiv) {
@@ -540,6 +544,9 @@ if (typeof window !== 'undefined') {
             if (event === 'SIGNED_OUT') {
                 AdminAuth._cachedStaff = null;
                 AdminAuth._stopActivityTracking();
+            } else if (event === 'PASSWORD_RECOVERY') {
+                // Şifre sıfırlama linki ile geldi - şifre değiştirme modalı göster
+                showPasswordChangeModal();
             } else if (event === 'SIGNED_IN' && session) {
                 const claims = session.user.app_metadata;
                 AdminAuth._cachedStaff = {
@@ -554,6 +561,149 @@ if (typeof window !== 'undefined') {
     } catch {
         // Supabase henuz yapilandirilmamis olabilir
     }
+}
+
+/**
+ * Şifre değiştirme modalı (PASSWORD_RECOVERY event'i geldiğinde gösterilir)
+ */
+function showPasswordChangeModal(): void {
+    // Mevcut login modalını gizle
+    const authModal = document.getElementById('authModal');
+    if (authModal) authModal.style.display = 'none';
+
+    // Şifre değiştirme modalı oluştur (DOM API - XSS-safe)
+    const overlay = document.createElement('div');
+    overlay.id = 'passwordChangeModal';
+    overlay.className = 'admin-auth-modal';
+    overlay.style.display = 'flex';
+
+    const content = document.createElement('div');
+    content.className = 'admin-auth-modal-content';
+
+    const title = document.createElement('h2');
+    title.className = 'admin-auth-title';
+    title.textContent = 'Yeni Sifre Belirle';
+
+    const subtitle = document.createElement('p');
+    subtitle.className = 'admin-auth-subtitle';
+    subtitle.textContent = 'Yeni sifrenizi girin';
+
+    const errorDiv = document.createElement('div');
+    errorDiv.id = 'pwChangeError';
+    errorDiv.className = 'admin-auth-error';
+
+    const successDiv = document.createElement('div');
+    successDiv.id = 'pwChangeSuccess';
+    successDiv.className = 'admin-auth-success';
+
+    const form = document.createElement('form');
+    form.autocomplete = 'on';
+
+    // Yeni şifre input
+    const pwGroup = document.createElement('div');
+    pwGroup.className = 'admin-auth-input-group';
+    const pwLabel = document.createElement('label');
+    pwLabel.htmlFor = 'newPasswordInput';
+    pwLabel.className = 'admin-auth-label';
+    pwLabel.textContent = 'Yeni Sifre';
+    const pwInput = document.createElement('input');
+    pwInput.type = 'password';
+    pwInput.id = 'newPasswordInput';
+    pwInput.placeholder = 'En az 6 karakter';
+    pwInput.className = 'admin-auth-input';
+    pwInput.autocomplete = 'new-password';
+    pwInput.minLength = 6;
+    pwInput.required = true;
+    pwGroup.appendChild(pwLabel);
+    pwGroup.appendChild(pwInput);
+
+    // Şifre tekrar input
+    const pw2Group = document.createElement('div');
+    pw2Group.className = 'admin-auth-input-group';
+    const pw2Label = document.createElement('label');
+    pw2Label.htmlFor = 'confirmPasswordInput';
+    pw2Label.className = 'admin-auth-label';
+    pw2Label.textContent = 'Sifre Tekrar';
+    const pw2Input = document.createElement('input');
+    pw2Input.type = 'password';
+    pw2Input.id = 'confirmPasswordInput';
+    pw2Input.placeholder = 'Sifrenizi tekrar girin';
+    pw2Input.className = 'admin-auth-input';
+    pw2Input.autocomplete = 'new-password';
+    pw2Input.minLength = 6;
+    pw2Input.required = true;
+    pw2Group.appendChild(pw2Label);
+    pw2Group.appendChild(pw2Input);
+
+    // Kaydet butonu
+    const submitBtn = document.createElement('button');
+    submitBtn.type = 'submit';
+    submitBtn.className = 'admin-auth-submit';
+    submitBtn.textContent = 'SIFREYI DEGISTIR';
+
+    form.appendChild(pwGroup);
+    form.appendChild(pw2Group);
+    form.appendChild(submitBtn);
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorDiv.classList.remove('show');
+        successDiv.classList.remove('show');
+
+        const newPw = pwInput.value;
+        const confirmPw = pw2Input.value;
+
+        if (newPw.length < 6) {
+            errorDiv.textContent = 'Sifre en az 6 karakter olmalidir';
+            errorDiv.classList.add('show');
+            return;
+        }
+
+        if (newPw !== confirmPw) {
+            errorDiv.textContent = 'Sifreler eslesmedi';
+            errorDiv.classList.add('show');
+            return;
+        }
+
+        submitBtn.textContent = 'Kaydediliyor...';
+        submitBtn.disabled = true;
+
+        try {
+            const supabase = getSupabase();
+            const { error } = await supabase.auth.updateUser({ password: newPw });
+
+            if (error) {
+                errorDiv.textContent = error.message;
+                errorDiv.classList.add('show');
+                submitBtn.textContent = 'SIFREYI DEGISTIR';
+                submitBtn.disabled = false;
+                return;
+            }
+
+            successDiv.textContent = 'Sifreniz basariyla degistirildi! Yonlendiriliyorsunuz...';
+            successDiv.classList.add('show');
+
+            // 2 saniye sonra admin panele yönlendir
+            setTimeout(() => {
+                // URL'deki hash token'ları temizle
+                window.location.hash = '';
+                window.location.reload();
+            }, 2000);
+        } catch {
+            errorDiv.textContent = 'Baglanti hatasi';
+            errorDiv.classList.add('show');
+            submitBtn.textContent = 'SIFREYI DEGISTIR';
+            submitBtn.disabled = false;
+        }
+    });
+
+    content.appendChild(title);
+    content.appendChild(subtitle);
+    content.appendChild(errorDiv);
+    content.appendChild(successDiv);
+    content.appendChild(form);
+    overlay.appendChild(content);
+    document.body.appendChild(overlay);
 }
 
 export { AdminAuth };

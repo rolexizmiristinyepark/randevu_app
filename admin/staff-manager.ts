@@ -337,20 +337,23 @@ function renderLinks(): void {
     // Clear
     container.textContent = '';
 
-    const activeStaff = dataStore.staff.filter(s => s.active);
+    // Sadece satış ve karşılayıcı personeli göster (management hariç - onlar VIP bölümünde)
+    const salesStaff = dataStore.staff.filter(s => s.active && s.role !== 'management');
 
-    if (activeStaff.length === 0) {
+    if (salesStaff.length === 0) {
         const emptyMsg = createElement('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Henüz personel yok');
         container.appendChild(emptyMsg);
+        // VIP linklerini de render et (management personel olabilir)
+        renderVipLinks();
         return;
     }
 
     // Grid layout
     const gridContainer = createElement('div', { className: 'link-grid' });
 
-    activeStaff.forEach(s => {
+    salesStaff.forEach(s => {
         const staffLink = `${getConfig().BASE_URL}#s/${s.personel_id || s.id}`;
 
         // Link card
@@ -396,14 +399,14 @@ function renderLinks(): void {
     });
 
     // Son tek karta full-width class ekle
-    if (activeStaff.length % 2 === 1) {
+    if (salesStaff.length % 2 === 1) {
         const lastCard = gridContainer.lastElementChild as HTMLElement;
         if (lastCard) lastCard.classList.add('link-card-full');
     }
 
     container.appendChild(gridContainer);
 
-    // v3.10.46: VIP links bölümünü de render et
+    // VIP links bölümünü de render et (management personel)
     renderVipLinks();
 }
 
@@ -418,12 +421,13 @@ function renderVipLinks(): void {
     // Clear
     container.textContent = '';
 
-    const activeStaff = dataStore.staff.filter(s => s.active);
+    // Sadece management (yönetim) personelini göster
+    const managementStaff = dataStore.staff.filter(s => s.active && s.role === 'management');
 
-    if (activeStaff.length === 0) {
+    if (managementStaff.length === 0) {
         const emptyMsg = createElement('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
-        }, 'VIP linkler için önce personel ekleyin');
+        }, 'Yönetim personeli bulunmuyor');
         container.appendChild(emptyMsg);
         return;
     }
@@ -431,8 +435,8 @@ function renderVipLinks(): void {
     // Grid layout
     const gridContainer = createElement('div', { className: 'link-grid' });
 
-    activeStaff.forEach(s => {
-        const vipLink = `${getConfig().BASE_URL}#v/${s.id}`;
+    managementStaff.forEach(s => {
+        const vipLink = `${getConfig().BASE_URL}#v/${s.personel_id || s.id}`;
 
         // Link card
         const linkCard = createElement('div', { className: 'link-card' });
@@ -477,7 +481,7 @@ function renderVipLinks(): void {
     });
 
     // Son tek karta full-width class ekle
-    if (activeStaff.length % 2 === 1) {
+    if (managementStaff.length % 2 === 1) {
         const lastCard = gridContainer.lastElementChild as HTMLElement;
         if (lastCard) lastCard.classList.add('link-card-full');
     }
