@@ -26,7 +26,13 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     const container = document.getElementById('timeSlots');
     if (!container) return;
 
-    container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px;"><div class="spinner"></div></div>';
+    while (container.firstChild) container.removeChild(container.firstChild);
+    const spinnerWrapper = document.createElement('div');
+    spinnerWrapper.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px;';
+    const spinnerEl = document.createElement('div');
+    spinnerEl.className = 'spinner';
+    spinnerWrapper.appendChild(spinnerEl);
+    container.appendChild(spinnerWrapper);
 
     const selectedDate = state.get('selectedDate');
     const selectedShiftType = state.get('selectedShiftType');
@@ -346,7 +352,7 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         const { availableHours } = dayStatusData as any;
         const { slots } = slotsData as any;
 
-        container.innerHTML = '';
+        while (container.firstChild) container.removeChild(container.firstChild);
 
         // NOTE: Delivery limit check is done in calendar (day disabled)
         // This function should not be reached because day is already unselectable
@@ -436,7 +442,11 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     } catch (error) {
         log.error('displayAvailableTimeSlots error:', error);
         logError(error, { context: 'displayAvailableTimeSlots', date: selectedDate, shiftType: selectedShiftType });
-        container.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;">Saatler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.</div>';
+        while (container.firstChild) container.removeChild(container.firstChild);
+        const errDiv = document.createElement('div');
+        errDiv.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px; color: #dc3545;';
+        errDiv.textContent = 'Saatler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.';
+        container.appendChild(errDiv);
     }
 }
 

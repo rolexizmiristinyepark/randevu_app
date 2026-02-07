@@ -219,13 +219,17 @@ export async function initMailManager(store: DataStore): Promise<void> {
     // Show deprecation message in flow container
     const flowContainer = document.getElementById('mailFlowList');
     if (flowContainer) {
-        flowContainer.innerHTML = `
-            <div style="padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;">
-                <p style="margin: 0; font-size: 14px;">
-                    <strong>v3.10.0:</strong> Mail flow'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.
-                </p>
-            </div>
-        `;
+        while (flowContainer.firstChild) flowContainer.removeChild(flowContainer.firstChild);
+        const mailDeprecationDiv = document.createElement('div');
+        mailDeprecationDiv.style.cssText = 'padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;';
+        const mailDeprecationP = document.createElement('p');
+        mailDeprecationP.style.cssText = 'margin: 0; font-size: 14px;';
+        const mailBold = document.createElement('strong');
+        mailBold.textContent = 'v3.10.0:';
+        mailDeprecationP.appendChild(mailBold);
+        mailDeprecationP.appendChild(document.createTextNode(' Mail flow\'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.'));
+        mailDeprecationDiv.appendChild(mailDeprecationP);
+        flowContainer.appendChild(mailDeprecationDiv);
     }
 
     // Debug: Expose data to window for console access
@@ -1370,7 +1374,7 @@ function populateVariableChips(): void {
     if (!container) return;
 
     // Clear existing chips
-    container.innerHTML = '';
+    while (container.firstChild) container.removeChild(container.firstChild);
 
     // Add variable chips
     for (const [key, label] of Object.entries(messageVariables)) {
@@ -1565,14 +1569,25 @@ function updateInfoCardPreview(): void {
     if (!preview) return;
 
     if (infoCardFields.length === 0) {
-        preview.innerHTML = '<p style="color: #757575; text-align: center; padding: 30px; margin: 0;">Alan ekleyerek önizlemeyi görün</p>';
+        while (preview.firstChild) preview.removeChild(preview.firstChild);
+        const emptyP = document.createElement('p');
+        emptyP.style.cssText = 'color: #757575; text-align: center; padding: 30px; margin: 0;';
+        emptyP.textContent = 'Alan ekleyerek önizlemeyi görün';
+        preview.appendChild(emptyP);
         return;
     }
 
-    // Generate preview HTML (same style as mail info box - image 104)
-    let rowsHtml = '';
+    // Clear preview
+    while (preview.firstChild) preview.removeChild(preview.firstChild);
+
+    // Title
+    const title = document.createElement('h2');
+    title.style.cssText = 'margin: 0 0 20px 0; font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;';
+    title.textContent = 'RANDEVU BİLGİLERİ';
+    preview.appendChild(title);
+
+    // Rows
     infoCardFields.forEach(field => {
-        // Örnek değerler
         let exampleValue = '';
         switch (field.variable) {
             case 'randevu_tarih': exampleValue = '31 Aralık 2025, Çarşamba'; break;
@@ -1590,19 +1605,18 @@ function updateInfoCardPreview(): void {
             default: exampleValue = '{{' + field.variable + '}}';
         }
 
-        rowsHtml += `
-            <div style="display: flex; padding: 12px 0; border-bottom: 1px solid #f0f0f0;">
-                <div style="width: 120px; color: #666666; font-size: 14px; flex-shrink: 0;">${escapeHtml(field.label)}</div>
-                <div style="color: #1a1a1a; font-size: 14px;">${escapeHtml(exampleValue)}</div>
-            </div>
-        `;
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; padding: 12px 0; border-bottom: 1px solid #f0f0f0;';
+        const labelDiv = document.createElement('div');
+        labelDiv.style.cssText = 'width: 120px; color: #666666; font-size: 14px; flex-shrink: 0;';
+        labelDiv.textContent = field.label;
+        const valueDiv = document.createElement('div');
+        valueDiv.style.cssText = 'color: #1a1a1a; font-size: 14px;';
+        valueDiv.textContent = exampleValue;
+        row.appendChild(labelDiv);
+        row.appendChild(valueDiv);
+        preview.appendChild(row);
     });
-
-    // Preview container already has border-left via HTML style
-    preview.innerHTML = `
-        <h2 style="margin: 0 0 20px 0; font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a;">RANDEVU BİLGİLERİ</h2>
-        ${rowsHtml}
-    `;
 }
 
 /**

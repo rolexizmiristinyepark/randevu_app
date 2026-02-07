@@ -134,13 +134,17 @@ export async function initWhatsAppManager(store: DataStore): Promise<void> {
     // Show deprecation message in flow container
     const flowContainer = document.getElementById('whatsappFlowList');
     if (flowContainer) {
-        flowContainer.innerHTML = `
-            <div style="padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;">
-                <p style="margin: 0; font-size: 14px;">
-                    <strong>v3.10.0:</strong> WhatsApp flow'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.
-                </p>
-            </div>
-        `;
+        while (flowContainer.firstChild) flowContainer.removeChild(flowContainer.firstChild);
+        const deprecationDiv = document.createElement('div');
+        deprecationDiv.style.cssText = 'padding: 20px; text-align: center; color: #666; background: #f5f5f5; border-radius: 8px;';
+        const deprecationP = document.createElement('p');
+        deprecationP.style.cssText = 'margin: 0; font-size: 14px;';
+        const boldEl = document.createElement('strong');
+        boldEl.textContent = 'v3.10.0:';
+        deprecationP.appendChild(boldEl);
+        deprecationP.appendChild(document.createTextNode(' WhatsApp flow\'ları artık "Bildirim Akışları" sekmesinden yönetilmektedir.'));
+        deprecationDiv.appendChild(deprecationP);
+        flowContainer.appendChild(deprecationDiv);
     }
 }
 

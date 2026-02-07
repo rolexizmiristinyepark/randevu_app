@@ -136,7 +136,7 @@ export function showAlert(message: string, type: AlertType = 'info'): void {
   if (!container) return;
 
   // Clear existing alerts
-  container.innerHTML = '';
+  while (container.firstChild) container.removeChild(container.firstChild);
 
   // Create alert element
   const alert = createElement('div', { className: `alert alert-${type}` });
@@ -157,7 +157,7 @@ export function hideAlert(): void {
   const container = document.getElementById('alertContainer');
   if (!container) return;
 
-  container.innerHTML = '';
+  while (container.firstChild) container.removeChild(container.firstChild);
 }
 
 // ==================== LOADING STATES ====================
@@ -171,7 +171,7 @@ export function showLoading(): void {
   if (!container) return;
 
   // Clear container content
-  container.innerHTML = '';
+  while (container.firstChild) container.removeChild(container.firstChild);
 
   // Create loading content
   const loadingDiv = createElement('div', {
@@ -253,7 +253,7 @@ export function showLoadingError(): void {
   if (!container) return;
 
   // Clear container
-  container.innerHTML = '';
+  while (container.firstChild) container.removeChild(container.firstChild);
 
   // Create error page
   const errorDiv = createElement('div', {

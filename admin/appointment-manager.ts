@@ -390,7 +390,11 @@ function openAssignStaffModal(appointment: any): void {
     const isChanging = !hasNoStaff;  // Only "Change" if staff is actually assigned
 
     if (select) {
-        select.innerHTML = '<option value="">-- Seçin --</option>';
+        while (select.firstChild) select.removeChild(select.firstChild);
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = '';
+        defaultOpt.textContent = '-- Seçin --';
+        select.appendChild(defaultOpt);
 
         const activeStaff = dataStore.staff.filter(s =>
             s.active &&

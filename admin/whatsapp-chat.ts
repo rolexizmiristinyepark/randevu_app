@@ -130,7 +130,13 @@ async function loadAllMessages(): Promise<void> {
     // Center loading spinner göster
     const container = document.getElementById('waContactsList');
     if (container) {
-        container.innerHTML = '<div class="wa-loading-center"><div class="loading-spinner"></div></div>';
+        while (container.firstChild) container.removeChild(container.firstChild);
+        const loadingCenter = document.createElement('div');
+        loadingCenter.className = 'wa-loading-center';
+        const loadingSpinner = document.createElement('div');
+        loadingSpinner.className = 'loading-spinner';
+        loadingCenter.appendChild(loadingSpinner);
+        container.appendChild(loadingCenter);
     }
 
     try {
@@ -294,7 +300,18 @@ function renderContacts(): void {
         // Avatar - WhatsApp default person icon
         const avatar = document.createElement('div');
         avatar.className = 'wa-contact-avatar';
-        avatar.innerHTML = '<svg viewBox="0 0 212 212"><path fill="#DFE5E7" d="M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z"/><path fill="#FFF" d="M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-6.64-6.982 72.651 72.651 0 0 0-3.798-3.305 73.699 73.699 0 0 0-8.099-5.77c-1.168-.732-2.365-1.427-3.586-2.086l-.016.016C138.2 153.9 122.887 160 106.25 160c-16.637 0-31.95-6.1-43.675-16.197a67.348 67.348 0 0 0-3.586 2.086 73.699 73.699 0 0 0-8.099 5.77 72.607 72.607 0 0 0-3.798 3.305 70.112 70.112 0 0 0-6.64 6.982 67.7 67.7 0 0 0-2.609 3.299 62.767 62.767 0 0 0-2.064 2.955 71.036 71.036 0 0 0 12.344 11.91C62.189 191.735 83.035 199.5 106.25 199.5c23.215 0 44.061-7.765 58.127-19.385a71.036 71.036 0 0 0 9.184-8.5zM106.25 53c-23.912 0-43.25 19.338-43.25 43.25S82.338 139.5 106.25 139.5s43.25-19.338 43.25-43.25S130.162 53 106.25 53z"/></svg>';
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const svg = document.createElementNS(svgNS, 'svg');
+        svg.setAttribute('viewBox', '0 0 212 212');
+        const path1 = document.createElementNS(svgNS, 'path');
+        path1.setAttribute('fill', '#DFE5E7');
+        path1.setAttribute('d', 'M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z');
+        const path2 = document.createElementNS(svgNS, 'path');
+        path2.setAttribute('fill', '#FFF');
+        path2.setAttribute('d', 'M173.561 171.615a62.767 62.767 0 0 0-2.065-2.955 67.7 67.7 0 0 0-2.608-3.299 70.112 70.112 0 0 0-6.64-6.982 72.651 72.651 0 0 0-3.798-3.305 73.699 73.699 0 0 0-8.099-5.77c-1.168-.732-2.365-1.427-3.586-2.086l-.016.016C138.2 153.9 122.887 160 106.25 160c-16.637 0-31.95-6.1-43.675-16.197a67.348 67.348 0 0 0-3.586 2.086 73.699 73.699 0 0 0-8.099 5.77 72.607 72.607 0 0 0-3.798 3.305 70.112 70.112 0 0 0-6.64 6.982 67.7 67.7 0 0 0-2.609 3.299 62.767 62.767 0 0 0-2.064 2.955 71.036 71.036 0 0 0 12.344 11.91C62.189 191.735 83.035 199.5 106.25 199.5c23.215 0 44.061-7.765 58.127-19.385a71.036 71.036 0 0 0 9.184-8.5zM106.25 53c-23.912 0-43.25 19.338-43.25 43.25S82.338 139.5 106.25 139.5s43.25-19.338 43.25-43.25S130.162 53 106.25 53z');
+        svg.appendChild(path1);
+        svg.appendChild(path2);
+        avatar.appendChild(svg);
 
         // Info container - sadece isim ve telefon
         const info = document.createElement('div');

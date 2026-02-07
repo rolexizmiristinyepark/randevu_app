@@ -77,7 +77,7 @@ export function renderCalendar(): void {
     }
 
     // Clear grid
-    grid.innerHTML = '';
+    while (grid.firstChild) grid.removeChild(grid.firstChild);
 
     // Use DocumentFragment for better performance (single DOM insertion)
     const fragment = document.createDocumentFragment();
