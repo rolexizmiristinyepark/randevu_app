@@ -58,8 +58,8 @@ export async function initStaffManager(store: DataStore): Promise<void> {
     await loadStaff();
     setupEventListeners();
 
-    // Initialize phone input for new staff form
-    initPhoneInput('newStaffPhone');
+    // Initialize phone input for new staff form (lazy-loaded)
+    await initPhoneInput('newStaffPhone');
 }
 
 /**
@@ -143,7 +143,7 @@ async function add(): Promise<void> {
             inputName.value = '';
             // Reset phone input
             destroyPhoneInput('newStaffPhone');
-            initPhoneInput('newStaffPhone');
+            await initPhoneInput('newStaffPhone');
             inputEmail.value = '';
             inputRole.value = 'sales';
             inputIsAdmin.checked = false;
@@ -553,7 +553,7 @@ function openLink(staffId: string): void {
 /**
  * Open edit modal for staff member
  */
-function openEditModal(staffId: string): void {
+async function openEditModal(staffId: string): Promise<void> {
     try {
         const staff = dataStore.staff.find(s => s.id === staffId);
         if (!staff) {
@@ -580,9 +580,9 @@ function openEditModal(staffId: string): void {
         if (roleSelect) roleSelect.value = staff.role || 'sales';
         if (isAdminCheckbox) isAdminCheckbox.checked = staff.isAdmin || false;
 
-        // Initialize phone input for edit modal and set value
+        // Initialize phone input for edit modal and set value (lazy-loaded)
         destroyPhoneInput('editStaffPhone');
-        initPhoneInput('editStaffPhone');
+        await initPhoneInput('editStaffPhone');
         // Set phone number (with + prefix for intl-tel-input)
         if (staff.phone) {
             setPhoneNumber('editStaffPhone', String(staff.phone));

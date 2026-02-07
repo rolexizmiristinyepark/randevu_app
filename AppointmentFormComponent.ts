@@ -45,12 +45,12 @@ function resetTurnstile(): void {
 /**
  * Initialize appointment form submit handler
  */
-export function initAppointmentForm(): void {
+export async function initAppointmentForm(): Promise<void> {
     const submitBtn = document.getElementById('submitBtn');
     if (!submitBtn) return;
 
-    // Initialize phone input with intl-tel-input
-    initPhoneInput('customerPhone');
+    // Initialize phone input with intl-tel-input (lazy-loaded)
+    await initPhoneInput('customerPhone');
 
     submitBtn.addEventListener('click', handleFormSubmit);
 }

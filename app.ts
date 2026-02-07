@@ -228,7 +228,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const typesContainer = document.getElementById('appointmentTypesContainer');
 
     // Initialize appointment form (data already loaded via batch loader)
-    initAppointmentForm();
+    await initAppointmentForm();
 
     // ⚡ Batch loader already loaded staff and settings in parallel
     // No need for: await loadSettings(); await loadStaffMembers();

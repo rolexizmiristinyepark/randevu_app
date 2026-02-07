@@ -3,8 +3,19 @@
  * Telefon girişi için bayraklı, ülke aramalı, validation'lı input
  */
 
-import intlTelInput from 'intl-tel-input';
+// CSS eagerly loaded (~5KB - küçük, hemen gerekli)
 import 'intl-tel-input/build/css/intlTelInput.css';
+
+// Lazy-loaded intl-tel-input library (~90KB deferred until first phone input init)
+let _intlTelInput: typeof import('intl-tel-input').default | null = null;
+
+async function getIntlTelInput(): Promise<typeof import('intl-tel-input').default> {
+    if (!_intlTelInput) {
+        const module = await import('intl-tel-input');
+        _intlTelInput = module.default;
+    }
+    return _intlTelInput;
+}
 
 // Set flag image paths based on Vite base URL
 // This runs once when the module is loaded
@@ -52,14 +63,14 @@ const instances: Map<string, IntlTelInputInstance> = new Map();
  * @param options - Optional configuration
  * @returns Instance for getting value later
  */
-export function initPhoneInput(
+export async function initPhoneInput(
     inputId: string,
     options: {
         initialCountry?: string;
         preferredCountries?: string[];
         onlyCountries?: string[];
     } = {}
-): IntlTelInputInstance | null {
+): Promise<IntlTelInputInstance | null> {
     const input = document.getElementById(inputId) as HTMLInputElement;
     if (!input) {
         console.error(`Phone input not found: ${inputId}`);
@@ -71,6 +82,9 @@ export function initPhoneInput(
         instances.get(inputId)?.destroy();
         instances.delete(inputId);
     }
+
+    // Lazy-load intl-tel-input library on first use
+    const intlTelInput = await getIntlTelInput();
 
     // intl-tel-input TypeScript types are incomplete, using any for options
     const itiOptions: any = {
