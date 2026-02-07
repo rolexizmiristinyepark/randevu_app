@@ -47,14 +47,14 @@
 - 7 sequential await → 2 parallel wave (Promise.all)
 
 ### 2.4 crypto-js Bundle Size (~200KB)
-- **Durum:** ⬜ AÇIK
-- `crypto-js` tüm modülü import ediliyor
-- **Önerilen Çözüm:** Web Crypto API'ye geçiş veya spesifik import
+- **Durum:** ✅ DÜZELTİLDİ (commit fa9f1fa)
+- `import CryptoJS from 'crypto-js'` → spesifik submodule import (SHA256, AES, enc-utf8)
+- Rabbit, RC4, SHA512, TripleDES, RIPEMD gibi kullanılmayan algoritmalar elimine edildi
 
 ### 2.5 intl-tel-input Eager Loading (~240KB)
-- **Durum:** ⬜ AÇIK
-- Form gösterilmeden yükleniyor
-- **Önerilen Çözüm:** Lazy import ile form gösterildiğinde yükle
+- **Durum:** ✅ DÜZELTİLDİ (commit db05c7e)
+- Dynamic import ile lazy loading: form-success bundle 52KB → 7.7KB
+- initPhoneInput() async yapıldı, intl-tel-input ilk çağrıda yükleniyor
 
 ### 2.6 Zod v4 Bundle Size (~60KB)
 - **Durum:** ⬜ AÇIK - Production'da gerekli mi değerlendirilmeli
@@ -122,8 +122,8 @@
 | 6 | Performans | Activity throttle | ✅ |
 | 7 | Performans | Config race condition | ✅ |
 | 8 | Performans | Sequential await | ✅ |
-| 9 | Performans | crypto-js bundle | ⬜ |
-| 10 | Performans | intl-tel-input lazy | ⬜ |
+| 9 | Performans | crypto-js bundle | ✅ |
+| 10 | Performans | intl-tel-input lazy | ✅ |
 | 11 | Kod Kalitesi | Session mesajı | ✅ |
 | 12 | Kod Kalitesi | ApiAction type | ✅ |
 | 13 | Kod Kalitesi | Zod bağımlılık | ✅ |
@@ -135,7 +135,7 @@
 | 19 | KVKK | Calendar PII | ⬜ |
 | 20 | KVKK | Retention trigger | ⬜ |
 
-**Toplam: 16/20 düzeltildi**
+**Toplam: 18/20 düzeltildi**
 
 ---
 
@@ -150,6 +150,10 @@
 | 5b5e72d | quality: Zod dependency ekle, ApiAction type safety düzelt |
 | 07f0693 | fix: KVKK requestDataDeletion + config race + parallel init |
 | ad47a40 | fix: KVKK consent server-side validation + deprecated execCommand |
+| e4b6483 | security: Verbose DEBUG logları temizle (PII sızıntı riski) |
+| c72ef6b | docs: AUDIT.md güncelle - 16/20 bulgu düzeltildi |
+| fa9f1fa | perf: crypto-js specific submodule imports (~200KB → ~50KB) |
+| db05c7e | perf: intl-tel-input lazy loading (44KB deferred) |
 
 ---
 
