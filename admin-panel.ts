@@ -21,7 +21,8 @@ import { initProfileSettingsManager } from './admin/profile-settings-manager';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
 import { AdminAuth } from './admin-auth';
-import { apiCall } from './api-service';
+import { apiCall, getSupabase } from './api-service';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -255,6 +256,9 @@ async function startApp(): Promise<void> {
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (mainTabs) mainTabs.style.display = 'flex';
         if (activeContent) activeContent.style.display = 'block';
+
+        // Setup Realtime subscriptions for live updates
+        setupRealtimeSubscriptions();
 
     } catch (error) {
         console.error('Admin panel başlatma hatası:', error);
@@ -765,6 +769,58 @@ function createLinkCard(name: string, type: string, id: string): HTMLElement {
 //#endregion
 
 //#region Event Listener Cleanup
+// Realtime subscription channels
+let realtimeChannels: RealtimeChannel[] = [];
+
+/**
+ * Setup Supabase Realtime subscriptions for live updates
+ */
+function setupRealtimeSubscriptions(): void {
+    const supabase = getSupabase();
+
+    // Clean up existing channels first
+    cleanupRealtimeChannels();
+
+    // Listen for appointment changes (insert, update, delete)
+    const appointmentsChannel = supabase
+        .channel('admin-appointments')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'appointments' },
+            (_payload) => {
+                loadAppointments();
+            }
+        )
+        .subscribe();
+
+    // Listen for message log changes (new messages, status updates)
+    const messagesChannel = supabase
+        .channel('admin-messages')
+        .on('postgres_changes',
+            { event: '*', schema: 'public', table: 'message_log' },
+            (_payload) => {
+                // Refresh WhatsApp chat if visible
+                const whatsappTab = document.getElementById('whatsappMessages');
+                if (whatsappTab?.classList.contains('active')) {
+                    initWhatsAppChat();
+                }
+            }
+        )
+        .subscribe();
+
+    realtimeChannels = [appointmentsChannel, messagesChannel];
+}
+
+/**
+ * Cleanup Realtime channels
+ */
+function cleanupRealtimeChannels(): void {
+    const supabase = getSupabase();
+    realtimeChannels.forEach(channel => {
+        supabase.removeChannel(channel);
+    });
+    realtimeChannels = [];
+}
+
 // Global event listener manager for admin panel cleanup
 export const adminEventManager = new EventListenerManager();
 
@@ -775,6 +831,7 @@ if (typeof window !== 'undefined') {
 
 // Cleanup on page unload to prevent memory leaks
 window.addEventListener('beforeunload', () => {
+    cleanupRealtimeChannels();
     adminEventManager.cleanup();
 });
 //#endregion
