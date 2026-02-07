@@ -650,10 +650,11 @@ async function loadProfileLinks(): Promise<void> {
 
             staffList.forEach((s: any) => {
                 if (!s.active) return;
+                const linkId = s.personel_id || s.id;
                 if (s.role === 'management') {
-                    managementList.push({ id: s.id, name: s.name });
+                    managementList.push({ id: linkId, name: s.name });
                 } else if (s.role === 'sales') {
-                    salesList.push({ id: s.id, name: s.name });
+                    salesList.push({ id: linkId, name: s.name });
                 }
             });
 
