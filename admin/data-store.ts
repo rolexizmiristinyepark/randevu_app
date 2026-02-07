@@ -105,7 +105,28 @@ export function initDataStore(): DataStore {
             try {
                 const response = await apiCall('getAllProfilAyarlari');
                 if (response.success && response.data) {
-                    this.profilAyarlari = response.data as ProfilAyarlari;
+                    // Backend profilKodu/profilAdi döner, frontend code alanı bekler
+                    const raw = response.data as Record<string, any>;
+                    const mapped: ProfilAyarlari = {};
+                    for (const [key, p] of Object.entries(raw)) {
+                        mapped[key] = {
+                            code: p.profilKodu || key,
+                            idKontrolu: p.idKontrolu ?? false,
+                            expectedRole: p.expectedRole,
+                            sameDayBooking: p.sameDayBooking ?? false,
+                            maxSlotAppointment: p.maxSlotAppointment ?? 1,
+                            slotGrid: p.slotGrid ?? 60,
+                            maxDailyPerStaff: p.maxDailyPerStaff ?? 4,
+                            maxDailyDelivery: p.maxDailyDelivery ?? 0,
+                            duration: p.duration ?? 60,
+                            assignByAdmin: p.assignByAdmin ?? false,
+                            allowedTypes: p.allowedTypes ?? [],
+                            staffFilter: p.staffFilter ?? 'role',
+                            takvimFiltresi: p.takvimFiltresi ?? 'withtoday',
+                            vardiyaKontrolu: p.vardiyaKontrolu ?? true,
+                        };
+                    }
+                    this.profilAyarlari = mapped;
                 }
             } catch (error) {
                 console.error('Profil ayarları yüklenemedi:', error);

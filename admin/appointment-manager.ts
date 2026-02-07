@@ -5,7 +5,7 @@
 
 import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
-import { TimeUtils } from '../time-utils';
+
 import { ButtonAnimator, FormDirtyState } from '../button-utils';
 import type { DataStore } from './data-store';
 import { AdminAuth } from '../admin-auth';
@@ -204,17 +204,11 @@ function openEditModal(appointment: any): void {
     }
 
     try {
-        // Parse date
-        const startDate = new Date(appointment.start.dateTime || appointment.start.date);
+        // Supabase flat record: appointment.date = "YYYY-MM-DD", appointment.start_time = "HH:MM:SS"
+        const dateStr = appointment.date; // Already YYYY-MM-DD
 
-        // Format date as YYYY-MM-DD for date input
-        const year = startDate.getFullYear();
-        const month = String(startDate.getMonth() + 1).padStart(2, '0');
-        const day = String(startDate.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-
-        // Format time using TimeUtils
-        const currentTime = TimeUtils.toTimeString(startDate);
+        // Format time: start_time is "HH:MM:SS", we need "HH:MM"
+        const currentTime = appointment.start_time ? appointment.start_time.substring(0, 5) : '11:00';
 
         // Get input elements
         const dateInput = document.getElementById('editAppointmentDate') as HTMLInputElement;
@@ -355,10 +349,10 @@ function openAssignStaffModal(appointment: any): void {
         assignModalDirtyState = null;
     }
 
-    // Fill appointment info
-    const start = new Date(appointment.start.dateTime || appointment.start.date);
-    const customerName = appointment.summary?.replace('Randevu: ', '') || 'İsimsiz';
-    const customerNote = appointment.extendedProperties?.private?.customerNote || '';
+    // Fill appointment info (Supabase flat record)
+    const start = new Date(`${appointment.date}T${appointment.start_time}`);
+    const customerName = appointment.customer_name || 'İsimsiz';
+    const customerNote = appointment.customer_note || '';
     const dateStr = start.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
     const timeStr = start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
@@ -388,7 +382,7 @@ function openAssignStaffModal(appointment: any): void {
 
     // Populate staff dropdown (mevcut atanmış personeli hariç tut)
     const select = document.getElementById('assignStaffSelect') as HTMLSelectElement;
-    const currentStaffId = appointment.extendedProperties?.private?.staffId;
+    const currentStaffId = appointment.staff_id;
     // v3.10.55: Use same logic as list - check if staff is actually assigned
     const currentStaff = currentStaffId ? dataStore.staff.find(s => String(s.id) === String(currentStaffId)) : null;
     const currentStaffName = currentStaff?.name || '';
@@ -506,11 +500,10 @@ function render(appointments: any[]): void {
         return;
     }
 
-    // Group by date
+    // Group by date (Supabase flat record: apt.date = "YYYY-MM-DD")
     const byDate: Record<string, any[]> = {};
     appointments.forEach(apt => {
-        const start = new Date(apt.start.dateTime || apt.start.date);
-        const dateKey = DateUtils.toLocalDate(start);
+        const dateKey = apt.date; // Supabase: flat "YYYY-MM-DD" string
         if (!byDate[dateKey]) byDate[dateKey] = [];
         byDate[dateKey].push(apt);
     });
@@ -535,22 +528,16 @@ function render(appointments: any[]): void {
         fragment.appendChild(dateHeader);
 
         (byDate[dateKey] || []).forEach(apt => {
-            const start = new Date(apt.start.dateTime || apt.start.date);
-            const end = new Date(apt.end.dateTime || apt.end.date);
-            const staffId = apt.extendedProperties?.private?.staffId;
-            const staff = dataStore.staff.find(s => s.id === staffId);
-            const phone = apt.extendedProperties?.private?.customerPhone || '-';
-            // v3.9: customerName tag'den al, yoksa summary'den parse et (eski randevular için fallback)
-            let customerName = apt.extendedProperties?.private?.customerName || '';
-            if (!customerName && apt.summary) {
-                // Eski format: "CustomerName - StaffName / Type" veya "CustomerName (Type)"
-                const match = apt.summary.match(/^([^-(\n]+?)(?:\s*[-(/]|$)/);
-                customerName = match ? match[1].trim() : apt.summary;
-            }
-            customerName = customerName || 'İsimsiz';
+            // Supabase flat record: date + start_time/end_time (HH:MM:SS)
+            const start = new Date(`${apt.date}T${apt.start_time}`);
+            const end = new Date(`${apt.date}T${apt.end_time}`);
+            const staffId = apt.staff_id;
+            const staff = dataStore.staff.find(s => String(s.id) === String(staffId));
+            const phone = apt.customer_phone || '-';
+            let customerName = apt.customer_name || 'İsimsiz';
             // v3.9: Türkçe karakter normalizasyonu (İ/ı sorunları için)
             customerName = normalizeTurkishChars(customerName);
-            const customerNote = apt.extendedProperties?.private?.customerNote || '';
+            const customerNote = apt.customer_note || '';
 
             // Appointment card container
             const aptCard = getCreateElement()('div', {
@@ -629,7 +616,7 @@ function render(appointments: any[]): void {
 
             // v3.9: Profil ayarlarından assignByAdmin kontrolü
             // Sadece profilde assignByAdmin=true ise buton göster
-            const appointmentProfil = apt.extendedProperties?.private?.profil || '';
+            const appointmentProfil = apt.profile || '';
             const profilAyari = dataStore.profilAyarlari[appointmentProfil];
             const showAssignButton = profilAyari?.assignByAdmin === true;
 

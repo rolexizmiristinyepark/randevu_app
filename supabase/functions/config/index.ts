@@ -250,6 +250,7 @@ async function handleUpdateProfilAyarlari(req: Request, body: EdgeFunctionBody):
   if (updates.defaultType !== undefined) dbUpdates.default_type = updates.defaultType;
   if (updates.showTypeSelection !== undefined) dbUpdates.show_type_selection = updates.showTypeSelection;
   if (updates.vardiyaKontrolu !== undefined) dbUpdates.vardiya_kontrolu = updates.vardiyaKontrolu;
+  if (updates.idKontrolu !== undefined) dbUpdates.id_kontrolu = updates.idKontrolu;
 
   if (Object.keys(dbUpdates).length === 0) {
     return errorResponse('Güncellenecek alan bulunamadı');

@@ -274,7 +274,10 @@ async function save(): Promise<void> {
         return;
     }
 
-    const shiftsData: Record<string, Record<string, string>> = {};
+    // Backend expects: shifts = [{ date, staffId, shiftType }, ...]
+    const shiftsArray: Array<{ date: string; staffId: string; shiftType: string }> = [];
+    // Also keep nested format for local dataStore merge
+    const shiftsNested: Record<string, Record<string, string>> = {};
     const selects = document.querySelectorAll('.shift-select') as NodeListOf<HTMLSelectElement>;
 
     selects.forEach(select => {
@@ -284,10 +287,11 @@ async function save(): Promise<void> {
 
         if (!staffId || !date) return;
 
-        if (!shiftsData[date]) shiftsData[date] = {};
+        if (!shiftsNested[date]) shiftsNested[date] = {};
 
         if (value) {
-            shiftsData[date][staffId] = value;
+            shiftsNested[date][staffId] = value;
+            shiftsArray.push({ date, staffId, shiftType: value });
         }
     });
 
@@ -296,12 +300,12 @@ async function save(): Promise<void> {
 
     try {
         const response = await apiCall('saveShifts', {
-            shifts: JSON.stringify(shiftsData)
+            shifts: shiftsArray
         });
 
         if (response.success) {
             // Merge with local data
-            Object.assign(dataStore.shifts, shiftsData);
+            Object.assign(dataStore.shifts, shiftsNested);
             ButtonAnimator.success(btn);
             renderSaved();
             getUI().showAlert('Vardiyalar kaydedildi!', 'success');

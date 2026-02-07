@@ -1,12 +1,11 @@
 /**
  * PROFILE SETTINGS MANAGER - Profil Ayarları Yönetimi
  * v3.4: Dinamik profil ayarları düzenleme (simplified - defaultType/showTypeSelection removed)
- * v3.5: XSS koruması - escapeHtml ile güvenli HTML oluşturma
+ * v3.5: XSS koruması - DOM API ile güvenli render (innerHTML yok)
  */
 
 import { apiCall } from '../api-service';
 import { ButtonAnimator } from '../button-utils';
-import { escapeHtml } from '../security-helpers';
 
 // Profil ayarları interface
 interface ProfilAyari {
@@ -72,10 +71,30 @@ export async function initProfileSettingsManager(): Promise<void> {
  */
 async function loadProfilAyarlari(): Promise<void> {
     try {
-        const response = await apiCall('getAllProfilAyarlari') as { success: boolean; data: ProfilAyarlari };
+        const response = await apiCall('getAllProfilAyarlari') as { success: boolean; data: Record<string, any> };
 
         if (response.success && response.data) {
-            profilAyarlari = response.data;
+            // Backend profilKodu/profilAdi döner, frontend code alanı bekler
+            const mapped: ProfilAyarlari = {};
+            for (const [key, p] of Object.entries(response.data)) {
+                mapped[key] = {
+                    code: p.profilKodu || key,
+                    idKontrolu: p.idKontrolu ?? false,
+                    expectedRole: p.expectedRole,
+                    sameDayBooking: p.sameDayBooking ?? false,
+                    maxSlotAppointment: p.maxSlotAppointment ?? 1,
+                    slotGrid: p.slotGrid ?? 60,
+                    maxDailyPerStaff: p.maxDailyPerStaff ?? 4,
+                    maxDailyDelivery: p.maxDailyDelivery ?? 0,
+                    duration: p.duration ?? 60,
+                    assignByAdmin: p.assignByAdmin ?? false,
+                    allowedTypes: p.allowedTypes ?? [],
+                    staffFilter: p.staffFilter ?? 'role',
+                    takvimFiltresi: p.takvimFiltresi ?? 'withtoday',
+                    vardiyaKontrolu: p.vardiyaKontrolu ?? true,
+                };
+            }
+            profilAyarlari = mapped;
             renderTable();
         }
     } catch (error) {
@@ -93,82 +112,130 @@ async function loadProfilAyarlari(): Promise<void> {
 }
 
 /**
+ * DOM API ile tablo hücresi oluşturma yardımcısı
+ */
+function createCell(tag: 'td' | 'th', text: string, style: string): HTMLElement {
+    const cell = document.createElement(tag);
+    cell.style.cssText = style;
+    cell.textContent = text;
+    return cell;
+}
+
+/**
  * Render profile settings table
+ * DOM API kullanılıyor (innerHTML yerine) - XSS koruması
  */
 function renderTable(): void {
     const container = document.getElementById('profilAyarlariTable');
     if (!container) return;
 
+    // Mevcut icerik temizle
+    while (container.firstChild) container.removeChild(container.firstChild);
+
     const profilOrder = ['genel', 'gunluk', 'boutique', 'yonetim', 'personel', 'vip'];
 
-    let html = `
-        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-            <thead>
-                <tr style="background: #f5f5f5;">
-                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Profil</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Kod</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">ID Kontrol</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Vardiya</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Slot Max</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Günlük T/G</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">P.Başı T/G</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Grid</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">Süre</th>
-                    <th style="padding: 10px; text-align: left; border-bottom: 2px solid #ddd;">Personel Filtresi</th>
-                    <th style="padding: 10px; text-align: center; border-bottom: 2px solid #ddd;">İşlem</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
+    const table = document.createElement('table');
+    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;';
+
+    // Thead
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.style.cssText = 'background: #f5f5f5;';
+
+    const thStyle = 'padding: 10px; text-align: center; border-bottom: 2px solid #ddd;';
+    const thStyleLeft = 'padding: 10px; text-align: left; border-bottom: 2px solid #ddd;';
+
+    const headers = [
+        { text: 'Profil', style: thStyleLeft },
+        { text: 'Kod', style: thStyle },
+        { text: 'ID Kontrol', style: thStyle },
+        { text: 'Vardiya', style: thStyle },
+        { text: 'Slot Max', style: thStyle },
+        { text: 'G\u00FCnl\u00FCk T/G', style: thStyle },
+        { text: 'P.Ba\u015F\u0131 T/G', style: thStyle },
+        { text: 'Grid', style: thStyle },
+        { text: 'S\u00FCre', style: thStyle },
+        { text: 'Personel Filtresi', style: thStyleLeft },
+        { text: '\u0130\u015Flem', style: thStyle },
+    ];
+
+    for (const h of headers) {
+        headerRow.appendChild(createCell('th', h.text, h.style));
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Tbody
+    const tbody = document.createElement('tbody');
+
+    const tdStyle = 'padding: 10px; text-align: center; border-bottom: 1px solid #eee;';
+    const tdStyleLeft = 'padding: 10px; border-bottom: 1px solid #eee;';
+    const tdStyleName = 'padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;';
 
     for (const key of profilOrder) {
         const p = profilAyarlari[key];
         if (!p) continue;
 
-        // ⚠️ XSS KORUMASI: Tüm değerler escapeHtml ile sanitize edilir
         const staffLabel = p.staffFilter === 'self' ? 'Self (URL ID)' :
-                          p.staffFilter === 'user' ? 'Giriş Yapan Kullanıcı' :
-                          p.staffFilter === 'role:sales' ? 'Satış' :
-                          p.staffFilter === 'role:management' ? 'Yönetim' :
-                          p.staffFilter === 'none' ? 'Admin Atar' : escapeHtml(p.staffFilter);
+                          p.staffFilter === 'user' ? 'Giri\u015F Yapan Kullan\u0131c\u0131' :
+                          p.staffFilter === 'role:sales' ? 'Sat\u0131\u015F' :
+                          p.staffFilter === 'role:management' ? 'Y\u00F6netim' :
+                          p.staffFilter === 'none' ? 'Admin Atar' : p.staffFilter;
 
-        const safeKey = escapeHtml(key);
-        const safeCode = escapeHtml(CODE_LABELS[p.code] || '#' + p.code);
-        const safeSlotGrid = escapeHtml(String(p.slotGrid));
-        const safeDuration = escapeHtml(String(p.duration));
-        const safeMaxSlot = escapeHtml(String(p.maxSlotAppointment));
-        const safeMaxDaily = p.maxDailyDelivery ? escapeHtml(String(p.maxDailyDelivery)) : '∞';
-        const safeMaxPerStaff = p.maxDailyPerStaff ? escapeHtml(String(p.maxDailyPerStaff)) : '∞';
+        const tr = document.createElement('tr');
 
-        html += `
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;">${escapeHtml(PROFIL_LABELS[key] || key)}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;"><code>${safeCode}</code></td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.idKontrolu ? '✓' : '-'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${p.vardiyaKontrolu !== false ? '✓' : '-'}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxSlot}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxDaily}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeMaxPerStaff}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeSlotGrid}dk</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">${safeDuration}dk</td>
-                <td style="padding: 10px; border-bottom: 1px solid #eee;">${staffLabel}</td>
-                <td style="padding: 10px; text-align: center; border-bottom: 1px solid #eee;">
-                    <button class="btn btn-small" data-action="edit" data-profil="${safeKey}">Edit</button>
-                </td>
-            </tr>
-        `;
+        // Profil adi
+        tr.appendChild(createCell('td', PROFIL_LABELS[key] || key, tdStyleName));
+
+        // Kod - code elementi icinde
+        const kodTd = document.createElement('td');
+        kodTd.style.cssText = tdStyle;
+        const codeEl = document.createElement('code');
+        codeEl.textContent = CODE_LABELS[p.code] || '#' + p.code;
+        kodTd.appendChild(codeEl);
+        tr.appendChild(kodTd);
+
+        // ID Kontrol
+        tr.appendChild(createCell('td', p.idKontrolu ? '\u2713' : '-', tdStyle));
+
+        // Vardiya
+        tr.appendChild(createCell('td', p.vardiyaKontrolu !== false ? '\u2713' : '-', tdStyle));
+
+        // Slot Max
+        tr.appendChild(createCell('td', String(p.maxSlotAppointment), tdStyle));
+
+        // Gunluk T/G
+        tr.appendChild(createCell('td', p.maxDailyDelivery ? String(p.maxDailyDelivery) : '\u221E', tdStyle));
+
+        // P.Basi T/G
+        tr.appendChild(createCell('td', p.maxDailyPerStaff ? String(p.maxDailyPerStaff) : '\u221E', tdStyle));
+
+        // Grid
+        tr.appendChild(createCell('td', String(p.slotGrid) + 'dk', tdStyle));
+
+        // Sure
+        tr.appendChild(createCell('td', String(p.duration) + 'dk', tdStyle));
+
+        // Personel Filtresi
+        tr.appendChild(createCell('td', staffLabel, tdStyleLeft));
+
+        // Islem butonu
+        const actionTd = document.createElement('td');
+        actionTd.style.cssText = tdStyle;
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn btn-small';
+        editBtn.setAttribute('data-action', 'edit');
+        editBtn.setAttribute('data-profil', key);
+        editBtn.textContent = 'Edit';
+        editBtn.addEventListener('click', () => openEditModal(key));
+        actionTd.appendChild(editBtn);
+        tr.appendChild(actionTd);
+
+        tbody.appendChild(tr);
     }
 
-    html += '</tbody></table>';
-    container.innerHTML = html;
-
-    // Add click listeners for edit buttons
-    container.querySelectorAll('[data-action="edit"]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const key = (e.target as HTMLElement).getAttribute('data-profil');
-            if (key) openEditModal(key);
-        });
-    });
+    table.appendChild(tbody);
+    container.appendChild(table);
 }
 
 /**
