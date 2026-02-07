@@ -9,6 +9,7 @@ import { logError } from '../monitoring';
 
 export interface StaffMember {
     id: string;
+    personel_id?: string;
     name: string;
     phone: string;
     email: string;
@@ -65,8 +66,17 @@ export function initDataStore(): DataStore {
         async loadStaff() {
             try {
                 const response = await apiCall('getStaff');
-                if (response.success) {
-                    this.staff = response.data as StaffMember[];
+                if (response.success && Array.isArray(response.data)) {
+                    this.staff = response.data.map((s: any) => ({
+                        id: String(s.id),
+                        personel_id: s.personel_id || undefined,
+                        name: s.name,
+                        phone: s.phone || '',
+                        email: s.email || '',
+                        role: s.role || 'sales',
+                        isAdmin: s.is_admin === true || s.isAdmin === true,
+                        active: s.active === true,
+                    }));
                 }
             } catch (error) {
                 console.error('İlgili personel yüklenemedi:', error);

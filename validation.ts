@@ -23,12 +23,15 @@ export const AppointmentTypeSchema = z.enum(['delivery', 'service', 'consultatio
 
 export const StaffSchema = z.object({
     id: z.union([z.number(), z.string()]),
+    personel_id: z.string().optional(),
     name: z.string().min(1),
     phone: z.union([z.string(), z.number()]),
-    email: z.string().email().optional(),
+    email: z.string().optional(),
     role: z.string().optional(),
-    isAdmin: z.boolean().optional(),
+    is_admin: z.boolean().optional(),
+    is_vip: z.boolean().optional(),
     active: z.boolean(),
+    permissions: z.record(z.unknown()).optional(),
 });
 
 export const StaffArraySchema = z.array(StaffSchema);
