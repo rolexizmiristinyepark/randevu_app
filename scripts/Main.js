@@ -730,10 +730,11 @@ function doGet(e) {
       if (requiresAuth) {
         // Önce session token kontrol et, sonra API key
         var isAuthorized = false;
+        var sessionResult = null;
 
         if (apiKey) {
           // Session token mı yoksa API key mi?
-          var sessionResult = SessionAuthService.validateSession(apiKey);
+          sessionResult = SessionAuthService.validateSession(apiKey);
           if (sessionResult.valid) {
             isAuthorized = true;
           } else if (AuthService.validateApiKey(apiKey)) {
@@ -745,6 +746,21 @@ function doGet(e) {
           response = {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
+            requiresAuth: true
+          };
+        }
+        // ⚠️ SECURITY: SESSION_ADMIN_ACTIONS için isAdmin kontrolü
+        // Sales rolündeki personel admin işlemleri yapamamalı
+        else if (SESSION_ADMIN_ACTIONS.includes(action) && sessionResult && sessionResult.valid && !sessionResult.staff.isAdmin) {
+          log.warn('Admin action denied - not admin', { action: action, staffId: sessionResult.staff.id, role: sessionResult.staff.role });
+          SheetStorageService.addAuditLog('ADMIN_ACTION_DENIED', {
+            action: action,
+            staffId: sessionResult.staff.id,
+            reason: 'NOT_ADMIN'
+          });
+          response = {
+            success: false,
+            error: 'Bu işlem için yönetici yetkisi gereklidir.',
             requiresAuth: true
           };
         } else {
@@ -769,7 +785,7 @@ function doGet(e) {
     } catch (error) {
       // ✅ YENİ: Error ID oluştur (destek için referans)
       const errorId = Utilities.getUuid().substring(0, 8).toUpperCase();
-      
+
       // Detaylı log (server-side)
       log.error(`[${errorId}] API Hatası:`, {
         message: error.message,
@@ -777,10 +793,10 @@ function doGet(e) {
         action: action,
         parameters: Object.keys(e.parameter || {})  // Sadece key'ler, value'lar değil
       });
-      
+
       // ✅ YENİ: Kullanıcıya generic mesaj + error ID
-      response = { 
-        success: false, 
+      response = {
+        success: false,
         error: CONFIG.ERROR_MESSAGES.SERVER_ERROR,
         errorId: errorId  // Destek için referans kodu
       };
@@ -859,11 +875,12 @@ function doPost(e) {
       if (requiresAuth) {
         // Önce session token kontrol et, sonra API key
         var isAuthorized = false;
+        var sessionResult = null;
 
         if (apiKey) {
           // Session token veya API key ile yetkilendirme
           log.debug('[AUTH] Checking auth for action: ' + action);
-          var sessionResult = SessionAuthService.validateSession(apiKey);
+          sessionResult = SessionAuthService.validateSession(apiKey);
           if (sessionResult.valid) {
             log.debug('[AUTH] Session valid');
             isAuthorized = true;
@@ -882,7 +899,21 @@ function doPost(e) {
             success: false,
             error: CONFIG.ERROR_MESSAGES.AUTH_ERROR,
             requiresAuth: true
-            // ⚠️ SECURITY: Debug info removed - was exposing session validation details
+          };
+        }
+        // ⚠️ SECURITY: SESSION_ADMIN_ACTIONS için isAdmin kontrolü
+        // Sales rolündeki personel admin işlemleri yapamamalı
+        else if (SESSION_ADMIN_ACTIONS.includes(action) && sessionResult && sessionResult.valid && !sessionResult.staff.isAdmin) {
+          log.warn('Admin action denied - not admin', { action: action, staffId: sessionResult.staff.id });
+          SheetStorageService.addAuditLog('ADMIN_ACTION_DENIED', {
+            action: action,
+            staffId: sessionResult.staff.id,
+            reason: 'NOT_ADMIN'
+          });
+          response = {
+            success: false,
+            error: 'Bu işlem için yönetici yetkisi gereklidir.',
+            requiresAuth: true
           };
         } else {
           // Auth geçerli, handler'ı çalıştır

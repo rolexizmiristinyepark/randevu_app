@@ -28,7 +28,7 @@ const Utils = {
    */
   isValidEmail: function(email) {
     if (!email || typeof email !== 'string') return false;
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email.trim());
   },
 
@@ -244,7 +244,26 @@ const StaffService = {
   },
 
   /**
+   * Timing-safe string comparison (constant-time)
+   * ⚠️ SECURITY: === operatörü timing attack'a açık - bu fonksiyon sabit sürede karşılaştırır
+   * @param {string} a - İlk string
+   * @param {string} b - İkinci string
+   * @returns {boolean} Eşit mi?
+   * @private
+   */
+  _timingSafeEqual: function(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    if (a.length !== b.length) return false;
+    var result = 0;
+    for (var i = 0; i < a.length; i++) {
+      result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    }
+    return result === 0;
+  },
+
+  /**
    * Şifre doğrulama (salt'lı ve legacy destekli)
+   * ⚠️ SECURITY: Timing-safe comparison kullanır (timing attack koruması)
    * @param {string} plainPassword - Düz metin şifre
    * @param {string} storedHash - Kaydedilmiş hash (hash:salt veya sadece hash)
    * @returns {boolean} Doğrulama sonucu
@@ -269,12 +288,12 @@ const StaffService = {
         return ('0' + (b & 0xFF).toString(16)).slice(-2);
       }).join('');
 
-      return computedHashHex === hash;
+      return this._timingSafeEqual(computedHashHex, hash);
     }
 
     // Legacy format: sadece hash (salt'sız)
     var legacyHash = this.hashPasswordLegacy(plainPassword);
-    return legacyHash === storedHash;
+    return this._timingSafeEqual(legacyHash, storedHash);
   },
 
   /**
@@ -488,20 +507,40 @@ const StaffService = {
           if (data.phone !== undefined) {
             sheet.getRange(rowIndex, this.COLUMNS.PHONE + 1).setValue(Utils.sanitizeForSpreadsheet(data.phone));
           }
+          // ⚠️ SECURITY: Yetki değişikliği tespiti (session invalidation için)
+          var currentRole = dataRange[i][this.COLUMNS.ROLE];
+          var currentIsAdmin = dataRange[i][this.COLUMNS.IS_ADMIN] === true || dataRange[i][this.COLUMNS.IS_ADMIN] === 'TRUE';
+          var currentActive = dataRange[i][this.COLUMNS.ACTIVE] === true || dataRange[i][this.COLUMNS.ACTIVE] === 'TRUE';
+          var privilegeChanged = false;
+
           if (data.role) {
+            if (data.role !== currentRole) privilegeChanged = true;
             sheet.getRange(rowIndex, this.COLUMNS.ROLE + 1).setValue(data.role);
           }
           if (typeof data.isAdmin !== 'undefined') {
+            if (data.isAdmin !== currentIsAdmin) privilegeChanged = true;
             sheet.getRange(rowIndex, this.COLUMNS.IS_ADMIN + 1).setValue(data.isAdmin);
           }
           if (typeof data.active !== 'undefined') {
+            if (data.active !== currentActive) privilegeChanged = true;
             sheet.getRange(rowIndex, this.COLUMNS.ACTIVE + 1).setValue(data.active);
           }
 
-          log.info('Personel güncellendi', { id: id });
+          // ⚠️ SECURITY: Yetki değişikliğinde veya hesap deaktivasyonunda mevcut session'ları geçersiz kıl
+          if (privilegeChanged) {
+            try {
+              SessionAuthService.invalidateSessionsByStaffId(id);
+              log.info('Yetki değişikliği nedeniyle session\'lar geçersiz kılındı', { staffId: id });
+            } catch (sessionError) {
+              log.error('Session invalidation hatası (yetki değişikliği):', sessionError);
+            }
+          }
+
+          log.info('Personel güncellendi', { id: id, privilegeChanged: privilegeChanged });
           SheetStorageService.addAuditLog('STAFF_UPDATED', {
             staffId: id,
-            updatedFields: Object.keys(data).filter(function(k) { return data[k] !== undefined; })
+            updatedFields: Object.keys(data).filter(function(k) { return data[k] !== undefined; }),
+            privilegeChanged: privilegeChanged
           });
           return { success: true };
         }

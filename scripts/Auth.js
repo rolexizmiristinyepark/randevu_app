@@ -190,13 +190,25 @@ const SessionAuthService = {
       // Başarılı giriş - deneme sayacını temizle
       BruteForceProtection.clearAttempts(email);
 
+      // ⚠️ SECURITY: Session fixation koruması - eski session'ları temizle
+      // Aynı kullanıcıya ait tüm aktif session'ları sil (single active session)
+      var sessions = this.getSessions();
+      var invalidatedCount = 0;
+      for (var existingToken in sessions) {
+        if (sessions[existingToken].staffId === staff.id) {
+          delete sessions[existingToken];
+          invalidatedCount++;
+        }
+      }
+      if (invalidatedCount > 0) {
+        log.info('Eski session\'lar temizlendi', { staffId: staff.id, count: invalidatedCount });
+      }
+
       // Session token uret
       var sessionToken = Utilities.getUuid();
       var expiresAt = new Date().getTime() + this.SESSION_DURATION;
 
-      // Session'i kaydet
-      var sessions = this.getSessions();
-      // DEBUG logging kaldirildi - guvenlik icin
+      // Session'i kaydet (eski session'lar zaten temizlendi)
       sessions[sessionToken] = {
         staffId: staff.id,
         email: staff.email,
@@ -487,6 +499,36 @@ const SessionAuthService = {
     } catch (e) {
       log.error('saveSessions error:', e);
     }
+  },
+
+  /**
+   * Belirli bir staff'a ait tüm session'ları geçersiz kıl
+   * ⚠️ SECURITY: Yetki değişikliği veya hesap deaktivasyonunda çağrılır
+   * @param {string} staffId - Personel ID
+   * @returns {{invalidated: number}}
+   */
+  invalidateSessionsByStaffId: function(staffId) {
+    var sessions = this.getSessions();
+    var invalidated = 0;
+
+    for (var token in sessions) {
+      if (sessions[token].staffId === String(staffId)) {
+        delete sessions[token];
+        invalidated++;
+      }
+    }
+
+    if (invalidated > 0) {
+      this.saveSessions(sessions);
+      log.info('Session\'lar geçersiz kılındı', { staffId: staffId, count: invalidated });
+      SheetStorageService.addAuditLog('SESSIONS_INVALIDATED', {
+        staffId: staffId,
+        count: invalidated,
+        reason: 'privilege_change'
+      });
+    }
+
+    return { invalidated: invalidated };
   },
 
   /**

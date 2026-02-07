@@ -1173,11 +1173,13 @@ function _validateInputs(params) {
   }
 
   // Sanitize inputs
+  // ⚠️ SECURITY: sanitizeForSpreadsheet ile formula injection koruması
+  // Müşteri girdileri Calendar event tag'larına ve audit log'lara yazılıyor
   const sanitized = {
-    customerName: Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH)),
+    customerName: Utils.sanitizeForSpreadsheet(Utils.toTitleCase(Utils.sanitizeString(customerName, VALIDATION.STRING_MAX_LENGTH))),
     customerPhone: Utils.sanitizePhone(customerPhone),
     customerEmail: customerEmail ? Utils.sanitizeString(customerEmail, VALIDATION.STRING_MAX_LENGTH) : '',
-    customerNote: customerNote ? Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH) : '',
+    customerNote: customerNote ? Utils.sanitizeForSpreadsheet(Utils.sanitizeString(customerNote, VALIDATION.NOTE_MAX_LENGTH)) : '',
     staffName: staffName ? Utils.toTitleCase(Utils.sanitizeString(staffName, VALIDATION.STRING_MAX_LENGTH)) : '',
     durationNum,
     profilAyarlari,

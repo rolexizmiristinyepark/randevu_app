@@ -135,11 +135,83 @@
 | 19 | KVKK | Calendar PII | ⬜ |
 | 20 | KVKK | Retention trigger | ⬜ |
 
-**Toplam: 18/20 düzeltildi**
+**Frontend Toplam: 18/20 düzeltildi**
 
 ---
 
-## 6. COMMIT GEÇMİŞİ
+## 6. BACKEND GÜVENLİK DENETİMİ
+
+### 6.1 KRITIK - Timing-Safe Password Karşılaştırma (Staff.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- `===` operatörü hash karşılaştırmada zamanlama bilgisi sızdırabilir
+- XOR-bazlı constant-time `_timingSafeEqual()` metodu eklendi
+
+### 6.2 YÜKSEK - Session Fixation Koruması (Auth.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- Login sırasında aynı kullanıcının eski session'ları temizlenmiyor
+- `login()` içinde mevcut staffId session'ları invalidate ediliyor
+
+### 6.3 YÜKSEK - Admin Rol Kontrolü (Main.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- SESSION_ADMIN_ACTIONS için sadece auth kontrolü var, isAdmin kontrolü yok
+- `doGet` ve `doPost`'a isAdmin yetki kontrolü + audit log eklendi
+
+### 6.4 YÜKSEK - Yetki Değişikliğinde Session Invalidation (Staff.js + Auth.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- Role/isAdmin/active değiştiğinde eski session'lar aktif kalıyordu
+- `update()` metoduna privilege change detection + `invalidateSessionsByStaffId()` eklendi
+
+### 6.5 ORTA - Formula Injection (Appointments.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- customerName/customerNote spreadsheet'e yazılırken `=`,`+`,`-`,`@` ile başlayabilir
+- `_validateInputs()` içinde `Utils.sanitizeForSpreadsheet()` eklendi
+
+### 6.6 ORTA - Email Validation İyileştirme (Staff.js)
+- **Durum:** ✅ DÜZELTİLDİ
+- Eski regex `^[^\s@]+@[^\s@]+\.[^\s@]+$` çok gevşek
+- RFC 5321 uyumlu regex: domain label doğrulama, min 2 harf TLD
+
+### 6.7-6.10 ZATEN MEVCUT / ÖNCEKİ SESSION'DA ÇÖZÜLMÜŞ
+| # | Bulgu | Durum |
+|---|-------|-------|
+| 6.7 | Stack trace sanitization | ✅ (commit 54d0f14) |
+| 6.8 | Turnstile production validation | ✅ Zaten Settings.js'de mevcut |
+| 6.9 | Not alanı uzunluk limiti | ✅ Zaten _validateInputs'da mevcut |
+| 6.10 | Rate limit brute force | ✅ BruteForceProtection zaten işlevsel |
+
+### 6.11-6.13 PLATFORM LİMİTASYONU (Google Apps Script)
+| # | Bulgu | Neden |
+|---|-------|-------|
+| 6.11 | CORS kısıtlama | GAS otomatik `Access-Control-Allow-Origin: *` ekler, kontrol edilemez |
+| 6.12 | IP-bazlı rate limiting | GAS `doGet`/`doPost`'ta client IP'ye erişim sağlamaz |
+| 6.13 | Dual rate limiting | Telefon+email combo ile zaten yapılıyor, IP olmadan ek katman mümkün değil |
+
+### 6.14-6.16 KABUL EDİLEBİLİR RİSK / TASARIM KARARI
+| # | Bulgu | Neden |
+|---|-------|-------|
+| 6.14 | API key hash'leme | Legacy, deprecated; PropertiesService server-side only, sızma riski düşük |
+| 6.15 | Randevu sahiplik kontrolü | Tüm admin kullanıcılar tüm randevuları yönetir (tasarım gereği) |
+| 6.16 | Generic validation hataları | Spesifik mesajlar UX için gerekli, hassas veri sızdırmıyor |
+
+### Backend Güvenlik Özet Tablosu
+
+| # | Bulgu | Seviye | Durum |
+|---|-------|--------|-------|
+| 1 | Timing-safe comparison | Kritik | ✅ |
+| 2 | Session fixation | Yüksek | ✅ |
+| 3 | Admin rol kontrolü | Yüksek | ✅ |
+| 4 | Session invalidation | Yüksek | ✅ |
+| 5 | Formula injection | Orta | ✅ |
+| 6 | Email validation | Orta | ✅ |
+| 7-10 | Zaten mevcut/çözülmüş | - | ✅ |
+| 11-13 | Platform limitasyonu | - | ⚠️ N/A |
+| 14-16 | Kabul edilebilir risk | - | ℹ️ Tasarım |
+
+**Backend Toplam: 6/6 gerçek bulgu düzeltildi**
+
+---
+
+## 7. COMMIT GEÇMİŞİ
 
 | Commit | Açıklama |
 |--------|----------|
