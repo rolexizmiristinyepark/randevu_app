@@ -184,14 +184,14 @@ export function validateData<T>(schema: z.ZodSchema<T>, data: unknown, context?:
     const result = schema.safeParse(data);
 
     if (!result.success) {
-        const errors = result.error.errors
+        const errors = result.error.issues
             .map(e => `${e.path.join('.')}: ${e.message}`)
             .join(', ');
         const errorMessage = context
             ? `Validation failed for ${context}: ${errors}`
             : `Validation failed: ${errors}`;
 
-        console.error(errorMessage, { data, errors: result.error.errors });
+        console.error(errorMessage, { data, errors: result.error.issues });
         throw new Error(errorMessage);
     }
 
@@ -206,14 +206,14 @@ export function tryValidateData<T>(schema: z.ZodSchema<T>, data: unknown, contex
     const result = schema.safeParse(data);
 
     if (!result.success) {
-        const errors = result.error.errors
+        const errors = result.error.issues
             .map(e => `${e.path.join('.')}: ${e.message}`)
             .join(', ');
         const errorMessage = context
             ? `Validation warning for ${context}: ${errors}`
             : `Validation warning: ${errors}`;
 
-        console.warn(errorMessage, { data, errors: result.error.errors });
+        console.warn(errorMessage, { data, errors: result.error.issues });
         return null;
     }
 

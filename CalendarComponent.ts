@@ -524,15 +524,23 @@ export async function loadMonthData(): Promise<void> {
 
     try {
         // Load shifts and appointments in parallel
-        const [shiftsResult, appointmentsResult, calendarResult] = await Promise.all([
+        // Calendar sync is optional (may not be configured), so handle its failure separately
+        const [shiftsResult, appointmentsResult] = await Promise.all([
             apiCall('getMonthShifts', { month: monthStr }),
             apiCall('getMonthAppointments', { month: monthStr }),
-            apiCall('getGoogleCalendarEvents', {
+        ]);
+
+        // Google Calendar sync is optional - don't let it break core data loading
+        let calendarResult: { success: boolean; data?: unknown } = { success: false };
+        try {
+            calendarResult = await apiCall('getGoogleCalendarEvents', {
                 startDate: DateUtils.toLocalDate(startDate),
                 endDate: DateUtils.toLocalDate(endDate),
                 staffId: specificStaffId || 'all'
-            })
-        ]);
+            });
+        } catch {
+            // Calendar sync not configured or unavailable - this is expected
+        }
 
         if (shiftsResult.success) {
             state.set('dayShifts', (shiftsResult.data || {}) as Record<string, Shift>);
