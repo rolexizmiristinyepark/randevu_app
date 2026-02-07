@@ -351,7 +351,7 @@ function renderLinks(): void {
     const gridContainer = createElement('div', { className: 'link-grid' });
 
     activeStaff.forEach(s => {
-        const staffLink = `${getConfig().BASE_URL}#s/${s.id}`;
+        const staffLink = `${getConfig().BASE_URL}#s/${s.gas_id || s.id}`;
 
         // Link card
         const linkCard = createElement('div', { className: 'link-card' });

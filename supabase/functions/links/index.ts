@@ -51,7 +51,7 @@ async function handleResolveUrl(body: EdgeFunctionBody): Promise<Response> {
   // Hash'i parse et
   const parts = hash.split('/');
   const profileCode = parts[0].toLowerCase();
-  const staffId = parts.length > 1 ? Number(parts[1]) : null;
+  const staffGasId = parts.length > 1 ? parts[1] : null;
 
   // Profil dogrulama
   const profile = PROFILES[profileCode];
@@ -68,11 +68,11 @@ async function handleResolveUrl(body: EdgeFunctionBody): Promise<Response> {
   };
 
   // Staff gerektiren profiller (s, v)
-  if (['s', 'v'].includes(profileCode) && staffId) {
+  if (['s', 'v'].includes(profileCode) && staffGasId) {
     const { data: staff } = await supabase
       .from('staff')
-      .select('id, name, email, phone, role, is_admin, is_vip, active')
-      .eq('id', staffId)
+      .select('id, gas_id, name, email, phone, role, is_admin, is_vip, active')
+      .eq('gas_id', staffGasId)
       .eq('active', true)
       .single();
 
@@ -86,11 +86,12 @@ async function handleResolveUrl(body: EdgeFunctionBody): Promise<Response> {
     }
 
     result.staff = {
-      id: staff.id,
+      id: String(staff.id),
+      gas_id: staff.gas_id || null,
       name: staff.name,
       role: staff.role,
     };
-    result.linkedStaffId = staff.id;
+    result.linkedStaffId = String(staff.id);
     result.linkedStaffName = staff.name;
   }
 
@@ -137,19 +138,31 @@ async function handleResolveId(body: EdgeFunctionBody): Promise<Response> {
 
   const supabase = createServiceClient();
 
-  // ID'nin bir staff ID'si olup olmadigini kontrol et
-  const { data: staff } = await supabase
+  // Önce gas_id ile ara, bulamazsa numeric id ile dene
+  let staff = null;
+  const { data: byGasId } = await supabase
     .from('staff')
-    .select('id, name, active')
-    .eq('id', Number(id) || 0)
+    .select('id, gas_id, name, active')
+    .eq('gas_id', id)
     .single();
+
+  if (byGasId) {
+    staff = byGasId;
+  } else {
+    const { data: byNumId } = await supabase
+      .from('staff')
+      .select('id, gas_id, name, active')
+      .eq('id', Number(id) || 0)
+      .single();
+    staff = byNumId;
+  }
 
   if (staff && staff.active) {
     return jsonResponse({
       success: true,
       type: 'staff',
       profil: 's',
-      linkedStaffId: staff.id,
+      linkedStaffId: String(staff.id),
       linkedStaffName: staff.name,
     });
   }

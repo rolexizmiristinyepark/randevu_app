@@ -66,7 +66,7 @@ async function handleGetStaff(): Promise<Response> {
   const supabase = createServiceClient();
   const { data, error } = await supabase
     .from('staff')
-    .select('id, name, email, phone, role, is_admin, is_vip, active, permissions')
+    .select('id, gas_id, name, email, phone, role, is_admin, is_vip, active, permissions')
     .order('name');
 
   if (error) {
@@ -124,11 +124,19 @@ async function handleCreateStaff(req: Request, body: EdgeFunctionBody): Promise<
     return errorResponse('Kullanıcı oluşturulamadı: ' + (authError?.message || ''));
   }
 
+  // gas_id olustur (8 karakter alfanumerik, GAS formatı ile uyumlu)
+  const hexChars = '0123456789abcdefghkmnopqrstuvwxyz';
+  let gasId = '';
+  for (let i = 0; i < 8; i++) {
+    gasId += hexChars.charAt(Math.floor(Math.random() * hexChars.length));
+  }
+
   // Staff tablosuna ekle (trigger otomatik claim senkronize eder)
   const { data: staff, error: staffError } = await supabase
     .from('staff')
     .insert({
       auth_user_id: authUser.user.id,
+      gas_id: gasId,
       name,
       email,
       phone,
@@ -137,7 +145,7 @@ async function handleCreateStaff(req: Request, body: EdgeFunctionBody): Promise<
       active: true,
       permissions: {},
     })
-    .select('id')
+    .select('id, gas_id')
     .single();
 
   if (staffError) {
@@ -314,7 +322,7 @@ async function handleGetAllLinks(req: Request): Promise<Response> {
   const supabase = createServiceClient();
   const { data: allStaff } = await supabase
     .from('staff')
-    .select('id, name, active, is_vip')
+    .select('id, gas_id, name, active, is_vip')
     .eq('active', true)
     .order('name');
 
@@ -332,22 +340,22 @@ async function handleGetAllLinks(req: Request): Promise<Response> {
         type: 'public',
       }];
     } else if (code === 's') {
-      // Personel bazli linkler
+      // Personel bazli linkler (gas_id ile URL)
       links[code] = (allStaff || []).map((s) => ({
-        code: `${code}/${s.id}`,
+        code: `${code}/${s.gas_id || s.id}`,
         label: `${label} - ${s.name}`,
-        url: `${baseUrl}#${code}/${s.id}`,
-        staffId: s.id,
+        url: `${baseUrl}#${code}/${s.gas_id || s.id}`,
+        staffId: s.gas_id || String(s.id),
         staffName: s.name,
         type: 'staff',
       }));
     } else if (code === 'v') {
-      // VIP linkler
+      // VIP linkler (gas_id ile URL)
       links[code] = (allStaff || []).filter((s) => s.is_vip).map((s) => ({
-        code: `${code}/${s.id}`,
+        code: `${code}/${s.gas_id || s.id}`,
         label: `${label} - ${s.name}`,
-        url: `${baseUrl}#${code}/${s.id}`,
-        staffId: s.id,
+        url: `${baseUrl}#${code}/${s.gas_id || s.id}`,
+        staffId: s.gas_id || String(s.id),
         staffName: s.name,
         type: 'vip',
       }));
