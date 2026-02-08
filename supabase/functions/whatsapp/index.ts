@@ -7,6 +7,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
 import { addAuditLog } from '../_shared/security.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode, getMessageVariableOptions } from '../_shared/variables.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 serve(async (req: Request) => {
@@ -218,58 +219,7 @@ async function handleGetAppointmentMessages(body: EdgeFunctionBody): Promise<Res
 }
 
 // ==================== WHATSAPP SEND ====================
-
-/**
- * Meta Cloud API ile WhatsApp mesaji gonder
- */
-async function sendWhatsAppMessage(
-  phone: string,
-  templateName: string,
-  languageCode: string,
-  components: unknown[]
-): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
-  const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
-
-  if (!phoneNumberId || !accessToken) {
-    return { success: false, error: 'WhatsApp API ayarları eksik' };
-  }
-
-  const formattedPhone = formatPhoneWithCountryCode(phone).replace('+', '');
-
-  try {
-    const response = await fetch(
-      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          messaging_product: 'whatsapp',
-          to: formattedPhone,
-          type: 'template',
-          template: {
-            name: templateName,
-            language: { code: languageCode },
-            components,
-          },
-        }),
-      }
-    );
-
-    const result = await response.json();
-
-    if (result.messages && result.messages[0]) {
-      return { success: true, messageId: result.messages[0].id };
-    }
-
-    return { success: false, error: JSON.stringify(result.error || result) };
-  } catch (err) {
-    return { success: false, error: String(err) };
-  }
-}
+// sendWhatsAppMessage ve ilgili utility'ler _shared/whatsapp-sender.ts'de
 
 async function handleSendReminders(req: Request, body: EdgeFunctionBody): Promise<Response> {
   const adminCheck = await requireAdmin(req);
@@ -278,10 +228,10 @@ async function handleSendReminders(req: Request, body: EdgeFunctionBody): Promis
   const date = String(body.date || new Date().toISOString().split('T')[0]);
   const supabase = createServiceClient();
 
-  // Bugunku randevulari al
+  // Bugunku randevulari al (staff bilgisiyle)
   const { data: appointments } = await supabase
     .from('appointments')
-    .select('*, staff:staff_id(name, phone, email)')
+    .select('*, staff:staff_id(id, name, phone, email)')
     .eq('date', date)
     .neq('status', 'cancelled')
     .order('start_time');
@@ -290,21 +240,88 @@ async function handleSendReminders(req: Request, body: EdgeFunctionBody): Promis
     return jsonResponse({ success: true, message: 'Bugün için randevu yok', sentCount: 0 });
   }
 
+  // Aktif WhatsApp template'lerini al (hatirlatma icin)
+  const { data: templates } = await supabase
+    .from('whatsapp_templates')
+    .select('*')
+    .eq('active', true);
+
+  if (!templates || templates.length === 0) {
+    return jsonResponse({ success: false, error: 'Aktif WhatsApp template bulunamadı' });
+  }
+
+  // Belirli bir template ID verilmisse onu kullan, yoksa ilk aktif template
+  const templateId = body.templateId ? String(body.templateId) : null;
+  const template = templateId
+    ? templates.find(t => t.id === templateId)
+    : templates[0];
+
+  if (!template) {
+    return jsonResponse({ success: false, error: 'Belirtilen template bulunamadı' });
+  }
+
   // Her randevu icin WhatsApp mesaji gonder
   let sentCount = 0;
+  let failedCount = 0;
+  const errors: string[] = [];
+
   for (const appt of appointments) {
     if (!appt.customer_phone) continue;
 
-    // TODO: Template secimi ve degisken esleme flow sisteminten yapilacak
-    // Simdilik basit bir hatirlatma mesaji
-    sentCount++;
+    const staff = appt.staff as Record<string, unknown> | null;
+    const eventData = buildEventDataFromAppointment(appt, staff);
+
+    // Template degiskenlerini Meta component formatina cevir
+    const components = buildTemplateComponents(template, eventData);
+
+    // Mesaji gonder
+    const result = await sendWhatsAppMessage(
+      String(appt.customer_phone),
+      template.meta_template_name || template.name,
+      template.language || 'tr',
+      components
+    );
+
+    // Mesaj logla
+    const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+    await logMessage({
+      appointment_id: appt.id,
+      phone: formatPhoneWithCountryCode(String(appt.customer_phone)),
+      recipient_name: String(appt.customer_name || ''),
+      template_name: template.meta_template_name || template.name,
+      template_id: template.id,
+      status: result.success ? 'sent' : 'failed',
+      message_id: result.messageId || '',
+      error_message: result.error || '',
+      staff_id: staff?.id ? Number(staff.id) : undefined,
+      staff_name: String(staff?.name || ''),
+      staff_phone: String(staff?.phone || ''),
+      triggered_by: 'manual_reminder',
+      profile: String(appt.profile || ''),
+      message_content: resolvedContent,
+      target_type: 'customer',
+      customer_name: String(appt.customer_name || ''),
+      customer_phone: formatPhoneWithCountryCode(String(appt.customer_phone)),
+    });
+
+    if (result.success) {
+      sentCount++;
+    } else {
+      failedCount++;
+      if (errors.length < 5) errors.push(`${appt.customer_name}: ${result.error}`);
+    }
   }
+
+  await addAuditLog('WHATSAPP_REMINDERS_SENT', { date, sentCount, failedCount, template: template.name });
 
   return jsonResponse({
     success: true,
     sentCount,
+    failedCount,
     totalAppointments: appointments.length,
     date,
+    templateUsed: template.name,
+    errors: errors.length > 0 ? errors : undefined,
   });
 }
 

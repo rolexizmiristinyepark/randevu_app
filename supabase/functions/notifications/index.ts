@@ -5,7 +5,8 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
-import { replaceMessageVariables, formatTurkishDate } from '../_shared/variables.ts';
+import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
@@ -182,6 +183,7 @@ async function handleGenerateICS(body: EdgeFunctionBody): Promise<Response> {
 async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
   const trigger = String(body.trigger || '');
   const profile = String(body.profile || 'g');
+  const eventData = (body.eventData as Record<string, unknown>) || {};
 
   if (!trigger) return errorResponse('Trigger parametresi zorunludur');
 
@@ -205,19 +207,86 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
   });
 
   let whatsappSent = 0;
+  let whatsappFailed = 0;
   let emailSent = 0;
+  let emailFailed = 0;
 
   // Her eslesen flow icin mesaj gonder
   for (const flow of matchingFlows) {
-    // WhatsApp template'leri
+    // ==================== WHATSAPP ====================
     if (flow.whatsapp_template_ids && flow.whatsapp_template_ids.length > 0) {
-      // TODO: WhatsApp mesaji gonderimi (sendWhatsAppMessage cagirma)
-      whatsappSent += flow.whatsapp_template_ids.length;
+      for (const templateId of flow.whatsapp_template_ids) {
+        const { data: template } = await supabase
+          .from('whatsapp_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+
+        if (!template) continue;
+
+        // Alici belirle: template.target_type = 'customer' | 'staff'
+        const targetType = template.target_type || 'customer';
+        let phone = '';
+        let recipientName = '';
+
+        if (targetType === 'staff') {
+          phone = String(eventData.staffPhone || '');
+          recipientName = String(eventData.staffName || '');
+        } else {
+          phone = String(eventData.customerPhone || '');
+          recipientName = String(eventData.customerName || '');
+        }
+
+        if (!phone) continue;
+
+        // Template components olustur
+        const components = buildTemplateComponents(template, eventData);
+
+        // Mesaj gonder
+        const result = await sendWhatsAppMessage(
+          phone,
+          template.meta_template_name || template.name,
+          template.language || 'tr',
+          components
+        );
+
+        // Mesaj logla
+        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+        await logMessage({
+          appointment_id: eventData.appointmentId ? String(eventData.appointmentId) : undefined,
+          phone: formatPhoneWithCountryCode(phone),
+          recipient_name: recipientName,
+          template_name: template.meta_template_name || template.name,
+          template_id: template.id,
+          status: result.success ? 'sent' : 'failed',
+          message_id: result.messageId || '',
+          error_message: result.error || '',
+          staff_id: eventData.staffId ? Number(eventData.staffId) : undefined,
+          staff_name: String(eventData.staffName || ''),
+          flow_id: flow.id,
+          triggered_by: trigger,
+          profile: profile,
+          message_content: resolvedContent,
+          target_type: targetType,
+          customer_name: String(eventData.customerName || ''),
+          customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+        });
+
+        if (result.success) whatsappSent++;
+        else whatsappFailed++;
+      }
     }
 
-    // Mail template'leri
+    // ==================== EMAIL ====================
     if (flow.mail_template_ids && flow.mail_template_ids.length > 0) {
-      // Mail template'leri yukle ve gonder
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'randevu@rolex-izmir.com';
+
+      if (!resendApiKey) {
+        console.warn('RESEND_API_KEY ayarlanmamis, email gonderimi atlanıyor');
+        continue;
+      }
+
       for (const templateId of flow.mail_template_ids) {
         const { data: template } = await supabase
           .from('mail_templates')
@@ -225,14 +294,74 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
           .eq('id', templateId)
           .single();
 
-        if (template) {
-          // Degiskenleri coz
-          const eventData = body.eventData as Record<string, unknown> || {};
-          const resolvedSubject = replaceMessageVariables(template.subject, eventData);
-          const resolvedBody = replaceMessageVariables(template.body, eventData);
+        if (!template) continue;
 
-          // TODO: Email gonderimi (Resend API cagirma)
-          emailSent++;
+        // Alici belirle: template.recipient = 'customer' | 'staff' | 'admin'
+        const recipient = template.recipient || 'customer';
+        let toEmail = '';
+
+        if (recipient === 'staff') {
+          toEmail = String(eventData.staffEmail || '');
+        } else if (recipient === 'admin') {
+          // Admin email'lerini settings'den veya env'den al
+          toEmail = Deno.env.get('ADMIN_EMAIL') || '';
+        } else {
+          toEmail = String(eventData.customerEmail || '');
+        }
+
+        if (!toEmail) continue;
+
+        // Degiskenleri coz
+        const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
+        let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
+
+        // Info card varsa ekle
+        if (template.info_card_id) {
+          const { data: infoCard } = await supabase
+            .from('mail_info_cards')
+            .select('*')
+            .eq('id', template.info_card_id)
+            .single();
+
+          if (infoCard && infoCard.fields) {
+            const fields = infoCard.fields as Array<{ label: string; variable: string }>;
+            let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+            infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
+            for (const field of fields) {
+              const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
+              infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${escapeHtml(field.label)}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${escapeHtml(value)}</td></tr>`;
+            }
+            infoHtml += '</table>';
+            resolvedBody += infoHtml;
+          }
+        }
+
+        // Email gonder (Resend API)
+        try {
+          const response = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${resendApiKey}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              from: fromEmail,
+              to: [toEmail],
+              subject: resolvedSubject,
+              html: resolvedBody,
+            }),
+          });
+
+          if (response.ok) {
+            emailSent++;
+          } else {
+            const errResult = await response.json();
+            console.error('Email gonderim hatasi:', errResult);
+            emailFailed++;
+          }
+        } catch (err) {
+          console.error('Email gonderim exception:', err);
+          emailFailed++;
         }
       }
     }
@@ -243,6 +372,8 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
     message: `${matchingFlows.length} flow tetiklendi`,
     triggeredCount: matchingFlows.length,
     whatsappSent,
+    whatsappFailed,
     emailSent,
+    emailFailed,
   });
 }
