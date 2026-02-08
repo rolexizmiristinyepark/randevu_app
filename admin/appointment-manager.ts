@@ -7,6 +7,7 @@ import { ApiService } from '../api-service';
 import { DateUtils } from '../date-utils';
 
 import { ButtonAnimator, FormDirtyState } from '../button-utils';
+import { createElement } from '../security-helpers';
 import type { DataStore } from './data-store';
 import { AdminAuth } from '../admin-auth';
 
@@ -22,12 +23,10 @@ let editModalDirtyCheckFn: (() => void) | null = null;
 // Global references (accessed via window)
 declare const window: Window & {
     UI: any;
-    createElement: (tag: string, attributes?: any, textContent?: string) => HTMLElement;
 };
 
 // Lazy accessors to avoid module load order issues
 const getUI = () => window.UI;
-const getCreateElement = () => window.createElement;
 
 /**
  * v3.9: Türkçe karakter normalizasyonu
@@ -96,7 +95,7 @@ async function load(): Promise<void> {
 
     // Clear and show loading
     container.textContent = '';
-    const loadingSpinner = getCreateElement()('div', { className: 'loading-spinner' });
+    const loadingSpinner = createElement('div', { className: 'loading-spinner' });
     container.appendChild(loadingSpinner);
 
     // Calculate date range from week value
@@ -133,7 +132,7 @@ async function load(): Promise<void> {
 
         if (result.error) {
             container.textContent = '';
-            const errorMsg = getCreateElement()('p', {
+            const errorMsg = createElement('p', {
                 style: { textAlign: 'center', color: '#dc3545', padding: '20px' }
             }, '❌ Hata: ' + result.error);
             container.appendChild(errorMsg);
@@ -142,7 +141,7 @@ async function load(): Promise<void> {
         }
     } catch (error) {
         container.textContent = '';
-        const errorMsg = getCreateElement()('p', {
+        const errorMsg = createElement('p', {
             style: { textAlign: 'center', color: '#dc3545', padding: '20px' }
         }, '❌ Yükleme hatası');
         container.appendChild(errorMsg);
@@ -360,11 +359,11 @@ function openAssignStaffModal(appointment: any): void {
     if (infoDiv) {
         // 🔒 SECURITY: DOM tabanlı güvenli render
         infoDiv.textContent = '';
-        const container = getCreateElement()('div', { style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' } });
+        const container = createElement('div', { style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' } });
 
         const createRow = (label: string, value: string) => {
-            const row = getCreateElement()('div');
-            const labelSpan = getCreateElement()('span', { style: { color: '#1A1A2E', fontWeight: '500' } }, label);
+            const row = createElement('div');
+            const labelSpan = createElement('span', { style: { color: '#1A1A2E', fontWeight: '500' } }, label);
             row.appendChild(labelSpan);
             row.appendChild(document.createTextNode(value));
             return row;
@@ -402,7 +401,7 @@ function openAssignStaffModal(appointment: any): void {
             String(s.id) !== String(currentStaffId)  // Mevcut personeli hariç tut
         );
         activeStaff.forEach(staff => {
-            const option = getCreateElement()('option', { value: staff.id }, staff.name) as HTMLOptionElement;
+            const option = createElement('option', { value: staff.id }, staff.name) as HTMLOptionElement;
             select.appendChild(option);
         });
     }
@@ -497,7 +496,7 @@ function render(appointments: any[]): void {
     container.textContent = '';
 
     if (appointments.length === 0) {
-        const emptyMsg = getCreateElement()('p', {
+        const emptyMsg = createElement('p', {
             style: { textAlign: 'center', color: '#999', padding: '20px' }
         }, 'Randevu bulunamadı');
         container.appendChild(emptyMsg);
@@ -519,7 +518,7 @@ function render(appointments: any[]): void {
         const date = new Date(dateKey + 'T12:00:00');
 
         // Date header
-        const dateHeader = getCreateElement()('h3', {
+        const dateHeader = createElement('h3', {
             style: {
                 margin: '20px 0 12px 0',
                 color: '#1A1A2E',
@@ -544,7 +543,7 @@ function render(appointments: any[]): void {
             const customerNote = apt.customer_note || '';
 
             // Appointment card container
-            const aptCard = getCreateElement()('div', {
+            const aptCard = createElement('div', {
                 style: {
                     background: 'white',
                     padding: '18px',
@@ -555,19 +554,19 @@ function render(appointments: any[]): void {
             });
 
             // Main flex container
-            const flexContainer = getCreateElement()('div', {
+            const flexContainer = createElement('div', {
                 style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start' }
             });
 
             // Left side - appointment details
-            const detailsDiv = getCreateElement()('div', {
+            const detailsDiv = createElement('div', {
                 style: { flex: '1' }
             });
 
             // Time range
             const startTime = start.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
             const endTime = end.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-            const timeDiv = getCreateElement()('div', {
+            const timeDiv = createElement('div', {
                 style: {
                     fontWeight: '400',
                     color: '#1A1A2E',
@@ -578,27 +577,27 @@ function render(appointments: any[]): void {
             }, `${startTime} - ${endTime}`);
 
             // Details text
-            const infoDiv = getCreateElement()('div', {
+            const infoDiv = createElement('div', {
                 style: { fontSize: '13px', lineHeight: '1.8', color: '#757575' }
             });
 
-            const customerLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Müşteri: ');
+            const customerLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Müşteri: ');
             infoDiv.appendChild(customerLabel);
             infoDiv.appendChild(document.createTextNode(customerName));
-            infoDiv.appendChild(getCreateElement()('br'));
+            infoDiv.appendChild(createElement('br'));
 
-            const phoneLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Telefon: ');
+            const phoneLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Telefon: ');
             infoDiv.appendChild(phoneLabel);
             infoDiv.appendChild(document.createTextNode(phone));
-            infoDiv.appendChild(getCreateElement()('br'));
+            infoDiv.appendChild(createElement('br'));
 
-            const staffLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Staff: ');
+            const staffLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Staff: ');
             infoDiv.appendChild(staffLabel);
             infoDiv.appendChild(document.createTextNode(staff?.name || '-'));
 
             if (customerNote) {
-                infoDiv.appendChild(getCreateElement()('br'));
-                const noteLabel = getCreateElement()('span', { style: { color: '#1A1A2E' } }, 'Not: ');
+                infoDiv.appendChild(createElement('br'));
+                const noteLabel = createElement('span', { style: { color: '#1A1A2E' } }, 'Not: ');
                 infoDiv.appendChild(noteLabel);
                 infoDiv.appendChild(document.createTextNode(customerNote));
             }
@@ -607,7 +606,7 @@ function render(appointments: any[]): void {
             detailsDiv.appendChild(infoDiv);
 
             // Right side - action buttons
-            const buttonsDiv = getCreateElement()('div', {
+            const buttonsDiv = createElement('div', {
                 style: { display: 'flex', flexDirection: 'column', gap: '8px' }
             });
 
@@ -631,7 +630,7 @@ function render(appointments: any[]): void {
             if (showAssignButton) {
                 if (hasNoStaff) {
                     // No staff assigned - "Assign Staff" button
-                    const assignBtn = getCreateElement()('button', {
+                    const assignBtn = createElement('button', {
                         className: 'btn btn-small',
                         style: {
                             width: btnWidth,
@@ -646,7 +645,7 @@ function render(appointments: any[]): void {
                     buttonsDiv.appendChild(assignBtn);
                 } else {
                     // Staff assigned - "Change Staff" button (same gold color)
-                    const changeBtn = getCreateElement()('button', {
+                    const changeBtn = createElement('button', {
                         className: 'btn btn-small',
                         style: {
                             width: btnWidth,
@@ -663,7 +662,7 @@ function render(appointments: any[]): void {
             }
 
             // Edit button
-            const editBtn = getCreateElement()('button', {
+            const editBtn = createElement('button', {
                 className: 'btn btn-small btn-secondary',
                 style: { width: btnWidth }
             }, 'Edit') as HTMLButtonElement;
@@ -673,7 +672,7 @@ function render(appointments: any[]): void {
             buttonsDiv.appendChild(editBtn);
 
             // Cancel button
-            const cancelBtn = getCreateElement()('button', {
+            const cancelBtn = createElement('button', {
                 className: 'btn btn-small btn-secondary',
                 style: { width: btnWidth }
             }, 'Cancel') as HTMLButtonElement;
