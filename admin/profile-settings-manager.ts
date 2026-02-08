@@ -27,14 +27,14 @@ interface ProfilAyari {
 
 type ProfilAyarlari = Record<string, ProfilAyari>;
 
-// Profil isimleri
+// Profil isimleri (key: DB profile_code)
 const PROFIL_LABELS: Record<string, string> = {
-    genel: 'Genel',
-    gunluk: 'Günlük',
-    boutique: 'Butik',
-    yonetim: 'Yönetim',
-    personel: 'Bireysel',
-    vip: 'Özel Müşteri'
+    g: 'Genel',
+    w: 'Günlük',
+    b: 'Butik',
+    m: 'Yönetim',
+    s: 'Bireysel',
+    v: 'Özel Müşteri'
 };
 
 // Kod mapping
@@ -132,7 +132,7 @@ function renderTable(): void {
     // Mevcut icerik temizle
     while (container.firstChild) container.removeChild(container.firstChild);
 
-    const profilOrder = ['genel', 'gunluk', 'boutique', 'yonetim', 'personel', 'vip'];
+    const profilOrder = ['g', 'w', 'b', 'm', 's', 'v'];
 
     const table = document.createElement('table');
     table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;';
