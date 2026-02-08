@@ -133,106 +133,84 @@ function renderTable(): void {
     while (container.firstChild) container.removeChild(container.firstChild);
 
     const profilOrder = ['g', 'w', 'b', 'm', 's', 'v'];
+    const profiles = profilOrder.map(k => profilAyarlari[k]).filter(Boolean);
+    if (profiles.length === 0) return;
 
     const table = document.createElement('table');
-    table.style.cssText = 'width: 100%; border-collapse: collapse; font-size: 13px;';
+    table.className = 'settings-table';
 
-    // Thead
+    const thStyle = 'padding: 10px 12px; text-align: center; border-bottom: 1px solid #e0e0e0; font-weight: 400; color: #999; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;';
+    const thRowStyle = 'padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #555; font-size: 12px; white-space: nowrap;';
+    const tdStyle = 'padding: 10px 12px; text-align: center; border-bottom: 1px solid #f0f0f0; font-size: 13px;';
+
+    // Thead: boş köşe + profil adları
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    headerRow.style.cssText = 'background: #f5f5f5;';
-
-    const thStyle = 'padding: 10px; text-align: center; border-bottom: 2px solid #ddd;';
-    const thStyleLeft = 'padding: 10px; text-align: left; border-bottom: 2px solid #ddd;';
-
-    const headers = [
-        { text: 'Profil', style: thStyleLeft },
-        { text: 'Kod', style: thStyle },
-        { text: 'ID Kontrol', style: thStyle },
-        { text: 'Vardiya', style: thStyle },
-        { text: 'Slot Max', style: thStyle },
-        { text: 'G\u00FCnl\u00FCk T/G', style: thStyle },
-        { text: 'P.Ba\u015F\u0131 T/G', style: thStyle },
-        { text: 'Grid', style: thStyle },
-        { text: 'S\u00FCre', style: thStyle },
-        { text: 'Personel Filtresi', style: thStyleLeft },
-        { text: '\u0130\u015Flem', style: thStyle },
-    ];
-
-    for (const h of headers) {
-        headerRow.appendChild(createCell('th', h.text, h.style));
-    }
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    // Tbody
-    const tbody = document.createElement('tbody');
-
-    const tdStyle = 'padding: 10px; text-align: center; border-bottom: 1px solid #eee;';
-    const tdStyleLeft = 'padding: 10px; border-bottom: 1px solid #eee;';
-    const tdStyleName = 'padding: 10px; border-bottom: 1px solid #eee; font-weight: 500;';
+    headerRow.appendChild(createCell('th', '', thStyle)); // boş köşe
 
     for (const key of profilOrder) {
         const p = profilAyarlari[key];
         if (!p) continue;
+        headerRow.appendChild(createCell('th', PROFIL_LABELS[key] || key, thStyle));
+    }
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
 
-        const staffLabel = p.staffFilter === 'self' ? 'Self (URL ID)' :
-                          p.staffFilter === 'user' ? 'Giri\u015F Yapan Kullan\u0131c\u0131' :
-                          p.staffFilter === 'role:sales' ? 'Sat\u0131\u015F' :
-                          p.staffFilter === 'role:management' ? 'Y\u00F6netim' :
-                          p.staffFilter === 'none' ? 'Admin Atar' : p.staffFilter;
+    // Tbody: her satır bir ayar
+    const tbody = document.createElement('tbody');
 
+    // Stafffilter label helper
+    const staffLabel = (p: ProfilAyari): string =>
+        p.staffFilter === 'self' ? 'Self' :
+        p.staffFilter === 'user' ? 'Kullanıcı' :
+        p.staffFilter === 'role:sales' ? 'Satış' :
+        p.staffFilter === 'role:management' ? 'Yönetim' :
+        p.staffFilter === 'role' ? 'Role göre' :
+        p.staffFilter === 'linked' ? 'Bağlı' :
+        p.staffFilter === 'all' ? 'Tümü' :
+        p.staffFilter === 'none' ? 'Admin' : p.staffFilter;
+
+    // Ayar satırları tanımı
+    const rows: { label: string; getValue: (p: ProfilAyari) => string }[] = [
+        { label: 'Kod', getValue: p => CODE_LABELS[p.code] || '#' + p.code },
+        { label: 'ID Kontrol', getValue: p => p.idKontrolu ? '✓' : '-' },
+        { label: 'Vardiya', getValue: p => p.vardiyaKontrolu !== false ? '✓' : '-' },
+        { label: 'Slot Max', getValue: p => String(p.maxSlotAppointment) },
+        { label: 'Günlük T/G', getValue: p => p.maxDailyDelivery ? String(p.maxDailyDelivery) : '∞' },
+        { label: 'P.Başı T/G', getValue: p => p.maxDailyPerStaff ? String(p.maxDailyPerStaff) : '∞' },
+        { label: 'Grid', getValue: p => p.slotGrid + 'dk' },
+        { label: 'Süre', getValue: p => p.duration + 'dk' },
+        { label: 'Personel', getValue: p => staffLabel(p) },
+    ];
+
+    for (const row of rows) {
         const tr = document.createElement('tr');
+        tr.appendChild(createCell('td', row.label, thRowStyle));
 
-        // Profil adi
-        tr.appendChild(createCell('td', PROFIL_LABELS[key] || key, tdStyleName));
+        for (const key of profilOrder) {
+            const p = profilAyarlari[key];
+            if (!p) continue;
+            tr.appendChild(createCell('td', row.getValue(p), tdStyle));
+        }
+        tbody.appendChild(tr);
+    }
 
-        // Kod - code elementi icinde
-        const kodTd = document.createElement('td');
-        kodTd.style.cssText = tdStyle;
-        const codeEl = document.createElement('code');
-        codeEl.textContent = CODE_LABELS[p.code] || '#' + p.code;
-        kodTd.appendChild(codeEl);
-        tr.appendChild(kodTd);
+    // İşlem satırı (Edit butonları)
+    const actionRow = document.createElement('tr');
+    actionRow.appendChild(createCell('td', '', thRowStyle));
 
-        // ID Kontrol
-        tr.appendChild(createCell('td', p.idKontrolu ? '\u2713' : '-', tdStyle));
-
-        // Vardiya
-        tr.appendChild(createCell('td', p.vardiyaKontrolu !== false ? '\u2713' : '-', tdStyle));
-
-        // Slot Max
-        tr.appendChild(createCell('td', String(p.maxSlotAppointment), tdStyle));
-
-        // Gunluk T/G
-        tr.appendChild(createCell('td', p.maxDailyDelivery ? String(p.maxDailyDelivery) : '\u221E', tdStyle));
-
-        // P.Basi T/G
-        tr.appendChild(createCell('td', p.maxDailyPerStaff ? String(p.maxDailyPerStaff) : '\u221E', tdStyle));
-
-        // Grid
-        tr.appendChild(createCell('td', String(p.slotGrid) + 'dk', tdStyle));
-
-        // Sure
-        tr.appendChild(createCell('td', String(p.duration) + 'dk', tdStyle));
-
-        // Personel Filtresi
-        tr.appendChild(createCell('td', staffLabel, tdStyleLeft));
-
-        // Islem butonu
+    for (const key of profilOrder) {
+        if (!profilAyarlari[key]) continue;
         const actionTd = document.createElement('td');
         actionTd.style.cssText = tdStyle;
         const editBtn = document.createElement('button');
         editBtn.className = 'btn btn-small';
-        editBtn.setAttribute('data-action', 'edit');
-        editBtn.setAttribute('data-profil', key);
         editBtn.textContent = 'Edit';
         editBtn.addEventListener('click', () => openEditModal(key));
         actionTd.appendChild(editBtn);
-        tr.appendChild(actionTd);
-
-        tbody.appendChild(tr);
+        actionRow.appendChild(actionTd);
     }
+    tbody.appendChild(actionRow);
 
     table.appendChild(tbody);
     container.appendChild(table);

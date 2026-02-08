@@ -612,6 +612,16 @@
             border: 1px solid #FFCDD2;
         }
 
+        /* Profil Ayarları Tablosu (transpose: profiller sütun, ayarlar satır) */
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .settings-table tbody tr:hover {
+            background: #fafafa;
+        }
+
         .shift-table {
             width: 100%;
             border-collapse: collapse;
