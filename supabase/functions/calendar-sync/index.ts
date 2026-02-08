@@ -23,6 +23,8 @@ serve(async (req: Request) => {
         return await handleGetCalendarEvents(req, body);
       case 'getCalendarStatus':
         return await handleGetCalendarStatus();
+      case 'importFromCalendar':
+        return await handleImportFromCalendar(body);
       default:
         return errorResponse(`Bilinmeyen calendar-sync action: ${action}`);
     }
@@ -264,4 +266,212 @@ async function getGoogleAccessToken(serviceAccountKeyJson: string): Promise<stri
 
   const tokenResult = await tokenResponse.json();
   return tokenResult.access_token;
+}
+
+/**
+ * Google Calendar'dan event'leri okuyup appointments tablosuna aktar
+ * Tek seferlik migration fonksiyonu
+ */
+async function handleImportFromCalendar(body: EdgeFunctionBody): Promise<Response> {
+  const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+  const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
+
+  if (!serviceAccountKey || !calendarId) {
+    return errorResponse('Google Calendar yapılandırılmamış');
+  }
+
+  const startDate = String(body.startDate || '');
+  const endDate = String(body.endDate || '');
+  const dryRun = body.dryRun === true; // true ise sadece önizleme, DB'ye yazmaz
+
+  if (!startDate || !endDate) {
+    return errorResponse('startDate ve endDate zorunludur (YYYY-MM-DD)');
+  }
+
+  try {
+    const accessToken = await getGoogleAccessToken(serviceAccountKey);
+
+    // Tüm event'leri çek (sayfalama ile)
+    let allEvents: any[] = [];
+    let pageToken: string | null = null;
+
+    do {
+      const params = new URLSearchParams({
+        timeMin: `${startDate}T00:00:00+03:00`,
+        timeMax: `${endDate}T23:59:59+03:00`,
+        singleEvents: 'true',
+        orderBy: 'startTime',
+        maxResults: '250',
+      });
+      if (pageToken) params.set('pageToken', pageToken);
+
+      const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${params}`,
+        { headers: { 'Authorization': `Bearer ${accessToken}` } }
+      );
+
+      const result = await response.json();
+      if (!response.ok) {
+        return errorResponse('Calendar events alınamadı: ' + JSON.stringify(result.error));
+      }
+
+      allEvents = allEvents.concat(result.items || []);
+      pageToken = result.nextPageToken || null;
+    } while (pageToken);
+
+    // Event'leri parse et
+    const parsed: any[] = [];
+    const skipped: any[] = [];
+
+    for (const event of allEvents) {
+      // Tüm gün event'leri atla
+      if (event.start?.date && !event.start?.dateTime) {
+        skipped.push({ summary: event.summary, reason: 'all-day event' });
+        continue;
+      }
+
+      // İptal edilmiş event'leri atla
+      if (event.status === 'cancelled') {
+        skipped.push({ summary: event.summary, reason: 'cancelled' });
+        continue;
+      }
+
+      const summary = event.summary || '';
+      if (!summary.trim()) {
+        skipped.push({ summary: '(boş)', reason: 'empty summary' });
+        continue;
+      }
+
+      // Start/End time parse
+      const startDt = new Date(event.start.dateTime);
+      const endDt = new Date(event.end.dateTime);
+
+      // Tarih ve saat (TR timezone)
+      const date = startDt.toLocaleDateString('sv-SE', { timeZone: 'Europe/Istanbul' }); // YYYY-MM-DD
+      const startTime = startDt.toLocaleTimeString('sv-SE', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const endTime = endDt.toLocaleTimeString('sv-SE', { timeZone: 'Europe/Istanbul', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      // Süre dakika cinsinden
+      const durationMs = endDt.getTime() - startDt.getTime();
+      const duration = Math.round(durationMs / 60000);
+
+      // Event summary formatı: "Müşteri Adı - Personel Adı (Tür)"
+      // Veya sadece "Müşteri Adı"
+      const description = event.description || '';
+      let customerName = summary.trim();
+      let customerPhone = '';
+      let customerEmail = '';
+      let customerNote = '';
+
+      // Tür tespiti: "(Teslim)", "(Gönderi)", "(VIP)" gibi
+      let appointmentType = 'meeting';
+      const typeMatch = summary.match(/\((Teslim|Gönderi|VIP|Randevu|Meeting)\)/i);
+      if (typeMatch) {
+        const t = typeMatch[1].toLowerCase();
+        if (t === 'teslim') appointmentType = 'delivery';
+        else if (t === 'gönderi') appointmentType = 'shipping';
+        else if (t === 'vip') appointmentType = 'management';
+        // Müşteri adından tür kısmını çıkar
+        customerName = summary.replace(/\s*\([^)]+\)\s*$/, '').trim();
+      }
+
+      // "Müşteri - Personel" formatını ayır (sadece müşteri adını al)
+      const dashParts = customerName.split(' - ');
+      if (dashParts.length >= 2) {
+        customerName = dashParts[0].trim();
+      }
+
+      // Description parse: "Telefon: ...", "E-posta: ...", "Not: ..."
+      const phoneMatch = description.match(/(?:Telefon|Tel|Phone)[:\s]+([^\n]+)/i);
+      if (phoneMatch) customerPhone = phoneMatch[1].trim();
+
+      const emailMatch = description.match(/(?:E-?posta|Email|Mail)[:\s]+([^\n]+)/i);
+      if (emailMatch) customerEmail = emailMatch[1].trim();
+
+      const noteMatch = description.match(/(?:Not|Note)[:\s]+([^\n]+)/i);
+      if (noteMatch) customerNote = noteMatch[1].trim();
+
+      parsed.push({
+        customer_name: customerName,
+        customer_phone: customerPhone,
+        customer_email: customerEmail,
+        customer_note: customerNote,
+        date,
+        start_time: startTime,
+        end_time: endTime,
+        duration,
+        status: 'confirmed',
+        appointment_type: appointmentType,
+        profile: 'g',
+        google_event_id: event.id,
+        kvkk_consent: true,
+      });
+    }
+
+    // Dry run ise sadece önizleme döndür
+    if (dryRun) {
+      return jsonResponse({
+        success: true,
+        dryRun: true,
+        totalEvents: allEvents.length,
+        parsedCount: parsed.length,
+        skippedCount: skipped.length,
+        skipped,
+        preview: parsed.slice(0, 10),
+      });
+    }
+
+    // DB'ye yaz — mevcut google_event_id'leri kontrol et (duplicate engelle)
+    const supabase = createServiceClient();
+
+    // Mevcut google_event_id'leri çek
+    const existingIds = new Set<string>();
+    const { data: existing } = await supabase
+      .from('appointments')
+      .select('google_event_id')
+      .not('google_event_id', 'is', null);
+
+    if (existing) {
+      for (const row of existing) {
+        if (row.google_event_id) existingIds.add(row.google_event_id);
+      }
+    }
+
+    // Yeni olanları filtrele
+    const toInsert = parsed.filter(p => !existingIds.has(p.google_event_id));
+
+    if (toInsert.length === 0) {
+      return jsonResponse({
+        success: true,
+        message: 'Tüm event\'ler zaten aktarılmış',
+        totalEvents: allEvents.length,
+        alreadyImported: parsed.length - toInsert.length,
+      });
+    }
+
+    // Batch insert (100'lük gruplar halinde)
+    let inserted = 0;
+    let errors: string[] = [];
+
+    for (let i = 0; i < toInsert.length; i += 100) {
+      const batch = toInsert.slice(i, i + 100);
+      const { error } = await supabase.from('appointments').insert(batch);
+      if (error) {
+        errors.push(`Batch ${i}-${i + batch.length}: ${error.message}`);
+      } else {
+        inserted += batch.length;
+      }
+    }
+
+    return jsonResponse({
+      success: true,
+      totalEvents: allEvents.length,
+      imported: inserted,
+      skipped: skipped.length,
+      duplicatesSkipped: parsed.length - toInsert.length,
+      errors: errors.length > 0 ? errors : undefined,
+    });
+  } catch (err) {
+    return errorResponse('Import hatası: ' + String(err));
+  }
 }
