@@ -350,51 +350,40 @@ function renderLinks(): void {
         return;
     }
 
-    // Grid layout
-    const gridContainer = createElement('div', { className: 'link-grid' });
+    // Grid layout (Genel/Günlük ile aynı yapı)
+    const gridContainer = createElement('div', { className: 'link-cards-grid' });
 
     salesStaff.forEach(s => {
         const staffLink = `${getConfig().BASE_URL}#s/${s.personel_id || s.id}`;
 
-        // Link card
         const linkCard = createElement('div', { className: 'link-card' });
 
-        // Header
-        const header = createElement('div', { className: 'link-card-header' }, s.name);
+        const nameDiv = createElement('div', { className: 'link-card-name' }, s.name);
 
-        // Body
-        const body = createElement('div', { className: 'link-card-body' });
-
-        // Link input
-        const linkInput = createElement('input', {
-            type: 'text',
+        const urlDiv = createElement('div', { className: 'link-card-url' });
+        urlDiv.textContent = staffLink;
+        // Gizli input (copy için)
+        const hiddenInput = createElement('input', {
+            type: 'hidden',
             value: staffLink,
-            readonly: true,
-            id: `staffLink_${s.id}`,
-            className: 'link-input'
-        }) as HTMLInputElement;
+            id: `staffLink_${s.id}`
+        });
+        urlDiv.appendChild(hiddenInput);
 
-        // Actions
-        const actions = createElement('div', { className: 'link-actions' });
+        const btnsDiv = createElement('div', { className: 'link-card-btns' });
 
-        const copyBtn = createElement('button', {
-            className: 'btn btn-small btn-secondary'
-        }, 'Copy');
+        const copyBtn = createElement('button', { className: 'link-btn' }, 'Copy');
         copyBtn.addEventListener('click', () => copyLink(s.id));
 
-        const openBtn = createElement('button', {
-            className: 'btn btn-small'
-        }, 'Open');
+        const openBtn = createElement('button', { className: 'link-btn link-btn-primary' }, 'Open');
         openBtn.addEventListener('click', () => openLink(s.id));
 
-        actions.appendChild(copyBtn);
-        actions.appendChild(openBtn);
+        btnsDiv.appendChild(copyBtn);
+        btnsDiv.appendChild(openBtn);
 
-        body.appendChild(linkInput);
-        body.appendChild(actions);
-
-        linkCard.appendChild(header);
-        linkCard.appendChild(body);
+        linkCard.appendChild(nameDiv);
+        linkCard.appendChild(urlDiv);
+        linkCard.appendChild(btnsDiv);
         gridContainer.appendChild(linkCard);
     });
 
@@ -432,51 +421,40 @@ function renderVipLinks(): void {
         return;
     }
 
-    // Grid layout
-    const gridContainer = createElement('div', { className: 'link-grid' });
+    // Grid layout (Genel/Günlük ile aynı yapı)
+    const gridContainer = createElement('div', { className: 'link-cards-grid' });
 
     managementStaff.forEach(s => {
         const vipLink = `${getConfig().BASE_URL}#v/${s.personel_id || s.id}`;
 
-        // Link card
         const linkCard = createElement('div', { className: 'link-card' });
 
-        // Header
-        const header = createElement('div', { className: 'link-card-header' }, `${s.name} (VIP)`);
+        const nameDiv = createElement('div', { className: 'link-card-name' }, `${s.name} (VIP)`);
 
-        // Body
-        const body = createElement('div', { className: 'link-card-body' });
-
-        // Link input
-        const linkInput = createElement('input', {
-            type: 'text',
+        const urlDiv = createElement('div', { className: 'link-card-url' });
+        urlDiv.textContent = vipLink;
+        // Gizli input (copy için)
+        const hiddenInput = createElement('input', {
+            type: 'hidden',
             value: vipLink,
-            readonly: true,
-            id: `vipLink_${s.id}`,
-            className: 'link-input'
-        }) as HTMLInputElement;
+            id: `vipLink_${s.id}`
+        });
+        urlDiv.appendChild(hiddenInput);
 
-        // Actions
-        const actions = createElement('div', { className: 'link-actions' });
+        const btnsDiv = createElement('div', { className: 'link-card-btns' });
 
-        const copyBtn = createElement('button', {
-            className: 'btn btn-small btn-secondary'
-        }, 'Copy');
+        const copyBtn = createElement('button', { className: 'link-btn' }, 'Copy');
         copyBtn.addEventListener('click', () => copyVipLink(s.id));
 
-        const openBtn = createElement('button', {
-            className: 'btn btn-small'
-        }, 'Open');
+        const openBtn = createElement('button', { className: 'link-btn link-btn-primary' }, 'Open');
         openBtn.addEventListener('click', () => openVipLink(s.id));
 
-        actions.appendChild(copyBtn);
-        actions.appendChild(openBtn);
+        btnsDiv.appendChild(copyBtn);
+        btnsDiv.appendChild(openBtn);
 
-        body.appendChild(linkInput);
-        body.appendChild(actions);
-
-        linkCard.appendChild(header);
-        linkCard.appendChild(body);
+        linkCard.appendChild(nameDiv);
+        linkCard.appendChild(urlDiv);
+        linkCard.appendChild(btnsDiv);
         gridContainer.appendChild(linkCard);
     });
 

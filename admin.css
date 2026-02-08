@@ -292,13 +292,6 @@
             border-color: #1A1A2E;
         }
 
-        /* Staff/VIP Links Grid - 2 column layout */
-        .link-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, 1fr) !important;
-            gap: 16px !important;
-        }
-
         /* Full width card (last odd item) */
         .link-card-full {
             grid-column: 1 / -1 !important;
@@ -738,11 +731,6 @@
             .link-btn {
                 padding: 7px 16px;
                 font-size: 10px;
-            }
-
-            /* Staff/VIP links grid responsive - single column */
-            .link-grid {
-                grid-template-columns: 1fr;
             }
 
             .link-card-full {
