@@ -212,12 +212,14 @@ async function startApp(): Promise<void> {
         // Load profile settings first (needed for appointment manager)
         await dataStore.loadProfilAyarlari();
 
-        // Initialize all manager modules in parallel (performance optimization)
+        // Staff önce yüklenmeli (shift render'ı staff verisine bağımlı)
         await Promise.all([
             initStaffManager(dataStore),
-            initShiftManager(dataStore),
             initSettingsManager(dataStore),
         ]);
+
+        // Shift, staff yüklendikten sonra başlar
+        await initShiftManager(dataStore);
 
         // Second wave: depends on staff/settings being loaded
         await Promise.all([
