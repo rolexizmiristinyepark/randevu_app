@@ -370,7 +370,6 @@ function render(): void {
 
     // Role sıralaması: satış → karşılama → yönetim
     const ROLE_ORDER: Record<string, number> = { sales: 0, greeter: 1, management: 2 };
-    const ROLE_LABELS: Record<string, string> = { sales: 'Satış', greeter: 'Karşılama', management: 'Yönetim' };
 
     const sorted = [...activeStaff].sort((a, b) => {
         const orderA = ROLE_ORDER[a.role] ?? 99;
@@ -382,11 +381,11 @@ function render(): void {
     let lastRole = '';
 
     sorted.forEach(staff => {
-        // Role değiştiğinde ayırıcı satır ekle
+        // Role değiştiğinde ince ayırıcı çizgi
         if (staff.role !== lastRole && lastRole !== '') {
-            const sepRow = createElement('tr', { className: 'shift-role-separator' });
+            const sepRow = createElement('tr');
             const sepCell = createElement('td', {
-                style: { padding: '0', height: '3px', background: '#e2e8f0' }
+                style: { padding: '0', height: '1px', borderBottom: '1px solid #d1d5db' }
             });
             sepCell.setAttribute('colspan', '8');
             sepRow.appendChild(sepCell);
@@ -396,28 +395,10 @@ function render(): void {
 
         const staffRow = createElement('tr');
 
-        // Staff name cell + role etiketi
+        // Staff name cell
         const nameCell = createElement('td', {
             style: { textAlign: 'left', fontWeight: '400' }
-        });
-        nameCell.appendChild(document.createTextNode(staff.name));
-
-        // İlk kişi veya role değiştiğinde küçük role etiketi göster
-        const roleLabel = ROLE_LABELS[staff.role] || staff.role;
-        const roleTag = createElement('span', {
-            style: {
-                marginLeft: '6px',
-                fontSize: '9px',
-                fontWeight: '600',
-                letterSpacing: '0.5px',
-                padding: '1px 5px',
-                borderRadius: '3px',
-                verticalAlign: 'middle',
-                color: staff.role === 'management' ? '#7c3aed' : staff.role === 'greeter' ? '#0369a1' : '#15803d',
-                background: staff.role === 'management' ? '#f3e8ff' : staff.role === 'greeter' ? '#e0f2fe' : '#dcfce7',
-            }
-        }, roleLabel.toUpperCase());
-        nameCell.appendChild(roleTag);
+        }, staff.name);
         staffRow.appendChild(nameCell);
 
         // Day cells with select dropdowns
