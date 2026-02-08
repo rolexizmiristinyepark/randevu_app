@@ -364,23 +364,66 @@ function render(): void {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // Table body
+    // Table body - role gruplarına göre sırala
     const tbody = createElement('tbody');
+    const activeStaff = dataStore.staff.filter(s => s.active);
 
-    dataStore.staff.filter(s => s.active).forEach(staff => {
+    // Role sıralaması: satış → karşılama → yönetim
+    const ROLE_ORDER: Record<string, number> = { sales: 0, greeter: 1, management: 2 };
+    const ROLE_LABELS: Record<string, string> = { sales: 'Satış', greeter: 'Karşılama', management: 'Yönetim' };
+
+    const sorted = [...activeStaff].sort((a, b) => {
+        const orderA = ROLE_ORDER[a.role] ?? 99;
+        const orderB = ROLE_ORDER[b.role] ?? 99;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name, 'tr');
+    });
+
+    let lastRole = '';
+
+    sorted.forEach(staff => {
+        // Role değiştiğinde ayırıcı satır ekle
+        if (staff.role !== lastRole && lastRole !== '') {
+            const sepRow = createElement('tr', { className: 'shift-role-separator' });
+            const sepCell = createElement('td', {
+                style: { padding: '0', height: '3px', background: '#e2e8f0' }
+            });
+            sepCell.setAttribute('colspan', '8');
+            sepRow.appendChild(sepCell);
+            tbody.appendChild(sepRow);
+        }
+        lastRole = staff.role;
+
         const staffRow = createElement('tr');
 
-        // Staff name cell
+        // Staff name cell + role etiketi
         const nameCell = createElement('td', {
             style: { textAlign: 'left', fontWeight: '400' }
-        }, staff.name);
+        });
+        nameCell.appendChild(document.createTextNode(staff.name));
+
+        // İlk kişi veya role değiştiğinde küçük role etiketi göster
+        const roleLabel = ROLE_LABELS[staff.role] || staff.role;
+        const roleTag = createElement('span', {
+            style: {
+                marginLeft: '6px',
+                fontSize: '9px',
+                fontWeight: '600',
+                letterSpacing: '0.5px',
+                padding: '1px 5px',
+                borderRadius: '3px',
+                verticalAlign: 'middle',
+                color: staff.role === 'management' ? '#7c3aed' : staff.role === 'greeter' ? '#0369a1' : '#15803d',
+                background: staff.role === 'management' ? '#f3e8ff' : staff.role === 'greeter' ? '#e0f2fe' : '#dcfce7',
+            }
+        }, roleLabel.toUpperCase());
+        nameCell.appendChild(roleTag);
         staffRow.appendChild(nameCell);
 
         // Day cells with select dropdowns
         for (let i = 0; i < 7; i++) {
             const d = new Date(weekStart);
             d.setDate(weekStart.getDate() + i);
-            // Format date with DateUtils
             const dateKey = DateUtils.toLocalDate(d);
             const current = dataStore.shifts[dateKey]?.[staff.id] || '';
 
@@ -389,10 +432,9 @@ function render(): void {
                 className: 'shift-select',
                 'data-staff': staff.id,
                 'data-date': dateKey,
-                'data-shift': current  // For coloring
+                'data-shift': current
             }) as HTMLSelectElement;
 
-            // Options - full words
             const opt1 = createElement('option', { value: '' }) as HTMLOptionElement;
             opt1.textContent = 'Off';
 
@@ -405,7 +447,6 @@ function render(): void {
             const opt4 = createElement('option', { value: 'full' }) as HTMLOptionElement;
             opt4.textContent = 'Full';
 
-            // Set selected option
             if (current === 'morning') opt2.selected = true;
             if (current === 'evening') opt3.selected = true;
             if (current === 'full') opt4.selected = true;
@@ -416,7 +457,6 @@ function render(): void {
             select.appendChild(opt3);
             select.appendChild(opt4);
 
-            // Update data-shift attribute on change for CSS coloring
             select.addEventListener('change', function(this: HTMLSelectElement) {
                 this.setAttribute('data-shift', this.value);
             });
