@@ -28,9 +28,10 @@ function toProfileCode(profile: string): string {
 const SLOT_UNIVERSE = [11, 12, 13, 14, 15, 16, 17, 18, 19, 20];
 
 // Shift slot filtreleri (GAS: SHIFT_SLOT_FILTERS)
+// Sabahçı: 10-19 çalışma, 11-18 slot | Akşamcı: 13-22 çalışma, 13-20 slot
 const SHIFT_SLOT_FILTERS: Record<string, number[]> = {
-  morning: [11, 12, 13, 14, 15, 16, 17],
-  evening: [14, 15, 16, 17, 18, 19, 20],
+  morning: [11, 12, 13, 14, 15, 16, 17, 18],
+  evening: [13, 14, 15, 16, 17, 18, 19, 20],
   full: SLOT_UNIVERSE,
 };
 
