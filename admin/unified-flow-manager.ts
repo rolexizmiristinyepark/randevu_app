@@ -496,17 +496,17 @@ function populateFlowForm(flow: UnifiedFlow): void {
         if (scheduleHourSelect) scheduleHourSelect.value = flow.schedule_hour;
     }
 
-    flow.profiles.forEach(profile => {
+    (flow.profiles || []).forEach(profile => {
         const checkbox = document.querySelector(`input[name="unifiedFlowProfiles"][value="${profile}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
 
-    flow.whatsapp_template_ids.forEach(id => {
+    (flow.whatsapp_template_ids || []).forEach(id => {
         const checkbox = document.querySelector(`input[name="unifiedFlowWhatsAppTemplates"][value="${id}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
 
-    flow.mail_template_ids.forEach(id => {
+    (flow.mail_template_ids || []).forEach(id => {
         const checkbox = document.querySelector(`input[name="unifiedFlowMailTemplates"][value="${id}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
