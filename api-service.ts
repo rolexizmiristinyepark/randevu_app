@@ -359,25 +359,12 @@ const ApiService = {
             if (error) {
                 const errorMessage = error.message || 'Edge Function hatasi';
 
-                // 401 JWT expired: anon key ile doğrudan fetch retry
-                if (!_retried && errorMessage.includes('non-2xx')) {
-                    const url = import.meta.env.VITE_SUPABASE_URL;
-                    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-                    try {
-                        const directRes = await fetch(`${url}/functions/v1/${functionName}`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${anonKey}`,
-                                'apikey': anonKey,
-                            },
-                            body: JSON.stringify({ action, ...params }),
-                        });
-                        if (directRes.ok) {
-                            const directData = await directRes.json();
-                            return directData as ApiResponse<T>;
-                        }
-                    } catch { /* direct fetch de başarısız, orijinal hatayı fırlat */ }
+                // Protected action 401: session expired → login modal göster
+                if (errorMessage.includes('non-2xx') && this.PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
+                    if (typeof (window as any).AdminAuth !== 'undefined') {
+                        (window as any).AdminAuth.showLoginModal();
+                    }
+                    throw new Error('Oturum süresi doldu. Lütfen tekrar giriş yapın.');
                 }
 
                 throw new Error(errorMessage);
