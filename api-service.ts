@@ -339,7 +339,8 @@ const ApiService = {
 
     async _makeRequest<T = unknown>(
         action: ApiAction,
-        params: Record<string, unknown> = {}
+        params: Record<string, unknown> = {},
+        _retried = false
     ): Promise<ApiResponse<T>> {
         try {
             const supabase = getSupabaseClient();
@@ -351,12 +352,24 @@ const ApiService = {
             }
 
             // Edge Function'i cagir - Supabase otomatik JWT header ekler
-            const { data, error } = await supabase.functions.invoke(functionName, {
+            const { data, error, response } = await supabase.functions.invoke(functionName, {
                 body: { action, ...params },
-            });
+            }) as { data: any; error: any; response?: Response };
 
             if (error) {
-                // FunctionsHttpError, FunctionsRelayError, FunctionsFetchError
+                const status = response?.status;
+
+                // 401: JWT expired — session refresh dene, tek retry
+                if (!_retried && status === 401) {
+                    const { error: refreshError } = await supabase.auth.refreshSession();
+                    if (!refreshError) {
+                        return this._makeRequest<T>(action, params, true);
+                    }
+                    // Refresh başarısız: session temizle, anon key ile devam
+                    await supabase.auth.signOut();
+                    return this._makeRequest<T>(action, params, true);
+                }
+
                 const errorMessage = error.message || 'Edge Function hatasi';
                 throw new Error(errorMessage);
             }
