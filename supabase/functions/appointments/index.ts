@@ -1028,6 +1028,50 @@ async function triggerAppointmentNotification(
         if (!template) continue;
 
         const targetType = template.target_type || 'customer';
+
+        // Admin target: tüm admin personellere gönder
+        if (targetType === 'staff' && !eventData.staffPhone) {
+          // Staff atanmamış — admin'lere gönder
+          const { data: admins } = await supabase
+            .from('staff')
+            .select('phone, name')
+            .eq('is_admin', true)
+            .eq('active', true);
+
+          if (admins && admins.length > 0) {
+            for (const admin of admins) {
+              if (!admin.phone) continue;
+              const components = buildTemplateComponents(template, eventData);
+              const result = await sendWhatsAppMessage(
+                admin.phone,
+                template.meta_template_name || template.name,
+                template.language || 'tr',
+                components
+              );
+              const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+              await logMessage({
+                appointment_id: appointmentId,
+                phone: formatPhoneWithCountryCode(admin.phone),
+                recipient_name: admin.name,
+                template_name: template.meta_template_name || template.name,
+                template_id: template.id,
+                status: result.success ? 'sent' : 'failed',
+                message_id: result.messageId || '',
+                error_message: result.error || '',
+                flow_id: flow.id,
+                triggered_by: 'appointment_create',
+                profile,
+                message_content: resolvedContent,
+                target_type: 'admin',
+                customer_name: String(eventData.customerName || ''),
+                customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+              });
+              console.log(`Admin notification ${result.success ? 'sent' : 'failed'}: ${admin.name}`);
+            }
+          }
+          continue;
+        }
+
         const phone = targetType === 'staff'
           ? String(eventData.staffPhone || '')
           : String(eventData.customerPhone || '');
