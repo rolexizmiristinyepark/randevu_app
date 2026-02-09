@@ -359,19 +359,25 @@ const ApiService = {
             if (error) {
                 const errorMessage = error.message || 'Edge Function hatasi';
 
-                // 401 JWT expired: session refresh/signOut + tek retry
+                // 401 JWT expired: anon key ile doğrudan fetch retry
                 if (!_retried && errorMessage.includes('non-2xx')) {
-                    const { data: sessionData } = await supabase.auth.getSession();
-                    if (sessionData?.session) {
-                        // Session var ama expired olabilir — refresh dene
-                        const { error: refreshError } = await supabase.auth.refreshSession();
-                        if (!refreshError) {
-                            return this._makeRequest<T>(action, params, true);
+                    const url = import.meta.env.VITE_SUPABASE_URL;
+                    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+                    try {
+                        const directRes = await fetch(`${url}/functions/v1/${functionName}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${anonKey}`,
+                                'apikey': anonKey,
+                            },
+                            body: JSON.stringify({ action, ...params }),
+                        });
+                        if (directRes.ok) {
+                            const directData = await directRes.json();
+                            return directData as ApiResponse<T>;
                         }
-                    }
-                    // Session yok veya refresh başarısız: temizle, anon ile devam
-                    await supabase.auth.signOut();
-                    return this._makeRequest<T>(action, params, true);
+                    } catch { /* direct fetch de başarısız, orijinal hatayı fırlat */ }
                 }
 
                 throw new Error(errorMessage);
