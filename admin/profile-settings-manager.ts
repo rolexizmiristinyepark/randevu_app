@@ -31,7 +31,7 @@ type ProfilAyarlari = Record<string, ProfilAyari>;
 const PROFIL_LABELS: Record<string, string> = {
     g: 'Genel',
     w: 'Günlük',
-    b: 'Butik',
+    b: 'Mağaza',
     m: 'Yönetim',
     s: 'Bireysel',
     v: 'Özel Müşteri'
