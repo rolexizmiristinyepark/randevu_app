@@ -282,13 +282,13 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     }
 
     // Profiles row
-    if (flow.profiles.length > 0) {
+    if (flow.profiles?.length > 0) {
         const profileLabelsText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
         details.appendChild(createRow('Profiles', profileLabelsText));
     }
 
     // WhatsApp templates row
-    if (flow.whatsappTemplateIds.length > 0) {
+    if (flow.whatsappTemplateIds?.length > 0) {
         const waNames = flow.whatsappTemplateIds
             .map(id => whatsappTemplates.find(t => t.id === id)?.name || id)
             .join(', ');
@@ -296,7 +296,7 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     }
 
     // Mail templates row
-    if (flow.mailTemplateIds.length > 0) {
+    if (flow.mailTemplateIds?.length > 0) {
         const mailNames = flow.mailTemplateIds
             .map(id => mailTemplates.find(t => t.id === id)?.name || id)
             .join(', ');
