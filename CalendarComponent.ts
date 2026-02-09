@@ -5,7 +5,7 @@
  * Extracted from app.ts (lines 332-567)
  */
 
-import { state, type Shift, type Appointment, type CalendarEvent } from './StateManager';
+import { state, type Shift, type Appointment } from './StateManager';
 import { cache } from './CacheManager';
 import { revealSection, hideSection, showCalendarLoading, hideCalendarLoading, hideAlert, showAlert } from './UIManager';
 import { DateUtils } from './date-utils';
@@ -44,7 +44,6 @@ export async function changeMonth(direction: 1 | -1): Promise<void> {
             // Cache available, render directly (no API call)
             state.set('dayShifts', cached.data.dayShifts || {});
             state.set('allAppointments', cached.data.allAppointments || {});
-            state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
             // ⚡ BUG FIX: Clear memoization cache before re-render to prevent stale availability data
             clearAvailabilityCache();
             renderCalendar();
@@ -218,7 +217,6 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
     const selectedAppointmentType = state.get('selectedAppointmentType');
     const specificStaffId = state.get('specificStaffId');
     const dayShifts = state.get('dayShifts');
-    const googleCalendarEvents = state.get('googleCalendarEvents');
     const profilAyarlari = state.get('profilAyarlari');
 
     // NEW: All days available for management appointments
@@ -249,39 +247,16 @@ function checkDayAvailabilityBase(dateStr: string): { available: boolean; reason
         }
     }
 
-    // Count DELIVERY and SHIPPING appointments from Google Calendar (max 3 total)
-    const calendarEvents = googleCalendarEvents[dateStr] || [];
-    const now = new Date();
-    const todayStr = DateUtils.toLocalDate(now);
-
-    const deliveryCount = calendarEvents.filter((event: any) => {
-        // Count both delivery AND shipping appointments (total)
-        const appointmentType = event.extendedProperties?.private?.appointmentType;
-        if (appointmentType !== 'delivery' && appointmentType !== 'shipping') {
-            return false;
-        }
-
-        // If today and time has passed, don't count
-        if (dateStr === todayStr && event.start) {
-            // Use time field from backend
-            const eventTime = event.start.time || (() => {
-                const t = new Date(event.start.dateTime);
-                return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0');
-            })();
-            const currentTime = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
-            if (eventTime < currentTime) {
-                return false;
-            }
-        }
-
-        return true;
-    }).length;
-
-    // Max 3 check for delivery/shipping appointments (total)
+    // Delivery/shipping günlük limit kontrolü (DB'deki appointments tablosundan)
     if (selectedAppointmentType === 'delivery' || selectedAppointmentType === 'shipping') {
-        const maxDaily = (window as any).CONFIG?.MAX_DAILY_DELIVERY_APPOINTMENTS || 4;
+        const allAppointments = state.get('allAppointments');
+        const dayAppointments = allAppointments[dateStr] || [];
+        const deliveryCount = dayAppointments.filter((a: any) =>
+            (a.appointment_type === 'delivery' || a.appointment_type === 'shipping') && a.status === 'confirmed'
+        ).length;
+        const maxDaily = profilAyarlari?.maxDailyDelivery || (window as any).CONFIG?.MAX_DAILY_DELIVERY_APPOINTMENTS || 4;
         if (deliveryCount >= maxDaily) {
-            return { available: false, reason: `Saat takdim/gönderi randevuları dolu (${deliveryCount}/${maxDaily})` };
+            return { available: false, reason: `Teslim/gönderi randevuları dolu (${deliveryCount}/${maxDaily})` };
         }
     }
 
@@ -514,7 +489,6 @@ export async function loadMonthData(): Promise<void> {
             // Cache still valid, use it
             state.set('dayShifts', cached.data.dayShifts || {});
             state.set('allAppointments', cached.data.allAppointments || {});
-            state.set('googleCalendarEvents', cached.data.googleCalendarEvents || {});
             // ⚡ BUG FIX: Clear memoization cache before re-render to prevent stale availability data
             clearAvailabilityCache();
             renderCalendar();
@@ -531,17 +505,7 @@ export async function loadMonthData(): Promise<void> {
             apiCall('getMonthAppointments', { month: monthStr }),
         ]);
 
-        // Google Calendar sync is optional - don't let it break core data loading
-        let calendarResult: { success: boolean; data?: unknown } = { success: false };
-        try {
-            calendarResult = await apiCall('getGoogleCalendarEvents', {
-                startDate: DateUtils.toLocalDate(startDate),
-                endDate: DateUtils.toLocalDate(endDate),
-                staffId: specificStaffId || 'all'
-            });
-        } catch {
-            // Calendar sync not configured or unavailable - this is expected
-        }
+        // Google Calendar sync sadece admin panelinde kullanılır, müşteri sayfasında gereksiz
 
         if (shiftsResult.success) {
             state.set('dayShifts', (shiftsResult.data || {}) as Record<string, Shift>);
@@ -551,21 +515,15 @@ export async function loadMonthData(): Promise<void> {
             state.set('allAppointments', (appointmentsResult.data || {}) as Record<string, Appointment[]>);
         }
 
-        if (calendarResult.success) {
-            state.set('googleCalendarEvents', (calendarResult.data || {}) as Record<string, CalendarEvent[]>);
-        }
-
         // Save data to cache
         const dayShifts = state.get('dayShifts');
         const allAppointments = state.get('allAppointments');
-        const googleCalendarEvents = state.get('googleCalendarEvents');
 
         cache.set(cacheKey, {
             timestamp: Date.now(),
             data: {
                 dayShifts: { ...dayShifts },
                 allAppointments: { ...allAppointments },
-                googleCalendarEvents: { ...googleCalendarEvents }
             }
         });
 
