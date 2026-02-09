@@ -29,12 +29,12 @@ type ProfilAyarlari = Record<string, ProfilAyari>;
 
 // Profil isimleri (key: DB profile_code)
 const PROFIL_LABELS: Record<string, string> = {
-    g: 'Genel',
-    w: 'Günlük',
-    b: 'Mağaza',
-    m: 'Yönetim',
-    s: 'Bireysel',
-    v: 'Özel Müşteri'
+    g: 'GENEL',
+    w: 'GÜNLÜK',
+    b: 'MAĞAZA',
+    m: 'YÖNETİM',
+    s: 'BİREYSEL',
+    v: 'ÖZEL MÜŞTERİ'
 };
 
 // Kod mapping
@@ -139,7 +139,7 @@ function renderTable(): void {
     const table = document.createElement('table');
     table.className = 'settings-table';
 
-    const thStyle = 'padding: 8px 6px; text-align: center; border-bottom: 1px solid #e0e0e0; font-weight: 400; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; cursor: pointer;';
+    const thStyle = 'padding: 8px 6px; text-align: center; border-bottom: 1px solid #e0e0e0; font-weight: 400; font-size: 10px; letter-spacing: 0.8px; cursor: pointer;';
     const thRowStyle = 'padding: 8px 6px; text-align: left; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #555; font-size: 11px; white-space: nowrap;';
     const tdStyle = 'padding: 8px 6px; text-align: center; border-bottom: 1px solid #f0f0f0; font-size: 12px;';
 
