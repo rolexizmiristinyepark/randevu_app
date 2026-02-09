@@ -34,8 +34,8 @@ interface MailFlow {
     description: string;
     profiles: string[];
     triggers: string[]; // ['RANDEVU_OLUŞTUR', 'RANDEVU_İPTAL', etc.]
-    templateIds: string[]; // v3.9.74: Multiple templates
-    infoCardId: string; // Info card ID'si
+    template_ids: string[]; // v3.9.74: Multiple templates
+    info_card_id: string; // Info card ID'si
     active: boolean;
 }
 
@@ -45,7 +45,7 @@ interface MailTemplate {
     subject: string;
     body: string; // HTML content
     recipient: string; // v3.9.74: customer, staff, admin, role_sales, role_greeter, etc.
-    infoCardId: string; // v3.9.75: Info card to use with this template
+    info_card_id: string; // v3.9.75: Info card to use with this template
 }
 
 interface InfoCardField {
@@ -388,14 +388,14 @@ function createFlowItem(flow: MailFlow): HTMLElement {
     details.appendChild(createRow('Triggers', triggersText));
 
     // Templates
-    const templateNames = flow.templateIds
+    const templateNames = flow.template_ids
         .map(id => templates.find(t => t.id === id)?.name)
         .filter(Boolean);
     details.appendChild(createRow('Templates', templateNames.length > 0 ? templateNames.join(', ') : 'No template selected'));
 
     // Info Card
-    const infoCardId = flow.infoCardId || 'ics_default';
-    const infoCard = infoCards.find(c => c.id === infoCardId);
+    const info_card_id = flow.info_card_id || 'ics_default';
+    const infoCard = infoCards.find(c => c.id === info_card_id);
     details.appendChild(createRow('Info Card', infoCard?.name || 'ICS (Default)'));
 
     item.appendChild(header);
@@ -479,11 +479,11 @@ function populateFlowForm(flow: MailFlow): void {
 
     // Set info card select
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
-    if (infoCardSelect && flow.infoCardId) {
-        infoCardSelect.value = flow.infoCardId;
+    if (infoCardSelect && flow.info_card_id) {
+        infoCardSelect.value = flow.info_card_id;
         // Verify selection was successful
-        if (infoCardSelect.value !== flow.infoCardId) {
-            console.warn('[Mail] Info card not found in options:', flow.infoCardId);
+        if (infoCardSelect.value !== flow.info_card_id) {
+            console.warn('[Mail] Info card not found in options:', flow.info_card_id);
             console.warn('[Mail] Available options:', Array.from(infoCardSelect.options).map(o => o.value));
         }
     }
@@ -501,7 +501,7 @@ function populateFlowForm(flow: MailFlow): void {
     });
 
     // Check template checkboxes - v3.9.74: Multiple templates
-    flow.templateIds.forEach(templateId => {
+    flow.template_ids.forEach(templateId => {
         const checkbox = document.querySelector(`input[name="mailFlowTemplates"][value="${templateId}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
@@ -620,23 +620,23 @@ async function saveFlow(): Promise<void> {
     }
 
     // Get selected templates - v3.9.74: Multiple templates
-    const templateIds: string[] = [];
+    const template_ids: string[] = [];
     document.querySelectorAll('input[name="mailFlowTemplates"]:checked').forEach(cb => {
-        templateIds.push((cb as HTMLInputElement).value);
+        template_ids.push((cb as HTMLInputElement).value);
     });
 
-    if (templateIds.length === 0) {
+    if (template_ids.length === 0) {
         getUI().showAlert('En az bir şablon seçmelisiniz', 'error');
         return;
     }
 
     // Get selected info card
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
-    const infoCardId = infoCardSelect?.value || '';
+    const info_card_id = infoCardSelect?.value || '';
 
     // Debug: Log what we're saving
-    console.log('[Mail] Saving flow with templateIds:', templateIds);
-    console.log('[Mail] Saving flow with infoCardId:', infoCardId);
+    console.log('[Mail] Saving flow with template_ids:', template_ids);
+    console.log('[Mail] Saving flow with info_card_id:', info_card_id);
 
     // Build flow data
     const flowData: Partial<MailFlow> = {
@@ -644,8 +644,8 @@ async function saveFlow(): Promise<void> {
         description,
         triggers,
         profiles,
-        templateIds,
-        infoCardId,
+        template_ids,
+        info_card_id,
         active: true
     };
 
@@ -946,8 +946,8 @@ function createTemplateItem(template: MailTemplate): HTMLElement {
     details.appendChild(createRow('Subject', template.subject));
 
     // Info Card
-    if (template.infoCardId) {
-        const card = infoCards.find(c => c.id === template.infoCardId);
+    if (template.info_card_id) {
+        const card = infoCards.find(c => c.id === template.info_card_id);
         if (card) {
             details.appendChild(createRow('Info Card', card.name));
         }
@@ -1098,7 +1098,7 @@ function populateTemplateForm(template: MailTemplate): void {
 
     // Set info card select - v3.9.75
     const infoCardSelect = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
-    if (infoCardSelect) infoCardSelect.value = template.infoCardId || '';
+    if (infoCardSelect) infoCardSelect.value = template.info_card_id || '';
 }
 
 /**
@@ -1118,7 +1118,7 @@ async function saveTemplate(): Promise<void> {
 
     // Get selected info card - v3.9.75
     const infoCardSelect = document.getElementById('mailTemplateInfoCard') as HTMLSelectElement;
-    const infoCardId = infoCardSelect?.value || '';
+    const info_card_id = infoCardSelect?.value || '';
 
     // Validation
     if (!name) {
@@ -1142,7 +1142,7 @@ async function saveTemplate(): Promise<void> {
         subject,
         body,
         recipient,
-        infoCardId
+        info_card_id
     };
 
     // Add loading state

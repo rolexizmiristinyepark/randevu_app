@@ -43,16 +43,16 @@ interface WhatsAppFlow {
 
 interface WhatsAppTemplate {
     id: string;
-    name: string;              // User-friendly display name
-    metaTemplateName: string;  // Meta Business API template name
+    name: string;
+    meta_template_name: string;
     description: string;
-    variableCount: number;
+    variable_count: number;
     variables: Record<string, string>;
-    targetType: string;
+    target_type: string;
     language: string;
-    content?: string;          // v3.10.19: WhatsApp şablon içeriği (Meta'daki orijinal metin)
-    hasButton?: boolean;       // v3.10.22: WhatsApp şablonunda dinamik düğme var mı
-    buttonVariable?: string;   // v3.10.22: Düğme için kullanılacak değişken
+    content?: string;
+    has_button?: boolean;
+    button_variable?: string;
 }
 
 interface WhatsAppMessage {
@@ -530,7 +530,7 @@ function populateTemplateSelect(): void {
     templates.forEach(template => {
         const option = document.createElement('option');
         option.value = template.id;
-        const targetLabel = recipientLabels[template.targetType] || template.targetType;
+        const targetLabel = recipientLabels[template.target_type] || template.target_type;
         option.textContent = `${template.name} (${targetLabel})`;
         select.appendChild(option);
     });
@@ -712,7 +712,7 @@ async function loadTemplates(): Promise<void> {
 /**
  * Get badge color based on target type
  */
-function getBadgeColor(targetType: string): string {
+function getBadgeColor(target_type: string): string {
     const colors: Record<string, string> = {
         'customer': '#2196F3',
         'staff': '#9C27B0',
@@ -722,7 +722,7 @@ function getBadgeColor(targetType: string): string {
         'tomorrow_customers': '#00BCD4',
         'tomorrow_staffs': '#795548'
     };
-    return colors[targetType] || '#607D8B';
+    return colors[target_type] || '#607D8B';
 }
 
 /**
@@ -766,9 +766,9 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     name.textContent = template.name;
 
     const targetBadge = document.createElement('span');
-    const badgeColor = getBadgeColor(template.targetType);
+    const badgeColor = getBadgeColor(template.target_type);
     targetBadge.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${badgeColor}; color: white;`;
-    targetBadge.textContent = recipientLabels[template.targetType] || template.targetType;
+    targetBadge.textContent = recipientLabels[template.target_type] || template.target_type;
 
     left.appendChild(name);
     left.appendChild(targetBadge);
@@ -805,7 +805,7 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     };
 
     // Meta template name
-    details.appendChild(createRow('Meta', template.metaTemplateName || template.name));
+    details.appendChild(createRow('Meta', template.meta_template_name || template.name));
 
     // Description (if exists)
     if (template.description) {
@@ -813,7 +813,7 @@ function createTemplateItem(template: WhatsAppTemplate): HTMLElement {
     }
 
     // Variables and Language
-    details.appendChild(createRow('Variables', String(template.variableCount || 0)));
+    details.appendChild(createRow('Variables', String(template.variable_count || 0)));
     details.appendChild(createRow('Language', (template.language || 'tr').toUpperCase()));
 
     item.appendChild(header);
@@ -897,15 +897,15 @@ function resetTemplateForm(): void {
  */
 function populateTemplateForm(template: WhatsAppTemplate): void {
     (document.getElementById('templateDisplayName') as HTMLInputElement).value = template.name || '';
-    (document.getElementById('templateName') as HTMLInputElement).value = template.metaTemplateName || '';
+    (document.getElementById('templateName') as HTMLInputElement).value = template.meta_template_name || '';
     (document.getElementById('templateDescription') as HTMLInputElement).value = template.description || '';
     (document.getElementById('templateContent') as HTMLTextAreaElement).value = template.content || ''; // v3.10.19
-    (document.getElementById('templateTargetType') as HTMLSelectElement).value = template.targetType;
+    (document.getElementById('templateTargetType') as HTMLSelectElement).value = template.target_type;
     (document.getElementById('templateLanguage') as HTMLSelectElement).value = template.language || 'tr';
-    (document.getElementById('templateVariableCount') as HTMLInputElement).value = String(template.variableCount || 0);
+    (document.getElementById('templateVariableCount') as HTMLInputElement).value = String(template.variable_count || 0);
 
     // Generate variable inputs and populate
-    generateVariableInputs(template.variableCount || 0);
+    generateVariableInputs(template.variable_count || 0);
 
     // Populate variable values
     if (template.variables) {
@@ -919,13 +919,13 @@ function populateTemplateForm(template: WhatsAppTemplate): void {
     const hasButtonCheckbox = document.getElementById('templateHasButton') as HTMLInputElement;
     const buttonContainer = document.getElementById('templateButtonVariableContainer');
     if (hasButtonCheckbox && buttonContainer) {
-        hasButtonCheckbox.checked = template.hasButton || false;
-        buttonContainer.style.display = template.hasButton ? 'block' : 'none';
-        if (template.hasButton) {
+        hasButtonCheckbox.checked = template.has_button || false;
+        buttonContainer.style.display = template.has_button ? 'block' : 'none';
+        if (template.has_button) {
             populateButtonVariableSelect();
             const buttonSelect = document.getElementById('templateButtonVariable') as HTMLSelectElement;
-            if (buttonSelect && template.buttonVariable) {
-                buttonSelect.value = template.buttonVariable;
+            if (buttonSelect && template.button_variable) {
+                buttonSelect.value = template.button_variable;
             }
         }
     }
@@ -1017,12 +1017,12 @@ async function saveTemplate(): Promise<void> {
     const saveBtn = document.getElementById('saveTemplateBtn') as HTMLButtonElement;
 
     const displayName = (document.getElementById('templateDisplayName') as HTMLInputElement).value.trim();
-    const metaTemplateName = (document.getElementById('templateName') as HTMLInputElement).value.trim();
+    const meta_template_name = (document.getElementById('templateName') as HTMLInputElement).value.trim();
     const description = (document.getElementById('templateDescription') as HTMLInputElement).value.trim();
-    const content = (document.getElementById('templateContent') as HTMLTextAreaElement).value.trim(); // v3.10.19
-    const targetType = (document.getElementById('templateTargetType') as HTMLSelectElement).value;
+    const content = (document.getElementById('templateContent') as HTMLTextAreaElement).value.trim();
+    const target_type = (document.getElementById('templateTargetType') as HTMLSelectElement).value;
     const language = (document.getElementById('templateLanguage') as HTMLSelectElement).value;
-    const variableCount = parseInt((document.getElementById('templateVariableCount') as HTMLInputElement).value) || 0;
+    const variable_count = parseInt((document.getElementById('templateVariableCount') as HTMLInputElement).value) || 0;
     const editId = (document.getElementById('templateEditId') as HTMLInputElement).value;
 
     // Validation
@@ -1030,14 +1030,14 @@ async function saveTemplate(): Promise<void> {
         getUI().showAlert('Template name is required', 'error');
         return;
     }
-    if (!metaTemplateName) {
+    if (!meta_template_name) {
         getUI().showAlert('Meta template name is required', 'error');
         return;
     }
 
     // Collect variables
     const variables: Record<string, string> = {};
-    for (let i = 1; i <= variableCount; i++) {
+    for (let i = 1; i <= variable_count; i++) {
         const select = document.getElementById(`var_${i}`) as HTMLSelectElement;
         if (select && select.value) {
             variables[String(i)] = select.value;
@@ -1045,23 +1045,23 @@ async function saveTemplate(): Promise<void> {
     }
 
     // Get button fields
-    const hasButton = (document.getElementById('templateHasButton') as HTMLInputElement)?.checked || false;
-    const buttonVariable = hasButton
+    const has_button = (document.getElementById('templateHasButton') as HTMLInputElement)?.checked || false;
+    const button_variable = has_button
         ? (document.getElementById('templateButtonVariable') as HTMLSelectElement)?.value || ''
         : '';
 
     // Build template data
     const templateData: Partial<WhatsAppTemplate> = {
         name: displayName,
-        metaTemplateName,
+        meta_template_name,
         description,
         content,
-        targetType,
+        target_type,
         language,
-        variableCount,
+        variable_count,
         variables,
-        hasButton,
-        buttonVariable
+        has_button,
+        button_variable
     };
 
     // v3.10.20: Debug log - content gönderilip gönderilmediğini kontrol et

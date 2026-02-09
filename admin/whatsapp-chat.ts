@@ -16,27 +16,27 @@ interface WhatsAppMessage {
     status: 'sent' | 'delivered' | 'read' | 'failed';
     direction: 'incoming' | 'outgoing';
     timestamp?: string;
-    sentAt?: string;
-    errorMessage?: string;
+    sent_at?: string;
+    error_message?: string;
     // v3.10.20: Backend alanları - parse yok
-    targetType?: 'customer' | 'staff' | '';
-    customerName?: string;
-    customerPhone?: string;
-    staffName?: string;
-    staffPhone?: string;
+    target_type?: 'customer' | 'staff' | '';
+    customer_name?: string;
+    customer_phone?: string;
+    staff_name?: string;
+    staff_phone?: string;
 }
 
 interface WhatsAppTemplate {
     id: string;
     name: string;
     content?: string;
-    variableCount?: number;
+    variable_count?: number;
 }
 
 interface Contact {
     phone: string;
     name: string;
-    customerPhone: string; // Müşteri telefonu (mesaj içeriğinden çıkarılır)
+    customer_phone: string;
     lastMessage: string;
     lastMessageTime: string;
     unreadCount: number;
@@ -164,8 +164,8 @@ async function loadAllMessages(): Promise<void> {
 
         // Sort by timestamp (newest first for contact list)
         allMessages.sort((a, b) => {
-            const timeA = new Date(a.timestamp || a.sentAt || 0).getTime();
-            const timeB = new Date(b.timestamp || b.sentAt || 0).getTime();
+            const timeA = new Date(a.timestamp || a.sent_at || 0).getTime();
+            const timeB = new Date(b.timestamp || b.sent_at || 0).getTime();
             return timeB - timeA;
         });
 
@@ -242,9 +242,9 @@ function groupByContact(): void {
             contactMap.set(normalizedPhone, {
                 phone: normalizedPhone,
                 name: displayName,
-                customerPhone: recipientPhone,
+                customer_phone: recipientPhone,
                 lastMessage: '',
-                lastMessageTime: msg.timestamp || msg.sentAt || '',
+                lastMessageTime: msg.timestamp || msg.sent_at || '',
                 unreadCount: 0,
                 lastDirection: msg.direction
             });
@@ -275,7 +275,7 @@ function renderContacts(): void {
             // İsme göre ara
             if (c.name.toLowerCase().includes(searchTerm.toLowerCase())) return true;
             // Telefona göre ara (053, 532, 5077749007 gibi)
-            if (searchNormalized && c.customerPhone.includes(searchNormalized)) return true;
+            if (searchNormalized && c.customer_phone.includes(searchNormalized)) return true;
             return false;
         })
         : contacts;
@@ -323,10 +323,10 @@ function renderContacts(): void {
         info.appendChild(nameDiv);
 
         // Müşteri telefon numarası
-        if (contact.customerPhone) {
+        if (contact.customer_phone) {
             const phoneDiv = document.createElement('div');
             phoneDiv.className = 'wa-contact-phone';
-            phoneDiv.textContent = formatPhoneDisplay(contact.customerPhone);
+            phoneDiv.textContent = formatPhoneDisplay(contact.customer_phone);
             info.appendChild(phoneDiv);
         }
 
@@ -352,7 +352,7 @@ function renderContacts(): void {
 /**
  * Select a contact and show their messages
  */
-function selectContact(customerKey: string, customerName: string): void {
+function selectContact(customerKey: string, customer_name: string): void {
     selectedCustomer = customerKey;
 
     // Update active state in contact list
@@ -377,7 +377,7 @@ function selectContact(customerKey: string, customerName: string): void {
     const headerStatus = document.querySelector('.wa-chat-status');
 
     if (headerName) {
-        headerName.textContent = customerName;
+        headerName.textContent = customer_name;
     }
     if (headerStatus) {
         headerStatus.textContent = 'Müşteri';
@@ -427,8 +427,8 @@ function renderMessages(customerKey: string): void {
 
     // Sort by timestamp (oldest first for conversation view)
     customerMessages.sort((a, b) => {
-        const timeA = new Date(a.timestamp || a.sentAt || 0).getTime();
-        const timeB = new Date(b.timestamp || b.sentAt || 0).getTime();
+        const timeA = new Date(a.timestamp || a.sent_at || 0).getTime();
+        const timeB = new Date(b.timestamp || b.sent_at || 0).getTime();
         return timeA - timeB;
     });
 
@@ -449,7 +449,7 @@ function renderMessages(customerKey: string): void {
     let lastDate = '';
 
     customerMessages.forEach(msg => {
-        const msgDate = formatDateOnly(msg.timestamp || msg.sentAt || '');
+        const msgDate = formatDateOnly(msg.timestamp || msg.sent_at || '');
 
         // Add date divider if date changed
         if (msgDate && msgDate !== lastDate) {
@@ -478,7 +478,7 @@ function renderMessages(customerKey: string): void {
 
         const timeSpan = document.createElement('span');
         timeSpan.className = 'wa-message-time';
-        timeSpan.textContent = formatTimeOnly(msg.timestamp || msg.sentAt || '');
+        timeSpan.textContent = formatTimeOnly(msg.timestamp || msg.sent_at || '');
 
         footer.appendChild(timeSpan);
 
@@ -576,8 +576,8 @@ function showMessageDetails(msg: WhatsAppMessage): void {
     body.appendChild(statusRow);
 
     // Error message if failed
-    if (msg.status === 'failed' && msg.errorMessage) {
-        const errorRow = createDetailRow('Hata Sebebi', msg.errorMessage, 'error');
+    if (msg.status === 'failed' && msg.error_message) {
+        const errorRow = createDetailRow('Hata Sebebi', msg.error_message, 'error');
         body.appendChild(errorRow);
     }
 
@@ -600,7 +600,7 @@ function showMessageDetails(msg: WhatsAppMessage): void {
     }
 
     // Timestamp
-    const timestamp = msg.timestamp || msg.sentAt;
+    const timestamp = msg.timestamp || msg.sent_at;
     if (timestamp) {
         const date = new Date(timestamp);
         const dateStr = date.toLocaleDateString('tr-TR', {

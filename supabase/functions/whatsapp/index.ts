@@ -87,12 +87,7 @@ async function handleGetTemplates(): Promise<Response> {
     .order('name');
 
   if (error) return jsonResponse({ success: true, data: [] });
-  const templates = (data || []).map((t: any) => ({
-    ...t,
-    metaTemplateName: t.meta_template_name,
-    targetType: t.target_type || 'customer',
-  }));
-  return jsonResponse({ success: true, data: templates });
+  return jsonResponse({ success: true, data: data || [] });
 }
 
 async function handleCreateTemplate(req: Request, body: EdgeFunctionBody): Promise<Response> {
@@ -105,15 +100,15 @@ async function handleCreateTemplate(req: Request, body: EdgeFunctionBody): Promi
     .insert({
       id: crypto.randomUUID(),
       name: String(body.name || ''),
-      meta_template_name: String(body.metaTemplateName || ''),
+      meta_template_name: String(body.meta_template_name || ''),
       description: String(body.description || ''),
       content: String(body.content || ''),
-      variable_count: Number(body.variableCount) || 0,
+      variable_count: Number(body.variable_count) || 0,
       variables: body.variables || {},
-      target_type: String(body.targetType || 'customer'),
+      target_type: String(body.target_type || 'customer'),
       language: String(body.language || 'en'),
-      has_button: body.hasButton === true || body.hasButton === 'true',
-      button_variable: String(body.buttonVariable || ''),
+      has_button: body.has_button === true || body.has_button === 'true',
+      button_variable: String(body.button_variable || ''),
       active: true,
     })
     .select('id')
@@ -134,15 +129,15 @@ async function handleUpdateTemplate(req: Request, body: EdgeFunctionBody): Promi
   const updates: Record<string, unknown> = {};
 
   if (body.name !== undefined) updates.name = body.name;
-  if (body.metaTemplateName !== undefined) updates.meta_template_name = body.metaTemplateName;
+  if (body.meta_template_name !== undefined) updates.meta_template_name = body.meta_template_name;
   if (body.description !== undefined) updates.description = body.description;
   if (body.content !== undefined) updates.content = body.content;
-  if (body.variableCount !== undefined) updates.variable_count = Number(body.variableCount);
+  if (body.variable_count !== undefined) updates.variable_count = Number(body.variable_count);
   if (body.variables !== undefined) updates.variables = body.variables;
-  if (body.targetType !== undefined) updates.target_type = body.targetType;
+  if (body.target_type !== undefined) updates.target_type = body.target_type;
   if (body.language !== undefined) updates.language = body.language;
-  if (body.hasButton !== undefined) updates.has_button = body.hasButton === true || body.hasButton === 'true';
-  if (body.buttonVariable !== undefined) updates.button_variable = body.buttonVariable;
+  if (body.has_button !== undefined) updates.has_button = body.has_button === true || body.has_button === 'true';
+  if (body.button_variable !== undefined) updates.button_variable = body.button_variable;
 
   const { error } = await supabase.from('whatsapp_templates').update(updates).eq('id', id);
   if (error) return errorResponse('Template güncellenemedi: ' + error.message);

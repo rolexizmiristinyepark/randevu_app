@@ -25,17 +25,17 @@ interface UnifiedFlow {
     description: string;
     trigger: string;
     profiles: string[];
-    whatsappTemplateIds: string[];
-    mailTemplateIds: string[];
+    whatsapp_template_ids: string[];
+    mail_template_ids: string[];
     active: boolean;
-    scheduleHour?: string; // For time-based flows: hour in TR time (08-18)
+    schedule_hour?: string;
 }
 
 interface WhatsAppTemplate {
     id: string;
-    name: string;              // User-friendly display name
-    metaTemplateName?: string; // Meta Business API template name
-    targetType: string;
+    name: string;
+    meta_template_name?: string;
+    target_type: string;
 }
 
 interface MailTemplate {
@@ -273,7 +273,7 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     const isTimeBased = flow.trigger === 'HATIRLATMA';
     if (isTimeBased) {
         details.appendChild(createRow('Type', 'time based'));
-        const hour = flow.scheduleHour || '10';
+        const hour = flow.schedule_hour || '10';
         details.appendChild(createRow('Schedule', `Daily at ${hour}:00`));
     } else {
         details.appendChild(createRow('Type', 'event based'));
@@ -288,16 +288,16 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     }
 
     // WhatsApp templates row
-    if (flow.whatsappTemplateIds?.length > 0) {
-        const waNames = flow.whatsappTemplateIds
+    if (flow.whatsapp_template_ids?.length > 0) {
+        const waNames = flow.whatsapp_template_ids
             .map(id => whatsappTemplates.find(t => t.id === id)?.name || id)
             .join(', ');
         details.appendChild(createRow('WhatsApp', waNames));
     }
 
     // Mail templates row
-    if (flow.mailTemplateIds?.length > 0) {
-        const mailNames = flow.mailTemplateIds
+    if (flow.mail_template_ids?.length > 0) {
+        const mailNames = flow.mail_template_ids
             .map(id => mailTemplates.find(t => t.id === id)?.name || id)
             .join(', ');
         details.appendChild(createRow('Mail', mailNames));
@@ -491,9 +491,9 @@ function populateFlowForm(flow: UnifiedFlow): void {
     }
 
     // Set schedule hour for time-based flows
-    if (isTimeBased && flow.scheduleHour) {
+    if (isTimeBased && flow.schedule_hour) {
         const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
-        if (scheduleHourSelect) scheduleHourSelect.value = flow.scheduleHour;
+        if (scheduleHourSelect) scheduleHourSelect.value = flow.schedule_hour;
     }
 
     flow.profiles.forEach(profile => {
@@ -501,12 +501,12 @@ function populateFlowForm(flow: UnifiedFlow): void {
         if (checkbox) checkbox.checked = true;
     });
 
-    flow.whatsappTemplateIds.forEach(id => {
+    flow.whatsapp_template_ids.forEach(id => {
         const checkbox = document.querySelector(`input[name="unifiedFlowWhatsAppTemplates"][value="${id}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
 
-    flow.mailTemplateIds.forEach(id => {
+    flow.mail_template_ids.forEach(id => {
         const checkbox = document.querySelector(`input[name="unifiedFlowMailTemplates"][value="${id}"]`) as HTMLInputElement;
         if (checkbox) checkbox.checked = true;
     });
@@ -527,11 +527,11 @@ async function saveFlow(): Promise<void> {
 
     // Set trigger based on flow type
     let trigger: string;
-    let scheduleHour: string | undefined;
+    let schedule_hour: string | undefined;
     if (flowType === 'time') {
         trigger = 'HATIRLATMA'; // Time-based trigger
         const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
-        scheduleHour = scheduleHourSelect?.value || '10';
+        schedule_hour = scheduleHourSelect?.value || '10';
     } else {
         const triggerRadio = document.querySelector('input[name="unifiedFlowTrigger"]:checked') as HTMLInputElement;
         trigger = triggerRadio?.value || '';
@@ -541,20 +541,20 @@ async function saveFlow(): Promise<void> {
     const profiles = Array.from(profileCheckboxes).map(cb => cb.value);
 
     const waCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowWhatsAppTemplates"]:checked');
-    const whatsappTemplateIds = Array.from(waCheckboxes).map(cb => cb.value);
+    const whatsapp_template_ids = Array.from(waCheckboxes).map(cb => cb.value);
 
     const mailCheckboxes = document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowMailTemplates"]:checked');
-    const mailTemplateIds = Array.from(mailCheckboxes).map(cb => cb.value);
+    const mail_template_ids = Array.from(mailCheckboxes).map(cb => cb.value);
 
     if (!name) { getUI().showAlert('Name is required', 'error'); return; }
     if (flowType === 'event' && !trigger) { getUI().showAlert('Select a trigger', 'error'); return; }
     if (profiles.length === 0) { getUI().showAlert('Select at least one profile', 'error'); return; }
-    if (whatsappTemplateIds.length === 0 && mailTemplateIds.length === 0) {
+    if (whatsapp_template_ids.length === 0 && mail_template_ids.length === 0) {
         getUI().showAlert('Select at least one template', 'error');
         return;
     }
 
-    const flowData: Partial<UnifiedFlow> = { name, description, trigger, profiles, whatsappTemplateIds, mailTemplateIds, scheduleHour };
+    const flowData: Partial<UnifiedFlow> = { name, description, trigger, profiles, whatsapp_template_ids, mail_template_ids, schedule_hour };
 
     if (saveBtn) ButtonAnimator.start(saveBtn);
 

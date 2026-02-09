@@ -108,7 +108,7 @@ async function handleCreateTemplate(req: Request, body: EdgeFunctionBody): Promi
       subject: String(body.subject || ''),
       body: String(body.body || ''),
       recipient: String(body.recipient || 'customer'),
-      info_card_id: String(body.infoCardId || ''),
+      info_card_id: String(body.info_card_id || ''),
     })
     .select('id')
     .single();
@@ -131,7 +131,7 @@ async function handleUpdateTemplate(req: Request, body: EdgeFunctionBody): Promi
   if (body.subject !== undefined) updates.subject = body.subject;
   if (body.body !== undefined) updates.body = body.body;
   if (body.recipient !== undefined) updates.recipient = body.recipient;
-  if (body.infoCardId !== undefined) updates.info_card_id = body.infoCardId;
+  if (body.info_card_id !== undefined) updates.info_card_id = body.info_card_id;
 
   const { error } = await supabase.from('mail_templates').update(updates).eq('id', id);
   if (error) return errorResponse('Template güncellenemedi: ' + error.message);
@@ -233,14 +233,7 @@ async function handleDeleteFlow(req: Request, body: EdgeFunctionBody): Promise<R
 async function handleGetUnifiedFlows(): Promise<Response> {
   const supabase = createServiceClient();
   const { data } = await supabase.from('notification_flows').select('*').order('name');
-  const flows = (data || []).map((f: any) => ({
-    id: f.id, name: f.name, description: f.description || '',
-    trigger: f.trigger, profiles: f.profiles || [], active: f.active !== false,
-    whatsappTemplateIds: f.whatsapp_template_ids || [],
-    mailTemplateIds: f.mail_template_ids || [],
-    scheduleHour: f.schedule_hour || null,
-  }));
-  return jsonResponse({ success: true, data: flows });
+  return jsonResponse({ success: true, data: data || [] });
 }
 
 async function handleCreateUnifiedFlow(req: Request, body: EdgeFunctionBody): Promise<Response> {
@@ -256,10 +249,10 @@ async function handleCreateUnifiedFlow(req: Request, body: EdgeFunctionBody): Pr
       description: String(body.description || ''),
       trigger: String(body.trigger || ''),
       profiles: body.profiles || [],
-      whatsapp_template_ids: body.whatsappTemplateIds || [],
-      mail_template_ids: body.mailTemplateIds || [],
+      whatsapp_template_ids: body.whatsapp_template_ids || [],
+      mail_template_ids: body.mail_template_ids || [],
       active: body.active !== false && body.active !== 'false',
-      schedule_hour: body.scheduleHour || null,
+      schedule_hour: body.schedule_hour || null,
     })
     .select('id')
     .single();
@@ -282,10 +275,10 @@ async function handleUpdateUnifiedFlow(req: Request, body: EdgeFunctionBody): Pr
   if (body.description !== undefined) updates.description = body.description;
   if (body.trigger !== undefined) updates.trigger = body.trigger;
   if (body.profiles !== undefined) updates.profiles = body.profiles;
-  if (body.whatsappTemplateIds !== undefined) updates.whatsapp_template_ids = body.whatsappTemplateIds;
-  if (body.mailTemplateIds !== undefined) updates.mail_template_ids = body.mailTemplateIds;
+  if (body.whatsapp_template_ids !== undefined) updates.whatsapp_template_ids = body.whatsapp_template_ids;
+  if (body.mail_template_ids !== undefined) updates.mail_template_ids = body.mail_template_ids;
   if (body.active !== undefined) updates.active = body.active !== false && body.active !== 'false';
-  if (body.scheduleHour !== undefined) updates.schedule_hour = body.scheduleHour;
+  if (body.schedule_hour !== undefined) updates.schedule_hour = body.schedule_hour;
 
   const { error } = await supabase.from('notification_flows').update(updates).eq('id', id);
   if (error) return errorResponse('Flow güncellenemedi: ' + error.message);
@@ -310,7 +303,7 @@ async function handleTestUnifiedFlow(req: Request, body: EdgeFunctionBody): Prom
   if (adminCheck) return adminCheck;
 
   // Test tetikleme - flow'u bul ve simule et
-  const flowId = String(body.flowId || body.id || '');
+  const flowId = String(body.flow_id || body.id || '');
   if (!flowId) return errorResponse('Flow ID gerekli');
 
   const supabase = createServiceClient();
@@ -330,8 +323,8 @@ async function handleTestUnifiedFlow(req: Request, body: EdgeFunctionBody): Prom
       name: flow.name,
       trigger: flow.trigger,
       profiles: flow.profiles,
-      whatsappTemplates: flow.whatsapp_template_ids?.length || 0,
-      mailTemplates: flow.mail_template_ids?.length || 0,
+      whatsapp_templates: flow.whatsapp_template_ids?.length || 0,
+      mail_templates: flow.mail_template_ids?.length || 0,
     },
   });
 }
