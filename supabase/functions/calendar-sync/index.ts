@@ -143,8 +143,9 @@ async function handleSyncToCalendar(req: Request, body: EdgeFunctionBody): Promi
  * Google Calendar event'lerini oku (admin)
  */
 async function handleGetCalendarEvents(req: Request, body: EdgeFunctionBody): Promise<Response> {
+  // Admin değilse boş veri dön (müşteri sayfası için 400 yerine)
   const adminCheck = await requireAdmin(req);
-  if (adminCheck) return adminCheck;
+  if (adminCheck) return jsonResponse({ success: true, data: {} });
 
   const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
   const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
