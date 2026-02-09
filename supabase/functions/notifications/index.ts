@@ -8,6 +8,7 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
+import { sendGmail } from '../_shared/gmail-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Randevu turu etiketleri
@@ -59,39 +60,13 @@ async function handleSendEmail(body: EdgeFunctionBody): Promise<Response> {
     return errorResponse('Alıcı ve konu zorunludur');
   }
 
-  const resendApiKey = Deno.env.get('RESEND_API_KEY');
-  if (!resendApiKey) {
-    return errorResponse('Email servisi yapılandırılmamış (RESEND_API_KEY)');
+  const result = await sendGmail({ to, subject, html });
+
+  if (result.success) {
+    return jsonResponse({ success: true, messageId: result.messageId });
   }
 
-  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'randevu@rolex-izmir.com';
-
-  try {
-    const response = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${resendApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: fromEmail,
-        to: [to],
-        subject,
-        html,
-        attachments: body.attachments || undefined,
-      }),
-    });
-
-    const result = await response.json();
-
-    if (response.ok) {
-      return jsonResponse({ success: true, messageId: result.id });
-    }
-
-    return errorResponse('Email gönderilemedi: ' + JSON.stringify(result));
-  } catch (err) {
-    return errorResponse('Email gönderim hatası: ' + String(err));
-  }
+  return errorResponse('Email gönderilemedi: ' + (result.error || 'Bilinmeyen hata'));
 }
 
 /**
@@ -279,14 +254,6 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 
     // ==================== EMAIL ====================
     if (flow.mail_template_ids && flow.mail_template_ids.length > 0) {
-      const resendApiKey = Deno.env.get('RESEND_API_KEY');
-      const fromEmail = Deno.env.get('RESEND_FROM_EMAIL') || 'randevu@rolex-izmir.com';
-
-      if (!resendApiKey) {
-        console.warn('RESEND_API_KEY ayarlanmamis, email gonderimi atlanıyor');
-        continue;
-      }
-
       for (const templateId of flow.mail_template_ids) {
         const { data: template } = await supabase
           .from('mail_templates')
@@ -303,8 +270,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
         if (recipient === 'staff') {
           toEmail = String(eventData.staffEmail || '');
         } else if (recipient === 'admin') {
-          // Admin email'lerini settings'den veya env'den al
-          toEmail = Deno.env.get('ADMIN_EMAIL') || '';
+          toEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('GMAIL_USER') || '';
         } else {
           toEmail = String(eventData.customerEmail || '');
         }
@@ -336,31 +302,17 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
           }
         }
 
-        // Email gonder (Resend API)
-        try {
-          const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${resendApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              from: fromEmail,
-              to: [toEmail],
-              subject: resolvedSubject,
-              html: resolvedBody,
-            }),
-          });
+        // Gmail ile gonder
+        const emailResult = await sendGmail({
+          to: toEmail,
+          subject: resolvedSubject,
+          html: resolvedBody,
+        });
 
-          if (response.ok) {
-            emailSent++;
-          } else {
-            const errResult = await response.json();
-            console.error('Email gonderim hatasi:', errResult);
-            emailFailed++;
-          }
-        } catch (err) {
-          console.error('Email gonderim exception:', err);
+        if (emailResult.success) {
+          emailSent++;
+        } else {
+          console.error('Email gonderim hatasi:', emailResult.error);
           emailFailed++;
         }
       }
