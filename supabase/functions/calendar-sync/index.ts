@@ -6,6 +6,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
+import { getGoogleAccessToken } from '../_shared/google-calendar.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 serve(async (req: Request) => {
@@ -191,82 +192,6 @@ async function handleGetCalendarEvents(req: Request, body: EdgeFunctionBody): Pr
   } catch (err) {
     return errorResponse('Calendar okuma hatası: ' + String(err));
   }
-}
-
-/**
- * Google Service Account JWT ile access token al
- */
-async function getGoogleAccessToken(serviceAccountKeyJson: string): Promise<string> {
-  const key = JSON.parse(serviceAccountKeyJson);
-
-  // JWT header
-  const header = { alg: 'RS256', typ: 'JWT' };
-
-  // JWT claim
-  const now = Math.floor(Date.now() / 1000);
-  const claim = {
-    iss: key.client_email,
-    scope: 'https://www.googleapis.com/auth/calendar',
-    aud: 'https://oauth2.googleapis.com/token',
-    exp: now + 3600,
-    iat: now,
-  };
-
-  // Base64URL encode
-  const encode = (obj: unknown) => {
-    const json = JSON.stringify(obj);
-    const bytes = new TextEncoder().encode(json);
-    return btoa(String.fromCharCode(...bytes))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-  };
-
-  const headerB64 = encode(header);
-  const claimB64 = encode(claim);
-  const signInput = `${headerB64}.${claimB64}`;
-
-  // RSA sign with private key
-  const pemKey = key.private_key
-    .replace(/-----BEGIN PRIVATE KEY-----/, '')
-    .replace(/-----END PRIVATE KEY-----/, '')
-    .replace(/\n/g, '');
-
-  const binaryKey = Uint8Array.from(atob(pemKey), (c) => c.charCodeAt(0));
-
-  const cryptoKey = await crypto.subtle.importKey(
-    'pkcs8',
-    binaryKey,
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    cryptoKey,
-    new TextEncoder().encode(signInput)
-  );
-
-  const sigB64 = btoa(String.fromCharCode(...new Uint8Array(signature)))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-
-  const jwt = `${signInput}.${sigB64}`;
-
-  // Exchange JWT for access token
-  const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion: jwt,
-    }),
-  });
-
-  const tokenResult = await tokenResponse.json();
-  return tokenResult.access_token;
 }
 
 /**

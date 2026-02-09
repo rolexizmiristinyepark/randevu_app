@@ -9,6 +9,7 @@ import { verifyTurnstile, checkRateLimit, getClientIp, addAuditLog } from '../_s
 import { validateAppointmentInput } from '../_shared/validation.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
+import { syncAppointmentToCalendar } from '../_shared/google-calendar.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Profil shortcode donusumu (GAS: PROFILE_TO_CODE)
@@ -176,6 +177,11 @@ async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Pr
   // Notification flow tetikle (WhatsApp + Email) — fire-and-forget
   triggerAppointmentNotification(supabase, appointmentId, profile).catch(err => {
     console.error('Notification flow hatası (non-blocking):', err);
+  });
+
+  // Google Calendar'a sync — fire-and-forget
+  syncAppointmentToCalendar(appointmentId).catch(err => {
+    console.error('Calendar sync hatası (non-blocking):', err);
   });
 
   return jsonResponse({
