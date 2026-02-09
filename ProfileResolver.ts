@@ -16,6 +16,7 @@ export interface ResolveResponse {
   code?: string;
   profil?: string;
   ayarlar?: Record<string, unknown>;
+  profilAyarlari?: Record<string, unknown>; // Backend bu field name ile döner
   staff?: { id: string; name: string; role: string; email?: string };
   error?: string;
 }
@@ -110,7 +111,7 @@ export async function initProfileFromURL(): Promise<ProfileInfo> {
       profil: resp.profil || 'genel',
       staffId,
       staffData: resp.staff || null,
-      ayarlar: resp.ayarlar || null,
+      ayarlar: resp.profilAyarlari || resp.ayarlar || null,
       isValid: resp.success
     };
     if (!resp.success) state.set('profileError', resp.error);
