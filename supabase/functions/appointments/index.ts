@@ -7,6 +7,8 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
 import { verifyTurnstile, checkRateLimit, getClientIp, addAuditLog } from '../_shared/security.ts';
 import { validateAppointmentInput } from '../_shared/validation.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
+import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Profil shortcode donusumu (GAS: PROFILE_TO_CODE)
@@ -170,6 +172,11 @@ async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Pr
     profile,
     appointmentType: s.appointmentType,
   }, 'system', ip);
+
+  // Notification flow tetikle (WhatsApp + Email) — fire-and-forget
+  triggerAppointmentNotification(supabase, appointmentId, profile).catch(err => {
+    console.error('Notification flow hatası (non-blocking):', err);
+  });
 
   return jsonResponse({
     success: true,
@@ -957,4 +964,100 @@ function countOverlapping(
     // Cakisma: !(slotEnd <= apptStart || slotStart >= apptEnd)
     return slotStartMin < apptEndMin && apptStartMin < slotEndMin;
   }).length;
+}
+
+// ==================== NOTIFICATION TRIGGER ====================
+
+/**
+ * Randevu oluşturulduktan sonra notification flow tetikle
+ * notification_flows tablosundaki 'appointment_create' trigger'ına eşleşen flow'ları çalıştırır
+ */
+async function triggerAppointmentNotification(
+  supabase: ReturnType<typeof createServiceClient>,
+  appointmentId: string,
+  profile: string
+): Promise<void> {
+  // Randevu detaylarını staff bilgisiyle çek
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('*, staff:staff_id(id, name, phone, email)')
+    .eq('id', appointmentId)
+    .single();
+
+  if (!appointment) return;
+
+  const staff = appointment.staff as Record<string, unknown> | null;
+  const eventData = buildEventDataFromAppointment(appointment, staff);
+  eventData.appointmentId = appointmentId;
+
+  // Eşleşen aktif flow'ları bul
+  const { data: flows } = await supabase
+    .from('notification_flows')
+    .select('*')
+    .eq('active', true)
+    .eq('trigger', 'appointment_create');
+
+  if (!flows || flows.length === 0) return;
+
+  // Profil eşleştir
+  const matchingFlows = flows.filter((f: any) => {
+    const profiles = f.profiles || [];
+    return profiles.length === 0 || profiles.includes(profile) || profiles.includes('all');
+  });
+
+  for (const flow of matchingFlows) {
+    // WhatsApp gönder
+    if (flow.whatsapp_template_ids && flow.whatsapp_template_ids.length > 0) {
+      for (const templateId of flow.whatsapp_template_ids) {
+        const { data: template } = await supabase
+          .from('whatsapp_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+
+        if (!template) continue;
+
+        const targetType = template.target_type || 'customer';
+        const phone = targetType === 'staff'
+          ? String(eventData.staffPhone || '')
+          : String(eventData.customerPhone || '');
+        const recipientName = targetType === 'staff'
+          ? String(eventData.staffName || '')
+          : String(eventData.customerName || '');
+
+        if (!phone) continue;
+
+        const components = buildTemplateComponents(template, eventData);
+        const result = await sendWhatsAppMessage(
+          phone,
+          template.meta_template_name || template.name,
+          template.language || 'tr',
+          components
+        );
+
+        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+        await logMessage({
+          appointment_id: appointmentId,
+          phone: formatPhoneWithCountryCode(phone),
+          recipient_name: recipientName,
+          template_name: template.meta_template_name || template.name,
+          template_id: template.id,
+          status: result.success ? 'sent' : 'failed',
+          message_id: result.messageId || '',
+          error_message: result.error || '',
+          staff_id: staff?.id ? Number(staff.id) : undefined,
+          staff_name: String(eventData.staffName || ''),
+          flow_id: flow.id,
+          triggered_by: 'appointment_create',
+          profile,
+          message_content: resolvedContent,
+          target_type: targetType,
+          customer_name: String(eventData.customerName || ''),
+          customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+        });
+
+        console.log(`Notification ${result.success ? 'sent' : 'failed'}: ${phone} (${template.name})`);
+      }
+    }
+  }
 }
