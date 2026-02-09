@@ -718,7 +718,7 @@ if (typeof window !== 'undefined') {
     Object.defineProperty(window, 'AdminAuth', {
         value: AdminAuth,
         writable: false,
-        configurable: false,
+        configurable: true,
         enumerable: true
     });
 }
