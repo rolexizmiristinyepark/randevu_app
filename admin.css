@@ -616,10 +616,21 @@
         .settings-table {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
         }
 
-        .settings-table tbody tr:hover {
+        .settings-table .col-highlight {
             background: #fafafa;
+        }
+
+        .settings-table thead th {
+            color: #999;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .settings-table thead th:hover {
+            color: #C9A55A;
         }
 
         .shift-table {
@@ -1582,12 +1593,7 @@
    ======================================== */
 
 #profilAyarlariTable {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-}
-
-#profilAyarlariTable table {
-    min-width: 900px;
+    overflow-x: hidden;
 }
 
 #profilAyarlariTable th,

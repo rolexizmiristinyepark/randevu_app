@@ -77,12 +77,11 @@ export function displayAvailableStaff(): void {
 
     // v3.5: Filter staff by role
     let filteredStaff = staffMembers;
-    if (staffFilter === 'role:sales') {
-        filteredStaff = staffMembers.filter((s: Staff) => s.role === 'sales');
-    } else if (staffFilter === 'role:management') {
-        filteredStaff = staffMembers.filter((s: Staff) => s.role === 'management');
+    if (staffFilter.startsWith('role:')) {
+        const targetRole = staffFilter.substring(5);
+        filteredStaff = staffMembers.filter((s: Staff) => s.role === targetRole);
     }
-    // 'all' shows everyone, 'none' is handled in app.ts (section hidden)
+    // 'all' shows everyone, 'none'/'self'/'user'/'linked' handled in app.ts (section hidden)
 
     if (filteredStaff.length === 0) {
         // Safe DOM manipulation

@@ -173,7 +173,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // - none: Personel seçimi gösterilmez, admin sonradan atar
         // - self/user: URL'deki personel otomatik seçilir, personel seçimi gösterilmez
         // - all/role:sales/role:management: Personel listesi gösterilir (filtreleme StaffSelectorComponent'te)
-        if (profilAyarlari.staffFilter === 'none' || profilAyarlari.staffFilter === 'self' || profilAyarlari.staffFilter === 'user') {
+        if (profilAyarlari.staffFilter === 'none' || profilAyarlari.staffFilter === 'self' || profilAyarlari.staffFilter === 'user' || profilAyarlari.staffFilter === 'linked') {
             hideSection('staffSection');
         }
 

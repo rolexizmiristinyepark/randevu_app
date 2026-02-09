@@ -139,19 +139,24 @@ function renderTable(): void {
     const table = document.createElement('table');
     table.className = 'settings-table';
 
-    const thStyle = 'padding: 10px 12px; text-align: center; border-bottom: 1px solid #e0e0e0; font-weight: 400; color: #999; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;';
-    const thRowStyle = 'padding: 10px 12px; text-align: left; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #555; font-size: 12px; white-space: nowrap;';
-    const tdStyle = 'padding: 10px 12px; text-align: center; border-bottom: 1px solid #f0f0f0; font-size: 13px;';
+    const thStyle = 'padding: 8px 6px; text-align: center; border-bottom: 1px solid #e0e0e0; font-weight: 400; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; cursor: pointer;';
+    const thRowStyle = 'padding: 8px 6px; text-align: left; border-bottom: 1px solid #f0f0f0; font-weight: 500; color: #555; font-size: 11px; white-space: nowrap;';
+    const tdStyle = 'padding: 8px 6px; text-align: center; border-bottom: 1px solid #f0f0f0; font-size: 12px;';
 
-    // Thead: boş köşe + profil adları
+    // Thead: boş köşe + profil adları (tıklanabilir)
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
     headerRow.appendChild(createCell('th', '', thStyle)); // boş köşe
 
+    let colIdx = 0;
     for (const key of profilOrder) {
         const p = profilAyarlari[key];
         if (!p) continue;
-        headerRow.appendChild(createCell('th', PROFIL_LABELS[key] || key, thStyle));
+        const th = createCell('th', PROFIL_LABELS[key] || key, thStyle);
+        th.dataset.col = String(colIdx);
+        th.addEventListener('click', () => openEditModal(key));
+        headerRow.appendChild(th);
+        colIdx++;
     }
     thead.appendChild(headerRow);
     table.appendChild(thead);
@@ -162,58 +167,65 @@ function renderTable(): void {
     // Stafffilter label helper
     const staffLabel = (p: ProfilAyari): string =>
         p.staffFilter === 'self' ? 'Self' :
-        p.staffFilter === 'user' ? 'Kullanıcı' :
-        p.staffFilter === 'role:sales' ? 'Satış' :
-        p.staffFilter === 'role:management' ? 'Yönetim' :
-        p.staffFilter === 'role' ? 'Role göre' :
-        p.staffFilter === 'linked' ? 'Bağlı' :
-        p.staffFilter === 'all' ? 'Tümü' :
+        p.staffFilter === 'user' ? 'User' :
+        p.staffFilter === 'role:sales' ? 'Sales' :
+        p.staffFilter === 'role:management' ? 'Mgmt' :
+        p.staffFilter === 'role' ? 'Role' :
+        p.staffFilter === 'linked' ? 'Linked' :
+        p.staffFilter === 'all' ? 'All' :
         p.staffFilter === 'none' ? 'Admin' : p.staffFilter;
 
     // Ayar satırları tanımı
     const rows: { label: string; getValue: (p: ProfilAyari) => string }[] = [
-        { label: 'Kod', getValue: p => CODE_LABELS[p.code] || '#' + p.code },
-        { label: 'ID Kontrol', getValue: p => p.idKontrolu ? '✓' : '-' },
-        { label: 'Vardiya', getValue: p => p.vardiyaKontrolu !== false ? '✓' : '-' },
+        { label: 'Url', getValue: p => CODE_LABELS[p.code] || '#' + p.code },
+        { label: 'Id', getValue: p => p.idKontrolu ? '✓' : '-' },
+        { label: 'Shift', getValue: p => p.vardiyaKontrolu !== false ? '✓' : '-' },
         { label: 'Slot Max', getValue: p => String(p.maxSlotAppointment) },
-        { label: 'Günlük T/G', getValue: p => p.maxDailyDelivery ? String(p.maxDailyDelivery) : '∞' },
-        { label: 'P.Başı T/G', getValue: p => p.maxDailyPerStaff ? String(p.maxDailyPerStaff) : '∞' },
-        { label: 'Grid', getValue: p => p.slotGrid + 'dk' },
-        { label: 'Süre', getValue: p => p.duration + 'dk' },
-        { label: 'Personel', getValue: p => staffLabel(p) },
+        { label: 'Daily D Max', getValue: p => p.maxDailyDelivery ? String(p.maxDailyDelivery) : '∞' },
+        { label: 'Daily S Max', getValue: p => p.maxDailyPerStaff ? String(p.maxDailyPerStaff) : '∞' },
+        { label: 'Slot Grid', getValue: p => p.slotGrid + 'dk' },
+        { label: 'Slot Time', getValue: p => p.duration + 'dk' },
+        { label: 'Staff', getValue: p => staffLabel(p) },
     ];
 
     for (const row of rows) {
         const tr = document.createElement('tr');
         tr.appendChild(createCell('td', row.label, thRowStyle));
 
+        let ci = 0;
         for (const key of profilOrder) {
             const p = profilAyarlari[key];
             if (!p) continue;
-            tr.appendChild(createCell('td', row.getValue(p), tdStyle));
+            const td = createCell('td', row.getValue(p), tdStyle);
+            td.dataset.col = String(ci);
+            tr.appendChild(td);
+            ci++;
         }
         tbody.appendChild(tr);
     }
 
-    // İşlem satırı (Edit butonları)
-    const actionRow = document.createElement('tr');
-    actionRow.appendChild(createCell('td', '', thRowStyle));
-
-    for (const key of profilOrder) {
-        if (!profilAyarlari[key]) continue;
-        const actionTd = document.createElement('td');
-        actionTd.style.cssText = tdStyle;
-        const editBtn = document.createElement('button');
-        editBtn.className = 'btn btn-small';
-        editBtn.textContent = 'Edit';
-        editBtn.addEventListener('click', () => openEditModal(key));
-        actionTd.appendChild(editBtn);
-        actionRow.appendChild(actionTd);
-    }
-    tbody.appendChild(actionRow);
-
     table.appendChild(tbody);
     container.appendChild(table);
+
+    // Sütun hover: event delegation
+    let activeCol: string | null = null;
+    table.addEventListener('mouseover', (e: Event) => {
+        const target = e.target as HTMLElement;
+        const col = target.dataset.col;
+        if (col === undefined || col === activeCol) return;
+        // Önceki highlight temizle
+        if (activeCol !== null) {
+            table.querySelectorAll('[data-col="' + activeCol + '"]').forEach(el => el.classList.remove('col-highlight'));
+        }
+        activeCol = col;
+        table.querySelectorAll('[data-col="' + col + '"]').forEach(el => el.classList.add('col-highlight'));
+    });
+    table.addEventListener('mouseleave', () => {
+        if (activeCol !== null) {
+            table.querySelectorAll('[data-col="' + activeCol + '"]').forEach(el => el.classList.remove('col-highlight'));
+            activeCol = null;
+        }
+    });
 }
 
 /**
