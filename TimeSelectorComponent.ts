@@ -324,11 +324,15 @@ export async function displayAvailableTimeSlots(): Promise<void> {
         // v3.8: vardiyaKontrolu=false ise tüm çalışma saatlerini getir (shiftType='full')
         const effectiveShiftType = vardiyaKontrolu ? selectedShiftType : 'full';
 
+        // v3.9.20: Staff bazlı filtreleme - self/linked profillerde sadece kendi randevularını say
+        const selectedStaffForFilter = state.get('selectedStaff');
+
         const [dayStatusResult, slotsResult] = await Promise.all([
             apiCall('getDayStatus', {
                 date: selectedDate,
                 appointmentType: selectedAppointmentType,
-                maxSlotAppointment: maxSlotAppointment  // v3.9.4: profil ayarından maxSlotAppointment
+                maxSlotAppointment: maxSlotAppointment,
+                ...(selectedStaffForFilter ? { staffId: selectedStaffForFilter } : {})
             }),
             apiCall('getDailySlots', {
                 date: selectedDate,

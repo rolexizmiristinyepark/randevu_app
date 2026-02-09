@@ -305,41 +305,66 @@ async function handleGetDayStatus(body: EdgeFunctionBody): Promise<Response> {
     }
   }
 
-  // get_day_status DB fonksiyonu cagir
-  const { data, error } = await supabase.rpc('get_day_status', {
-    p_date: date,
-    p_max_slot_appointment: maxSlotAppointment,
-  });
+  // v3.9.20: Staff bazlı filtreleme desteği
+  // staffId verilirse sadece o personelin randevularını say
+  const staffId = body.staffId ? Number(body.staffId) : null;
+
+  // Tek sorgu ile tüm confirmed randevuları al (optional staff filter)
+  let appointmentQuery = supabase
+    .from('appointments')
+    .select('start_time, appointment_type')
+    .eq('date', date)
+    .eq('status', 'confirmed');
+
+  if (staffId) {
+    appointmentQuery = appointmentQuery.eq('staff_id', staffId);
+  }
+
+  const { data: appointments, error } = await appointmentQuery;
 
   if (error) {
     console.error('getDayStatus error:', error);
     return errorResponse('Sunucuda bir hata oluştu');
   }
 
-  // Delivery count hesapla
-  const { count: deliveryCount } = await supabase
-    .from('appointments')
-    .select('id', { count: 'exact', head: true })
-    .eq('date', date)
-    .neq('status', 'cancelled')
-    .in('appointment_type', ['delivery', 'shipping']);
+  // Saat bazlı sayım
+  const countByHour: Record<number, number> = {};
+  let deliveryCount = 0;
 
+  for (const apt of (appointments || [])) {
+    // start_time: "HH:MM:SS" veya "HH:MM" formatı
+    const timeParts = String(apt.start_time).split(':');
+    const hour = Number(timeParts[0]);
+    if (!isNaN(hour)) {
+      countByHour[hour] = (countByHour[hour] || 0) + 1;
+    }
+    // Delivery/shipping sayımı (staff filter olmadan global count gerekli)
+    if (['delivery', 'shipping'].includes(apt.appointment_type)) {
+      deliveryCount++;
+    }
+  }
+
+  // Staff filtre aktifse delivery count'u global olarak tekrar hesapla
+  if (staffId) {
+    const { count: globalDelivery } = await supabase
+      .from('appointments')
+      .select('id', { count: 'exact', head: true })
+      .eq('date', date)
+      .neq('status', 'cancelled')
+      .in('appointment_type', ['delivery', 'shipping']);
+    deliveryCount = globalDelivery || 0;
+  }
+
+  // Müsait/dolu saatleri belirle (11-20 arası)
   const availableHours: number[] = [];
   const unavailableHours: number[] = [];
 
-  // DB fonksiyonu JSONB döner (tek obje): { available: [11,12,...], occupied: [...] }
-  // Array.isArray kontrolü yanlış → obje parse et
-  if (data) {
-    const result = typeof data === 'string' ? JSON.parse(data) : data;
-    if (result.available && Array.isArray(result.available)) {
-      for (const hour of result.available) {
-        availableHours.push(Number(hour));
-      }
-    }
-    if (result.occupied && Array.isArray(result.occupied)) {
-      for (const hour of result.occupied) {
-        unavailableHours.push(Number(hour));
-      }
+  for (let hour = 11; hour <= 20; hour++) {
+    const count = countByHour[hour] || 0;
+    if (maxSlotAppointment === 0 || count < maxSlotAppointment) {
+      availableHours.push(hour);
+    } else {
+      unavailableHours.push(hour);
     }
   }
 
