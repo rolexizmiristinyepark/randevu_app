@@ -164,7 +164,11 @@ async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Pr
     return errorResponse(errorMsg);
   }
 
-  const appointmentId = data;
+  const result = data as { success?: boolean; id?: string; error?: string };
+  if (!result?.success || !result?.id) {
+    return errorResponse(result?.error || 'Randevu oluşturulamadı');
+  }
+  const appointmentId = result.id;
 
   await addAuditLog('APPOINTMENT_CREATED', {
     appointmentId,
