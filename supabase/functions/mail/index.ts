@@ -233,7 +233,14 @@ async function handleDeleteFlow(req: Request, body: EdgeFunctionBody): Promise<R
 async function handleGetUnifiedFlows(): Promise<Response> {
   const supabase = createServiceClient();
   const { data } = await supabase.from('notification_flows').select('*').order('name');
-  return jsonResponse({ success: true, data: data || [] });
+  const flows = (data || []).map((f: any) => ({
+    id: f.id, name: f.name, description: f.description || '',
+    trigger: f.trigger, profiles: f.profiles || [], active: f.active !== false,
+    whatsappTemplateIds: f.whatsapp_template_ids || [],
+    mailTemplateIds: f.mail_template_ids || [],
+    scheduleHour: f.schedule_hour || null,
+  }));
+  return jsonResponse({ success: true, data: flows });
 }
 
 async function handleCreateUnifiedFlow(req: Request, body: EdgeFunctionBody): Promise<Response> {
@@ -252,6 +259,7 @@ async function handleCreateUnifiedFlow(req: Request, body: EdgeFunctionBody): Pr
       whatsapp_template_ids: body.whatsappTemplateIds || [],
       mail_template_ids: body.mailTemplateIds || [],
       active: body.active !== false && body.active !== 'false',
+      schedule_hour: body.scheduleHour || null,
     })
     .select('id')
     .single();
@@ -277,6 +285,7 @@ async function handleUpdateUnifiedFlow(req: Request, body: EdgeFunctionBody): Pr
   if (body.whatsappTemplateIds !== undefined) updates.whatsapp_template_ids = body.whatsappTemplateIds;
   if (body.mailTemplateIds !== undefined) updates.mail_template_ids = body.mailTemplateIds;
   if (body.active !== undefined) updates.active = body.active !== false && body.active !== 'false';
+  if (body.scheduleHour !== undefined) updates.schedule_hour = body.scheduleHour;
 
   const { error } = await supabase.from('notification_flows').update(updates).eq('id', id);
   if (error) return errorResponse('Flow güncellenemedi: ' + error.message);

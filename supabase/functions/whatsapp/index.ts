@@ -87,7 +87,12 @@ async function handleGetTemplates(): Promise<Response> {
     .order('name');
 
   if (error) return jsonResponse({ success: true, data: [] });
-  return jsonResponse({ success: true, data: data || [] });
+  const templates = (data || []).map((t: any) => ({
+    ...t,
+    metaTemplateName: t.meta_template_name,
+    targetType: t.target_type || 'customer',
+  }));
+  return jsonResponse({ success: true, data: templates });
 }
 
 async function handleCreateTemplate(req: Request, body: EdgeFunctionBody): Promise<Response> {
