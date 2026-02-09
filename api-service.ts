@@ -352,12 +352,12 @@ const ApiService = {
             }
 
             // Edge Function'i cagir - Supabase otomatik JWT header ekler
-            const { data, error, response } = await supabase.functions.invoke(functionName, {
+            const { data, error, response: httpResponse } = await supabase.functions.invoke(functionName, {
                 body: { action, ...params },
             }) as { data: any; error: any; response?: Response };
 
             if (error) {
-                const status = response?.status;
+                const status = httpResponse?.status;
 
                 // 401: JWT expired — session refresh dene, tek retry
                 if (!_retried && status === 401) {
