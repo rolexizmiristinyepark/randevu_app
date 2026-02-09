@@ -327,12 +327,18 @@ async function handleGetDayStatus(body: EdgeFunctionBody): Promise<Response> {
   const availableHours: number[] = [];
   const unavailableHours: number[] = [];
 
-  if (data && Array.isArray(data)) {
-    for (const row of data) {
-      if (row.is_available) {
-        availableHours.push(row.hour);
-      } else {
-        unavailableHours.push(row.hour);
+  // DB fonksiyonu JSONB döner (tek obje): { available: [11,12,...], occupied: [...] }
+  // Array.isArray kontrolü yanlış → obje parse et
+  if (data) {
+    const result = typeof data === 'string' ? JSON.parse(data) : data;
+    if (result.available && Array.isArray(result.available)) {
+      for (const hour of result.available) {
+        availableHours.push(Number(hour));
+      }
+    }
+    if (result.occupied && Array.isArray(result.occupied)) {
+      for (const hour of result.occupied) {
+        unavailableHours.push(Number(hour));
       }
     }
   }
