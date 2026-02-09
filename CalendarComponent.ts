@@ -343,8 +343,8 @@ export async function selectDay(dateStr: string): Promise<void> {
     // v3.8: vardiyaKontrolu kontrolü
     const vardiyaKontrolu = profilAyarlari?.vardiyaKontrolu !== false; // default true
 
-    // v3.6: staffFilter === 'self' - auto-select staff from URL ID, hide staff section
-    if (staffFilter === 'self' && specificStaffId && specificStaffId !== '0') {
+    // v3.6: staffFilter === 'self' veya 'linked' - auto-select staff from URL ID, hide staff section
+    if ((staffFilter === 'self' || staffFilter === 'linked') && specificStaffId && specificStaffId !== '0') {
         state.set('selectedStaff', specificStaffId); // Use secure ID from URL (string)
         // v3.8: vardiyaKontrolu=false ise tüm slotlar için 'full' kullan
         const shiftType = vardiyaKontrolu
@@ -443,11 +443,12 @@ export async function selectDay(dateStr: string): Promise<void> {
         const submitBtn = document.getElementById('submitBtn');
         if (submitBtn) submitBtn.style.display = 'none';
     } else if (specificStaffId) {
-        // Normal staff link (staff=1, staff=2, etc.) - go directly to time selection
-        state.set('selectedStaff', parseInt(specificStaffId!));
+        // Normal staff link - go directly to time selection
+        // v3.9.20: String ID desteği (secure hash ID'ler için parseInt kullanma)
+        state.set('selectedStaff', specificStaffId);
         // v3.9: vardiyaKontrolu=false ise vardiya kontrolü atla, 'full' kullan
         const shiftType = vardiyaKontrolu
-            ? dayShifts[dateStr]?.[parseInt(specificStaffId!)]
+            ? (dayShifts[dateStr]?.[specificStaffId] || dayShifts[dateStr]?.[parseInt(specificStaffId!)])
             : 'full';
         if (shiftType) {
             state.set('selectedShiftType', shiftType);

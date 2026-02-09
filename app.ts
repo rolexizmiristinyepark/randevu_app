@@ -233,10 +233,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ⚡ Batch loader already loaded staff and settings in parallel
     // No need for: await loadSettings(); await loadStaffMembers();
 
-    // Personel linki ise selectedStaff'ı ayarla
-    if (profileInfo.profil === 'personel' && profileInfo.data?.id) {
+    // staffFilter=self/linked: Backend'in çözümlediği specificStaffId'yi selectedStaff olarak ata
+    // profileInfo.staffId URL'den gelir, specificStaffId ise backend'in resolve ettiği gerçek ID'dir
+    const resolvedStaffId = state.get('specificStaffId');
+    if (profilAyarlari && (profilAyarlari.staffFilter === 'self' || profilAyarlari.staffFilter === 'linked') && resolvedStaffId) {
         const staffMembers = state.get('staffMembers');
-        const staff = staffMembers.find((s: any) => s.id === profileInfo.data?.id);
+        const staff = staffMembers.find((s: any) => String(s.id) === String(resolvedStaffId));
         if (staff) {
             state.set('selectedStaff', staff.id);
         }
