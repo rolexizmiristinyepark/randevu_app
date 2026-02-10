@@ -2,6 +2,7 @@
 // Anon client (kullanici JWT ile) ve Service client (admin islemler)
 
 import { createClient, SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { corsHeaders } from './cors.ts';
 
 /**
  * Kullanici bazli Supabase client (anon key + kullanici JWT)
@@ -67,7 +68,7 @@ export function requireAdmin(req: Request): Response | null {
   if (!claims?.isAdmin) {
     return new Response(
       JSON.stringify({ success: false, error: 'Yetkilendirme hatası. Admin yetkisi gerekli.' }),
-      { status: 403, headers: { 'Content-Type': 'application/json' } }
+      { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
   return null;
