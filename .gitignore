@@ -69,3 +69,4 @@ ANALIZ_*.md
 # Migration output files (contain sensitive data)
 migration-scripts/staff-id-mapping.json
 migration-scripts/migration-results.json
+.vercel

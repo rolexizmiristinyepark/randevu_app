@@ -120,9 +120,17 @@ supabase functions deploy mail --no-verify-jwt
 # Migration
 supabase db push
 
-# Frontend (GitHub Actions ile otomatik)
-git push origin admiring-hypatia
+# Frontend - Vercel (https://randevu.kulahcioglu.com)
+vercel --prod
+# veya git push → Vercel auto-deploy (repo bagliysa)
 ```
+
+## Hosting
+- **Platform**: Vercel (rolexizmiristinyeparks-projects/admiring-hypatia)
+- **Production URL**: https://randevu.kulahcioglu.com
+- **Vercel URL**: https://admiring-hypatia.vercel.app
+- **DNS**: A kaydi → randevu.kulahcioglu.com → 76.76.21.21
+- **Base path**: `/` (eskiden GitHub Pages icin `/randevu_app/` idi)
 
 ## Supabase Secrets (Prod)
 RESEND_API_KEY, ADMIN_EMAIL, GMAIL_USER, GMAIL_APP_PASSWORD,

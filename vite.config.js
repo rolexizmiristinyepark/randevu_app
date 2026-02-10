@@ -27,8 +27,8 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    // GitHub Pages base path
-    base: '/randevu_app/',
+    // Base path - Vercel uses root
+    base: '/',
 
     // TypeScript compilation with esbuild
     // console/debugger drop terser'da yapılıyor, burada tekrar gerek yok
