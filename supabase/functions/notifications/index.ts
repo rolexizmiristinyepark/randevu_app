@@ -8,7 +8,7 @@ import { createServiceClient } from '../_shared/supabase-client.ts';
 import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
-import { sendGmail } from '../_shared/gmail-sender.ts';
+import { sendGmail } from '../_shared/resend-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Randevu turu etiketleri

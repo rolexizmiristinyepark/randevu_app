@@ -10,7 +10,7 @@ import { validateAppointmentInput } from '../_shared/validation.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import { syncAppointmentToCalendar } from '../_shared/google-calendar.ts';
-import { sendGmail } from '../_shared/gmail-sender.ts';
+import { sendGmail } from '../_shared/resend-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Profil shortcode donusumu (GAS: PROFILE_TO_CODE)
@@ -182,19 +182,22 @@ async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Pr
   // Notification flow tetikle (WhatsApp + Email) ve Calendar sync
   // Paralel çalıştır ama response'tan ÖNCE tamamlanmasını bekle
   // (Gmail SMTP yavaş — fire-and-forget'te runtime kapanınca mail gitmiyordu)
-  await Promise.allSettled([
-    triggerAppointmentNotification(supabase, appointmentId, profile).catch(err => {
-      console.error('Notification flow hatası:', err);
-    }),
+  const [notifSettled, calendarSettled] = await Promise.allSettled([
+    triggerAppointmentNotification(supabase, appointmentId, profile),
     syncAppointmentToCalendar(appointmentId).catch(err => {
       console.error('Calendar sync hatası:', err);
     }),
   ]);
 
+  const notifDebug = notifSettled.status === 'fulfilled'
+    ? notifSettled.value
+    : { error: String((notifSettled as PromiseRejectedResult).reason) };
+
   return jsonResponse({
     success: true,
     appointmentId,
     message: 'Randevu başarıyla oluşturuldu',
+    _debug: { notification: notifDebug },
   });
 }
 
@@ -985,11 +988,20 @@ function countOverlapping(
  * Randevu oluşturulduktan sonra notification flow tetikle
  * notification_flows tablosundaki 'appointment_create' trigger'ına eşleşen flow'ları çalıştırır
  */
+interface NotificationResult {
+  whatsappSent: number;
+  whatsappFailed: number;
+  emailSent: number;
+  emailFailed: number;
+  errors: string[];
+}
+
 async function triggerAppointmentNotification(
   supabase: ReturnType<typeof createServiceClient>,
   appointmentId: string,
   profile: string
-): Promise<void> {
+): Promise<NotificationResult> {
+  const notifResult: NotificationResult = { whatsappSent: 0, whatsappFailed: 0, emailSent: 0, emailFailed: 0, errors: [] };
   // Randevu detaylarını staff bilgisiyle çek
   const { data: appointment } = await supabase
     .from('appointments')
@@ -997,7 +1009,7 @@ async function triggerAppointmentNotification(
     .eq('id', appointmentId)
     .single();
 
-  if (!appointment) return;
+  if (!appointment) return notifResult;
 
   const staff = appointment.staff as Record<string, unknown> | null;
   const eventData = buildEventDataFromAppointment(appointment, staff);
@@ -1174,11 +1186,17 @@ async function triggerAppointmentNotification(
         });
 
         if (emailResult.success) {
+          notifResult.emailSent++;
           console.log(`[EMAIL] Başarılı: ${toEmail} (${template.name}) msgId=${emailResult.messageId}`);
         } else {
+          notifResult.emailFailed++;
+          notifResult.errors.push(`Email failed: ${toEmail} - ${emailResult.error}`);
           console.error(`[EMAIL] HATA: ${toEmail} (${template.name}) error=${emailResult.error}`);
         }
       }
     }
   }
+
+  console.log(`[NOTIFICATION] Sonuç: wa=${notifResult.whatsappSent}/${notifResult.whatsappFailed}, email=${notifResult.emailSent}/${notifResult.emailFailed}`);
+  return notifResult;
 }
