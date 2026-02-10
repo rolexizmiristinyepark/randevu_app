@@ -67,12 +67,13 @@ admin-panel.ts               # Admin panel mantigi
 - **appointments/index.ts: Admin email**: Staff tablosundan (is_admin=true, active=true) email alinarak tum admin'lere gonderiliyor (DUZELTILDI)
 - **resend-sender.ts**: From adresi `istinye@kulahcioglu.com` (DOGRU)
 
-### Resend Gecis Durumu
+### Resend Gecis Durumu (TAMAMLANDI)
 - Resend hesap: `istinyeparkrolex35` (resend.com), domain: `kulahcioglu.com`, region: EU
-- Gonderici: `istinyepark@kulahcioglu.com`
-- DNS kayitlari (DKIM, SPF, DMARC) IT'ye gonderildi - IT ekledi mi kontrol edilmeli
+- Gonderici: `istinye@kulahcioglu.com` (istinye dogru, istinyepark degil!)
+- DNS kayitlari (DKIM, SPF, DMARC) IT tarafindan eklenmis - DOGRULANMIS
 - `RESEND_API_KEY` Supabase secrets'a eklenmis
-- `gmail-sender.ts` -> `resend-sender.ts` gecisi tamamlanmis (import'lar guncellenmis)
+- `gmail-sender.ts` -> `resend-sender.ts` gecisi tamamlanmis
+- Test: 2025-02-10 basarili (messageId: a3e3a66a-8dfb-42c0-aa47-ae9a1079812b)
 
 ## Deploy
 
