@@ -1022,7 +1022,7 @@ async function triggerAppointmentNotification(
     .eq('active', true)
     .eq('trigger', 'appointment_create');
 
-  if (!flows || flows.length === 0) return;
+  if (!flows || flows.length === 0) return notifResult;
 
   // Profil eşleştir
   const matchingFlows = flows.filter((f: any) => {
@@ -1142,12 +1142,53 @@ async function triggerAppointmentNotification(
         if (!template) continue;
 
         const recipient = template.recipient || 'customer';
-        let toEmail = '';
 
+        // Admin: staff tablosundan tum admin emailleri al ve her birine gonder
+        if (recipient === 'admin') {
+          const { data: admins } = await supabase
+            .from('staff')
+            .select('email, name')
+            .eq('is_admin', true)
+            .eq('active', true);
+
+          if (!admins || admins.length === 0) {
+            console.log('[EMAIL] Admin email gonderilecek ama aktif admin bulunamadi');
+            continue;
+          }
+
+          for (const admin of admins) {
+            if (!admin.email) continue;
+
+            const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
+            let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
+
+            if (template.info_card_id) {
+              resolvedBody += await buildInfoCardHtml(supabase, template.info_card_id, eventData);
+            }
+
+            console.log(`[EMAIL] Admin gonderiliyor: to=${admin.email} (${admin.name}), template=${template.name}`);
+            const emailResult = await sendGmail({
+              to: admin.email,
+              subject: resolvedSubject,
+              html: resolvedBody,
+            });
+
+            if (emailResult.success) {
+              notifResult.emailSent++;
+              console.log(`[EMAIL] Admin basarili: ${admin.email} msgId=${emailResult.messageId}`);
+            } else {
+              notifResult.emailFailed++;
+              notifResult.errors.push(`Email failed: ${admin.email} - ${emailResult.error}`);
+              console.error(`[EMAIL] Admin HATA: ${admin.email} error=${emailResult.error}`);
+            }
+          }
+          continue;
+        }
+
+        // Customer veya Staff
+        let toEmail = '';
         if (recipient === 'staff') {
           toEmail = String(eventData.staffEmail || '');
-        } else if (recipient === 'admin') {
-          toEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('GMAIL_USER') || '';
         } else {
           toEmail = String(eventData.customerEmail || '');
         }
@@ -1157,25 +1198,8 @@ async function triggerAppointmentNotification(
         const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
         let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
 
-        // Info card varsa ekle
         if (template.info_card_id) {
-          const { data: infoCard } = await supabase
-            .from('mail_info_cards')
-            .select('*')
-            .eq('id', template.info_card_id)
-            .single();
-
-          if (infoCard && infoCard.fields) {
-            const fields = infoCard.fields as Array<{ label: string; variable: string }>;
-            let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
-            infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
-            for (const field of fields) {
-              const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
-              infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${field.label}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${value}</td></tr>`;
-            }
-            infoHtml += '</table>';
-            resolvedBody += infoHtml;
-          }
+          resolvedBody += await buildInfoCardHtml(supabase, template.info_card_id, eventData);
         }
 
         console.log(`[EMAIL] Gönderiliyor: to=${toEmail}, template=${template.name}, recipient=${recipient}`);
@@ -1199,4 +1223,28 @@ async function triggerAppointmentNotification(
 
   console.log(`[NOTIFICATION] Sonuç: wa=${notifResult.whatsappSent}/${notifResult.whatsappFailed}, email=${notifResult.emailSent}/${notifResult.emailFailed}`);
   return notifResult;
+}
+
+async function buildInfoCardHtml(
+  supabase: ReturnType<typeof createServiceClient>,
+  infoCardId: string,
+  eventData: Record<string, unknown>
+): Promise<string> {
+  const { data: infoCard } = await supabase
+    .from('mail_info_cards')
+    .select('*')
+    .eq('id', infoCardId)
+    .single();
+
+  if (!infoCard || !infoCard.fields) return '';
+
+  const fields = infoCard.fields as Array<{ label: string; variable: string }>;
+  let html = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+  html += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
+  for (const field of fields) {
+    const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
+    html += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${field.label}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${value}</td></tr>`;
+  }
+  html += '</table>';
+  return html;
 }

@@ -207,7 +207,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
           const { data: adminStaffs } = await supabase
             .from('staff')
             .select('name, phone')
-            .eq('role', 'admin')
+            .eq('is_admin', true)
             .eq('active', true);
 
           for (const admin of (adminStaffs || [])) {
@@ -309,12 +309,68 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 
         // Alici belirle: template.recipient = 'customer' | 'staff' | 'admin'
         const recipient = template.recipient || 'customer';
-        let toEmail = '';
 
+        // Admin: staff tablosundan tum admin emailleri al
+        if (recipient === 'admin') {
+          const { data: admins } = await supabase
+            .from('staff')
+            .select('email, name')
+            .eq('is_admin', true)
+            .eq('active', true);
+
+          if (!admins || admins.length === 0) {
+            console.log('[EMAIL] Admin email gonderilecek ama aktif admin bulunamadi');
+            continue;
+          }
+
+          for (const admin of admins) {
+            if (!admin.email) continue;
+
+            const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
+            let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
+
+            if (template.info_card_id) {
+              const { data: infoCard } = await supabase
+                .from('mail_info_cards')
+                .select('*')
+                .eq('id', template.info_card_id)
+                .single();
+
+              if (infoCard && infoCard.fields) {
+                const fields = infoCard.fields as Array<{ label: string; variable: string }>;
+                let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+                infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
+                for (const field of fields) {
+                  const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
+                  infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${escapeHtml(field.label)}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${escapeHtml(value)}</td></tr>`;
+                }
+                infoHtml += '</table>';
+                resolvedBody += infoHtml;
+              }
+            }
+
+            console.log(`[EMAIL] Admin gonderiliyor: to=${admin.email} (${admin.name})`);
+            const emailResult = await sendGmail({
+              to: admin.email,
+              subject: resolvedSubject,
+              html: resolvedBody,
+            });
+
+            if (emailResult.success) {
+              emailSent++;
+              console.log(`[EMAIL] Admin basarili: ${admin.email}`);
+            } else {
+              console.error(`[EMAIL] Admin HATA: ${admin.email} error=${emailResult.error}`);
+              emailFailed++;
+            }
+          }
+          continue;
+        }
+
+        // Customer veya Staff
+        let toEmail = '';
         if (recipient === 'staff') {
           toEmail = String(eventData.staffEmail || '');
-        } else if (recipient === 'admin') {
-          toEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('GMAIL_USER') || '';
         } else {
           toEmail = String(eventData.customerEmail || '');
         }
@@ -346,7 +402,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
           }
         }
 
-        // Gmail ile gonder
+        // Resend ile gonder
         const emailResult = await sendGmail({
           to: toEmail,
           subject: resolvedSubject,
