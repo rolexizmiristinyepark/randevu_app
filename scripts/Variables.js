@@ -220,18 +220,10 @@ function getTriggers() {
  * - Dinamik: Koşula bağlı gruplar
  */
 var MESSAGE_RECIPIENTS = {
-  // Individual recipients
-  'admin': 'all admins',
+  'admin': 'admin',
   'customer': 'customer',
   'staff': 'assigned staff',
-
-  // Dynamic recipients - Today
-  'today_customers': "today's customers",
-  'today_staffs': "today's staff",
-
-  // Dynamic recipients - Tomorrow
-  'tomorrow_customers': "tomorrow's customers",
-  'tomorrow_staffs': "tomorrow's staff"
+  'greeter': 'greeter'
 };
 
 /**
