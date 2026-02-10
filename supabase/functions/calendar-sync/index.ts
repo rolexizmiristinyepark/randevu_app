@@ -9,6 +9,13 @@ import { createServiceClient, requireAdmin } from '../_shared/supabase-client.ts
 import { getGoogleAccessToken } from '../_shared/google-calendar.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
+function formatTimestamp(ts: string | null | undefined): string {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+}
+
 serve(async (req: Request) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
@@ -95,6 +102,7 @@ async function handleSyncToCalendar(req: Request, body: EdgeFunctionBody): Promi
         `Telefon: ${appointment.customer_phone}`,
         `E-posta: ${appointment.customer_email || '-'}`,
         `Not: ${appointment.customer_note || '-'}`,
+        `Oluşturulma: ${formatTimestamp(appointment.created_at)}`,
       ].join('\n'),
       extendedProperties: {
         private: {

@@ -4,6 +4,16 @@
 import { createServiceClient } from './supabase-client.ts';
 
 /**
+ * Timestamp'i Türkçe tarih+saat formatına çevir
+ */
+function formatTimestamp(ts: string | null | undefined): string {
+  if (!ts) return '-';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleString('tr-TR', { timeZone: 'Europe/Istanbul' });
+}
+
+/**
  * Google Service Account JWT ile access token al
  */
 export async function getGoogleAccessToken(serviceAccountKeyJson: string): Promise<string> {
@@ -121,6 +131,7 @@ export async function syncAppointmentToCalendar(appointmentId: string): Promise<
       `Telefon: ${appointment.customer_phone}`,
       `E-posta: ${appointment.customer_email || '-'}`,
       `Not: ${appointment.customer_note || '-'}`,
+      `Oluşturulma: ${formatTimestamp(appointment.created_at)}`,
     ].join('\n'),
     extendedProperties: {
       private: {

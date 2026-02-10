@@ -179,15 +179,17 @@ async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Pr
     appointmentType: s.appointmentType,
   }, 'system', ip);
 
-  // Notification flow tetikle (WhatsApp + Email) — fire-and-forget
-  triggerAppointmentNotification(supabase, appointmentId, profile).catch(err => {
-    console.error('Notification flow hatası (non-blocking):', err);
-  });
-
-  // Google Calendar'a sync — fire-and-forget
-  syncAppointmentToCalendar(appointmentId).catch(err => {
-    console.error('Calendar sync hatası (non-blocking):', err);
-  });
+  // Notification flow tetikle (WhatsApp + Email) ve Calendar sync
+  // Paralel çalıştır ama response'tan ÖNCE tamamlanmasını bekle
+  // (Gmail SMTP yavaş — fire-and-forget'te runtime kapanınca mail gitmiyordu)
+  await Promise.allSettled([
+    triggerAppointmentNotification(supabase, appointmentId, profile).catch(err => {
+      console.error('Notification flow hatası:', err);
+    }),
+    syncAppointmentToCalendar(appointmentId).catch(err => {
+      console.error('Calendar sync hatası:', err);
+    }),
+  ]);
 
   return jsonResponse({
     success: true,
@@ -1116,6 +1118,7 @@ async function triggerAppointmentNotification(
     }
 
     // ==================== EMAIL ====================
+    console.log(`[EMAIL] Flow "${flow.name}" mail_template_ids:`, flow.mail_template_ids);
     if (flow.mail_template_ids && flow.mail_template_ids.length > 0) {
       for (const templateId of flow.mail_template_ids) {
         const { data: template } = await supabase
@@ -1163,13 +1166,18 @@ async function triggerAppointmentNotification(
           }
         }
 
+        console.log(`[EMAIL] Gönderiliyor: to=${toEmail}, template=${template.name}, recipient=${recipient}`);
         const emailResult = await sendGmail({
           to: toEmail,
           subject: resolvedSubject,
           html: resolvedBody,
         });
 
-        console.log(`Email ${emailResult.success ? 'sent' : 'failed'}: ${toEmail} (${template.name})`);
+        if (emailResult.success) {
+          console.log(`[EMAIL] Başarılı: ${toEmail} (${template.name}) msgId=${emailResult.messageId}`);
+        } else {
+          console.error(`[EMAIL] HATA: ${toEmail} (${template.name}) error=${emailResult.error}`);
+        }
       }
     }
   }
