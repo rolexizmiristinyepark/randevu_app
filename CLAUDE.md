@@ -13,6 +13,7 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
 5. **`Object.defineProperty` icin `configurable: true`** - Vite HMR uyumlulugu (admin-auth.ts)
 6. **Adapter pattern**: api-service.ts 89+ GAS action'i 13 Supabase Edge Function'a mapliyor
 7. **Otomatik commit + deploy**: Her degisiklik sonrasi SORMADAN commit yap. Edge function degisti ise deploy et. Kullaniciya sorma, direkt yap.
+8. **CLAUDE.md guncelle**: Her oturumda yapilan degisiklikleri CLAUDE.md'ye yaz. Compact/clear sonrasi bilgi kaybolmasin.
 
 ## Dosya Yapisi
 
@@ -22,58 +23,88 @@ supabase/functions/          # Backend Edge Functions
     cors.ts                  # CORS + JSON response helpers
     gmail-sender.ts          # Gmail SMTP (ESKI - artik kullanilmiyor)
     resend-sender.ts         # Resend API email sender (AKTIF)
-    google-calendar.ts       # Google Calendar sync
+    google-calendar.ts       # Calendar sync/update/delete
     supabase-client.ts       # Supabase client + requireAdmin
-    whatsapp-sender.ts       # WhatsApp Business API
-    variables.ts             # Template degisken sistemi
+    whatsapp-sender.ts       # WhatsApp Business API + buildEventData
+    variables.ts             # Template degisken sistemi + triggers + recipients
     security.ts              # Turnstile, rate limit, audit log
     validation.ts            # Input validasyonu
     types.ts                 # Ortak tipler
   appointments/              # Randevu CRUD + slot + notification trigger
-  auth/                      # Admin login/logout
-  calendar-sync/             # Google Calendar sync
-  config/                    # Profil/gun/saat/kapasite config
-  links/                     # URL kisaltma
+  notifications/             # Bildirim: email/whatsapp/ICS + zamanlanmis hatirlatma
   mail/                      # Mail template/flow/info card CRUD
-  notifications/             # Bildirim gonderimi (email + whatsapp)
-  settings/                  # Genel ayarlar
-  slack/                     # Slack webhook
-  staff/                     # Personel CRUD
-  webhook-whatsapp/          # WhatsApp incoming webhook
-  whatsapp/                  # WhatsApp template CRUD
+  auth/ config/ staff/ settings/ links/ slack/
+  whatsapp/ webhook-whatsapp/ calendar-sync/
 
-api-service.ts               # Frontend -> Edge Function adapter
-admin-auth.ts                # Supabase Auth entegrasyonu
-config-loader.ts             # Config yukleme ve cache
-admin-panel.ts               # Admin panel mantigi
+admin/unified-flow-manager.ts  # Admin panel bildirim akis yonetimi
+api-service.ts                 # Frontend -> Edge Function adapter
+admin-auth.ts                  # Supabase Auth
+config-loader.ts               # Config yukleme ve cache
 ```
 
-## Email Sistemi (AKTIF SORUN)
+## Bildirim Sistemi (TAMAMLANDI)
 
-### Mimari
-- `resend-sender.ts`: Resend HTTP API kullanir (sendEmail + sendGmail alias)
-- `appointments/index.ts` satir 13: `import { sendGmail } from '../_shared/resend-sender.ts'`
-- `notifications/index.ts` satir 11: Ayni import
-- Env: `RESEND_API_KEY` (set edilmis), `ADMIN_EMAIL`, `GMAIL_USER`
+### Trigger'lar (variables.ts MESSAGE_TRIGGERS)
+- `appointment_create` — Randevu olusturulunca (createAppointment)
+- `appointment_cancel` — Randevu iptal edilince (deleteAppointment)
+- `appointment_update` — Randevu tarih/saat degisince (updateAppointment)
+- `appointment_assign` — Personel ataninca (assignStaffToAppointment)
+- `HATIRLATMA` — Zamanlanmis hatirlatma (pg_cron, her saat basinda)
 
-### Notification Flow
-1. Randevu olusturulunca `triggerAppointmentNotification()` cagirilir (appointments/index.ts:999)
-2. `notification_flows` tablosundan `trigger='appointment_create'` olan aktif flow'lar cekilir
-3. Her flow icin: WhatsApp template'leri + Mail template'leri islenip gonderilir
-4. Sonuc `_debug.notification` olarak response'a eklenir
+### Recipient'lar (variables.ts MESSAGE_RECIPIENTS)
+- `admin` — staff tablosundan is_admin=true olanlarin emailleri
+- `customer` — Randevu sahibi musteri
+- `staff` — Atanmis personel
+- `today_customers` — Bugunun randevulu musterileri (hatirlatma)
+- `today_staffs` — Bugunun randevulu personelleri (hatirlatma)
+- `tomorrow_customers` — Yarinin randevulu musterileri
+- `tomorrow_staffs` — Yarinin randevulu personelleri
 
-### Duzeltilen Buglar
-- **appointments/index.ts:1025**: `return;` -> `return notifResult;` (DUZELTILDI)
-- **appointments/index.ts: Admin email**: Staff tablosundan (is_admin=true, active=true) email alinarak tum admin'lere gonderiliyor (DUZELTILDI)
-- **resend-sender.ts**: From adresi `istinye@kulahcioglu.com` (DOGRU)
+### Template Degiskenleri (variables.ts MESSAGE_VARIABLES)
+| Degisken | Aciklama | eventData field |
+|----------|----------|-----------------|
+| `{{musteri}}` | Musteri adi soyadi | customerName |
+| `{{musteri_tel}}` | Musteri telefonu | customerPhone |
+| `{{musteri_mail}}` | Musteri emaili | customerEmail |
+| `{{randevu_tarihi}}` | Turkce tarih (25 Ocak 2025, Cumartesi) | date |
+| `{{randevu_saati}}` | Saat (14:00) | time (start_time:0-5) |
+| `{{randevu_ek_bilgi}}` | Musteri notu | customerNote |
+| `{{personel}}` | Personel adi | staffName |
+| `{{personel_id}}` | Personel ID | staffId |
+| `{{personel_tel}}` | Personel telefonu | staffPhone |
+| `{{personel_mail}}` | Personel emaili | staffEmail |
+| `{{randevu_turu}}` | Tur etiketi (Gorusme/Teslim/...) | appointmentType |
+| `{{randevu_profili}}` | Profil etiketi (Genel/Walk-in/...) | profile |
+| `{{profil_sahibi}}` | Profil sahibi personel | linkedStaffName |
 
-### Resend Gecis Durumu (TAMAMLANDI)
-- Resend hesap: `istinyeparkrolex35` (resend.com), domain: `kulahcioglu.com`, region: EU
-- Gonderici: `istinye@kulahcioglu.com` (istinye dogru, istinyepark degil!)
-- DNS kayitlari (DKIM, SPF, DMARC) IT tarafindan eklenmis - DOGRULANMIS
-- `RESEND_API_KEY` Supabase secrets'a eklenmis
-- `gmail-sender.ts` -> `resend-sender.ts` gecisi tamamlanmis
-- Test: 2025-02-10 basarili (messageId: a3e3a66a-8dfb-42c0-aa47-ae9a1079812b)
+### Randevu Turleri (DB constraint)
+delivery, shipping, meeting, service, management
+
+### Profil Kodlari
+g=Genel, w=Walk-in, b=Magaza, m=Yonetim, s=Bireysel, v=Ozel Musteri
+
+### Zamanlanmis Hatirlatma Akisi
+1. pg_cron her saat basinda `triggerScheduledReminders` action'i cagirir
+2. Istanbul saatine gore notification_flows tablosunda `trigger='HATIRLATMA'` ve `schedule_hour=currentHour` eslesen flow'lar bulunur
+3. today/tomorrow randevulari cekilir, template'deki recipient'a gore ilgili kisilere gonderilir
+4. Migration: 012_schedule_hour_and_reminder_cron.sql
+
+## Google Calendar Sync (TAMAMLANDI)
+| Islem | Calendar | Fonksiyon |
+|-------|----------|-----------|
+| createAppointment | Event olustur | syncAppointmentToCalendar |
+| createManualAppointment | Event olustur | syncAppointmentToCalendar |
+| updateAppointment | Event guncelle | updateCalendarEvent |
+| assignStaffToAppointment | Baslik guncelle | updateCalendarEvent |
+| deleteAppointment | Event sil | deleteCalendarEvent |
+
+Calendar baslik formati: `Musteri - Personel (Profil) / Tur`
+
+## Email Sistemi (TAMAMLANDI)
+- Resend HTTP API (resend-sender.ts), gonderici: `istinye@kulahcioglu.com`
+- Admin email: staff tablosundan is_admin=true (ADMIN_EMAIL env var DEGIL)
+- DNS dogrulanmis, RESEND_API_KEY set edilmis
+- Test basarili (2025-02-10)
 
 ## Deploy
 
@@ -91,14 +122,6 @@ supabase db push
 git push origin admiring-hypatia
 ```
 
-## Dev Server
-
-```bash
-supabase start          # Lokal Supabase
-npm run dev             # Frontend (port 3000)
-supabase functions serve  # Edge Functions lokal test
-```
-
 ## Supabase Secrets (Prod)
 RESEND_API_KEY, ADMIN_EMAIL, GMAIL_USER, GMAIL_APP_PASSWORD,
 GOOGLE_CALENDAR_ID, GOOGLE_SERVICE_ACCOUNT_KEY,
@@ -106,13 +129,13 @@ WHATSAPP_ACCESS_TOKEN, WHATSAPP_PHONE_NUMBER_ID,
 SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 
 ## Onemli Tablolar
-- `appointments` - Randevular
-- `staff` - Personel (is_admin, email, phone, active)
-- `notification_flows` - Bildirim akislari (trigger, profiles, whatsapp_template_ids, mail_template_ids)
-- `mail_templates` - Email sablonlari (recipient: customer/staff/admin)
-- `whatsapp_templates` - WhatsApp sablonlari
-- `mail_info_cards` - Email bilgi kartlari
-- `message_log` - Tum gonderim loglari
+- `appointments` — Randevular (google_event_id, appointment_type, profile, staff_id)
+- `staff` — Personel (is_admin, email, phone, active)
+- `notification_flows` — Bildirim akislari (trigger, schedule_hour, profiles, wa/mail template ids)
+- `mail_templates` — Email sablonlari (recipient: customer/staff/admin)
+- `whatsapp_templates` — WhatsApp sablonlari (target_type: customer/staff/admin)
+- `mail_info_cards` — Email bilgi kartlari
+- `message_log` — Tum gonderim loglari
 
 ## Button Utility
 ```typescript
