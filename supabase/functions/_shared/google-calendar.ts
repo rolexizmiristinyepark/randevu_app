@@ -168,3 +168,128 @@ export async function syncAppointmentToCalendar(appointmentId: string): Promise<
     console.error('Calendar event oluşturulamadı:', result.error);
   }
 }
+
+/**
+ * Randevu guncellenince Google Calendar event'ini guncelle
+ * google_event_id varsa PATCH ile gunceller, yoksa yeni olusturur
+ */
+export async function updateCalendarEvent(appointmentId: string): Promise<void> {
+  const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+  const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
+
+  if (!serviceAccountKey || !calendarId) return;
+
+  const supabase = createServiceClient();
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('*, staff:staff_id(name, phone, email)')
+    .eq('id', appointmentId)
+    .single();
+
+  if (!appointment) return;
+
+  // google_event_id yoksa yeni olustur
+  if (!appointment.google_event_id) {
+    await syncAppointmentToCalendar(appointmentId);
+    return;
+  }
+
+  const accessToken = await getGoogleAccessToken(serviceAccountKey);
+
+  const PROFILE_LABELS: Record<string, string> = {
+    g: 'Genel', w: 'Walk-in', b: 'Mağaza', m: 'Yönetim', s: 'Bireysel', v: 'Özel Müşteri'
+  };
+  const TYPE_LABELS: Record<string, string> = {
+    meeting: 'Görüşme', purchase: 'Satın Alma', repair: 'Tamir/Bakım', other: 'Diğer'
+  };
+  const staffLabel = appointment.staff?.name || 'Atanmadı';
+  const profileLabel = PROFILE_LABELS[appointment.profile] || appointment.profile || 'Genel';
+  const typeLabel = TYPE_LABELS[appointment.appointment_type] || appointment.appointment_type || '';
+  const summary = `${appointment.customer_name} - ${staffLabel} (${profileLabel}) / ${typeLabel}`;
+
+  const eventBody = {
+    summary,
+    start: {
+      dateTime: `${appointment.date}T${appointment.start_time}`,
+      timeZone: 'Europe/Istanbul',
+    },
+    end: {
+      dateTime: `${appointment.date}T${appointment.end_time}`,
+      timeZone: 'Europe/Istanbul',
+    },
+    description: [
+      `Müşteri: ${appointment.customer_name}`,
+      `Telefon: ${appointment.customer_phone}`,
+      `E-posta: ${appointment.customer_email || '-'}`,
+      `Not: ${appointment.customer_note || '-'}`,
+      `Oluşturulma: ${formatTimestamp(appointment.created_at)}`,
+    ].join('\n'),
+    extendedProperties: {
+      private: {
+        supabaseId: appointmentId,
+        staffId: String(appointment.staff_id || ''),
+        appointmentType: appointment.appointment_type,
+        profile: appointment.profile,
+      },
+    },
+  };
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(appointment.google_event_id)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(eventBody),
+    }
+  );
+
+  if (response.ok) {
+    console.log(`Calendar event updated: ${appointment.google_event_id} for appointment ${appointmentId}`);
+  } else {
+    const err = await response.text();
+    console.error(`Calendar event güncellenemedi (${response.status}): ${err}`);
+  }
+}
+
+/**
+ * Randevuyu Google Calendar'dan sil
+ * google_event_id varsa siler, yoksa sessizce atlar
+ */
+export async function deleteCalendarEvent(appointmentId: string): Promise<void> {
+  const serviceAccountKey = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_KEY');
+  const calendarId = Deno.env.get('GOOGLE_CALENDAR_ID');
+
+  if (!serviceAccountKey || !calendarId) return;
+
+  const supabase = createServiceClient();
+  const { data: appointment } = await supabase
+    .from('appointments')
+    .select('google_event_id')
+    .eq('id', appointmentId)
+    .single();
+
+  if (!appointment?.google_event_id) {
+    console.log(`Calendar delete atlandı: appointment ${appointmentId} google_event_id yok`);
+    return;
+  }
+
+  const accessToken = await getGoogleAccessToken(serviceAccountKey);
+
+  const response = await fetch(
+    `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events/${encodeURIComponent(appointment.google_event_id)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${accessToken}` },
+    }
+  );
+
+  if (response.ok || response.status === 204) {
+    console.log(`Calendar event deleted: ${appointment.google_event_id} for appointment ${appointmentId}`);
+  } else {
+    const err = await response.text();
+    console.error(`Calendar event silinemedi (${response.status}): ${err}`);
+  }
+}

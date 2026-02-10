@@ -9,7 +9,7 @@ import { verifyTurnstile, checkRateLimit, getClientIp, addAuditLog } from '../_s
 import { validateAppointmentInput } from '../_shared/validation.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
-import { syncAppointmentToCalendar } from '../_shared/google-calendar.ts';
+import { syncAppointmentToCalendar, updateCalendarEvent, deleteCalendarEvent } from '../_shared/google-calendar.ts';
 import { sendGmail } from '../_shared/resend-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
@@ -741,6 +741,11 @@ async function handleDeleteAppointment(req: Request, body: EdgeFunctionBody): Pr
     return errorResponse('Randevu silinemedi: ' + error.message);
   }
 
+  // Google Calendar'dan sil
+  await deleteCalendarEvent(appointmentId).catch(err => {
+    console.error('Calendar delete hatası:', err);
+  });
+
   await addAuditLog('APPOINTMENT_DELETED', {
     appointmentId,
     customerName: appointment.customer_name,
@@ -839,6 +844,11 @@ async function handleUpdateAppointment(req: Request, body: EdgeFunctionBody): Pr
     return errorResponse('Randevu güncellenemedi: ' + error.message);
   }
 
+  // Google Calendar'ı güncelle
+  await updateCalendarEvent(appointmentId).catch(err => {
+    console.error('Calendar update hatası:', err);
+  });
+
   return jsonResponse({ success: true, message: 'Randevu başarıyla güncellendi' });
 }
 
@@ -877,6 +887,11 @@ async function handleAssignStaff(req: Request, body: EdgeFunctionBody): Promise<
   if (error) {
     return errorResponse('Personel atanamadı: ' + error.message);
   }
+
+  // Google Calendar başlığını güncelle (personel adı değişti)
+  await updateCalendarEvent(appointmentId).catch(err => {
+    console.error('Calendar update hatası (staff assign):', err);
+  });
 
   await addAuditLog('STAFF_ASSIGNED', {
     appointmentId,
