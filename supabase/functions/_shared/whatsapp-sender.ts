@@ -175,7 +175,7 @@ export function buildEventDataFromAppointment(
     customerNote: appointment.customer_note || '',
     date: appointment.date || '',
     time: appointment.start_time ? String(appointment.start_time).substring(0, 5) : '',
-    appointmentType: appointment.appointment_type || appointment.profile || '',
+    appointmentType: appointment.appointment_type || '',
     profile: appointment.profile || '',
     staffName: staff?.name || '',
     staffPhone: staff?.phone || '',

@@ -167,7 +167,7 @@ export const MESSAGE_TRIGGERS: Record<string, string> = {
  * GAS: MESSAGE_RECIPIENTS
  */
 export const MESSAGE_RECIPIENTS: Record<string, string> = {
-  admin: 'all admins',
+  admin: 'admin',
   customer: 'customer',
   staff: 'assigned staff',
   today_customers: "today's customers",

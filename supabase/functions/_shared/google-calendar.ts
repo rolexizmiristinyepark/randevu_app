@@ -109,7 +109,7 @@ export async function syncAppointmentToCalendar(appointmentId: string): Promise<
     g: 'Genel', w: 'Walk-in', b: 'Mağaza', m: 'Yönetim', s: 'Bireysel', v: 'Özel Müşteri'
   };
   const TYPE_LABELS: Record<string, string> = {
-    meeting: 'Görüşme', purchase: 'Satın Alma', repair: 'Tamir/Bakım', other: 'Diğer'
+    meeting: 'Görüşme', delivery: 'Teslim', shipping: 'Gönderi', service: 'Teknik Servis', management: 'Yönetim'
   };
   const staffLabel = appointment.staff?.name || 'Atanmadı';
   const profileLabel = PROFILE_LABELS[appointment.profile] || appointment.profile || 'Genel';
@@ -200,7 +200,7 @@ export async function updateCalendarEvent(appointmentId: string): Promise<void> 
     g: 'Genel', w: 'Walk-in', b: 'Mağaza', m: 'Yönetim', s: 'Bireysel', v: 'Özel Müşteri'
   };
   const TYPE_LABELS: Record<string, string> = {
-    meeting: 'Görüşme', purchase: 'Satın Alma', repair: 'Tamir/Bakım', other: 'Diğer'
+    meeting: 'Görüşme', delivery: 'Teslim', shipping: 'Gönderi', service: 'Teknik Servis', management: 'Yönetim'
   };
   const staffLabel = appointment.staff?.name || 'Atanmadı';
   const profileLabel = PROFILE_LABELS[appointment.profile] || appointment.profile || 'Genel';

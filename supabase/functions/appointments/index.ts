@@ -741,10 +741,11 @@ async function handleDeleteAppointment(req: Request, body: EdgeFunctionBody): Pr
     return errorResponse('Randevu silinemedi: ' + error.message);
   }
 
-  // Google Calendar'dan sil
-  await deleteCalendarEvent(appointmentId).catch(err => {
-    console.error('Calendar delete hatası:', err);
-  });
+  // Google Calendar'dan sil + iptal bildirimlerini tetikle
+  await Promise.allSettled([
+    deleteCalendarEvent(appointmentId).catch(err => console.error('Calendar delete hatası:', err)),
+    triggerAppointmentNotification(supabase, appointmentId, appointment.profile || 'g', 'appointment_cancel'),
+  ]);
 
   await addAuditLog('APPOINTMENT_DELETED', {
     appointmentId,
@@ -844,10 +845,11 @@ async function handleUpdateAppointment(req: Request, body: EdgeFunctionBody): Pr
     return errorResponse('Randevu güncellenemedi: ' + error.message);
   }
 
-  // Google Calendar'ı güncelle
-  await updateCalendarEvent(appointmentId).catch(err => {
-    console.error('Calendar update hatası:', err);
-  });
+  // Google Calendar güncelle + bildirim tetikle
+  await Promise.allSettled([
+    updateCalendarEvent(appointmentId).catch(err => console.error('Calendar update hatası:', err)),
+    triggerAppointmentNotification(supabase, appointmentId, appointment.profile || 'g', 'appointment_update'),
+  ]);
 
   return jsonResponse({ success: true, message: 'Randevu başarıyla güncellendi' });
 }
@@ -888,10 +890,12 @@ async function handleAssignStaff(req: Request, body: EdgeFunctionBody): Promise<
     return errorResponse('Personel atanamadı: ' + error.message);
   }
 
-  // Google Calendar başlığını güncelle (personel adı değişti)
-  await updateCalendarEvent(appointmentId).catch(err => {
-    console.error('Calendar update hatası (staff assign):', err);
-  });
+  // Google Calendar güncelle + atama bildirimi tetikle
+  const { data: updatedAppt } = await supabase.from('appointments').select('profile').eq('id', appointmentId).single();
+  await Promise.allSettled([
+    updateCalendarEvent(appointmentId).catch(err => console.error('Calendar update hatası (staff assign):', err)),
+    triggerAppointmentNotification(supabase, appointmentId, updatedAppt?.profile || 'g', 'appointment_assign'),
+  ]);
 
   await addAuditLog('STAFF_ASSIGNED', {
     appointmentId,
@@ -1009,8 +1013,8 @@ function countOverlapping(
 // ==================== NOTIFICATION TRIGGER ====================
 
 /**
- * Randevu oluşturulduktan sonra notification flow tetikle
- * notification_flows tablosundaki 'appointment_create' trigger'ına eşleşen flow'ları çalıştırır
+ * Randevu islemlerinde notification flow tetikle
+ * notification_flows tablosundaki eslesen trigger'a gore flow'lari calistirir
  */
 interface NotificationResult {
   whatsappSent: number;
@@ -1023,7 +1027,8 @@ interface NotificationResult {
 async function triggerAppointmentNotification(
   supabase: ReturnType<typeof createServiceClient>,
   appointmentId: string,
-  profile: string
+  profile: string,
+  trigger: string = 'appointment_create'
 ): Promise<NotificationResult> {
   const notifResult: NotificationResult = { whatsappSent: 0, whatsappFailed: 0, emailSent: 0, emailFailed: 0, errors: [] };
   // Randevu detaylarını staff bilgisiyle çek
@@ -1044,7 +1049,7 @@ async function triggerAppointmentNotification(
     .from('notification_flows')
     .select('*')
     .eq('active', true)
-    .eq('trigger', 'appointment_create');
+    .eq('trigger', trigger);
 
   if (!flows || flows.length === 0) return notifResult;
 

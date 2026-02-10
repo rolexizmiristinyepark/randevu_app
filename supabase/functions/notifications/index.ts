@@ -6,7 +6,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
-import { sendWhatsAppMessage, buildTemplateComponents, logMessage } from '../_shared/whatsapp-sender.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
 import { sendGmail } from '../_shared/resend-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
@@ -38,6 +38,8 @@ serve(async (req: Request) => {
         return await handleGenerateICS(body);
       case 'triggerNotificationFlow':
         return await handleTriggerFlow(body);
+      case 'triggerScheduledReminders':
+        return await handleScheduledReminders();
       default:
         return errorResponse(`Bilinmeyen notifications action: ${action}`);
     }
@@ -428,4 +430,214 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
     emailSent,
     emailFailed,
   });
+}
+
+// ==================== SCHEDULED REMINDERS ====================
+
+/**
+ * Zamanlanmis hatirlatma bildirimleri
+ * pg_cron her saat basinda cagirir
+ * HATIRLATMA trigger'li flow'larin schedule_hour'una bakar
+ * today_customers/today_staffs/tomorrow_customers/tomorrow_staffs recipient'lerine gonderir
+ */
+async function handleScheduledReminders(): Promise<Response> {
+  const supabase = createServiceClient();
+
+  // Istanbul saatini al
+  const now = new Date();
+  const istanbulHour = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Istanbul', hour: 'numeric', hour12: false
+  }).format(now);
+  const currentHour = String(parseInt(istanbulHour));
+
+  console.log(`[REMINDER] Saat kontrol: Istanbul ${currentHour}:00`);
+
+  // Bu saate ayarli aktif HATIRLATMA flow'larini bul
+  const { data: flows } = await supabase
+    .from('notification_flows')
+    .select('*')
+    .eq('active', true)
+    .eq('trigger', 'HATIRLATMA')
+    .eq('schedule_hour', currentHour);
+
+  if (!flows || flows.length === 0) {
+    return jsonResponse({ success: true, message: `Saat ${currentHour} icin hatirlatma flow yok`, sent: 0 });
+  }
+
+  // Bugunku ve yarinki tarihleri hesapla (Istanbul timezone)
+  const istanbulDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(now);
+  const tomorrow = new Date(now.getTime() + 86400000);
+  const tomorrowDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(tomorrow);
+
+  // Bugunku randevulari cek
+  const { data: todayAppts } = await supabase
+    .from('appointments')
+    .select('*, staff:staff_id(id, name, phone, email)')
+    .eq('date', istanbulDate)
+    .neq('status', 'cancelled')
+    .order('start_time');
+
+  // Yarinki randevulari cek
+  const { data: tomorrowAppts } = await supabase
+    .from('appointments')
+    .select('*, staff:staff_id(id, name, phone, email)')
+    .eq('date', tomorrowDate)
+    .neq('status', 'cancelled')
+    .order('start_time');
+
+  let totalSent = 0;
+  let totalFailed = 0;
+
+  for (const flow of flows) {
+    // Her flow icin WhatsApp ve Email template'leri isle
+    // Recipient'a gore hangi randevulari kullanacagimizi belirle
+    const waTemplateIds = flow.whatsapp_template_ids || [];
+    const mailTemplateIds = flow.mail_template_ids || [];
+
+    // WhatsApp template'leri isle
+    for (const templateId of waTemplateIds) {
+      const { data: template } = await supabase
+        .from('whatsapp_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+      if (!template) continue;
+
+      const targetType = template.target_type || 'customer';
+      const appointments = getAppointmentsForTarget(targetType, todayAppts || [], tomorrowAppts || []);
+
+      for (const appt of appointments) {
+        const staff = appt.staff as Record<string, unknown> | null;
+        const eventData = buildEventDataFromAppointment(appt, staff);
+        const phone = resolvePhone(targetType, eventData);
+        if (!phone) continue;
+
+        const components = buildTemplateComponents(template, eventData);
+        const result = await sendWhatsAppMessage(
+          phone,
+          template.meta_template_name || template.name,
+          template.language || 'tr',
+          components
+        );
+
+        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+        await logMessage({
+          appointment_id: appt.id,
+          phone: formatPhoneWithCountryCode(phone),
+          recipient_name: resolveRecipientName(targetType, eventData),
+          template_name: template.meta_template_name || template.name,
+          template_id: template.id,
+          status: result.success ? 'sent' : 'failed',
+          message_id: result.messageId || '',
+          error_message: result.error || '',
+          flow_id: flow.id,
+          triggered_by: 'scheduled_reminder',
+          profile: String(appt.profile || ''),
+          message_content: resolvedContent,
+          target_type: targetType,
+          customer_name: String(eventData.customerName || ''),
+          customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+        });
+
+        if (result.success) totalSent++;
+        else totalFailed++;
+      }
+    }
+
+    // Email template'leri isle
+    for (const templateId of mailTemplateIds) {
+      const { data: template } = await supabase
+        .from('mail_templates')
+        .select('*')
+        .eq('id', templateId)
+        .single();
+      if (!template) continue;
+
+      const recipient = template.recipient || 'customer';
+      const appointments = getAppointmentsForTarget(recipient, todayAppts || [], tomorrowAppts || []);
+
+      // Admin recipient: staff tablosundan admin emailleri
+      if (recipient === 'admin') {
+        const { data: admins } = await supabase
+          .from('staff')
+          .select('email, name')
+          .eq('is_admin', true)
+          .eq('active', true);
+
+        for (const admin of (admins || [])) {
+          if (!admin.email) continue;
+          // Tum bugunun randevularini ozetle
+          const summaryData = {
+            customerName: `${(todayAppts || []).length} randevu`,
+            date: istanbulDate,
+            time: `${currentHour}:00`,
+          } as Record<string, string>;
+
+          const resolvedSubject = replaceMessageVariables(template.subject, summaryData);
+          const resolvedBody = replaceMessageVariables(template.body, summaryData);
+
+          const emailResult = await sendGmail({ to: admin.email, subject: resolvedSubject, html: resolvedBody });
+          if (emailResult.success) totalSent++;
+          else totalFailed++;
+        }
+        continue;
+      }
+
+      for (const appt of appointments) {
+        const staff = appt.staff as Record<string, unknown> | null;
+        const eventData = buildEventDataFromAppointment(appt, staff);
+        const toEmail = resolveEmail(recipient, eventData);
+        if (!toEmail) continue;
+
+        const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
+        const resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
+
+        const emailResult = await sendGmail({ to: toEmail, subject: resolvedSubject, html: resolvedBody });
+        if (emailResult.success) totalSent++;
+        else totalFailed++;
+      }
+    }
+  }
+
+  console.log(`[REMINDER] Saat ${currentHour}: ${totalSent} gonderildi, ${totalFailed} basarisiz`);
+  return jsonResponse({ success: true, hour: currentHour, sent: totalSent, failed: totalFailed });
+}
+
+/**
+ * Target type'a gore randevu listesini sec
+ */
+function getAppointmentsForTarget(
+  targetType: string,
+  todayAppts: Record<string, unknown>[],
+  tomorrowAppts: Record<string, unknown>[]
+): Record<string, unknown>[] {
+  switch (targetType) {
+    case 'today_customers':
+    case 'today_staffs':
+      return todayAppts;
+    case 'tomorrow_customers':
+    case 'tomorrow_staffs':
+      return tomorrowAppts;
+    case 'customer':
+      return todayAppts; // Default: bugunun musterileri
+    case 'staff':
+      return todayAppts; // Default: bugunun personelleri
+    default:
+      return todayAppts;
+  }
+}
+
+function resolvePhone(targetType: string, eventData: Record<string, unknown>): string {
+  if (targetType.includes('staff')) return String(eventData.staffPhone || '');
+  return String(eventData.customerPhone || '');
+}
+
+function resolveEmail(targetType: string, eventData: Record<string, unknown>): string {
+  if (targetType.includes('staff')) return String(eventData.staffEmail || '');
+  return String(eventData.customerEmail || '');
+}
+
+function resolveRecipientName(targetType: string, eventData: Record<string, unknown>): string {
+  if (targetType.includes('staff')) return String(eventData.staffName || '');
+  return String(eventData.customerName || '');
 }
