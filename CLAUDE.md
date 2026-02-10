@@ -55,10 +55,7 @@ config-loader.ts               # Config yukleme ve cache
 - `admin` — staff tablosundan is_admin=true olanlarin emailleri
 - `customer` — Randevu sahibi musteri
 - `staff` — Atanmis personel
-- `today_customers` — Bugunun randevulu musterileri (hatirlatma)
-- `today_staffs` — Bugunun randevulu personelleri (hatirlatma)
-- `tomorrow_customers` — Yarinin randevulu musterileri
-- `tomorrow_staffs` — Yarinin randevulu personelleri
+- `greeter` — staff tablosundan role='greeter' olan personeller (kapida karsilama)
 
 ### Template Degiskenleri (variables.ts MESSAGE_VARIABLES)
 | Degisken | Aciklama | eventData field |
@@ -86,8 +83,13 @@ g=Genel, w=Walk-in, b=Magaza, m=Yonetim, s=Bireysel, v=Ozel Musteri
 ### Zamanlanmis Hatirlatma Akisi
 1. pg_cron her saat basinda `triggerScheduledReminders` action'i cagirir
 2. Istanbul saatine gore notification_flows tablosunda `trigger='HATIRLATMA'` ve `schedule_hour=currentHour` eslesen flow'lar bulunur
-3. today/tomorrow randevulari cekilir, template'deki recipient'a gore ilgili kisilere gonderilir
-4. Migration: 012_schedule_hour_and_reminder_cron.sql
+3. `schedule_day` (today/tomorrow) ile hangi gunun randevulari alinacagi belirlenir
+4. Recipient'a gore mesaj gonderilir:
+   - `customer`: Her randevu icin musteriye ayri hatirlatma
+   - `staff`: Her randevu icin atanmis personele ayri hatirlatma
+   - `admin`: Tum randevularin ozeti admin'lere (is_admin=true)
+   - `greeter`: Tum randevularin bilgisi greeter role'lu personellere
+5. Migrations: 012_schedule_hour_and_reminder_cron.sql, 013_schedule_day_column.sql
 
 ## Google Calendar Sync (TAMAMLANDI)
 | Islem | Calendar | Fonksiyon |

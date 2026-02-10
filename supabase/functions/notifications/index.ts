@@ -437,8 +437,13 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 /**
  * Zamanlanmis hatirlatma bildirimleri
  * pg_cron her saat basinda cagirir
- * HATIRLATMA trigger'li flow'larin schedule_hour'una bakar
- * today_customers/today_staffs/tomorrow_customers/tomorrow_staffs recipient'lerine gonderir
+ * HATIRLATMA trigger'li flow'larin schedule_hour ve schedule_day'ine bakar
+ *
+ * Recipient turleri:
+ * - customer: Her randevu icin musteriye kendi hatirlatmasi
+ * - staff: Her randevu icin atanmis personele hatirlatma
+ * - admin: Tum randevularin ozeti admin'lere
+ * - greeter: Tum randevularin ozeti greeter role'lu personellere
  */
 async function handleScheduledReminders(): Promise<Response> {
   const supabase = createServiceClient();
@@ -469,33 +474,28 @@ async function handleScheduledReminders(): Promise<Response> {
   const tomorrow = new Date(now.getTime() + 86400000);
   const tomorrowDate = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(tomorrow);
 
-  // Bugunku randevulari cek
-  const { data: todayAppts } = await supabase
-    .from('appointments')
-    .select('*, staff:staff_id(id, name, phone, email)')
-    .eq('date', istanbulDate)
-    .neq('status', 'cancelled')
-    .order('start_time');
-
-  // Yarinki randevulari cek
-  const { data: tomorrowAppts } = await supabase
-    .from('appointments')
-    .select('*, staff:staff_id(id, name, phone, email)')
-    .eq('date', tomorrowDate)
-    .neq('status', 'cancelled')
-    .order('start_time');
-
   let totalSent = 0;
   let totalFailed = 0;
 
   for (const flow of flows) {
-    // Her flow icin WhatsApp ve Email template'leri isle
-    // Recipient'a gore hangi randevulari kullanacagimizi belirle
-    const waTemplateIds = flow.whatsapp_template_ids || [];
-    const mailTemplateIds = flow.mail_template_ids || [];
+    // schedule_day'e gore randevulari cek (today veya tomorrow)
+    const scheduleDay = flow.schedule_day || 'today';
+    const targetDate = scheduleDay === 'tomorrow' ? tomorrowDate : istanbulDate;
 
-    // WhatsApp template'leri isle
-    for (const templateId of waTemplateIds) {
+    const { data: appointments } = await supabase
+      .from('appointments')
+      .select('*, staff:staff_id(id, name, phone, email, role)')
+      .eq('date', targetDate)
+      .neq('status', 'cancelled')
+      .order('start_time');
+
+    const appts = appointments || [];
+    console.log(`[REMINDER] Flow ${flow.name}: schedule_day=${scheduleDay}, tarih=${targetDate}, randevu sayisi=${appts.length}`);
+
+    if (appts.length === 0) continue;
+
+    // ==================== WHATSAPP ====================
+    for (const templateId of (flow.whatsapp_template_ids || [])) {
       const { data: template } = await supabase
         .from('whatsapp_templates')
         .select('*')
@@ -504,48 +504,13 @@ async function handleScheduledReminders(): Promise<Response> {
       if (!template) continue;
 
       const targetType = template.target_type || 'customer';
-      const appointments = getAppointmentsForTarget(targetType, todayAppts || [], tomorrowAppts || []);
-
-      for (const appt of appointments) {
-        const staff = appt.staff as Record<string, unknown> | null;
-        const eventData = buildEventDataFromAppointment(appt, staff);
-        const phone = resolvePhone(targetType, eventData);
-        if (!phone) continue;
-
-        const components = buildTemplateComponents(template, eventData);
-        const result = await sendWhatsAppMessage(
-          phone,
-          template.meta_template_name || template.name,
-          template.language || 'tr',
-          components
-        );
-
-        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
-        await logMessage({
-          appointment_id: appt.id,
-          phone: formatPhoneWithCountryCode(phone),
-          recipient_name: resolveRecipientName(targetType, eventData),
-          template_name: template.meta_template_name || template.name,
-          template_id: template.id,
-          status: result.success ? 'sent' : 'failed',
-          message_id: result.messageId || '',
-          error_message: result.error || '',
-          flow_id: flow.id,
-          triggered_by: 'scheduled_reminder',
-          profile: String(appt.profile || ''),
-          message_content: resolvedContent,
-          target_type: targetType,
-          customer_name: String(eventData.customerName || ''),
-          customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
-        });
-
-        if (result.success) totalSent++;
-        else totalFailed++;
-      }
+      const results = await sendReminderWhatsApp(supabase, template, targetType, appts, flow, scheduleDay);
+      totalSent += results.sent;
+      totalFailed += results.failed;
     }
 
-    // Email template'leri isle
-    for (const templateId of mailTemplateIds) {
+    // ==================== EMAIL ====================
+    for (const templateId of (flow.mail_template_ids || [])) {
       const { data: template } = await supabase
         .from('mail_templates')
         .select('*')
@@ -554,48 +519,9 @@ async function handleScheduledReminders(): Promise<Response> {
       if (!template) continue;
 
       const recipient = template.recipient || 'customer';
-      const appointments = getAppointmentsForTarget(recipient, todayAppts || [], tomorrowAppts || []);
-
-      // Admin recipient: staff tablosundan admin emailleri
-      if (recipient === 'admin') {
-        const { data: admins } = await supabase
-          .from('staff')
-          .select('email, name')
-          .eq('is_admin', true)
-          .eq('active', true);
-
-        for (const admin of (admins || [])) {
-          if (!admin.email) continue;
-          // Tum bugunun randevularini ozetle
-          const summaryData = {
-            customerName: `${(todayAppts || []).length} randevu`,
-            date: istanbulDate,
-            time: `${currentHour}:00`,
-          } as Record<string, string>;
-
-          const resolvedSubject = replaceMessageVariables(template.subject, summaryData);
-          const resolvedBody = replaceMessageVariables(template.body, summaryData);
-
-          const emailResult = await sendGmail({ to: admin.email, subject: resolvedSubject, html: resolvedBody });
-          if (emailResult.success) totalSent++;
-          else totalFailed++;
-        }
-        continue;
-      }
-
-      for (const appt of appointments) {
-        const staff = appt.staff as Record<string, unknown> | null;
-        const eventData = buildEventDataFromAppointment(appt, staff);
-        const toEmail = resolveEmail(recipient, eventData);
-        if (!toEmail) continue;
-
-        const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
-        const resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
-
-        const emailResult = await sendGmail({ to: toEmail, subject: resolvedSubject, html: resolvedBody });
-        if (emailResult.success) totalSent++;
-        else totalFailed++;
-      }
+      const results = await sendReminderEmail(supabase, template, recipient, appts, flow, targetDate, currentHour);
+      totalSent += results.sent;
+      totalFailed += results.failed;
     }
   }
 
@@ -604,40 +530,199 @@ async function handleScheduledReminders(): Promise<Response> {
 }
 
 /**
- * Target type'a gore randevu listesini sec
+ * Hatirlatma WhatsApp mesajlari gonder
+ * customer/staff: randevu basina bir mesaj
+ * admin/greeter: randevu basina bir mesaj (her randevunun bilgisi ayri ayri)
  */
-function getAppointmentsForTarget(
+// deno-lint-ignore no-explicit-any
+async function sendReminderWhatsApp(
+  supabase: any,
+  template: Record<string, unknown>,
   targetType: string,
-  todayAppts: Record<string, unknown>[],
-  tomorrowAppts: Record<string, unknown>[]
-): Record<string, unknown>[] {
-  switch (targetType) {
-    case 'today_customers':
-    case 'today_staffs':
-      return todayAppts;
-    case 'tomorrow_customers':
-    case 'tomorrow_staffs':
-      return tomorrowAppts;
-    case 'customer':
-      return todayAppts; // Default: bugunun musterileri
-    case 'staff':
-      return todayAppts; // Default: bugunun personelleri
-    default:
-      return todayAppts;
+  appointments: Record<string, unknown>[],
+  flow: Record<string, unknown>,
+  scheduleDay: string
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  // admin ve greeter icin: hedef personelleri bul, her randevu icin mesaj gonder
+  if (targetType === 'admin' || targetType === 'greeter') {
+    const staffList = await getStaffByRecipientType(supabase, targetType);
+
+    for (const staffMember of staffList) {
+      if (!staffMember.phone) continue;
+
+      for (const appt of appointments) {
+        const apptStaff = appt.staff as Record<string, unknown> | null;
+        const eventData = buildEventDataFromAppointment(appt, apptStaff);
+        const components = buildTemplateComponents(template, eventData);
+        const result = await sendWhatsAppMessage(
+          staffMember.phone,
+          String(template.meta_template_name || template.name),
+          String(template.language || 'tr'),
+          components
+        );
+
+        const resolvedContent = replaceMessageVariables(String(template.content || ''), eventData as Record<string, string>);
+        await logMessage({
+          appointment_id: String(appt.id || ''),
+          phone: formatPhoneWithCountryCode(staffMember.phone),
+          recipient_name: staffMember.name,
+          template_name: String(template.meta_template_name || template.name),
+          template_id: String(template.id || ''),
+          status: result.success ? 'sent' : 'failed',
+          message_id: result.messageId || '',
+          error_message: result.error || '',
+          flow_id: String(flow.id || ''),
+          triggered_by: `scheduled_reminder_${scheduleDay}`,
+          profile: String(appt.profile || ''),
+          message_content: resolvedContent,
+          target_type: targetType,
+          customer_name: String(eventData.customerName || ''),
+          customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+        });
+
+        if (result.success) sent++;
+        else failed++;
+      }
+    }
+    return { sent, failed };
   }
+
+  // customer ve staff icin: randevu basina bir mesaj
+  for (const appt of appointments) {
+    const apptStaff = appt.staff as Record<string, unknown> | null;
+    const eventData = buildEventDataFromAppointment(appt, apptStaff);
+
+    const phone = targetType === 'staff'
+      ? String(eventData.staffPhone || '')
+      : String(eventData.customerPhone || '');
+    const recipientName = targetType === 'staff'
+      ? String(eventData.staffName || '')
+      : String(eventData.customerName || '');
+
+    if (!phone) continue;
+
+    const components = buildTemplateComponents(template, eventData);
+    const result = await sendWhatsAppMessage(
+      phone,
+      String(template.meta_template_name || template.name),
+      String(template.language || 'tr'),
+      components
+    );
+
+    const resolvedContent = replaceMessageVariables(String(template.content || ''), eventData as Record<string, string>);
+    await logMessage({
+      appointment_id: String(appt.id || ''),
+      phone: formatPhoneWithCountryCode(phone),
+      recipient_name: recipientName,
+      template_name: String(template.meta_template_name || template.name),
+      template_id: String(template.id || ''),
+      status: result.success ? 'sent' : 'failed',
+      message_id: result.messageId || '',
+      error_message: result.error || '',
+      flow_id: String(flow.id || ''),
+      triggered_by: `scheduled_reminder_${scheduleDay}`,
+      profile: String(appt.profile || ''),
+      message_content: resolvedContent,
+      target_type: targetType,
+      customer_name: String(eventData.customerName || ''),
+      customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+    });
+
+    if (result.success) sent++;
+    else failed++;
+  }
+
+  return { sent, failed };
 }
 
-function resolvePhone(targetType: string, eventData: Record<string, unknown>): string {
-  if (targetType.includes('staff')) return String(eventData.staffPhone || '');
-  return String(eventData.customerPhone || '');
+/**
+ * Hatirlatma email mesajlari gonder
+ * customer/staff: randevu basina bir email
+ * admin/greeter: tum randevularin ozet emaili
+ */
+// deno-lint-ignore no-explicit-any
+async function sendReminderEmail(
+  supabase: any,
+  template: Record<string, unknown>,
+  recipient: string,
+  appointments: Record<string, unknown>[],
+  flow: Record<string, unknown>,
+  targetDate: string,
+  currentHour: string
+): Promise<{ sent: number; failed: number }> {
+  let sent = 0;
+  let failed = 0;
+
+  // admin ve greeter icin: ozet email gonder
+  if (recipient === 'admin' || recipient === 'greeter') {
+    const staffList = await getStaffByRecipientType(supabase, recipient);
+
+    for (const staffMember of staffList) {
+      if (!staffMember.email) continue;
+
+      const summaryData = {
+        customerName: `${appointments.length} randevu`,
+        date: targetDate,
+        time: `${currentHour}:00`,
+      } as Record<string, string>;
+
+      const resolvedSubject = replaceMessageVariables(String(template.subject || ''), summaryData);
+      const resolvedBody = replaceMessageVariables(String(template.body || ''), summaryData);
+
+      console.log(`[EMAIL] ${recipient} gonderiliyor: to=${staffMember.email} (${staffMember.name})`);
+      const emailResult = await sendGmail({ to: staffMember.email, subject: resolvedSubject, html: resolvedBody });
+      if (emailResult.success) sent++;
+      else failed++;
+    }
+    return { sent, failed };
+  }
+
+  // customer ve staff icin: randevu basina bir email
+  for (const appt of appointments) {
+    const apptStaff = appt.staff as Record<string, unknown> | null;
+    const eventData = buildEventDataFromAppointment(appt, apptStaff);
+
+    const toEmail = recipient === 'staff'
+      ? String(eventData.staffEmail || '')
+      : String(eventData.customerEmail || '');
+
+    if (!toEmail) continue;
+
+    const resolvedSubject = replaceMessageVariables(String(template.subject || ''), eventData as Record<string, string>);
+    const resolvedBody = replaceMessageVariables(String(template.body || ''), eventData as Record<string, string>);
+
+    const emailResult = await sendGmail({ to: toEmail, subject: resolvedSubject, html: resolvedBody });
+    if (emailResult.success) sent++;
+    else failed++;
+  }
+
+  return { sent, failed };
 }
 
-function resolveEmail(targetType: string, eventData: Record<string, unknown>): string {
-  if (targetType.includes('staff')) return String(eventData.staffEmail || '');
-  return String(eventData.customerEmail || '');
-}
+/**
+ * Recipient tipine gore staff listesini dondur
+ * admin: is_admin=true olan aktif personeller
+ * greeter: role='greeter' olan aktif personeller
+ */
+// deno-lint-ignore no-explicit-any
+async function getStaffByRecipientType(supabase: any, recipientType: string): Promise<Array<{ name: string; phone: string; email: string }>> {
+  if (recipientType === 'greeter') {
+    const { data } = await supabase
+      .from('staff')
+      .select('name, phone, email')
+      .eq('role', 'greeter')
+      .eq('active', true);
+    return data || [];
+  }
 
-function resolveRecipientName(targetType: string, eventData: Record<string, unknown>): string {
-  if (targetType.includes('staff')) return String(eventData.staffName || '');
-  return String(eventData.customerName || '');
+  // admin (default)
+  const { data } = await supabase
+    .from('staff')
+    .select('name, phone, email')
+    .eq('is_admin', true)
+    .eq('active', true);
+  return data || [];
 }

@@ -29,6 +29,7 @@ interface UnifiedFlow {
     mail_template_ids: string[];
     active: boolean;
     schedule_hour?: string;
+    schedule_day?: string;
 }
 
 interface WhatsAppTemplate {
@@ -274,7 +275,8 @@ function createFlowItem(flow: UnifiedFlow): HTMLElement {
     if (isTimeBased) {
         details.appendChild(createRow('Type', 'time based'));
         const hour = flow.schedule_hour || '10';
-        details.appendChild(createRow('Schedule', `Daily at ${hour}:00`));
+        const dayLabel = flow.schedule_day === 'tomorrow' ? 'tomorrow' : 'today';
+        details.appendChild(createRow('Schedule', `Daily at ${hour}:00 - ${dayLabel}'s appointments`));
     } else {
         details.appendChild(createRow('Type', 'event based'));
         const triggerLabel = triggerLabels[flow.trigger] || flow.trigger;
@@ -384,9 +386,11 @@ function resetFlowForm(): void {
         radio.checked = false;
     });
 
-    // Reset schedule hour to default (10:00)
+    // Reset schedule hour to default (10:00) and schedule day to 'today'
     const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
     if (scheduleHourSelect) scheduleHourSelect.value = '10';
+    const scheduleDaySelect = document.getElementById('unifiedFlowScheduleDay') as HTMLSelectElement;
+    if (scheduleDaySelect) scheduleDaySelect.value = 'today';
 
     document.querySelectorAll<HTMLInputElement>('input[name="unifiedFlowProfiles"]').forEach(cb => {
         cb.checked = false;
@@ -490,10 +494,16 @@ function populateFlowForm(flow: UnifiedFlow): void {
         if (triggerRadio) triggerRadio.checked = true;
     }
 
-    // Set schedule hour for time-based flows
-    if (isTimeBased && flow.schedule_hour) {
-        const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
-        if (scheduleHourSelect) scheduleHourSelect.value = flow.schedule_hour;
+    // Set schedule hour and day for time-based flows
+    if (isTimeBased) {
+        if (flow.schedule_hour) {
+            const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
+            if (scheduleHourSelect) scheduleHourSelect.value = flow.schedule_hour;
+        }
+        if (flow.schedule_day) {
+            const scheduleDaySelect = document.getElementById('unifiedFlowScheduleDay') as HTMLSelectElement;
+            if (scheduleDaySelect) scheduleDaySelect.value = flow.schedule_day;
+        }
     }
 
     (flow.profiles || []).forEach(profile => {
@@ -528,10 +538,13 @@ async function saveFlow(): Promise<void> {
     // Set trigger based on flow type
     let trigger: string;
     let schedule_hour: string | undefined;
+    let schedule_day: string | undefined;
     if (flowType === 'time') {
         trigger = 'HATIRLATMA'; // Time-based trigger
         const scheduleHourSelect = document.getElementById('unifiedFlowScheduleHour') as HTMLSelectElement;
         schedule_hour = scheduleHourSelect?.value || '10';
+        const scheduleDaySelect = document.getElementById('unifiedFlowScheduleDay') as HTMLSelectElement;
+        schedule_day = scheduleDaySelect?.value || 'today';
     } else {
         const triggerRadio = document.querySelector('input[name="unifiedFlowTrigger"]:checked') as HTMLInputElement;
         trigger = triggerRadio?.value || '';
@@ -554,7 +567,7 @@ async function saveFlow(): Promise<void> {
         return;
     }
 
-    const flowData: Partial<UnifiedFlow> = { name, description, trigger, profiles, whatsapp_template_ids, mail_template_ids, schedule_hour };
+    const flowData: Partial<UnifiedFlow> = { name, description, trigger, profiles, whatsapp_template_ids, mail_template_ids, schedule_hour, schedule_day };
 
     if (saveBtn) ButtonAnimator.start(saveBtn);
 

@@ -807,19 +807,25 @@
                     </div>
                     <div class="input-group" id="timeBasedInfo" style="display: none;">
                         <label>Schedule</label>
-                        <select id="unifiedFlowScheduleHour" class="input-field" style="width: 140px; padding: 10px 35px 10px 15px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: white url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22 viewBox=%220 0 12 7%22%3E%3Cpath fill=%22%23555%22 d=%22M6 7L0 0h12z%22/%3E%3C/svg%3E') no-repeat right 15px center; cursor: pointer;">
-                            <option value="10" selected>10:00</option>
-                            <option value="11">11:00</option>
-                            <option value="12">12:00</option>
-                            <option value="13">13:00</option>
-                            <option value="14">14:00</option>
-                            <option value="15">15:00</option>
-                            <option value="16">16:00</option>
-                            <option value="17">17:00</option>
-                            <option value="18">18:00</option>
-                            <option value="19">19:00</option>
-                            <option value="20">20:00</option>
-                        </select>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <select id="unifiedFlowScheduleHour" class="input-field" style="width: 140px; padding: 10px 35px 10px 15px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: white url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22 viewBox=%220 0 12 7%22%3E%3Cpath fill=%22%23555%22 d=%22M6 7L0 0h12z%22/%3E%3C/svg%3E') no-repeat right 15px center; cursor: pointer;">
+                                <option value="10" selected>10:00</option>
+                                <option value="11">11:00</option>
+                                <option value="12">12:00</option>
+                                <option value="13">13:00</option>
+                                <option value="14">14:00</option>
+                                <option value="15">15:00</option>
+                                <option value="16">16:00</option>
+                                <option value="17">17:00</option>
+                                <option value="18">18:00</option>
+                                <option value="19">19:00</option>
+                                <option value="20">20:00</option>
+                            </select>
+                            <select id="unifiedFlowScheduleDay" class="input-field" style="width: 160px; padding: 10px 35px 10px 15px; appearance: none; -webkit-appearance: none; -moz-appearance: none; background: white url('data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%227%22 viewBox=%220 0 12 7%22%3E%3Cpath fill=%22%23555%22 d=%22M6 7L0 0h12z%22/%3E%3C/svg%3E') no-repeat right 15px center; cursor: pointer;">
+                                <option value="today" selected>today</option>
+                                <option value="tomorrow">tomorrow</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="input-group">
                         <label>Profiles</label>

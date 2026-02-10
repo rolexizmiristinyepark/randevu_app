@@ -164,14 +164,13 @@ export const MESSAGE_TRIGGERS: Record<string, string> = {
 
 /**
  * Alici tanimlari
- * GAS: MESSAGE_RECIPIENTS
+ * Event-based: customer, staff, admin
+ * Time-based (HATIRLATMA): customer, staff, admin, greeter
+ * Gun secimi schedule_day ile yapilir (today/tomorrow)
  */
 export const MESSAGE_RECIPIENTS: Record<string, string> = {
   admin: 'admin',
   customer: 'customer',
   staff: 'assigned staff',
-  today_customers: "today's customers",
-  today_staffs: "today's staff",
-  tomorrow_customers: "tomorrow's customers",
-  tomorrow_staffs: "tomorrow's staff",
+  greeter: 'greeter',
 };
