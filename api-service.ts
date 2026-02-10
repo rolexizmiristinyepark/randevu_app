@@ -357,19 +357,25 @@ const ApiService = {
             });
 
             if (error) {
-                const errorMessage = error.message || 'Edge Function hatasi';
+                let errorMessage = error.message || 'Edge Function hatasi';
+
+                // Gercek hata mesajini response body'den cikar
+                if ((error as any).context instanceof Response) {
+                    try {
+                        const body = await (error as any).context.json();
+                        if (body?.error) errorMessage = body.error;
+                    } catch { /* body okunamadı */ }
+                }
 
                 // non-2xx + protected action: session expired mi kontrol et
-                if (errorMessage.includes('non-2xx') && this.PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
+                if (this.PROTECTED_ACTIONS.includes(action as ProtectedAction)) {
                     const { data: { session } } = await supabase.auth.getSession();
                     if (!session) {
-                        // Session yok — login modal goster
                         if (typeof (window as any).AdminAuth !== 'undefined') {
                             (window as any).AdminAuth.showLoginModal();
                         }
                         throw new Error('Oturum süresi doldu. Lütfen tekrar giriş yapın.');
                     }
-                    // Session var ama edge function hata dondu — gercek hatayi goster
                 }
 
                 throw new Error(errorMessage);
