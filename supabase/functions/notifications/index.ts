@@ -43,7 +43,7 @@ serve(async (req: Request) => {
     }
   } catch (err) {
     console.error('Notifications error:', err);
-    return errorResponse('Sunucuda bir hata oluştu', 500);
+    return errorResponse('Sunucuda bir hata oluştu: ' + String(err), 500);
   }
 });
 

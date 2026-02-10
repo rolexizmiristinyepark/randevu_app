@@ -23,7 +23,7 @@ export async function sendEmail(params: {
     return { success: false, error: 'RESEND_API_KEY ayarlanmamış' };
   }
 
-  const fromAddress = params.from || 'İstinyepark Rolex İzmir <istinyepark@kulahcioglu.com>';
+  const fromAddress = params.from || 'İstinye Rolex İzmir <istinye@kulahcioglu.com>';
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
