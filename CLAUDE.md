@@ -12,7 +12,13 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
 4. **`.env.development` gitignored** - commit etme
 5. **`Object.defineProperty` icin `configurable: true`** - Vite HMR uyumlulugu (admin-auth.ts)
 6. **Adapter pattern**: api-service.ts 89+ GAS action'i 13 Supabase Edge Function'a mapliyor
-7. **Otomatik commit + deploy**: Her degisiklik sonrasi SORMADAN commit yap. Edge function degisti ise deploy et. Kullaniciya sorma, direkt yap.
+7. **Otomatik commit + deploy + sync**: Her degisiklik sonrasi SORMADAN asagidaki adimlari sirala:
+   - `git add` + `git commit` (degisen dosyalar)
+   - `git push origin admiring-hypatia`
+   - Edge function degistiyse → `supabase functions deploy <func> --no-verify-jwt`
+   - Frontend degistiyse → `vercel --prod`
+   - CLAUDE.md ve MEMORY.md guncelle
+   Kullaniciya sorma, hepsini otomatik yap.
 8. **CLAUDE.md guncelle**: Her oturumda yapilan degisiklikleri CLAUDE.md'ye yaz. Compact/clear sonrasi bilgi kaybolmasin.
 
 ## Dosya Yapisi
