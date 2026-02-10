@@ -488,7 +488,7 @@ export class FormDirtyState {
         if (!this.inputs) return;
 
         this.inputs.forEach((input, index) => {
-            const key = input.id || input.name || `input-${index}`;
+            const key = input.id || `${input.name || 'input'}-${index}`;
             let value: string;
 
             if (input.type === 'checkbox' || input.type === 'radio') {
@@ -510,7 +510,7 @@ export class FormDirtyState {
         let hasChanges = false;
 
         this.inputs.forEach((input, index) => {
-            const key = input.id || input.name || `input-${index}`;
+            const key = input.id || `${input.name || 'input'}-${index}`;
             const originalValue = this.originalValues.get(key);
 
             let currentValue: string;
