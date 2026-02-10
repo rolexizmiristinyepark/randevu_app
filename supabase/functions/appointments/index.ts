@@ -10,6 +10,7 @@ import { validateAppointmentInput } from '../_shared/validation.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import { syncAppointmentToCalendar } from '../_shared/google-calendar.ts';
+import { sendGmail } from '../_shared/gmail-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 // Profil shortcode donusumu (GAS: PROFILE_TO_CODE)
@@ -1030,7 +1031,7 @@ async function triggerAppointmentNotification(
         const targetType = template.target_type || 'customer';
 
         // Admin target: tüm admin personellere gönder
-        if (targetType === 'staff' && !eventData.staffPhone) {
+        if (targetType === 'admin' || (targetType === 'staff' && !eventData.staffPhone)) {
           // Staff atanmamış — admin'lere gönder
           const { data: admins } = await supabase
             .from('staff')
@@ -1111,6 +1112,64 @@ async function triggerAppointmentNotification(
         });
 
         console.log(`Notification ${result.success ? 'sent' : 'failed'}: ${phone} (${template.name})`);
+      }
+    }
+
+    // ==================== EMAIL ====================
+    if (flow.mail_template_ids && flow.mail_template_ids.length > 0) {
+      for (const templateId of flow.mail_template_ids) {
+        const { data: template } = await supabase
+          .from('mail_templates')
+          .select('*')
+          .eq('id', templateId)
+          .single();
+
+        if (!template) continue;
+
+        const recipient = template.recipient || 'customer';
+        let toEmail = '';
+
+        if (recipient === 'staff') {
+          toEmail = String(eventData.staffEmail || '');
+        } else if (recipient === 'admin') {
+          toEmail = Deno.env.get('ADMIN_EMAIL') || Deno.env.get('GMAIL_USER') || '';
+        } else {
+          toEmail = String(eventData.customerEmail || '');
+        }
+
+        if (!toEmail) continue;
+
+        const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
+        let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
+
+        // Info card varsa ekle
+        if (template.info_card_id) {
+          const { data: infoCard } = await supabase
+            .from('mail_info_cards')
+            .select('*')
+            .eq('id', template.info_card_id)
+            .single();
+
+          if (infoCard && infoCard.fields) {
+            const fields = infoCard.fields as Array<{ label: string; variable: string }>;
+            let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+            infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
+            for (const field of fields) {
+              const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
+              infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${field.label}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${value}</td></tr>`;
+            }
+            infoHtml += '</table>';
+            resolvedBody += infoHtml;
+          }
+        }
+
+        const emailResult = await sendGmail({
+          to: toEmail,
+          subject: resolvedSubject,
+          html: resolvedBody,
+        });
+
+        console.log(`Email ${emailResult.success ? 'sent' : 'failed'}: ${toEmail} (${template.name})`);
       }
     }
   }

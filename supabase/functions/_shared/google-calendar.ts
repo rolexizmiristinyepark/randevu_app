@@ -94,8 +94,20 @@ export async function syncAppointmentToCalendar(appointmentId: string): Promise<
 
   const accessToken = await getGoogleAccessToken(serviceAccountKey);
 
+  // Takvim başlığı: Müşteri - İlgili (Profil) / Tür
+  const PROFILE_LABELS: Record<string, string> = {
+    g: 'Genel', w: 'Walk-in', b: 'Mağaza', m: 'Yönetim', s: 'Bireysel', v: 'Özel Müşteri'
+  };
+  const TYPE_LABELS: Record<string, string> = {
+    meeting: 'Görüşme', purchase: 'Satın Alma', repair: 'Tamir/Bakım', other: 'Diğer'
+  };
+  const staffLabel = appointment.staff?.name || 'Atanmadı';
+  const profileLabel = PROFILE_LABELS[appointment.profile] || appointment.profile || 'Genel';
+  const typeLabel = TYPE_LABELS[appointment.appointment_type] || appointment.appointment_type || '';
+  const summary = `${appointment.customer_name} - ${staffLabel} (${profileLabel}) / ${typeLabel}`;
+
   const eventBody = {
-    summary: `${appointment.customer_name} - ${appointment.staff?.name || 'Atanacak'}`,
+    summary,
     start: {
       dateTime: `${appointment.date}T${appointment.start_time}`,
       timeZone: 'Europe/Istanbul',

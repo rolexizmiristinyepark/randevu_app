@@ -199,8 +199,52 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 
         if (!template) continue;
 
-        // Alici belirle: template.target_type = 'customer' | 'staff'
+        // Alici belirle: template.target_type = 'customer' | 'staff' | 'admin'
         const targetType = template.target_type || 'customer';
+
+        // Admin: tum admin personellerine gonder
+        if (targetType === 'admin') {
+          const { data: adminStaffs } = await supabase
+            .from('staff')
+            .select('name, phone')
+            .eq('role', 'admin')
+            .eq('active', true);
+
+          for (const admin of (adminStaffs || [])) {
+            if (!admin.phone) continue;
+            const components = buildTemplateComponents(template, eventData);
+            const result = await sendWhatsAppMessage(
+              admin.phone,
+              template.meta_template_name || template.name,
+              template.language || 'tr',
+              components
+            );
+            const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+            await logMessage({
+              appointment_id: eventData.appointmentId ? String(eventData.appointmentId) : undefined,
+              phone: formatPhoneWithCountryCode(admin.phone),
+              recipient_name: admin.name,
+              template_name: template.meta_template_name || template.name,
+              template_id: template.id,
+              status: result.success ? 'sent' : 'failed',
+              message_id: result.messageId || '',
+              error_message: result.error || '',
+              staff_id: eventData.staffId ? Number(eventData.staffId) : undefined,
+              staff_name: String(eventData.staffName || ''),
+              flow_id: flow.id,
+              triggered_by: trigger,
+              profile: profile,
+              message_content: resolvedContent,
+              target_type: targetType,
+              customer_name: String(eventData.customerName || ''),
+              customer_phone: formatPhoneWithCountryCode(String(eventData.customerPhone || '')),
+            });
+            if (result.success) whatsappSent++;
+            else whatsappFailed++;
+          }
+          continue;
+        }
+
         let phone = '';
         let recipientName = '';
 
