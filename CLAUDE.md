@@ -12,6 +12,7 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
 4. **`.env.development` gitignored** - commit etme
 5. **`Object.defineProperty` icin `configurable: true`** - Vite HMR uyumlulugu (admin-auth.ts)
 6. **Adapter pattern**: api-service.ts 89+ GAS action'i 13 Supabase Edge Function'a mapliyor
+7. **Otomatik commit + deploy**: Her degisiklik sonrasi SORMADAN commit yap. Edge function degisti ise deploy et. Kullaniciya sorma, direkt yap.
 
 ## Dosya Yapisi
 
