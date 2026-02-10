@@ -963,9 +963,18 @@ async function handleCreateManualAppointment(req: Request, body: EdgeFunctionBod
     return errorResponse('Manuel randevu oluşturulamadı: ' + error.message);
   }
 
+  const appointmentId = data?.id;
+
+  // Google Calendar'a ekle
+  if (appointmentId) {
+    await syncAppointmentToCalendar(appointmentId).catch(err => {
+      console.error('Calendar sync hatası (manual):', err);
+    });
+  }
+
   return jsonResponse({
     success: true,
-    appointmentId: data?.id,
+    appointmentId,
     message: 'Manuel randevu oluşturuldu.',
   });
 }
