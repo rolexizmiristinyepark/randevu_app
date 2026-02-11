@@ -12,10 +12,12 @@ export async function verifyTurnstile(token: string): Promise<{ success: boolean
 
   // Development mode: test key kabul et
   if (!secretKey || secretKey === '1x0000000000000000000000000000000') {
+    console.log('Turnstile: dev mode (no secret key), skipping verification');
     return { success: true };
   }
 
   if (!token) {
+    console.warn('Turnstile: token boş geldi');
     return { success: false, error: 'Turnstile token gerekli' };
   }
 
@@ -30,9 +32,15 @@ export async function verifyTurnstile(token: string): Promise<{ success: boolean
     });
 
     const result = await response.json();
-    return { success: result.success === true };
-  } catch {
-    // Fail-closed: hata durumunda reddet
+    if (!result.success) {
+      console.warn('Turnstile doğrulama başarısız:', JSON.stringify(result));
+    }
+    return {
+      success: result.success === true,
+      error: result.success ? undefined : (result['error-codes']?.join(', ') || 'Doğrulama başarısız'),
+    };
+  } catch (err) {
+    console.error('Turnstile fetch hatası:', err);
     return { success: false, error: 'Turnstile doğrulama hatası' };
   }
 }
