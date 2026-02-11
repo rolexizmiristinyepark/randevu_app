@@ -223,8 +223,10 @@ async function handleFormSubmit(): Promise<void> {
         }
     } catch (error) {
         ButtonAnimator.error(btn);
+        const errMsg = (error as Error)?.message || String(error);
+        console.error('createAppointment HATA:', errMsg);
         logError(error as Error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
-        showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
+        showAlert('Randevu oluşturulamadı: ' + errMsg, 'error');
         // ⚡ FIX: Reset Turnstile widget after error (token is single-use)
         resetTurnstile();
     }

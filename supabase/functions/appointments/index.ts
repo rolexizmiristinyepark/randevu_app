@@ -99,9 +99,11 @@ serve(async (req: Request) => {
 async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Promise<Response> {
   // Turnstile dogrulama
   const turnstileToken = String(body.turnstileToken || body.cfTurnstileResponse || '');
+  console.log('Turnstile token length:', turnstileToken.length, 'starts:', turnstileToken.substring(0, 30));
   const turnstile = await verifyTurnstile(turnstileToken);
   if (!turnstile.success) {
-    return errorResponse('Bot doğrulaması başarısız: ' + (turnstile.error || ''), 403);
+    console.error('Turnstile FAILED:', turnstile.error, 'token_len:', turnstileToken.length);
+    return errorResponse('Bot doğrulaması başarısız: ' + (turnstile.error || '') + ' [token_len=' + turnstileToken.length + ']', 403);
   }
 
   // Rate limit
