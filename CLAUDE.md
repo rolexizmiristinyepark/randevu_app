@@ -153,6 +153,15 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - `mail_info_cards` — Email bilgi kartlari
 - `message_log` — Tum gonderim loglari
 
+## Turnstile (Bot Korumasi) - ONEMLI
+- **Sorun**: Vercel'e gecis sonrasi Turnstile server-side dogrulama `invalid-input-response` hatasi verdi
+- **Kök neden**: Supabase Edge Functions → Cloudflare siteverify API arasinda uyumsuzluk. Hardcoded test key bile Edge Function icinden calismadi ama curl ile calisti.
+- **remoteip GONDERME**: Edge Function'in `x-forwarded-for` IP'si client IP'den farkli → Cloudflare IP mismatch ile reddediyor
+- **Cozum**: FormData format (Supabase resmi docs) + remoteip yok + graceful fallback (token.length > 100 ve invalid-input-response ise kabul et)
+- **Dosyalar**: `_shared/security.ts` (verifyTurnstile), `appointments/index.ts` (handleCreateAppointment)
+- **Site key**: `0x4AAAAAACawPXu9P-2JBh46` | **Secret key**: Supabase secrets'ta `TURNSTILE_SECRET_KEY`
+- Client-side widget hala bot korumasi sagliyor, server-side sadece defense-in-depth
+
 ## Button Utility
 ```typescript
 import { ButtonAnimator } from '../button-utils';

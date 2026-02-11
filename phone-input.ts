@@ -3,8 +3,8 @@
  * Telefon girişi için bayraklı, ülke aramalı, validation'lı input
  */
 
-// CSS eagerly loaded (~5KB - küçük, hemen gerekli)
-import 'intl-tel-input/build/css/intlTelInput.css';
+// CSS artık style.css içinden @import ile yükleniyor (aynı chunk'ta kalması için)
+// import 'intl-tel-input/build/css/intlTelInput.css';
 
 // Lazy-loaded intl-tel-input library (~90KB deferred until first phone input init)
 let _intlTelInput: typeof import('intl-tel-input').default | null = null;
@@ -144,6 +144,16 @@ export async function initPhoneInput(
         }
     };
     const instance = intlTelInput(input, itiOptions) as IntlTelInputInstance;
+
+    // Production build'de CSS chunk sıralaması değişebiliyor (Vite code-splitting).
+    // intl-tel-input kütüphanesi .iti wrapper'ı display:inline-block yapıyor,
+    // bizim override'ımız farklı chunk'ta kalınca ezilebiliyor.
+    // JS ile inline !important set ederek CSS sıralamasından bağımsız çalışmasını sağlıyoruz.
+    const itiWrapper = input.closest('.iti') as HTMLElement;
+    if (itiWrapper) {
+        itiWrapper.style.setProperty('display', 'block', 'important');
+        itiWrapper.style.setProperty('width', '100%', 'important');
+    }
 
     instances.set(inputId, instance);
     return instance;

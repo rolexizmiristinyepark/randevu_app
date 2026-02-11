@@ -97,9 +97,9 @@ serve(async (req: Request) => {
  * PostgreSQL: check_and_create_appointment() advisory lock ile
  */
 async function handleCreateAppointment(req: Request, body: EdgeFunctionBody): Promise<Response> {
-  // Turnstile dogrulama
+  // Turnstile dogrulama (remoteIp GÖNDERME — Edge Function IP ≠ client IP)
   const turnstileToken = String(body.turnstileToken || body.cfTurnstileResponse || '');
-  console.log('Turnstile token length:', turnstileToken.length, 'starts:', turnstileToken.substring(0, 30));
+  console.log('Turnstile token length:', turnstileToken.length);
   const turnstile = await verifyTurnstile(turnstileToken);
   if (!turnstile.success) {
     console.error('Turnstile FAILED:', turnstile.error, 'token_len:', turnstileToken.length);

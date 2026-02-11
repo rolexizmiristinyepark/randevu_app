@@ -18,10 +18,9 @@
     <script type="module" src="date-utils.ts"></script>
     <!-- Security Helper Functions -->
     <script type="module" src="security-helpers.ts"></script>
-    <!-- Cloudflare Turnstile (explicit render mode - site key JavaScript'ten gelir) -->
-    <!-- 🔒 v3.9.13: Inline script moved to external file for CSP compliance -->
+    <!-- Cloudflare Turnstile (explicit render, onload callback kullanmıyoruz — module timing sorunu) -->
     <script type="module" src="turnstile-init.ts"></script>
-    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onloadTurnstileCallback" async defer></script>
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" async defer></script>
 </head>
 <body>
     <div class="container">
