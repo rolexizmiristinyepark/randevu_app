@@ -1,6 +1,9 @@
-* { margin: 0; padding: 0; box-sizing: border-box; }
+/* intl-tel-input CSS'ini buradan import ediyoruz (phone-input.ts'den değil).
+   Böylece kütüphane CSS'i ve bizim override'larımız AYNI chunk'ta kalır,
+   Vite production build'de CSS sıralaması sorunu olmaz. */
+@import 'intl-tel-input/build/css/intlTelInput.css';
 
-/* intl-tel-input: Tüm özelleştirmeler dosyanın sonundaki CUSTOMIZATION bölümünde */
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* Template Variable Tags */
 .var-tag {
@@ -1209,28 +1212,37 @@ label {
 }
 
 /* ==================== INTL-TEL-INPUT CUSTOMIZATION ==================== */
+/* Border wrapper'da — country selector + input tek kutu olarak görünür */
 .iti {
     display: block !important;
     width: 100% !important;
-}
-
-.iti__tel-input {
-    width: 100% !important;
-    padding: 14px 16px 14px 90px !important;
     border: 1px solid #E8E8E8;
     border-radius: 2px;
-    font-size: 14px;
-    font-family: 'Montserrat', sans-serif;
-    color: #1A1A2E;
     background: #FAFAFA;
     transition: all 0.2s ease;
     box-sizing: border-box;
 }
 
-.iti__tel-input:focus {
-    outline: none;
+.iti:focus-within {
     border-color: #C9A55A;
     background: white;
+}
+
+.iti__tel-input {
+    width: 100% !important;
+    padding: 14px 16px 14px 90px !important;
+    border: none !important;
+    border-radius: 0;
+    font-size: 14px;
+    font-family: 'Montserrat', sans-serif;
+    color: #1A1A2E;
+    background: transparent;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.iti__tel-input:focus {
+    outline: none;
 }
 
 .iti__tel-input::placeholder {
@@ -1242,7 +1254,7 @@ label {
 }
 
 .iti__selected-country {
-    background: #FAFAFA;
+    background: transparent;
     border-right: 1px solid #E8E8E8;
     padding: 0 8px 0 12px;
 }
