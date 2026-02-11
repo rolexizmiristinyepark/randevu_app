@@ -1210,8 +1210,8 @@ label {
 
 /* ==================== INTL-TEL-INPUT CUSTOMIZATION ==================== */
 .iti {
-    display: block;
-    width: 100%;
+    display: block !important;
+    width: 100% !important;
 }
 
 .iti__tel-input {
