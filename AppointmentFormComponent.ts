@@ -28,12 +28,9 @@ const log = createDebugLogger('AppointmentForm');
 function resetTurnstile(): void {
     try {
         const turnstile = (window as any).turnstile;
-        if (turnstile) {
-            // Get the widget ID from the container
-            const widgetContainer = document.getElementById('turnstileWidget');
-            if (widgetContainer) {
-                turnstile.reset(widgetContainer);
-            }
+        const widgetId = (window as any).turnstileWidgetId;
+        if (turnstile && widgetId != null) {
+            turnstile.reset(widgetId);
         }
     } catch (error) {
         console.warn('Turnstile reset failed:', error);
@@ -93,8 +90,12 @@ async function handleFormSubmit(): Promise<void> {
     const kvkkContainer = document.getElementById('kvkkContainer');
     if (kvkkContainer) kvkkContainer.classList.remove('error');
 
-    // Cloudflare Turnstile token check
-    const turnstileToken = (window as any).turnstile?.getResponse();
+    // Cloudflare Turnstile token check (widget ID ile)
+    const widgetId = (window as any).turnstileWidgetId;
+    const turnstileToken = widgetId != null
+        ? (window as any).turnstile?.getResponse(widgetId)
+        : (window as any).turnstile?.getResponse();
+    log.debug('Turnstile token:', turnstileToken ? `${turnstileToken.substring(0, 20)}... (len=${turnstileToken.length})` : 'EMPTY');
     if (!turnstileToken) {
         showAlert('Lütfen robot kontrolünü tamamlayın.', 'error');
         return;

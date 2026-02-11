@@ -10,9 +10,11 @@ declare global {
         onloadTurnstileCallback: () => void;
         turnstile: {
             render: (element: HTMLElement, options: TurnstileOptions) => string;
-            reset: (widgetId?: string) => void;
+            reset: (widgetId?: string | HTMLElement) => void;
+            getResponse: (widgetId?: string | HTMLElement) => string;
         };
         turnstileVerified: boolean;
+        turnstileWidgetId: string | null;
         TURNSTILE_SITE_KEY: string;
     }
 }
@@ -27,6 +29,8 @@ interface TurnstileOptions {
 /**
  * Turnstile callback - invoked when API script loads
  */
+window.turnstileWidgetId = null;
+
 window.onloadTurnstileCallback = function(): void {
     const widget = document.getElementById('turnstileWidget');
     const siteKey = (window.TURNSTILE_SITE_KEY || '').trim();
@@ -34,10 +38,10 @@ window.onloadTurnstileCallback = function(): void {
     console.log('Turnstile loading with key:', siteKey.substring(0, 10) + '...');
 
     if (widget && window.turnstile) {
-        window.turnstile.render(widget, {
+        window.turnstileWidgetId = window.turnstile.render(widget, {
             sitekey: siteKey,
             callback: function(token: string): void {
-                console.log('Turnstile verified');
+                console.log('Turnstile verified, token length:', token.length);
                 window.turnstileVerified = true;
 
                 // Show submit button when verified
@@ -50,6 +54,7 @@ window.onloadTurnstileCallback = function(): void {
             theme: 'light',
             size: 'normal'
         });
+        console.log('Turnstile widget rendered, id:', window.turnstileWidgetId);
     }
 };
 
