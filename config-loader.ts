@@ -63,7 +63,7 @@ interface BackendConfigResponse {
 function loadEnvironmentConfig(): { SUPABASE_URL: string; BASE_URL: string; DEBUG: boolean; VERSION: string; TURNSTILE_SITE_KEY: string } {
     const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
     const BASE_URL = import.meta.env.VITE_BASE_URL;
-    const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY;
+    const TURNSTILE_SITE_KEY = (import.meta.env.VITE_TURNSTILE_SITE_KEY || '').trim();
     const DEBUG = import.meta.env.VITE_DEBUG === 'true';
     const VERSION = import.meta.env.VITE_APP_VERSION || '1.0.0';
 

@@ -29,7 +29,7 @@ interface TurnstileOptions {
  */
 window.onloadTurnstileCallback = function(): void {
     const widget = document.getElementById('turnstileWidget');
-    const siteKey = window.TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
+    const siteKey = (window.TURNSTILE_SITE_KEY || '').trim();
 
     console.log('Turnstile loading with key:', siteKey.substring(0, 10) + '...');
 
