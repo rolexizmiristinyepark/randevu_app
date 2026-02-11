@@ -1230,7 +1230,11 @@ label {
 
 .iti__tel-input {
     width: 100% !important;
-    padding: 14px 16px 14px 90px !important;
+    /* padding-left library JS tarafından dinamik hesaplanır (updateInputPadding).
+       !important kullanırsak library'nin inline style'ını ezeriz → kayma olur */
+    padding-top: 14px;
+    padding-right: 16px;
+    padding-bottom: 14px;
     border: none !important;
     border-radius: 0;
     font-size: 14px;
@@ -1302,7 +1306,9 @@ label {
 /* Mobile responsive */
 @media (max-width: 600px) {
     .iti__tel-input {
-        padding: 12px 14px 12px 85px !important;
+        padding-top: 12px;
+        padding-right: 14px;
+        padding-bottom: 12px;
         font-size: 13px;
     }
 
