@@ -95,7 +95,7 @@ async function handleFormSubmit(): Promise<void> {
     const turnstileToken = widgetId != null
         ? (window as any).turnstile?.getResponse(widgetId)
         : (window as any).turnstile?.getResponse();
-    log.debug('Turnstile token:', turnstileToken ? `${turnstileToken.substring(0, 20)}... (len=${turnstileToken.length})` : 'EMPTY');
+    log.log('Turnstile token:', turnstileToken ? `${turnstileToken.substring(0, 20)}... (len=${turnstileToken.length})` : 'EMPTY');
     if (!turnstileToken) {
         showAlert('Lütfen robot kontrolünü tamamlayın.', 'error');
         return;
