@@ -18,6 +18,7 @@ import { initMailManager } from './admin/mail-manager';
 import { initUnifiedFlowManager } from './admin/unified-flow-manager';
 import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
+import { initNotificationBell, handleAppointmentChange, handleIncomingMessage } from './admin/notification-bell';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
 import { AdminAuth } from './admin-auth';
@@ -259,6 +260,13 @@ async function startApp(): Promise<void> {
         if (loadingOverlay) loadingOverlay.style.display = 'none';
         if (mainTabs) mainTabs.style.display = 'flex';
         if (activeContent) activeContent.style.display = 'block';
+
+        // Setup notification bell (Realtime bildirimler)
+        initNotificationBell({
+            switchMainTab: UI.switchMainTab,
+            switchSubTab: UI.switchSubTab,
+            switchInnerTab: UI.switchInnerTab,
+        });
 
         // Setup Realtime subscriptions for live updates
         setupRealtimeSubscriptions();
@@ -635,8 +643,9 @@ function setupRealtimeSubscriptions(): void {
         .channel('admin-appointments')
         .on('postgres_changes',
             { event: '*', schema: 'public', table: 'appointments' },
-            (_payload) => {
+            (payload) => {
                 loadAppointments();
+                handleAppointmentChange(payload.eventType, payload);
             }
         )
         .subscribe();
@@ -646,7 +655,8 @@ function setupRealtimeSubscriptions(): void {
         .channel('admin-messages')
         .on('postgres_changes',
             { event: '*', schema: 'public', table: 'message_log' },
-            (_payload) => {
+            (payload) => {
+                handleIncomingMessage(payload);
                 // Refresh WhatsApp chat if visible
                 const whatsappTab = document.getElementById('whatsappMessages');
                 if (whatsappTab?.classList.contains('active')) {
