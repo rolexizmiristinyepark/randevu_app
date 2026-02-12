@@ -1,3 +1,6 @@
+/* intl-tel-input CSS — admin paneldeki telefon inputları için */
+@import 'intl-tel-input/build/css/intlTelInput.css';
+
         * {
             margin: 0;
             padding: 0;
@@ -2235,4 +2238,106 @@
     .wa-message {
         max-width: 85%;
     }
+}
+
+/* ==================== intl-tel-input (Admin Dark Theme) ==================== */
+.iti {
+    display: block !important;
+    width: 100% !important;
+    border: 1px solid #3a3a5c;
+    border-radius: 4px;
+    background: #2a2a4a;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.iti:focus-within {
+    border-color: #C9A55A;
+    background: #1e1e3a;
+}
+
+.iti__tel-input {
+    width: 100% !important;
+    padding-top: 12px;
+    padding-right: 14px;
+    padding-bottom: 12px;
+    border: none !important;
+    border-radius: 0;
+    font-size: 14px;
+    font-family: 'Montserrat', sans-serif;
+    color: #e0e0e0;
+    background: transparent;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.iti__tel-input:focus {
+    outline: none;
+}
+
+.iti__tel-input::placeholder {
+    color: #888;
+}
+
+.iti__country-container {
+    padding: 0;
+}
+
+.iti__selected-country {
+    background: transparent;
+    border-right: 1px solid #3a3a5c;
+    padding: 0 8px 0 12px;
+}
+
+.iti__selected-country:hover,
+.iti__selected-country:focus {
+    background: #3a3a5c;
+}
+
+.iti__selected-dial-code {
+    font-size: 14px;
+    font-weight: 500;
+    color: #e0e0e0;
+    font-family: 'Montserrat', sans-serif;
+}
+
+.iti__dropdown-content {
+    border: 1px solid #3a3a5c;
+    border-radius: 4px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    background: #2a2a4a;
+    max-height: 250px;
+}
+
+.iti__search-input {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 14px;
+    padding: 10px 12px;
+    border-bottom: 1px solid #3a3a5c;
+    background: #1e1e3a;
+    color: #e0e0e0;
+}
+
+.iti__search-input::placeholder {
+    color: #888;
+}
+
+.iti__country-list {
+    background: #2a2a4a;
+}
+
+.iti__country {
+    padding: 8px 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    color: #e0e0e0;
+}
+
+.iti__country:hover,
+.iti__country--highlight {
+    background: #3a3a5c;
+}
+
+.iti__dial-code {
+    color: #999;
 }
