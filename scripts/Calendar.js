@@ -68,8 +68,15 @@ const SlotService = {
 
       const events = calendar.getEvents(slotStart, slotEnd);
 
+      // Only count appointment system events (ignore birthdays, tasks, holidays etc.)
+      const appointmentEvents = events.filter(function(event) {
+        if (event.isAllDayEvent()) return false;
+        if (!event.getTag('appointmentType')) return false;
+        return true;
+      });
+
       // KURAL: 0 randevu olmalı (tür fark etmez)
-      return events.length === 0;
+      return appointmentEvents.length === 0;
     } catch (error) {
       log.error('isSlotFree error:', error);
       return false; // Hata durumunda safe side: dolu kabul et

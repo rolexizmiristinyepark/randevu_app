@@ -70,17 +70,16 @@ const ValidationService = {
 
       if (isDeliveryOrShipping) {
         const deliveryCount = AvailabilityService.getDeliveryCount(date);
+        const data = StorageService.getData();
+        const maxDaily = data.settings?.maxDaily || 4;
 
-        if (deliveryCount >= 3) {
+        if (deliveryCount >= maxDaily) {
           return {
             valid: false,
-            error: 'Bu gün için teslim/gönderi randevu limiti doldu (max 3). Lütfen başka bir gün seçin.',
+            error: `Bu gün için teslim/gönderi randevu limiti doldu (max ${maxDaily}). Lütfen başka bir gün seçin.`,
             isDayMaxed: true
           };
         }
-
-        // KURAL 4: KALDIRILDI - Personel bazlı teslim limiti artık yok
-        // Sadece global günlük limit (max 3) geçerli
       }
 
       // Tüm kontroller geçildi

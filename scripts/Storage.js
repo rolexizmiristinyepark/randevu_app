@@ -77,7 +77,7 @@ const PropertiesStorageService = {
       shifts: {}, // { 'YYYY-MM-DD': { staffId: 'morning|evening|full' } }
       settings: {
         interval: 60,
-        maxDaily: 3
+        maxDaily: 4
       }
     };
     this.saveData(defaultData);

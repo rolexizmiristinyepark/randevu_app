@@ -142,17 +142,20 @@ const ApiService = {
 
                 let response: Response;
 
-                // 🔒 GÜVENLİK: Protected actions için POST + JSON body kullan
-                // API key URL'de ASLA görünmez (browser history, server logs güvenli)
+                // 🔒 GÜVENLİK: Protected actions ve büyük payload'lar için POST + JSON body kullan
                 const isProtectedAction = this.PROTECTED_ACTIONS.includes(action as ProtectedAction);
+                // createAppointment has turnstileToken (~2000 chars) - must use POST to avoid URL truncation
+                const needsPost = isProtectedAction && apiKey || action === 'createAppointment';
 
-                if (isProtectedAction && apiKey) {
-                    // ✅ POST + JSON Body - API key güvenli
-                    const requestBody = {
+                if (needsPost) {
+                    // ✅ POST + JSON Body - API key güvenli, turnstile token truncation önlenir
+                    const requestBody: Record<string, unknown> = {
                         action,
-                        apiKey,
                         ...params
                     };
+                    if (apiKey) {
+                        requestBody.apiKey = apiKey;
+                    }
 
                     response = await fetch(appsScriptUrl, {
                         method: 'POST',

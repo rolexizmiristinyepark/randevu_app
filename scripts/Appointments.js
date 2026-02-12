@@ -70,6 +70,13 @@ const AppointmentService = {
       const { startDate, endDate } = DateUtils.getDateRange(date);
       let events = calendar.getEvents(startDate, endDate);
 
+      // Filter: only appointment system events (ignore birthdays, tasks, holidays)
+      events = events.filter(event => {
+        if (event.isAllDayEvent()) return false;
+        if (!event.getTag('appointmentType')) return false;
+        return true;
+      });
+
       // appointmentType filtresi varsa uygula
       if (appointmentType) {
         events = events.filter(event => {
@@ -878,12 +885,14 @@ function createAppointment(params) {
         const { startDate, endDate } = DateUtils.getDateRange(date);
         const allEventsToday = calendar.getEvents(startDate, endDate);
 
-        // Çakışan randevuları filtrele (epoch-minute ile)
+        // Çakışan randevuları filtrele - sadece randevu sistemi etkinlikleri
         const overlappingEvents = allEventsToday.filter(event => {
+          if (event.isAllDayEvent()) return false;
+          if (!event.getTag('appointmentType')) return false;
+
           const eventStart = DateUtils.dateToEpochMinute(event.getStartTime());
           const eventEnd = DateUtils.dateToEpochMinute(event.getEndTime());
 
-          // checkTimeOverlap: [start, end) standardı ile çakışma kontrolü
           return DateUtils.checkTimeOverlap(newStart, newEnd, eventStart, eventEnd);
         });
 
@@ -945,7 +954,7 @@ function createAppointment(params) {
 
         // 2. Randevu tipi kontrolü - Teslim randevusu için günlük max kontrolü
         if (appointmentType === CONFIG.APPOINTMENT_TYPES.DELIVERY) {
-          const maxDelivery = data.settings?.maxDaily || 3;
+          const maxDelivery = data.settings?.maxDaily || 4;
 
           // Partial response: Sadece delivery randevularının sayısını al (performans optimizasyonu)
           const countResult = AppointmentService.getAppointments(date, {

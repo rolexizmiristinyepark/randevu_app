@@ -52,7 +52,7 @@ interface Config extends DynamicConfig {
 const FALLBACK_CONFIG = {
     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbz2H47TXf61bMev30qxUVw8TSZMFwKUps35uVY1WnXCxjshpPbodlNgfk2RkxoI-flV/exec',
     BASE_URL: 'https://rolexizmiristinyepark.github.io/randevu_app/',
-    TURNSTILE_SITE_KEY: '0x4AAAAAACDJXoobV68BNCME',
+    TURNSTILE_SITE_KEY: '1x00000000000000000000AA',
     DEBUG: false,
     VERSION: '1.0.0'
 };
@@ -219,7 +219,7 @@ function transformBackendConfig(backendConfig: any): DynamicConfig {
     return {
         shifts,
         appointmentHours: backendConfig.appointmentHours || { earliest: 11, latest: 21, interval: 60 },
-        maxDailyDeliveryAppointments: backendConfig.maxDailyDeliveryAppointments || 3,
+        maxDailyDeliveryAppointments: backendConfig.maxDailyDeliveryAppointments || 4,
         appointmentTypes,
         companyName: backendConfig.companyName,
         companyLocation: backendConfig.companyLocation
@@ -314,7 +314,7 @@ export async function initConfig(): Promise<Config> {
                 'full': { start: 11, end: 21, label: 'Full (11:00-21:00)' }
             },
             appointmentHours: { earliest: 11, latest: 21, interval: 60 },
-            maxDailyDeliveryAppointments: 3,
+            maxDailyDeliveryAppointments: 4,
             appointmentTypes: {
                 'delivery': 'Saat Teslim Alma',
                 'service': 'Servis & Bakım',

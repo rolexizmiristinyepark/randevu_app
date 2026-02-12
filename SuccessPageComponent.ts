@@ -99,9 +99,10 @@ export function addToCalendar(): void {
  * Cloudflare Turnstile callback - Called when bot protection succeeds
  * Defined in HTML as data-callback="onTurnstileSuccess"
  */
-export function onTurnstileSuccess(_token: string): void {
+export function onTurnstileSuccess(token: string): void {
     console.log('Turnstile successful, token received');
-    // Set flag for turnstile success
+    // Store token for form submission
+    (window as any).turnstileToken = token;
     (window as any).turnstileVerified = true;
 
     // Only show submit button if time is already selected (detailsSection is visible)

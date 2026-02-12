@@ -22,9 +22,11 @@ import { sanitizeName, sanitizePhone, sanitizeEmail, sanitizeInput } from './sec
  */
 function resetTurnstile(): void {
     try {
+        // Clear stored token
+        (window as any).turnstileToken = null;
+        (window as any).turnstileVerified = false;
         const turnstile = (window as any).turnstile;
         if (turnstile) {
-            // Get the widget ID from the container
             const widgetContainer = document.getElementById('turnstileWidget');
             if (widgetContainer) {
                 turnstile.reset(widgetContainer);
@@ -42,15 +44,25 @@ function resetTurnstile(): void {
  */
 export function initAppointmentForm(): void {
     const submitBtn = document.getElementById('submitBtn');
+    console.error('[FORM] initAppointmentForm called, submitBtn:', !!submitBtn);
     if (!submitBtn) return;
 
-    submitBtn.addEventListener('click', handleFormSubmit);
+    submitBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+            await handleFormSubmit();
+        } catch (err) {
+            console.error('[FORM] UNCAUGHT ERROR IN handleFormSubmit:', err);
+        }
+    });
 }
 
 /**
  * Handle form submission
  */
 async function handleFormSubmit(): Promise<void> {
+    console.error('[SUBMIT] handleFormSubmit ENTERED');
     // Input sanitization - XSS ve injection koruması
     const rawName = (document.getElementById('customerName') as HTMLInputElement).value;
     const rawPhone = (document.getElementById('customerPhone') as HTMLInputElement).value;
@@ -84,21 +96,29 @@ async function handleFormSubmit(): Promise<void> {
     const kvkkContainer = document.getElementById('kvkkContainer');
     if (kvkkContainer) kvkkContainer.classList.remove('error');
 
-    // Cloudflare Turnstile token check
-    const turnstileToken = (window as any).turnstile?.getResponse();
+    // Cloudflare Turnstile token - always get fresh from widget
+    let turnstileToken = (window as any).turnstile?.getResponse();
+    if (!turnstileToken) {
+        // Fallback to stored token from callback
+        turnstileToken = (window as any).turnstileToken;
+    }
     if (!turnstileToken) {
         showAlert('Lütfen robot kontrolünü tamamlayın.', 'error');
+        console.error('[SUBMIT] Turnstile token missing');
         return;
     }
+    console.error('[SUBMIT] Token found, length:', turnstileToken.length);
 
     if (!selectedAppointmentType) {
         showAlert('Lutfen randevu tipi secin.', 'error');
+        console.error('[SUBMIT] No appointment type');
         return;
     }
 
     // NEW: selectedStaff can be -1 (management link random), 0 (normal management), positive number (staff)
     if (!selectedDate || selectedStaff === null || selectedStaff === undefined || !selectedTime) {
         showAlert('Lutfen tarih, calisan ve saat secin.', 'error');
+        console.error('[SUBMIT] Missing:', { selectedDate, selectedStaff, selectedTime });
         return;
     }
 
@@ -140,6 +160,7 @@ async function handleFormSubmit(): Promise<void> {
     }
 
     try {
+        console.error('[SUBMIT] Making API call createAppointment...');
         const result = await apiCall('createAppointment', {
             date: selectedDate,
             time: selectedTime,
@@ -158,6 +179,7 @@ async function handleFormSubmit(): Promise<void> {
             kvkkConsent: true  // KVKK onayı (frontend'de zaten kontrol edildi)
         });
 
+        console.error('[SUBMIT] API result:', JSON.stringify(result));
         if (result.success) {
             // Save last appointment data
             const appointmentData = {
@@ -186,6 +208,7 @@ async function handleFormSubmit(): Promise<void> {
             resetTurnstile();
         }
     } catch (error) {
+        console.error('[SUBMIT] CATCH ERROR:', error);
         logError(error as Error, { context: 'confirmAppointment', selectedStaff, selectedDate, selectedTime });
         showAlert('Randevu oluşturulamadı. Lütfen tekrar deneyiniz.', 'error');
         ButtonUtils.reset(btn);
@@ -204,4 +227,5 @@ export const AppointmentForm = {
 if (typeof window !== 'undefined') {
     (window as any).initAppointmentForm = initAppointmentForm;
     (window as any).AppointmentForm = AppointmentForm;
+    (window as any).handleFormSubmit = handleFormSubmit;
 }

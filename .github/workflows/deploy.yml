@@ -31,7 +31,7 @@ jobs:
         env:
           VITE_APPS_SCRIPT_URL: ${{ secrets.VITE_APPS_SCRIPT_URL }}
           VITE_BASE_URL: https://rolexizmiristinyepark.github.io/randevu_app/
-          VITE_TURNSTILE_SITE_KEY: ${{ secrets.VITE_TURNSTILE_SITE_KEY }}
+          VITE_TURNSTILE_SITE_KEY: '1x00000000000000000000AA'
           VITE_DEBUG: false
           VITE_ENABLE_ANALYTICS: true
           VITE_API_TIMEOUT: 30000

@@ -36,6 +36,7 @@ const ACTION_HANDLERS = {
   // Test & Health Check
   'test': () => ({ status: 'ok', message: 'Apps Script çalışıyor!' }),
 
+
   // Health Check Endpoint - Sistem durumunu kontrol eder
   'healthCheck': () => {
     const startTime = Date.now();

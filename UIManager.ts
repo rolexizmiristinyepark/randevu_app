@@ -144,10 +144,13 @@ export function showAlert(message: string, type: AlertType = 'info'): void {
 
   container.appendChild(alert);
 
-  // Auto-hide after 5 seconds
+  // Scroll alert into view so user can see it
+  container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Auto-hide after 8 seconds (longer for error messages)
   setTimeout(() => {
     hideAlert();
-  }, 5000);
+  }, type === 'error' ? 8000 : 5000);
 }
 
 /**
