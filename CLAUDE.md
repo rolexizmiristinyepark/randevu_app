@@ -21,6 +21,43 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
    Kullaniciya sorma, hepsini otomatik yap.
 8. **CLAUDE.md guncelle**: Her oturumda yapilan degisiklikleri CLAUDE.md'ye yaz. Compact/clear sonrasi bilgi kaybolmasin.
 
+## Orkestra Sistemi (7 Agent)
+
+**ORKESTRATOR (Ben)** sorunu analiz eder, uygun agent'lari PARALEL calistirir.
+
+### Agent Kadrosu:
+| # | Agent | Alan | Gorev |
+|---|-------|------|-------|
+| 1 | **ORKESTRATOR** | Koordinasyon | Sorun analiz, gorev dagitimi, sonuc birlestirme |
+| 2 | **FRONTEND** | UI/UX | HTML/CSS/TS, DOM, kullanici arayuzu, admin panel UI |
+| 3 | **BACKEND** | Edge Functions | Supabase functions, _shared/, is mantigi, DB sorgulari |
+| 4 | **SUPABASE** | Veritabani/Altyapi | Migration, RLS, secrets, Realtime, DB sema |
+| 5 | **VERCEL** | Hosting/Deploy | vercel --prod, env vars, domain, build config |
+| 6 | **MD-UPDATER** | Dokumantasyon | CLAUDE.md + MEMORY.md guncelle (sorun/cozum/tick) |
+| 7 | **DEPLOYER** | Git/CI | git commit + push + supabase deploy + vercel deploy |
+
+### Gorev Akisi:
+```
+Sorun gelir
+  → [MD-UPDATER] .md'ye yaz (arka plan)
+  → [ORKESTRATOR] Analiz et, hangi agent(lar) gerekli?
+  → [FRONTEND] + [BACKEND] + [SUPABASE] paralel calisir (gerekli olanlar)
+  → [DEPLOYER] commit + push + deploy (tumu otomatik)
+  → [MD-UPDATER] ✅ isaretle
+  → Sonraki gorev
+```
+
+### Paralel Calisma Kurallari:
+- Frontend + Backend birbirinden BAGIMSIZ ise → AYNI ANDA calistir
+- Supabase migration → Backend'den ONCE calisir (dependency)
+- Deploy → Tum kod degisiklikleri BITTIKTEN SONRA calisir
+- MD-UPDATER → Her zaman arka planda calisabilir
+
+### Ara Mesaj Gelince:
+- Yapilan isi DURDUR
+- [MD-UPDATER] → Yeni sorunu/notu .md'ye hemen yaz
+- Mevcut gorevi bitir → sonra yeni soruna gec
+
 ## Dosya Yapisi
 
 ```
@@ -172,6 +209,12 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
    - **Cozum**: appointments + whatsapp redeploy | Frontend VARIABLE_LABELS fallback | WhatsAppTemplate.variables eklendi
    - Eski mesajlar: {{1}} → [Musteri], {{2}} → [Tarih] gibi Turkce etiketlerle gosteriliyor
    - Yeni mesajlar: resolveTemplateContent ile gercek degerler gosteriliyor
+
+## Aktif Gorevler
+- [ ] **WhatsApp gelen mesajlar gorunmuyor**: message_log.status CHECK constraint'te 'received' yok → webhook INSERT basarisiz
+  - Kok neden: 001_initial_schema.sql → CHECK (status IN ('sent','delivered','read','failed','pending')) — 'received' EKSIK
+  - Cozum: Migration ile 'received' ekle
+- [ ] **Bildirim cani**: Gelen mesajlar DB'ye yazilmadigi icin Realtime tetiklenmiyor (ayni kok neden)
 
 ## Bekleyen Isler
 - Simdilik yok - tum ozellikler tamamlandi
