@@ -58,14 +58,17 @@ interface WhatsAppTemplate {
 interface WhatsAppMessage {
     id: string;
     phone: string | number;
-    templateName: string;
+    template_name: string;
     status: 'sent' | 'delivered' | 'read' | 'failed';
-    sentAt?: string;
+    sent_at?: string;
     error?: string;
-    errorMessage?: string; // Backend'den gelen hata mesajı
-    messageContent?: string; // v3.10.10: Mesaj içeriği
-    timestamp?: string; // Backend'den gelen timestamp
-    recipientName?: string;
+    error_message?: string;
+    message_content?: string;
+    timestamp?: string;
+    recipient_name?: string;
+    template_id?: string;
+    staff_name?: string;
+    profile?: string;
 }
 
 // ==================== CONSTANTS ====================
@@ -1212,16 +1215,16 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
         leftSide.appendChild(phone);
 
         // Alıcı adı varsa göster
-        if (msg.recipientName) {
+        if (msg.recipient_name) {
             const recipientSpan = document.createElement('span');
             recipientSpan.style.cssText = 'margin-left: 8px; color: #757575; font-size: 12px;';
-            recipientSpan.textContent = `(${msg.recipientName})`;
+            recipientSpan.textContent = `(${msg.recipient_name})`;
             leftSide.appendChild(recipientSpan);
         }
 
         const time = document.createElement('span');
         time.style.cssText = 'color: #757575; font-size: 11px;';
-        const dateStr = msg.timestamp || msg.sentAt;
+        const dateStr = msg.timestamp || msg.sent_at;
         time.textContent = dateStr ? new Date(dateStr).toLocaleString('tr-TR') : '';
 
         header.appendChild(leftSide);
@@ -1229,7 +1232,7 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
 
         const template = document.createElement('div');
         template.style.cssText = 'margin-top: 5px; color: #757575;';
-        template.textContent = msg.templateName || '';
+        template.textContent = msg.template_name || '';
 
         const statusSpan = document.createElement('span');
         const statusColors: Record<string, string> = {
@@ -1246,15 +1249,15 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
         item.appendChild(template);
 
         // v3.10.10: Mesaj içeriği göster
-        if (msg.messageContent) {
+        if (msg.message_content) {
             const content = document.createElement('div');
             content.style.cssText = 'margin-top: 8px; padding: 8px; background: #fff; border-radius: 4px; color: #333; font-size: 12px; border-left: 3px solid #C9A55A;';
-            content.textContent = msg.messageContent;
+            content.textContent = msg.message_content;
             item.appendChild(content);
         }
 
         // v3.10.10: Hata mesajı göster (failed durumunda)
-        const errorText = msg.errorMessage || msg.error;
+        const errorText = msg.error_message || msg.error;
         if (msg.status === 'failed' && errorText) {
             const errorDiv = document.createElement('div');
             errorDiv.style.cssText = 'margin-top: 5px; color: #C62828; font-size: 11px; background: #FFEBEE; padding: 6px 8px; border-radius: 4px;';
@@ -1274,12 +1277,11 @@ function renderMessages(container: HTMLElement, messages: WhatsAppMessage[], _ty
             detail.className = 'message-detail';
             detail.style.cssText = 'margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #E8E8E8; border-radius: 4px; font-size: 11px; color: #555;';
 
-            const msgRecord = msg as unknown as Record<string, string>;
             const fields = [
                 { label: 'ID', value: msg.id || '-' },
-                { label: 'Template ID', value: msgRecord.templateId || '-' },
-                { label: 'Staff', value: msgRecord.staffName || '-' },
-                { label: 'Profil', value: msgRecord.profile || '-' }
+                { label: 'Template ID', value: msg.template_id || '-' },
+                { label: 'Staff', value: msg.staff_name || '-' },
+                { label: 'Profil', value: msg.profile || '-' }
             ];
 
             fields.forEach((field, idx) => {

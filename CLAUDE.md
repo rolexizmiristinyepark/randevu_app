@@ -162,6 +162,12 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - **Site key**: `0x4AAAAAACawPXu9P-2JBh46` | **Secret key**: Supabase secrets'ta `TURNSTILE_SECRET_KEY`
 - Client-side widget hala bot korumasi sagliyor, server-side sadece defense-in-depth
 
+## Cozulen Sorunlar (2026-02-13)
+1. **WhatsApp URL buton hatasi** ✅: `has_button=true` ise button component her zaman gonderiliyor (fallback: '-')
+2. **Mesaj icerigi yok** ✅: Frontend camelCase/snake_case uyumsuzlugu duzeltildi (messageContent → message_content)
+3. **Kisi adi yok** ✅: Frontend camelCase/snake_case uyumsuzlugu duzeltildi (recipientName → recipient_name)
+4. **intl-tel-input koyu tema** ✅: Admin CSS dark theme → light theme (beyaz card ile uyumlu)
+
 ## Button Utility
 ```typescript
 import { ButtonAnimator } from '../button-utils';

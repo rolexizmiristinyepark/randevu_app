@@ -9,16 +9,15 @@ import { escapeHtml } from '../security-helpers';
 interface WhatsAppMessage {
     id: string;
     phone: string | number;        // Alıcı telefonu (recipient phone)
-    recipientName?: string;        // Alıcı adı (customer veya staff)
-    templateName?: string;
-    templateId?: string;
-    messageContent?: string;
+    recipient_name?: string;       // Alıcı adı (customer veya staff) — DB snake_case
+    template_name?: string;
+    template_id?: string;
+    message_content?: string;
     status: 'sent' | 'delivered' | 'read' | 'failed';
     direction: 'incoming' | 'outgoing';
     timestamp?: string;
     sent_at?: string;
     error_message?: string;
-    // v3.10.20: Backend alanları - parse yok
     target_type?: 'customer' | 'staff' | '';
     customer_name?: string;
     customer_phone?: string;
@@ -83,7 +82,7 @@ async function loadTemplates(): Promise<void> {
  * Yeni format: Zaten formatlanmış -> Olduğu gibi göster
  */
 function formatMessageContent(msg: WhatsAppMessage): string {
-    const content = msg.messageContent || '';
+    const content = msg.message_content || '';
 
     // Gelen mesajlar için olduğu gibi göster
     if (msg.direction === 'incoming') {
@@ -91,16 +90,16 @@ function formatMessageContent(msg: WhatsAppMessage): string {
     }
 
     // Template adı yoksa olduğu gibi göster
-    if (!msg.templateName) {
+    if (!msg.template_name) {
         return content || '[Mesaj içeriği yok]';
     }
 
     // Template'i bul
-    const template = templatesCache.get(msg.templateName);
+    const template = templatesCache.get(msg.template_name);
 
     // Template bulunamadı veya content'i yoksa olduğu gibi göster
     if (!template || !template.content) {
-        return content || `[Şablon: ${msg.templateName}]`;
+        return content || `[Şablon: ${msg.template_name}]`;
     }
 
     // Content zaten template formatında mı kontrol et (| ile ayrılmamış)
@@ -190,7 +189,7 @@ async function loadAllMessages(): Promise<void> {
  * Backend sets this based on targetType when logging
  */
 function getRecipientName(msg: WhatsAppMessage): string {
-    return msg.recipientName || '';
+    return msg.recipient_name || '';
 }
 
 /**
@@ -582,8 +581,8 @@ function showMessageDetails(msg: WhatsAppMessage): void {
     }
 
     // Recipient
-    if (msg.recipientName) {
-        const recipientRow = createDetailRow('Alıcı', msg.recipientName);
+    if (msg.recipient_name) {
+        const recipientRow = createDetailRow('Alıcı', msg.recipient_name);
         body.appendChild(recipientRow);
     }
 
@@ -594,8 +593,8 @@ function showMessageDetails(msg: WhatsAppMessage): void {
     }
 
     // Template name
-    if (msg.templateName) {
-        const templateRow = createDetailRow('Şablon', msg.templateName);
+    if (msg.template_name) {
+        const templateRow = createDetailRow('Şablon', msg.template_name);
         body.appendChild(templateRow);
     }
 

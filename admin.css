@@ -2240,20 +2240,20 @@
     }
 }
 
-/* ==================== intl-tel-input (Admin Dark Theme) ==================== */
+/* ==================== intl-tel-input (Admin Light Theme) ==================== */
 .iti {
     display: block !important;
     width: 100% !important;
-    border: 1px solid #3a3a5c;
-    border-radius: 4px;
-    background: #2a2a4a;
-    transition: all 0.2s ease;
+    border: 1px solid #E8E8E8;
+    border-radius: 2px;
+    background: white;
+    transition: all 0.3s;
     box-sizing: border-box;
 }
 
 .iti:focus-within {
     border-color: #C9A55A;
-    background: #1e1e3a;
+    box-shadow: 0 0 0 2px rgba(201, 165, 90, 0.1);
 }
 
 .iti__tel-input {
@@ -2265,7 +2265,7 @@
     border-radius: 0;
     font-size: 14px;
     font-family: 'Montserrat', sans-serif;
-    color: #e0e0e0;
+    color: #1A1A2E;
     background: transparent;
     outline: none;
     box-sizing: border-box;
@@ -2276,7 +2276,7 @@
 }
 
 .iti__tel-input::placeholder {
-    color: #888;
+    color: #999;
 }
 
 .iti__country-container {
@@ -2285,27 +2285,27 @@
 
 .iti__selected-country {
     background: transparent;
-    border-right: 1px solid #3a3a5c;
+    border-right: 1px solid #E8E8E8;
     padding: 0 8px 0 12px;
 }
 
 .iti__selected-country:hover,
 .iti__selected-country:focus {
-    background: #3a3a5c;
+    background: #F5F5F5;
 }
 
 .iti__selected-dial-code {
     font-size: 14px;
     font-weight: 500;
-    color: #e0e0e0;
+    color: #1A1A2E;
     font-family: 'Montserrat', sans-serif;
 }
 
 .iti__dropdown-content {
-    border: 1px solid #3a3a5c;
-    border-radius: 4px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    background: #2a2a4a;
+    border: 1px solid #E8E8E8;
+    border-radius: 2px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    background: white;
     max-height: 250px;
 }
 
@@ -2313,31 +2313,31 @@
     font-family: 'Montserrat', sans-serif;
     font-size: 14px;
     padding: 10px 12px;
-    border-bottom: 1px solid #3a3a5c;
-    background: #1e1e3a;
-    color: #e0e0e0;
+    border-bottom: 1px solid #E8E8E8;
+    background: #FAFAFA;
+    color: #1A1A2E;
 }
 
 .iti__search-input::placeholder {
-    color: #888;
+    color: #999;
 }
 
 .iti__country-list {
-    background: #2a2a4a;
+    background: white;
 }
 
 .iti__country {
     padding: 8px 12px;
     font-family: 'Montserrat', sans-serif;
     font-size: 13px;
-    color: #e0e0e0;
+    color: #1A1A2E;
 }
 
 .iti__country:hover,
 .iti__country--highlight {
-    background: #3a3a5c;
+    background: #F5F5F5;
 }
 
 .iti__dial-code {
-    color: #999;
+    color: #757575;
 }

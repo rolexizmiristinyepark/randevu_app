@@ -114,16 +114,19 @@ export function buildTemplateComponents(
   }
 
   // Button variable (ornegin randevu detay linki)
-  if (template.has_button && template.button_variable) {
-    const resolved = replaceMessageVariables(`{{${template.button_variable}}}`, eventData as Record<string, string>);
-    if (resolved) {
-      components.push({
-        type: 'button',
-        sub_type: 'url',
-        index: 0,
-        parameters: [{ type: 'text', text: resolved }],
-      });
+  // Meta API, template'te URL butonu varsa mutlaka button component ister
+  if (template.has_button) {
+    let buttonText = '-';
+    if (template.button_variable) {
+      const resolved = replaceMessageVariables(`{{${template.button_variable}}}`, eventData as Record<string, string>);
+      if (resolved) buttonText = resolved;
     }
+    components.push({
+      type: 'button',
+      sub_type: 'url',
+      index: 0,
+      parameters: [{ type: 'text', text: buttonText }],
+    });
   }
 
   return components;
