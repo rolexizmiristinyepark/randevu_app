@@ -30,6 +30,7 @@ interface WhatsAppTemplate {
     name: string;
     content?: string;
     variable_count?: number;
+    variables?: Record<string, string>; // {"1": "musteri", "2": "randevu_tarihi", ...}
 }
 
 interface Contact {
@@ -42,6 +43,23 @@ interface Contact {
     lastDirection: 'incoming' | 'outgoing';
     contactType: 'customer' | 'staff' | '';
 }
+
+// Değişken adı → Türkçe etiket (eski mesajlardaki {{1}} yerine gösterilir)
+const VARIABLE_LABELS: Record<string, string> = {
+    musteri: 'Müşteri',
+    musteri_tel: 'Müşteri Tel',
+    musteri_mail: 'Müşteri Email',
+    randevu_tarihi: 'Tarih',
+    randevu_saati: 'Saat',
+    randevu_ek_bilgi: 'Ek Bilgi',
+    personel: 'Personel',
+    personel_id: 'Personel ID',
+    personel_tel: 'Personel Tel',
+    personel_mail: 'Personel Email',
+    randevu_turu: 'Tür',
+    randevu_profili: 'Profil',
+    profil_sahibi: 'Profil Sahibi',
+};
 
 // State
 let allMessages: WhatsAppMessage[] = [];
@@ -107,7 +125,16 @@ function formatMessageContent(msg: WhatsAppMessage): string {
     // Eğer içerikte birden fazla " | " yoksa, zaten formatlanmış demektir
     const pipeCount = (content.match(/ \| /g) || []).length;
     if (pipeCount < 2) {
-        // Muhtemelen yeni format veya zaten formatlanmış
+        // Numaralı placeholder kontrolü: {{1}}, {{2}} hala varsa → değişken adıyla göster
+        const textToCheck = content || template.content;
+        if (/\{\{\d+\}\}/.test(textToCheck) && template.variables) {
+            let resolved = textToCheck;
+            for (const [num, varName] of Object.entries(template.variables)) {
+                const label = VARIABLE_LABELS[varName] || varName;
+                resolved = resolved.replace(new RegExp(`\\{\\{${num}\\}\\}`, 'g'), `[${label}]`);
+            }
+            return resolved;
+        }
         return content || template.content;
     }
 
