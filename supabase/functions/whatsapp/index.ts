@@ -7,7 +7,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
 import { addAuditLog } from '../_shared/security.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode, getMessageVariableOptions } from '../_shared/variables.ts';
-import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 serve(async (req: Request) => {
@@ -283,7 +283,7 @@ async function handleSendReminders(req: Request, body: EdgeFunctionBody): Promis
     );
 
     // Mesaj logla
-    const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+    const resolvedContent = resolveTemplateContent(template, eventData);
     await logMessage({
       appointment_id: appt.id,
       phone: formatPhoneWithCountryCode(String(appt.customer_phone)),

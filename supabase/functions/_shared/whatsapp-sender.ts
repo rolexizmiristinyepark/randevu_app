@@ -133,6 +133,32 @@ export function buildTemplateComponents(
 }
 
 /**
+ * Template icerigindeki numarali degiskenleri ({{1}}, {{2}}) cozumle
+ * template.content: "MUSTERI: {{1}}\nTEL: {{2}}" + template.variables: {"1":"musteri","2":"musteri_tel"}
+ * -> Sonuc: "MUSTERI: Ahmet\nTEL: 05321234567"
+ */
+export function resolveTemplateContent(
+  template: { content?: string; variables?: Record<string, string>; variable_count?: number },
+  eventData: Record<string, unknown>
+): string {
+  let text = template.content || '';
+  if (!text) return '';
+
+  // Once numarali degiskenleri isimli degiskenlere cevir: {{1}} -> {{musteri}}
+  if (template.variables && template.variable_count) {
+    for (let i = 1; i <= template.variable_count; i++) {
+      const varKey = template.variables[String(i)];
+      if (varKey) {
+        text = text.replace(new RegExp(`\\{\\{${i}\\}\\}`, 'g'), `{{${varKey}}}`);
+      }
+    }
+  }
+
+  // Simdi isimli degiskenleri cozumle: {{musteri}} -> Ahmet
+  return replaceMessageVariables(text, eventData as Record<string, string>);
+}
+
+/**
  * message_log tablosuna mesaj kaydi ekle
  */
 export async function logMessage(entry: MessageLogEntry): Promise<void> {

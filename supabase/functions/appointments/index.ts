@@ -7,7 +7,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createSupabaseClient, createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
 import { verifyTurnstile, checkRateLimit, getClientIp, addAuditLog } from '../_shared/security.ts';
 import { validateAppointmentInput } from '../_shared/validation.ts';
-import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode } from '../_shared/variables.ts';
 import { syncAppointmentToCalendar, updateCalendarEvent, deleteCalendarEvent } from '../_shared/google-calendar.ts';
 import { sendGmail } from '../_shared/resend-sender.ts';
@@ -1094,7 +1094,7 @@ async function triggerAppointmentNotification(
                 template.language || 'tr',
                 components
               );
-              const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+              const resolvedContent = resolveTemplateContent(template, eventData);
               await logMessage({
                 appointment_id: appointmentId,
                 phone: formatPhoneWithCountryCode(admin.phone),
@@ -1135,7 +1135,7 @@ async function triggerAppointmentNotification(
           components
         );
 
-        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+        const resolvedContent = resolveTemplateContent(template, eventData);
         await logMessage({
           appointment_id: appointmentId,
           phone: formatPhoneWithCountryCode(phone),

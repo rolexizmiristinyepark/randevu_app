@@ -40,6 +40,7 @@ interface Contact {
     lastMessageTime: string;
     unreadCount: number;
     lastDirection: 'incoming' | 'outgoing';
+    contactType: 'customer' | 'staff' | '';
 }
 
 // State
@@ -210,8 +211,9 @@ function getRecipientPhone(msg: WhatsAppMessage): string {
  */
 function groupByContact(): void {
     const contactMap = new Map<string, Contact>();
-    // Outgoing mesajlardan isimleri topla (öncelikli)
+    // Outgoing mesajlardan isimleri ve tiplerini topla (öncelikli)
     const outgoingNames = new Map<string, string>();
+    const outgoingTypes = new Map<string, string>();
 
     // İlk pass: Outgoing mesajlardan isimleri topla
     allMessages.forEach(msg => {
@@ -221,6 +223,9 @@ function groupByContact(): void {
             const normalizedPhone = normalizePhone(recipientPhone);
             if (normalizedPhone && recipientName && !outgoingNames.has(normalizedPhone)) {
                 outgoingNames.set(normalizedPhone, recipientName);
+            }
+            if (normalizedPhone && msg.target_type && !outgoingTypes.has(normalizedPhone)) {
+                outgoingTypes.set(normalizedPhone, msg.target_type);
             }
         }
     });
@@ -237,6 +242,7 @@ function groupByContact(): void {
         if (!contactMap.has(normalizedPhone)) {
             // Outgoing mesajdaki ismi öncelikle kullan, yoksa incoming'den al
             const displayName = outgoingNames.get(normalizedPhone) || recipientName || formatPhoneDisplay(recipientPhone);
+            const targetType = outgoingTypes.get(normalizedPhone) || msg.target_type || '';
 
             contactMap.set(normalizedPhone, {
                 phone: normalizedPhone,
@@ -245,7 +251,8 @@ function groupByContact(): void {
                 lastMessage: '',
                 lastMessageTime: msg.timestamp || msg.sent_at || '',
                 unreadCount: 0,
-                lastDirection: msg.direction
+                lastDirection: msg.direction,
+                contactType: (targetType === 'staff' ? 'staff' : targetType === 'customer' ? 'customer' : '') as Contact['contactType']
             });
         }
     });
@@ -296,14 +303,15 @@ function renderContacts(): void {
         item.className = `wa-contact-item${selectedCustomer === customerKey ? ' active' : ''}`;
         item.dataset.customer = customerKey;
 
-        // Avatar - WhatsApp default person icon
+        // Avatar - Customer: mavi (#003057), Staff: Rolex yeşili (#006039)
         const avatar = document.createElement('div');
         avatar.className = 'wa-contact-avatar';
+        const avatarColor = contact.contactType === 'staff' ? '#006039' : '#003057';
         const svgNS = 'http://www.w3.org/2000/svg';
         const svg = document.createElementNS(svgNS, 'svg');
         svg.setAttribute('viewBox', '0 0 212 212');
         const path1 = document.createElementNS(svgNS, 'path');
-        path1.setAttribute('fill', '#DFE5E7');
+        path1.setAttribute('fill', avatarColor);
         path1.setAttribute('d', 'M106.251.5C164.653.5 212 47.846 212 106.25S164.653 212 106.25 212C47.846 212 .5 164.654.5 106.25S47.846.5 106.251.5z');
         const path2 = document.createElementNS(svgNS, 'path');
         path2.setAttribute('fill', '#FFF');
@@ -343,7 +351,7 @@ function renderContacts(): void {
         item.appendChild(info);
         item.appendChild(meta);
 
-        item.addEventListener('click', () => selectContact(customerKey, contact.name));
+        item.addEventListener('click', () => selectContact(customerKey, contact.name, contact.contactType));
         container.appendChild(item);
     });
 }
@@ -351,7 +359,7 @@ function renderContacts(): void {
 /**
  * Select a contact and show their messages
  */
-function selectContact(customerKey: string, customer_name: string): void {
+function selectContact(customerKey: string, customer_name: string, contactType: Contact['contactType'] = ''): void {
     selectedCustomer = customerKey;
 
     // Update active state in contact list
@@ -379,7 +387,13 @@ function selectContact(customerKey: string, customer_name: string): void {
         headerName.textContent = customer_name;
     }
     if (headerStatus) {
-        headerStatus.textContent = 'Müşteri';
+        headerStatus.textContent = contactType === 'staff' ? 'Personel' : 'Müşteri';
+    }
+
+    // Update header avatar color
+    const headerAvatar = document.querySelector('.wa-avatar-placeholder svg path:first-child') as SVGPathElement;
+    if (headerAvatar) {
+        headerAvatar.setAttribute('fill', contactType === 'staff' ? '#006039' : '#003057');
     }
 
     // Render messages for this customer

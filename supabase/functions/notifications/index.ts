@@ -6,7 +6,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
 import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
-import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment } from '../_shared/whatsapp-sender.ts';
+import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
 import { sendGmail } from '../_shared/resend-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
@@ -221,7 +221,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
               template.language || 'tr',
               components
             );
-            const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+            const resolvedContent = resolveTemplateContent(template, eventData);
             await logMessage({
               appointment_id: eventData.appointmentId ? String(eventData.appointmentId) : undefined,
               phone: formatPhoneWithCountryCode(admin.phone),
@@ -272,7 +272,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
         );
 
         // Mesaj logla
-        const resolvedContent = replaceMessageVariables(template.content || '', eventData as Record<string, string>);
+        const resolvedContent = resolveTemplateContent(template, eventData);
         await logMessage({
           appointment_id: eventData.appointmentId ? String(eventData.appointmentId) : undefined,
           phone: formatPhoneWithCountryCode(phone),
@@ -564,7 +564,7 @@ async function sendReminderWhatsApp(
           components
         );
 
-        const resolvedContent = replaceMessageVariables(String(template.content || ''), eventData as Record<string, string>);
+        const resolvedContent = resolveTemplateContent(template, eventData);
         await logMessage({
           appointment_id: String(appt.id || ''),
           phone: formatPhoneWithCountryCode(staffMember.phone),
@@ -612,7 +612,7 @@ async function sendReminderWhatsApp(
       components
     );
 
-    const resolvedContent = replaceMessageVariables(String(template.content || ''), eventData as Record<string, string>);
+    const resolvedContent = resolveTemplateContent(template, eventData);
     await logMessage({
       appointment_id: String(appt.id || ''),
       phone: formatPhoneWithCountryCode(phone),
