@@ -20,6 +20,7 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
    - CLAUDE.md ve MEMORY.md guncelle
    Kullaniciya sorma, hepsini otomatik yap.
 8. **CLAUDE.md guncelle**: Her oturumda yapilan degisiklikleri CLAUDE.md'ye yaz. Compact/clear sonrasi bilgi kaybolmasin.
+9. **ORKESTRA MODU (paralel agent)**: Her yeni chat basinda (clear/compact sonrasi) Task tool ile birden fazla agent'i PARALEL calistir. Deploy'lari sirayla bekleme — git push + supabase deploy + vercel deploy AYNI ANDA yapilabilir. Bagimli olmayan isler (frontend + backend gibi) paralel agent'lara dagitilir.
 
 ## Orkestra Sistemi (7 Agent)
 
@@ -225,12 +226,11 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 
 ## Aktif Gorevler
 - [x] **WhatsApp gelen mesajlar gorunmuyor** ✅: Migration 016 — status CHECK'e 'received' eklendi
-- [x] **Bildirim cani (notification bell)** ✅: Supabase Realtime 403 reddediyor → Polling fallback eklendi (30sn aralık)
-  - REPLICA IDENTITY FULL eklendi (migration 017)
-  - Realtime calismiyorsa polling ile yeni mesajlar kontrol ediliyor
-  - Supabase Dashboard'dan Realtime etkinlestirilirse anlik bildirim de calisir
-- [ ] **Chat listede okunmamis mesaj badge'i**: Kimden mesaj geldigini gostermek icin kisi yaninda badge/indicator
-- [x] **WhatsApp degiskenler {{1}} {{2}}** ✅: Eski mesajlarda var (fix oncesi), yeni mesajlarda resolveTemplateContent ile gercek degerler gosteriliyor
+- [x] **Bildirim cani** ✅: Polling fallback (30sn) + REPLICA IDENTITY FULL (migration 017) + Realtime 403 graceful handling
+- [x] **Bildirim tiklamasi** ✅: switchInnerTab icinde initWhatsAppChat() cagrisi eklendi
+- [x] **Chat listede okunmamis mesaj badge'i** ✅: Yesil badge ile gelen mesaj sayisi kisi yaninda gorunuyor
+- [x] **WebSocket hatalari** ✅: CHANNEL_ERROR'da cleanup yapiliyor, console spam azaltildi
+- [x] **WhatsApp degiskenler {{1}} {{2}}** ✅: Eski mesajlarda var (fix oncesi), yeni mesajlarda sorun yok
 
 ## Bekleyen Isler
 - Simdilik yok - tum ozellikler tamamlandi
