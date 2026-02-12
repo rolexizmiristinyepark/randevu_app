@@ -68,6 +68,18 @@ let selectedCustomer: string | null = null; // Normalized phone number (key)
 let searchTerm = '';
 let templatesCache: Map<string, WhatsAppTemplate> = new Map(); // name -> template
 
+// localStorage key prefix for tracking last-read timestamp per contact
+const LAST_READ_KEY_PREFIX = 'wa_lastRead_';
+
+function getLastReadTime(phone: string): number {
+    const val = localStorage.getItem(LAST_READ_KEY_PREFIX + phone);
+    return val ? parseInt(val, 10) : 0;
+}
+
+function setLastReadTime(phone: string): void {
+    localStorage.setItem(LAST_READ_KEY_PREFIX + phone, String(Date.now()));
+}
+
 /**
  * Initialize WhatsApp chat UI
  */
@@ -283,10 +295,14 @@ function groupByContact(): void {
             });
         }
 
-        // Incoming mesajlar için unreadCount hesapla
+        // Incoming mesajlar için unreadCount hesapla (sadece son okunmadan sonrakiler)
         if (msg.direction === 'incoming') {
             const contact = contactMap.get(normalizedPhone)!;
-            contact.unreadCount++;
+            const lastRead = getLastReadTime(normalizedPhone);
+            const msgTime = new Date(msg.timestamp || msg.sent_at || 0).getTime();
+            if (msgTime > lastRead) {
+                contact.unreadCount++;
+            }
         }
     });
 
@@ -403,9 +419,20 @@ function renderContacts(): void {
 function selectContact(customerKey: string, customer_name: string, contactType: Contact['contactType'] = ''): void {
     selectedCustomer = customerKey;
 
-    // Update active state in contact list
+    // Son okunma zamanını kaydet ve badge'i sıfırla
+    setLastReadTime(customerKey);
+    const contact = contacts.find(c => c.phone === customerKey);
+    if (contact) contact.unreadCount = 0;
+
+    // Update active state in contact list + badge'i kaldır
     document.querySelectorAll('.wa-contact-item').forEach(item => {
-        item.classList.toggle('active', (item as HTMLElement).dataset.customer === customerKey);
+        const el = item as HTMLElement;
+        el.classList.toggle('active', el.dataset.customer === customerKey);
+        // Seçilen kişinin badge'ini kaldır
+        if (el.dataset.customer === customerKey) {
+            const badge = el.querySelector('.wa-contact-badge');
+            if (badge) badge.remove();
+        }
     });
 
     // Show chat panel
