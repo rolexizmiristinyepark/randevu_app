@@ -35,6 +35,7 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
 | 5 | **VERCEL** | Hosting/Deploy | vercel --prod, env vars, domain, build config |
 | 6 | **MD-UPDATER** | Dokumantasyon | CLAUDE.md + MEMORY.md guncelle (sorun/cozum/tick) |
 | 7 | **DEPLOYER** | Git/CI | git commit + push + supabase deploy + vercel deploy |
+| 8 | **COMPACTOR** | Context Yonetimi | Gorev bitince ozet + /compact hatirlatmasi |
 
 ### Gorev Akisi:
 ```
@@ -44,7 +45,19 @@ Sorun gelir
   → [FRONTEND] + [BACKEND] + [SUPABASE] paralel calisir (gerekli olanlar)
   → [DEPLOYER] commit + push + deploy (tumu otomatik)
   → [MD-UPDATER] ✅ isaretle
+  → [COMPACTOR] Gorev ozeti ver + /compact hatirlatmasi
   → Sonraki gorev
+```
+
+### COMPACTOR Formati (her gorev sonunda):
+```
+--- GOREV TAMAMLANDI ---
+Sorun: [ne idi]
+Cozum: [ne yapildi]
+Dosyalar: [degisen dosyalar]
+Deploy: [ne deploy edildi]
+.md: [guncellendi ✅]
+→ /compact yazarak context'i temizleyebilirsin, .md'ler guncel.
 ```
 
 ### Paralel Calisma Kurallari:
@@ -211,10 +224,10 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
    - Yeni mesajlar: resolveTemplateContent ile gercek degerler gosteriliyor
 
 ## Aktif Gorevler
-- [ ] **WhatsApp gelen mesajlar gorunmuyor**: message_log.status CHECK constraint'te 'received' yok → webhook INSERT basarisiz
-  - Kok neden: 001_initial_schema.sql → CHECK (status IN ('sent','delivered','read','failed','pending')) — 'received' EKSIK
-  - Cozum: Migration ile 'received' ekle
-- [ ] **Bildirim cani**: Gelen mesajlar DB'ye yazilmadigi icin Realtime tetiklenmiyor (ayni kok neden)
+- [x] **WhatsApp gelen mesajlar gorunmuyor** ✅: Migration 016 — status CHECK'e 'received' eklendi
+- [ ] **Bildirim cani (notification bell) hala calismiyor**: Mesaj DB'ye yaziliyor ama Realtime tetiklenmiyor — REPLICA IDENTITY eksik olabilir
+- [ ] **Chat listede okunmamis mesaj badge'i**: Kimden mesaj geldigini gostermek icin kisi yaninda badge/indicator
+- [ ] **WhatsApp degiskenler {{1}} {{2}} hala gorunuyor mu?**: Eski sohbet mi yoksa yeni mesajlarda da var mi kontrol et
 
 ## Bekleyen Isler
 - Simdilik yok - tum ozellikler tamamlandi

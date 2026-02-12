@@ -648,7 +648,10 @@ function setupRealtimeSubscriptions(): void {
                 handleAppointmentChange(payload.eventType, payload);
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') console.log('[Realtime] appointments channel aktif');
+            if (status === 'CHANNEL_ERROR') console.error('[Realtime] appointments channel HATA');
+        });
 
     // Listen for message log changes (new messages, status updates)
     const messagesChannel = supabase
@@ -656,6 +659,7 @@ function setupRealtimeSubscriptions(): void {
         .on('postgres_changes',
             { event: '*', schema: 'public', table: 'message_log' },
             (payload) => {
+                console.log('[Realtime] message_log event:', payload.eventType);
                 handleIncomingMessage(payload);
                 // Refresh WhatsApp chat if visible
                 const whatsappTab = document.getElementById('whatsappMessages');
@@ -664,7 +668,10 @@ function setupRealtimeSubscriptions(): void {
                 }
             }
         )
-        .subscribe();
+        .subscribe((status) => {
+            if (status === 'SUBSCRIBED') console.log('[Realtime] message_log channel aktif');
+            if (status === 'CHANNEL_ERROR') console.error('[Realtime] message_log channel HATA');
+        });
 
     realtimeChannels = [appointmentsChannel, messagesChannel];
 }
