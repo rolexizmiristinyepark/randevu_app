@@ -111,6 +111,11 @@ const UI = {
 
         selectedTab?.classList.add('active');
         selectedContent?.classList.add('active');
+
+        // WhatsApp mesajlar sekmesine geçince mesajları yükle
+        if (innerTabName === 'whatsappMessages') {
+            initWhatsAppChat();
+        }
     },
 
     // Legacy method for backward compatibility
@@ -638,42 +643,49 @@ function setupRealtimeSubscriptions(): void {
     // Clean up existing channels first
     cleanupRealtimeChannels();
 
-    // Listen for appointment changes (insert, update, delete)
-    const appointmentsChannel = supabase
-        .channel('admin-appointments')
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'appointments' },
-            (payload) => {
-                loadAppointments();
-                handleAppointmentChange(payload.eventType, payload);
-            }
-        )
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') console.log('[Realtime] appointments channel aktif');
-            if (status === 'CHANNEL_ERROR') console.error('[Realtime] appointments channel HATA');
-        });
-
-    // Listen for message log changes (new messages, status updates)
-    const messagesChannel = supabase
-        .channel('admin-messages')
-        .on('postgres_changes',
-            { event: '*', schema: 'public', table: 'message_log' },
-            (payload) => {
-                console.log('[Realtime] message_log event:', payload.eventType);
-                handleIncomingMessage(payload);
-                // Refresh WhatsApp chat if visible
-                const whatsappTab = document.getElementById('whatsappMessages');
-                if (whatsappTab?.classList.contains('active')) {
-                    initWhatsAppChat();
+    // NOT: Supabase Realtime WebSocket 403 hatası veriyor (free tier sorunu).
+    // Bildirimler polling fallback ile çalışıyor (notification-bell.ts).
+    // Realtime düzeldiğinde bu blok tekrar aktifleştirilebilir.
+    try {
+        const appointmentsChannel = supabase
+            .channel('admin-appointments')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'appointments' },
+                (payload) => {
+                    loadAppointments();
+                    handleAppointmentChange(payload.eventType, payload);
                 }
-            }
-        )
-        .subscribe((status) => {
-            if (status === 'SUBSCRIBED') console.log('[Realtime] message_log channel aktif');
-            if (status === 'CHANNEL_ERROR') console.error('[Realtime] message_log channel HATA');
-        });
+            )
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.warn('[Realtime] appointments channel bağlanamadı — polling aktif');
+                    cleanupRealtimeChannels();
+                }
+            });
 
-    realtimeChannels = [appointmentsChannel, messagesChannel];
+        const messagesChannel = supabase
+            .channel('admin-messages')
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'message_log' },
+                (payload) => {
+                    handleIncomingMessage(payload);
+                    const whatsappTab = document.getElementById('whatsappMessages');
+                    if (whatsappTab?.classList.contains('active')) {
+                        initWhatsAppChat();
+                    }
+                }
+            )
+            .subscribe((status) => {
+                if (status === 'CHANNEL_ERROR') {
+                    console.warn('[Realtime] message_log channel bağlanamadı — polling aktif');
+                    cleanupRealtimeChannels();
+                }
+            });
+
+        realtimeChannels = [appointmentsChannel, messagesChannel];
+    } catch {
+        console.warn('[Realtime] Bağlantı kurulamadı — polling fallback aktif');
+    }
 }
 
 /**

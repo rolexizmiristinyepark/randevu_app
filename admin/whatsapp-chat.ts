@@ -282,6 +282,12 @@ function groupByContact(): void {
                 contactType: (targetType === 'staff' ? 'staff' : targetType === 'customer' ? 'customer' : '') as Contact['contactType']
             });
         }
+
+        // Incoming mesajlar için unreadCount hesapla
+        if (msg.direction === 'incoming') {
+            const contact = contactMap.get(normalizedPhone)!;
+            contact.unreadCount++;
+        }
     });
 
     contacts = Array.from(contactMap.values());
@@ -371,8 +377,16 @@ function renderContacts(): void {
         const time = document.createElement('div');
         time.className = 'wa-contact-time';
         time.textContent = formatRelativeTime(contact.lastMessageTime);
-
         meta.appendChild(time);
+
+        // Gelen mesaj badge'i
+        if (contact.unreadCount > 0) {
+            const badge = document.createElement('div');
+            badge.className = 'wa-contact-badge';
+            badge.textContent = String(contact.unreadCount);
+            badge.style.cssText = 'background: #25D366; color: #fff; font-size: 11px; font-weight: 600; min-width: 20px; height: 20px; border-radius: 10px; display: flex; align-items: center; justify-content: center; padding: 0 5px; margin-top: 4px;';
+            meta.appendChild(badge);
+        }
 
         item.appendChild(avatar);
         item.appendChild(info);
