@@ -225,9 +225,9 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 
 ## Aktif Gorevler
 - [x] **WhatsApp gelen mesajlar gorunmuyor** ✅: Migration 016 — status CHECK'e 'received' eklendi
-- [ ] **Bildirim cani (notification bell) hala calismiyor**: Mesaj DB'ye yaziliyor ama Realtime tetiklenmiyor — REPLICA IDENTITY eksik olabilir
+- [ ] **Bildirim cani (notification bell)**: WebSocket baglantisi BASARISIZ — `wss://...supabase.co` failed. Realtime calismiyorr
 - [ ] **Chat listede okunmamis mesaj badge'i**: Kimden mesaj geldigini gostermek icin kisi yaninda badge/indicator
-- [ ] **WhatsApp degiskenler {{1}} {{2}} hala gorunuyor mu?**: Eski sohbet mi yoksa yeni mesajlarda da var mi kontrol et
+- [x] **WhatsApp degiskenler {{1}} {{2}}** ✅: Eski mesajlarda var (fix oncesi), yeni mesajlarda resolveTemplateContent ile gercek degerler gosteriliyor
 
 ## Bekleyen Isler
 - Simdilik yok - tum ozellikler tamamlandi

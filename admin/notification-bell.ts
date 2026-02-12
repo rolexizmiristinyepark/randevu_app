@@ -1,8 +1,16 @@
 /**
  * NOTIFICATION BELL - Admin panel bildirim çan ikonu
  * Supabase Realtime ile appointments ve message_log değişikliklerini dinler
+ * Realtime başarısız olursa polling fallback (30sn) ile çalışır
  * Logout butonunun solunda altın rengi nokta ile gösterilir
  */
+
+import { apiCall } from '../api-service';
+
+// Polling state
+let pollingInterval: ReturnType<typeof setInterval> | null = null;
+let lastCheckedTimestamp: string = new Date().toISOString();
+const POLL_INTERVAL_MS = 30_000; // 30 saniye
 
 interface NotificationItem {
     id: string;
@@ -38,6 +46,7 @@ export function initNotificationBell(ui: typeof uiRef): void {
     createBellIcon();
     loadFromStorage();
     updateDot();
+    startPolling();
 }
 
 /**
@@ -470,5 +479,62 @@ function formatTurkishDate(dateStr: string): string {
         return d.toLocaleDateString('tr-TR', { day: 'numeric', month: 'short' });
     } catch {
         return dateStr;
+    }
+}
+
+/**
+ * Polling fallback — Realtime çalışmıyorsa 30sn'de bir yeni mesajları kontrol et
+ */
+function startPolling(): void {
+    if (pollingInterval) clearInterval(pollingInterval);
+    pollingInterval = setInterval(pollForNewMessages, POLL_INTERVAL_MS);
+    console.log('[NotificationBell] Polling başladı (30sn aralık)');
+}
+
+async function pollForNewMessages(): Promise<void> {
+    try {
+        const response = await apiCall('getWhatsAppMessages', {
+            type: 'received',
+            limit: '10',
+        }) as { success: boolean; data?: Array<{ id: string; timestamp?: string; direction?: string; phone?: string; recipient_name?: string; customer_phone?: string }> };
+
+        if (!response.success || !response.data) return;
+
+        // Son kontrol zamanından sonraki yeni mesajları bul
+        const newMessages = response.data.filter(msg => {
+            const msgTime = msg.timestamp || '';
+            return msgTime > lastCheckedTimestamp;
+        });
+
+        if (newMessages.length > 0) {
+            // Zaman damgasını güncelle
+            lastCheckedTimestamp = new Date().toISOString();
+
+            // Her yeni mesaj için bildirim oluştur
+            newMessages.forEach(msg => {
+                const phone = msg.phone || msg.customer_phone || '';
+                const name = msg.recipient_name || phone;
+
+                // Aynı mesaj ID ile daha önce bildirim oluşturulmuş mu?
+                const alreadyExists = notifications.some(n =>
+                    n.type === 'whatsapp_incoming' && n.detail === name &&
+                    Math.abs(new Date(n.timestamp).getTime() - new Date(msg.timestamp || '').getTime()) < 5000
+                );
+
+                if (!alreadyExists) {
+                    addNotification({
+                        type: 'whatsapp_incoming',
+                        title: 'Yeni WhatsApp Mesajı',
+                        detail: name,
+                        timestamp: msg.timestamp || new Date().toISOString(),
+                        mainTab: 'bildirim',
+                        subTab: 'whatsapp',
+                        innerTab: 'whatsappMessages',
+                    });
+                }
+            });
+        }
+    } catch {
+        // Sessizce devam et — polling hataları kullanıcıyı rahatsız etmesin
     }
 }
