@@ -167,15 +167,11 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 2. **Mesaj icerigi yok** ✅: Frontend camelCase/snake_case uyumsuzlugu duzeltildi (messageContent → message_content)
 3. **Kisi adi yok** ✅: Frontend camelCase/snake_case uyumsuzlugu duzeltildi (recipientName → recipient_name)
 4. **intl-tel-input koyu tema** ✅: Admin CSS dark theme → light theme (beyaz card ile uyumlu)
-5. **Degiskenler numara gorunuyor** ⏳: WhatsApp mesaj iceriginde {{1}}, {{2}} gibi numarali placeholder'lar cozumlenmiyor
-   - **Kok neden**: appointments ve whatsapp edge functions cbcbc69 commit'inden ONCE deploy edilmis!
-     - appointments: 00:17:39 | whatsapp: 00:17:37 | commit: 00:29:09 → Eski replaceMessageVariables kodu calisiyor
-     - notifications: 00:29:24 → Fix var, dogru calisiyor
-   - **Cozum (3 adim)**:
-     a. appointments + whatsapp edge functions yeniden deploy et (resolveTemplateContent icin)
-     b. Frontend WhatsAppTemplate interface'ine `variables` alani ekle
-     c. Frontend formatMessageContent: eski mesajlardaki {{1}} → degisken adi ile goster (fallback)
-   - **Dosyalar**: `_shared/whatsapp-sender.ts`, `admin/whatsapp-chat.ts`, `appointments/index.ts`, `whatsapp/index.ts`
+5. **Degiskenler numara gorunuyor** ✅: WhatsApp mesaj iceriginde {{1}}, {{2}} numarali placeholder'lar cozumlendi
+   - **Kok neden**: appointments ve whatsapp edge functions cbcbc69 commit'inden ONCE deploy edilmisti
+   - **Cozum**: appointments + whatsapp redeploy | Frontend VARIABLE_LABELS fallback | WhatsAppTemplate.variables eklendi
+   - Eski mesajlar: {{1}} → [Musteri], {{2}} → [Tarih] gibi Turkce etiketlerle gosteriliyor
+   - Yeni mesajlar: resolveTemplateContent ile gercek degerler gosteriliyor
 
 ## Bekleyen Isler
 - **notification-bell.ts** ⏳: Admin bildirim cani - commit edilmemis, entegrasyon bekliyor
