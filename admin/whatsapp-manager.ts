@@ -363,14 +363,14 @@ function createFlowItem(flow: WhatsAppFlow): HTMLElement {
 
     // Left: Name + Status
     const left = document.createElement('div');
-    left.className = 'mail-item-name';
-    left.style.cssText = 'display: flex; align-items: center; gap: 10px; flex-wrap: wrap;';
+    left.style.cssText = 'display: flex; align-items: center; gap: 8px;';
 
-    const name = document.createElement('strong');
+    const name = document.createElement('span');
+    name.className = 'mail-item-name';
     name.textContent = flow.name;
 
     const status = document.createElement('span');
-    status.style.cssText = `padding: 2px 8px; border-radius: 10px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; ${flow.active ? 'background: #E8F5E9; color: #2E7D32;' : 'background: #FFEBEE; color: #C62828;'}`;
+    status.style.cssText = `font-size: 10px; padding: 2px 6px; border-radius: 3px; background: ${flow.active ? '#4CAF50' : '#9E9E9E'}; color: white;`;
     status.textContent = flow.active ? 'Active' : 'Inactive';
 
     left.appendChild(name);
@@ -391,30 +391,40 @@ function createFlowItem(flow: WhatsAppFlow): HTMLElement {
     header.appendChild(left);
     header.appendChild(right);
 
-    // Details row
+    // Details - vertical layout with bold labels (matching other cards)
     const details = document.createElement('div');
-    details.style.cssText = 'font-size: 12px; color: #757575; display: flex; flex-wrap: wrap; gap: 15px;';
+    details.style.cssText = 'font-size: 12px; margin-top: 10px; display: flex; flex-direction: column; gap: 4px;';
+
+    // Helper function to create a row with bold label
+    const createRow = (label: string, value: string): HTMLElement => {
+        const row = document.createElement('div');
+        const labelSpan = document.createElement('span');
+        labelSpan.style.cssText = 'font-weight: 600; color: #555;';
+        labelSpan.textContent = `${label}: `;
+        const valueSpan = document.createElement('span');
+        valueSpan.style.cssText = 'color: #757575;';
+        valueSpan.textContent = value;
+        row.appendChild(labelSpan);
+        row.appendChild(valueSpan);
+        return row;
+    };
 
     // Profiles
     const profilesText = flow.profiles.map(p => PROFILE_LABELS[p] || p).join(', ');
-    const profilesSpan = document.createElement('span');
-    profilesSpan.textContent = profilesText;
-    details.appendChild(profilesSpan);
+    details.appendChild(createRow('Profil', profilesText));
 
     // Trigger
-    const triggerSpan = document.createElement('span');
+    let triggerText: string;
     if (isTimeBased) {
         const zamanLabel = HATIRLATMA_ZAMAN_LABELS[flow.hatirlatmaZaman || ''] || flow.hatirlatmaZaman;
-        triggerSpan.textContent = (flow.hatirlatmaSaat || '') + ' - ' + zamanLabel;
+        triggerText = (flow.hatirlatmaSaat || '') + ' - ' + zamanLabel;
     } else {
-        triggerSpan.textContent = (triggerLabels[flow.trigger] || flow.trigger);
+        triggerText = (triggerLabels[flow.trigger] || flow.trigger);
     }
-    details.appendChild(triggerSpan);
+    details.appendChild(createRow('Tetikleyici', triggerText));
 
     // Template count
-    const templateSpan = document.createElement('span');
-    templateSpan.textContent = flow.templateIds.length + ' şablon';
-    details.appendChild(templateSpan);
+    details.appendChild(createRow('Şablon', flow.templateIds.length + ' adet'));
 
     item.appendChild(header);
     item.appendChild(details);
