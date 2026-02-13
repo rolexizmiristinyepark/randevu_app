@@ -586,6 +586,19 @@ function setupCreateAppointmentButtons(): void {
  */
 function openAppointmentForm(code: 'b' | 'm'): void {
     const baseUrl = (window as any).CONFIG.BASE_URL;
+
+    // v3.7: Giriş yapan admin'in staff ID'sini al (staffFilter='user' için)
+    const currentUser = AdminAuth.getCurrentUser();
+    const autoStaffParam = currentUser?.id ? `?autoStaff=${currentUser.id}` : '';
+    const url = baseUrl + autoStaffParam + '#' + code;
+
+    // Mobilde iframe touch sorunları var (iOS Safari) - yeni sekmede aç
+    if (window.innerWidth <= 768) {
+        window.open(url, '_blank');
+        return;
+    }
+
+    // Desktop: iframe içinde göster
     const container = document.getElementById('appointmentFlowContainer');
     const iframe = document.getElementById('appointmentFlowFrame') as HTMLIFrameElement;
 
@@ -601,13 +614,9 @@ function openAppointmentForm(code: 'b' | 'm'): void {
         iframe.src = 'about:blank';
         container.style.display = 'block';
 
-        // v3.7: Giriş yapan admin'in staff ID'sini al (staffFilter='user' için)
-        const currentUser = AdminAuth.getCurrentUser();
-        const autoStaffParam = currentUser?.id ? `?autoStaff=${currentUser.id}` : '';
-
         // Kısa gecikme ile yeni src ayarla
         setTimeout(() => {
-            iframe.src = baseUrl + autoStaffParam + '#' + code;
+            iframe.src = url;
         }, 50);
 
         // Scroll to iframe
