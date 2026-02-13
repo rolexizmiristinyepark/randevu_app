@@ -111,7 +111,7 @@ function createBellIcon(): void {
     svg.setAttribute('height', '18');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', '#757575');
+    svg.setAttribute('stroke', '#C9A55A');
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
@@ -248,18 +248,9 @@ function renderDropdown(): void {
         item.addEventListener('mouseenter', () => { item.style.background = '#FAFAFA'; });
         item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
 
-        // İkon + İçerik satırı
-        const row = document.createElement('div');
-        row.style.cssText = 'display: flex; align-items: flex-start; gap: 10px;';
-
-        // Tip ikonu
-        const icon = document.createElement('span');
-        icon.style.cssText = 'font-size: 16px; flex-shrink: 0; margin-top: 1px;';
-        icon.textContent = getNotificationIcon(n.type);
-
-        // Metin
+        // İçerik
         const textDiv = document.createElement('div');
-        textDiv.style.cssText = 'flex: 1; min-width: 0;';
+        textDiv.style.cssText = 'min-width: 0;';
 
         const title = document.createElement('div');
         title.style.cssText = 'font-size: 13px; font-weight: 500; color: #1A1A2E; margin-bottom: 2px;';
@@ -277,9 +268,7 @@ function renderDropdown(): void {
         textDiv.appendChild(detail);
         textDiv.appendChild(time);
 
-        row.appendChild(icon);
-        row.appendChild(textDiv);
-        item.appendChild(row);
+        item.appendChild(textDiv);
 
         // Tıklayınca ilgili sayfaya git
         item.addEventListener('click', () => {
@@ -291,18 +280,6 @@ function renderDropdown(): void {
     });
 }
 
-/**
- * Bildirim tipine göre ikon
- */
-function getNotificationIcon(type: NotificationItem['type']): string {
-    switch (type) {
-        case 'appointment_create': return '+';
-        case 'appointment_update': return '~';
-        case 'appointment_cancel': return 'x';
-        case 'appointment_assign': return '>';
-        case 'whatsapp_incoming': return 'W';
-    }
-}
 
 /**
  * Bildirime tıklandığında ilgili sayfaya yönlendir

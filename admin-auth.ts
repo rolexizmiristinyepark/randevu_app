@@ -471,7 +471,7 @@ const AdminAuth = {
         const logoutSvg = document.createElementNS(svgNS, 'svg');
         logoutSvg.setAttribute('viewBox', '0 0 24 24');
         logoutSvg.setAttribute('fill', 'none');
-        logoutSvg.setAttribute('stroke', '#757575');
+        logoutSvg.setAttribute('stroke', '#C9A55A');
         logoutSvg.setAttribute('stroke-width', '2');
         logoutSvg.setAttribute('stroke-linecap', 'round');
         logoutSvg.setAttribute('stroke-linejoin', 'round');
@@ -487,7 +487,14 @@ const AdminAuth = {
         logoutSvg.appendChild(logoutPath1);
         logoutSvg.appendChild(logoutPath2);
         logoutSvg.appendChild(logoutPath3);
+        logoutSvg.className = 'logout-icon-svg';
         logoutBtn.appendChild(logoutSvg);
+
+        // Desktop text label
+        const logoutText = document.createElement('span');
+        logoutText.className = 'logout-text';
+        logoutText.textContent = 'Çıkış';
+        logoutBtn.appendChild(logoutText);
         logoutBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to logout?')) {
                 this.logout();

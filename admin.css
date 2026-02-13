@@ -1126,23 +1126,49 @@
 
 .admin-logout-btn {
     background: transparent;
-    border: none;
+    border: 1px solid #C9A55A;
+    border-radius: 4px;
     cursor: pointer;
-    padding: 6px;
+    padding: 6px 14px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: opacity 0.2s;
-    opacity: 0.5;
+    gap: 6px;
+    transition: all 0.2s;
+    color: #C9A55A;
+    font-size: 12px;
+    letter-spacing: 0.5px;
 }
 
 .admin-logout-btn:hover {
-    opacity: 1;
+    background: #C9A55A;
+    color: white;
+}
+
+.admin-logout-btn:hover svg {
+    stroke: white;
 }
 
 .admin-logout-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
+}
+
+/* Desktop: metin + ikon göster */
+.logout-text {
+    display: inline;
+}
+
+/* Mobil: sadece ikon göster */
+@media (max-width: 768px) {
+    .admin-logout-btn {
+        border: none;
+        padding: 6px;
+    }
+
+    .logout-text {
+        display: none;
+    }
 }
 
 
@@ -2079,7 +2105,8 @@
 }
 
 .wa-message.outgoing .wa-message-bubble {
-    background: #E8E8E8;
+    background: #be0200;
+    color: white;
     border-top-right-radius: 0;
 }
 
@@ -2109,13 +2136,25 @@
     color: #667781;
 }
 
+.wa-message.outgoing .wa-message-time {
+    color: rgba(255,255,255,0.7);
+}
+
 .wa-message-status {
     font-size: 14px;
     color: #1A1A2E;
 }
 
+.wa-message.outgoing .wa-message-status {
+    color: rgba(255,255,255,0.8);
+}
+
 .wa-message-status.success {
     color: #25D366;
+}
+
+.wa-message.outgoing .wa-message-status.success {
+    color: rgba(255,255,255,0.9);
 }
 
 .wa-message-status.failed {
