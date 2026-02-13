@@ -146,9 +146,9 @@ function createBellIcon(): void {
     const dropdown = document.createElement('div');
     dropdown.id = 'notificationDropdown';
     dropdown.style.cssText = `
-        display: none; position: absolute; top: calc(100% + 8px); right: -20px;
+        display: none; position: absolute; top: calc(100% + 8px); right: -10px;
         width: min(360px, 90vw); max-height: 420px; overflow-y: auto;
-        background: white; border: 1px solid #E8E8E8; border-radius: 4px;
+        background: white; border: 1px solid #E8E8E8; border-radius: 8px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200;
     `;
     wrapper.appendChild(dropdown);
@@ -205,7 +205,7 @@ function renderDropdown(): void {
     // Başlık
     const header = document.createElement('div');
     header.style.cssText = `
-        padding: 14px 16px; border-bottom: 1px solid #E8E8E8;
+        padding: 16px 20px; border-bottom: 1px solid #E8E8E8;
         font-size: 12px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
         color: #1A1A2E; display: flex; justify-content: space-between; align-items: center;
     `;
@@ -241,8 +241,8 @@ function renderDropdown(): void {
     notifications.forEach(n => {
         const item = document.createElement('div');
         item.style.cssText = `
-            padding: 12px 16px; border-bottom: 1px solid #F5F5F5; cursor: pointer;
-            transition: background 0.15s;
+            padding: 14px 20px; border-bottom: 1px solid #F5F5F5; cursor: pointer;
+            transition: background 0.15s; min-height: 44px;
         `;
         item.addEventListener('mouseenter', () => { item.style.background = '#FAFAFA'; });
         item.addEventListener('mouseleave', () => { item.style.background = 'transparent'; });
@@ -265,7 +265,7 @@ function renderDropdown(): void {
         title.textContent = n.title;
 
         const detail = document.createElement('div');
-        detail.style.cssText = 'font-size: 12px; color: #757575; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;';
+        detail.style.cssText = 'font-size: 12px; color: #757575; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;';
         detail.textContent = n.detail;
 
         const time = document.createElement('div');

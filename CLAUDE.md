@@ -247,6 +247,13 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - **Cozum**: —
 - **Durum**: ⏳ Duzeltiliyor
 
+### 2. Mobil Responsive Tasarım Düzeltmesi
+- **Sorun**: Mobilde bildirim çanı, logout butonu ve bildirim kartları kötü görünüyor. Touch target'lar küçük, dropdown pozisyonu bozuk, kartlarda metin taşıyor.
+- **Tespit**: (1) Bell SVG 18px + 8px padding = min 44px touch target yetersiz (2) Dropdown right:-20px mobilde ekran dışı (3) Bildirim kartlarında white-space:nowrap detail kesilir (4) Logout 6px padding yetersiz (5) Header-actions mobil layout iyileştirmesi gerekli
+- **Aksiyon**: admin.css mobil media query + notification-bell.ts inline style düzeltmeleri
+- **Çözüm**: —
+- **Durum**: ⏳ Düzeltiliyor
+
 ## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
 8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
 9. **Bildirim cani nokta rengi** ✅: Altin (#C9A55A) → Rolex yesili (#006039)

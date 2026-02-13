@@ -2419,3 +2419,76 @@
 .iti__dial-code {
     color: #757575;
 }
+
+/* ==================== MOBILE RESPONSIVE - Bell, Logout, Notifications ==================== */
+@media (max-width: 768px) {
+    /* Header daha kompakt */
+    .header {
+        padding: 15px 15px 10px;
+    }
+
+    .header .rolex-logo {
+        width: 30px;
+        margin-bottom: 8px;
+    }
+
+    .header h1 {
+        font-size: 14px;
+        letter-spacing: 1.5px;
+    }
+
+    .header p {
+        font-size: 10px;
+    }
+
+    /* Header actions — mobilde satır içi, yeterli tap target */
+    .header-actions {
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    /* Logout butonu mobil — daha büyük tap target */
+    .admin-logout-btn {
+        padding: 8px 14px;
+        font-size: 10px;
+        min-height: 36px;
+        display: inline-flex;
+        align-items: center;
+    }
+
+    /* Bildirim çanı mobil tap target */
+    #notificationBellBtn {
+        padding: 10px;
+        min-width: 40px;
+        min-height: 40px;
+    }
+
+    /* Bildirim dropdown — mobilde tam genişlik */
+    #notificationDropdown {
+        position: fixed !important;
+        top: auto !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100vw !important;
+        max-height: 70vh !important;
+        border-radius: 16px 16px 0 0 !important;
+        box-shadow: 0 -4px 24px rgba(0,0,0,0.15) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .header {
+        padding: 12px 10px 8px;
+    }
+
+    .header .rolex-logo {
+        width: 25px;
+        margin-bottom: 6px;
+    }
+
+    .header h1 {
+        font-size: 13px;
+        letter-spacing: 1px;
+    }
+}
