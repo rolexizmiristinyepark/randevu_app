@@ -24,11 +24,13 @@
 <!-- Format: - [ ] #ID | Aciklama | Oncelik: Yuksek/Orta/Dusuk -->
 
 - [ ] #1 | Console 104 issue — DOM null safety + gereksiz console.log temizligi | Oncelik: Dusuk
+- [ ] #17 | WhatsApp sohbet silme butonu (kişi barı sağ üst) | Oncelik: Orta
+- [ ] #18 | WhatsApp 24 saat kuralı — aynı gün sohbetlerde serbest mesaj gönderme | Oncelik: Yuksek
 
 ### 🟡 COZUME DEVAM EDIYOR
 <!-- Is basladiginda buraya tasi -->
 
-_(Aktif calisma yok)_
+_(Yok)_
 
 ### 🟢 TAMAMLANAN (deploy bekliyor)
 <!-- Cozum bitti ama deploy edilmedi -->
@@ -38,6 +40,13 @@ _(Yok)_
 ### ✅ DEPLOY EDILDI
 <!-- commit + push + deploy sonrasi buraya tasi ve tick at -->
 
+- [x] #17 + #18 | WA sohbet silme + 24h serbest mesaj cevaplama | 2026-02-13
+- [x] #16 | Bildirim harf ikonlari (W,+,~,x,>) kaldirildi | 2026-02-13
+- [x] #15 | Logout+bell altin renk, desktop metin buton, mobil ikon | 2026-02-13
+- [x] #14 | WhatsApp admin mesajlari kirmizi (#be0200) | 2026-02-13
+- [x] #13 | Randevu kartlari mobilde dikey layout (butonlar alt) | 2026-02-13
+- [x] #12 | Bildirim kartlari yazi stili tutarliligi (WA flow → diger kartlarla ayni) | 2026-02-13
+- [x] #11 | Takvim filtresi onlytoday → takvim gizle + bugun otomatik sec | 2026-02-13
 - [x] #2 | WhatsApp URL buton + mesaj icerigi + kisi adi fix | 2026-02-13
 - [x] #3 | intl-tel-input koyu tema → light theme | 2026-02-13
 - [x] #4 | WhatsApp degiskenler {{1}} {{2}} cozumleme | 2026-02-13
