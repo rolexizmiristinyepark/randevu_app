@@ -37,6 +37,16 @@ const PROFIL_LABELS: Record<string, string> = {
     v: 'ÖZEL MÜŞTERİ'
 };
 
+// Mobil kısa etiketler (768px altı)
+const PROFIL_LABELS_MOBILE: Record<string, string> = {
+    g: 'GEN',
+    w: 'GÜN',
+    b: 'MAĞ',
+    m: 'YÖN',
+    s: 'BİR',
+    v: 'ÖZEL'
+};
+
 // Kod mapping
 const CODE_LABELS: Record<string, string> = {
     g: '#g',
@@ -148,11 +158,14 @@ function renderTable(): void {
     const headerRow = document.createElement('tr');
     headerRow.appendChild(createCell('th', '', thStyle)); // boş köşe
 
+    const isMobile = window.innerWidth <= 768;
+    const labels = isMobile ? PROFIL_LABELS_MOBILE : PROFIL_LABELS;
+
     let colIdx = 0;
     for (const key of profilOrder) {
         const p = profilAyarlari[key];
         if (!p) continue;
-        const th = createCell('th', PROFIL_LABELS[key] || key, thStyle);
+        const th = createCell('th', labels[key] || key, thStyle);
         th.dataset.col = String(colIdx);
         th.addEventListener('click', () => openEditModal(key));
         headerRow.appendChild(th);
