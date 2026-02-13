@@ -487,7 +487,7 @@ const AdminAuth = {
         logoutSvg.appendChild(logoutPath1);
         logoutSvg.appendChild(logoutPath2);
         logoutSvg.appendChild(logoutPath3);
-        logoutSvg.className = 'logout-icon-svg';
+        logoutSvg.setAttribute('class', 'logout-icon-svg');
         logoutBtn.appendChild(logoutSvg);
 
         // Desktop text label
