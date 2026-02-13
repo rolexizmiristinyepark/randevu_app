@@ -2496,6 +2496,27 @@
     .profile-select-btn {
         width: 100%;
     }
+
+    /* Randevu kartları — mobilde dikey: bilgi üst, butonlar alt */
+    .apt-card-flex {
+        flex-direction: column !important;
+        gap: 12px;
+    }
+
+    .apt-card-actions {
+        flex-direction: row !important;
+        flex-wrap: wrap;
+        width: 100%;
+        padding-top: 12px;
+        border-top: 1px solid #F0F0F0;
+    }
+
+    .apt-card-actions .btn {
+        flex: 1;
+        min-width: 0;
+        min-height: 40px;
+        width: auto !important;
+    }
 }
 
 @media (max-width: 480px) {

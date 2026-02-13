@@ -553,6 +553,7 @@ function render(appointments: any[]): void {
 
             // Main flex container
             const flexContainer = createElement('div', {
+                className: 'apt-card-flex',
                 style: { display: 'flex', justifyContent: 'space-between', alignItems: 'start' }
             });
 
@@ -605,6 +606,7 @@ function render(appointments: any[]): void {
 
             // Right side - action buttons
             const buttonsDiv = createElement('div', {
+                className: 'apt-card-actions',
                 style: { display: 'flex', flexDirection: 'column', gap: '8px' }
             });
 
