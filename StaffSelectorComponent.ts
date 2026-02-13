@@ -139,8 +139,8 @@ export function displayAvailableStaff(): void {
         card.appendChild(nameDiv);
 
         if (isWorking) {
-            // ⚡ PERFORMANCE: Async handler for dynamic imports
-            card.addEventListener('click', (e) => void selectStaff(staff.id, effectiveShiftType, e));
+            // ⚡ Mobile fix: onclick kullan (addEventListener iOS iframe'de sorunlu)
+            card.onclick = () => void selectStaff(staff.id, effectiveShiftType, card);
         } else {
             card.style.opacity = '0.5';
             card.style.cursor = 'not-allowed';
@@ -179,7 +179,7 @@ export function displayAvailableStaff(): void {
 /**
  * ⚡ PERFORMANCE: Async for dynamic imports
  */
-export async function selectStaff(staffId: string, shiftType: string, event?: MouseEvent): Promise<void> {
+export async function selectStaff(staffId: string, shiftType: string, cardEl?: HTMLElement): Promise<void> {
     state.set('selectedStaff', String(staffId));
     state.set('selectedShiftType', shiftType);
     const staffMembers = state.get('staffMembers');
@@ -197,8 +197,8 @@ export async function selectStaff(staffId: string, shiftType: string, event?: Mo
     // ⚡ PERFORMANCE: Only update previous selected element (reduce reflow)
     const prev = document.querySelector('.staff-card.selected');
     if (prev) prev.classList.remove('selected');
-    if (event && event.currentTarget) {
-        (event.currentTarget as HTMLElement).classList.add('selected');
+    if (cardEl) {
+        cardEl.classList.add('selected');
     }
 
     // Show time slots section

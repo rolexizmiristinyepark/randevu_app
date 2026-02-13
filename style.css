@@ -116,7 +116,7 @@ body {
 
 .section.visible {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
 }
 
 .section.hidden {
@@ -355,6 +355,8 @@ body {
     cursor: pointer;
     transition: all 0.3s ease;
     text-align: center;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(201, 165, 90, 0.2);
 }
 
 .staff-card:hover {
@@ -1044,12 +1046,13 @@ label {
     opacity: 0;
     max-height: 0;
     overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    transition: opacity 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55), max-height 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
 }
 
 .management-sub-options.show {
     opacity: 1;
     max-height: 200px;
+    overflow: visible;
 }
 
 .management-sub-btn {
