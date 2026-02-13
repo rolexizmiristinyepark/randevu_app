@@ -1,5 +1,14 @@
 # Randevu Sistemi - Proje Rehberi
 
+## !! WORKFLOW — CLEAR SONRASI OTOMATIK DEVAM !!
+> Bu bolum HER OTURUMDA ilk okunacak yer. Clear/compact sonrasi soru sormadan direkt isle basla.
+
+1. **"devam et" / "kaldigin yerden devam"** → "Bekleyen Isler" bolumune bak → soru SORMA → direkt paralel agent'larla isle basla
+2. **Sorun bildirildinde** → HEMEN "Bekleyen Isler"e `- [ ]` yaz → coz → `- [x]` tikle → "Cozulen Sorunlar"a tasi
+3. **Commit edilmemis dosya varsa** → once commit et, sonra isle basla
+4. **Orkestra modu AKTIF** → paralel agent'lar kullan, sirayla bekleme
+5. **Deploy otomatik** → git push + supabase deploy + vercel deploy SORMADAN yap
+
 ## Proje Ozeti
 Rolex Istanbul butik randevu sistemi. GAS'tan Supabase'e gecis tamamlandi (Phase 0-7).
 Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supabase PostgreSQL (Frankfurt)
