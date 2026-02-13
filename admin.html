@@ -197,8 +197,19 @@
                                         <span class="wa-chat-status"></span>
                                     </div>
                                 </div>
+                                <div class="wa-chat-header-actions">
+                                    <button class="wa-delete-chat-btn" id="waDeleteChatBtn" title="Sohbeti Sil">
+                                        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14"/></svg>
+                                    </button>
+                                </div>
                             </div>
                             <div class="wa-messages-area" id="waMessagesArea">
+                            </div>
+                            <div class="wa-chat-input-area hidden" id="waChatInputArea">
+                                <input type="text" class="wa-chat-input" id="waChatInput" placeholder="Mesaj yazın..." maxlength="1000" />
+                                <button class="wa-chat-send-btn" id="waChatSendBtn" title="Gönder">
+                                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+                                </button>
                             </div>
                         </div>
                     </div>

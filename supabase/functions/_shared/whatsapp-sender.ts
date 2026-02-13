@@ -87,6 +87,52 @@ export async function sendWhatsAppMessage(
 }
 
 /**
+ * Meta Cloud API ile serbest metin WhatsApp mesaji gonder (24h kurali icinde)
+ */
+export async function sendWhatsAppTextMessage(
+  phone: string,
+  text: string
+): Promise<SendResult> {
+  const phoneNumberId = Deno.env.get('WHATSAPP_PHONE_NUMBER_ID');
+  const accessToken = Deno.env.get('WHATSAPP_ACCESS_TOKEN');
+
+  if (!phoneNumberId || !accessToken) {
+    return { success: false, error: 'WhatsApp API ayarları eksik' };
+  }
+
+  const formattedPhone = formatPhoneWithCountryCode(phone).replace('+', '');
+
+  try {
+    const response = await fetch(
+      `https://graph.facebook.com/v18.0/${phoneNumberId}/messages`,
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messaging_product: 'whatsapp',
+          to: formattedPhone,
+          type: 'text',
+          text: { body: text },
+        }),
+      }
+    );
+
+    const result = await response.json();
+
+    if (result.messages && result.messages[0]) {
+      return { success: true, messageId: result.messages[0].id };
+    }
+
+    return { success: false, error: JSON.stringify(result.error || result) };
+  } catch (err) {
+    return { success: false, error: String(err) };
+  }
+}
+
+/**
  * Template degiskenlerini Meta Cloud API component formatina cevir
  * Template.variables: { "1": "musteri", "2": "randevu_tarihi", ... }
  * eventData: { customerName: "Ahmet", date: "2025-01-15", ... }

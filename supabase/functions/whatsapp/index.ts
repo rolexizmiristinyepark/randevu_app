@@ -7,7 +7,7 @@ import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient, requireAdmin } from '../_shared/supabase-client.ts';
 import { addAuditLog } from '../_shared/security.ts';
 import { replaceMessageVariables, formatPhoneWithCountryCode, getMessageVariableOptions } from '../_shared/variables.ts';
-import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
+import { sendWhatsAppMessage, sendWhatsAppTextMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
 import type { EdgeFunctionBody } from '../_shared/types.ts';
 
 serve(async (req: Request) => {
@@ -67,6 +67,12 @@ serve(async (req: Request) => {
         return await handleUpdateDailyTask(req, body);
       case 'deleteWhatsAppDailyTask':
         return await handleDeleteDailyTask(req, body);
+
+      // Free text message (24h rule) + chat delete
+      case 'sendWhatsAppFreeMessage':
+        return await handleSendFreeMessage(req, body);
+      case 'deleteWhatsAppChat':
+        return await handleDeleteChat(req, body);
 
       default:
         return errorResponse(`Bilinmeyen whatsapp action: ${action}`);
@@ -504,4 +510,66 @@ async function handleDeleteDailyTask(req: Request, body: EdgeFunctionBody): Prom
   const { error } = await supabase.from('daily_tasks').delete().eq('id', id);
   if (error) return errorResponse('Task silinemedi: ' + error.message);
   return jsonResponse({ success: true, message: 'Task silindi' });
+}
+
+// ==================== FREE TEXT MESSAGE (24h rule) ====================
+
+async function handleSendFreeMessage(req: Request, body: EdgeFunctionBody): Promise<Response> {
+  const adminCheck = await requireAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  const phone = String(body.phone || '');
+  const text = String(body.text || '');
+  const recipientName = String(body.recipientName || '');
+
+  if (!phone || !text) return errorResponse('Telefon ve mesaj gerekli');
+
+  const result = await sendWhatsAppTextMessage(phone, text);
+
+  // message_log'a kaydet
+  await logMessage({
+    direction: 'outgoing',
+    phone,
+    recipient_name: recipientName,
+    template_name: '',
+    status: result.success ? 'sent' : 'failed',
+    message_id: result.messageId || '',
+    error_message: result.error || '',
+    message_content: text,
+    triggered_by: 'admin_reply',
+    target_type: 'customer',
+    customer_name: recipientName,
+    customer_phone: phone,
+  });
+
+  if (!result.success) return errorResponse('Mesaj gönderilemedi: ' + result.error);
+  return jsonResponse({ success: true, messageId: result.messageId });
+}
+
+// ==================== CHAT DELETE ====================
+
+async function handleDeleteChat(req: Request, body: EdgeFunctionBody): Promise<Response> {
+  const adminCheck = await requireAdmin(req);
+  if (adminCheck) return adminCheck;
+
+  const phone = String(body.phone || '');
+  if (!phone) return errorResponse('Telefon numarası gerekli');
+
+  const supabase = createServiceClient();
+
+  // Telefon numarasına ait tüm mesajları sil (phone veya customer_phone eşleşmesi)
+  const cleanPhone = phone.replace(/\D/g, '');
+  const phoneVariants = [cleanPhone];
+  // +90 prefix ekle/kaldır
+  if (cleanPhone.startsWith('90')) phoneVariants.push(cleanPhone.slice(2));
+  else phoneVariants.push('90' + cleanPhone);
+
+  const { error } = await supabase.from('message_log')
+    .delete()
+    .or(phoneVariants.map(p => `phone.like.%${p}%`).join(','));
+
+  if (error) return errorResponse('Sohbet silinemedi: ' + error.message);
+
+  await addAuditLog(supabase, 'whatsapp_chat_delete', { phone, variants: phoneVariants });
+  return jsonResponse({ success: true, message: 'Sohbet silindi' });
 }

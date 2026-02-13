@@ -47,6 +47,8 @@ type ProtectedAction =
     | 'updateWhatsAppTemplate'
     | 'deleteWhatsAppTemplate'
     | 'getWhatsAppTemplates'
+    | 'sendWhatsAppFreeMessage'
+    | 'deleteWhatsAppChat'
     | 'getAllLinks'
     | 'getWhatsAppVariableOptions'
     | 'createStaff'
@@ -198,6 +200,8 @@ const ACTION_TO_FUNCTION: Record<string, string> = {
     addWhatsAppDailyTask: 'whatsapp',
     updateWhatsAppDailyTask: 'whatsapp',
     deleteWhatsAppDailyTask: 'whatsapp',
+    sendWhatsAppFreeMessage: 'whatsapp',
+    deleteWhatsAppChat: 'whatsapp',
 
     // Mail & Notifications
     getMailFlows: 'mail',
@@ -288,6 +292,7 @@ const ApiService = {
         'addWhatsAppFlow', 'updateWhatsAppFlow', 'deleteWhatsAppFlow',
         'createWhatsAppTemplate', 'updateWhatsAppTemplate', 'deleteWhatsAppTemplate',
         'addWhatsAppDailyTask', 'updateWhatsAppDailyTask', 'deleteWhatsAppDailyTask',
+        'sendWhatsAppFreeMessage', 'deleteWhatsAppChat',
         'getWhatsAppTemplates', 'getAllLinks', 'getWhatsAppVariableOptions',
         'createStaff', 'updateStaffV3',
         'createBackup', 'listBackups', 'restoreBackup',

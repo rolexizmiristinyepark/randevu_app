@@ -465,6 +465,9 @@ function selectContact(customerKey: string, customer_name: string, contactType: 
 
     // Render messages for this customer
     renderMessages(customerKey);
+
+    // Update 24h input visibility
+    updateChatInputVisibility(customerKey);
 }
 
 /**
@@ -488,6 +491,12 @@ function goBackToContacts(): void {
     document.querySelectorAll('.wa-contact-item').forEach(item => {
         item.classList.remove('active');
     });
+
+    // Hide input area and info banner
+    const inputArea = document.getElementById('waChatInputArea');
+    if (inputArea) inputArea.classList.add('hidden');
+    const infoDiv = document.querySelector('.wa-24h-info');
+    if (infoDiv) infoDiv.remove();
 }
 
 /**
@@ -591,6 +600,125 @@ function renderMessages(customerKey: string): void {
 }
 
 /**
+ * Check if 24h free message window is open for a contact
+ * Returns true if last incoming message from this phone is within 24 hours
+ */
+function is24hWindowOpen(customerKey: string): boolean {
+    const now = Date.now();
+    const twentyFourHours = 24 * 60 * 60 * 1000;
+
+    for (const msg of allMessages) {
+        if (msg.direction !== 'incoming') continue;
+        const normalizedPhone = normalizePhone(getRecipientPhone(msg));
+        if (normalizedPhone !== customerKey) continue;
+
+        const msgTime = new Date(msg.timestamp || msg.sent_at || 0).getTime();
+        if (now - msgTime < twentyFourHours) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Update chat input area visibility based on 24h rule
+ */
+function updateChatInputVisibility(customerKey: string): void {
+    const inputArea = document.getElementById('waChatInputArea');
+    const existingInfo = document.querySelector('.wa-24h-info');
+
+    if (!inputArea) return;
+
+    // Remove old info banner
+    if (existingInfo) existingInfo.remove();
+
+    if (is24hWindowOpen(customerKey)) {
+        inputArea.classList.remove('hidden');
+    } else {
+        inputArea.classList.add('hidden');
+        // Show info message
+        const infoDiv = document.createElement('div');
+        infoDiv.className = 'wa-24h-info';
+        infoDiv.textContent = '24 saat penceresi kapali — sadece onaylanmis sablonlar gonderilebilir';
+        inputArea.parentElement?.insertBefore(infoDiv, inputArea);
+    }
+}
+
+/**
+ * Send a free text message (within 24h window)
+ */
+async function sendFreeMessage(): Promise<void> {
+    const input = document.getElementById('waChatInput') as HTMLInputElement;
+    const sendBtn = document.getElementById('waChatSendBtn') as HTMLButtonElement;
+
+    if (!input || !selectedCustomer) return;
+
+    const text = input.value.trim();
+    if (!text) return;
+
+    // Find the contact's actual phone
+    const contact = contacts.find(c => c.phone === selectedCustomer);
+    if (!contact) return;
+
+    sendBtn.disabled = true;
+    input.disabled = true;
+
+    try {
+        const response = await apiCall('sendWhatsAppFreeMessage', {
+            phone: contact.customer_phone,
+            message: text,
+        });
+
+        if (response.success) {
+            input.value = '';
+            // Reload messages to show the new one
+            await loadAllMessages();
+            if (selectedCustomer) {
+                renderMessages(selectedCustomer);
+                updateChatInputVisibility(selectedCustomer);
+            }
+        } else {
+            alert('Mesaj gonderilemedi: ' + (response.error || 'Bilinmeyen hata'));
+        }
+    } catch (err) {
+        alert('Mesaj gonderilemedi: ' + String(err));
+    } finally {
+        sendBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+    }
+}
+
+/**
+ * Delete entire chat (all messages for this contact)
+ */
+async function deleteChat(): Promise<void> {
+    if (!selectedCustomer) return;
+
+    const contact = contacts.find(c => c.phone === selectedCustomer);
+    if (!contact) return;
+
+    const confirmMsg = `"${contact.name}" ile tum sohbet silinecek. Emin misiniz?`;
+    if (!confirm(confirmMsg)) return;
+
+    try {
+        const response = await apiCall('deleteWhatsAppChat', {
+            phone: contact.customer_phone,
+        });
+
+        if (response.success) {
+            // Go back to contacts and reload
+            goBackToContacts();
+            await loadAllMessages();
+        } else {
+            alert('Sohbet silinemedi: ' + (response.error || 'Bilinmeyen hata'));
+        }
+    } catch (err) {
+        alert('Sohbet silinemedi: ' + String(err));
+    }
+}
+
+/**
  * Setup event listeners
  */
 function setupEventListeners(): void {
@@ -606,6 +734,29 @@ function setupEventListeners(): void {
     const backBtn = document.getElementById('waBackBtn');
     if (backBtn) {
         backBtn.addEventListener('click', goBackToContacts);
+    }
+
+    // Delete chat button
+    const deleteBtn = document.getElementById('waDeleteChatBtn');
+    if (deleteBtn) {
+        deleteBtn.addEventListener('click', deleteChat);
+    }
+
+    // Send free message button
+    const sendBtn = document.getElementById('waChatSendBtn');
+    if (sendBtn) {
+        sendBtn.addEventListener('click', sendFreeMessage);
+    }
+
+    // Enter key to send
+    const chatInput = document.getElementById('waChatInput');
+    if (chatInput) {
+        chatInput.addEventListener('keydown', (e) => {
+            if ((e as KeyboardEvent).key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendFreeMessage();
+            }
+        });
     }
 }
 
