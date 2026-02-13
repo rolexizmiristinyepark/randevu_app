@@ -13,6 +13,9 @@ import { createDebugLogger } from './debug-logger';
 // Debug logger - uses centralized debug module
 const log = createDebugLogger('SuccessPage');
 
+// Auto-reset timer ID (takvime ekle tiklanirsa iptal edilir)
+let resetTimerId: ReturnType<typeof setTimeout> | null = null;
+
 // ==================== SUCCESS PAGE ====================
 
 /**
@@ -32,14 +35,22 @@ export function showSuccessPage(dateStr: string, timeStr: string, staffName: str
     setTimeout(() => {
         const calendarBtn = document.getElementById('addToCalendarBtn');
         if (calendarBtn) {
-            calendarBtn.addEventListener('click', addToCalendar);
+            calendarBtn.addEventListener('click', () => {
+                // Takvime ekle tiklaninca timer iptal
+                if (resetTimerId) {
+                    clearTimeout(resetTimerId);
+                    resetTimerId = null;
+                }
+                addToCalendar();
+            });
         } else {
             log.error('Add to Calendar button not found!');
         }
     }, 100);
 
     // 10 saniye sonra sayfayi sifirla (ilk randevu adimina don)
-    setTimeout(() => {
+    // Takvime ekle tiklanirsa iptal edilir
+    resetTimerId = setTimeout(() => {
         window.location.reload();
     }, 10000);
 }
