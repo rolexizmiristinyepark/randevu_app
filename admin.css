@@ -761,6 +761,31 @@
             .link-card-full {
                 grid-column: span 1;
             }
+
+            /* Shift table responsive - mobil */
+            .shift-table th:first-child,
+            .shift-table td:first-child {
+                width: 55px;
+                font-size: 11px;
+                padding: 6px 4px;
+            }
+
+            .shift-table th,
+            .shift-table td {
+                padding: 6px 1px;
+                font-size: 9px;
+            }
+
+            .shift-table th small {
+                font-size: 8px;
+            }
+
+            .shift-table select {
+                font-size: 11px;
+                font-weight: 600;
+                padding: 8px 1px;
+                min-height: 32px;
+            }
         }
 
         /* Hafta seçimi inputları - tıklanabilir */

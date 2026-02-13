@@ -334,7 +334,9 @@ function render(): void {
     const month = parts[1] || 0;
     const day = parts[2] || 0;
     const weekStart = new Date(year, month - 1, day);
-    const days = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const daysFull = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+    const daysShort = ['P', 'S', 'Ç', 'P', 'C', 'C', 'P'];
+    const isMobile = window.innerWidth <= 768;
 
     // Create table with createElement
     const table = createElement('table', { className: 'shift-table' });
@@ -351,12 +353,13 @@ function render(): void {
     for (let i = 0; i < 7; i++) {
         const d = new Date(weekStart);
         d.setDate(weekStart.getDate() + i);
-        const dateStr = d.getDate() + ' ' + (d.getMonth() + 1);
 
         const dayHeader = createElement('th');
-        dayHeader.appendChild(document.createTextNode(days[i] || ''));
+        dayHeader.setAttribute('data-day-full', daysFull[i] || '');
+        dayHeader.setAttribute('data-day-short', daysShort[i] || '');
+        dayHeader.appendChild(document.createTextNode(isMobile ? (daysShort[i] || '') : (daysFull[i] || '')));
         dayHeader.appendChild(createElement('br'));
-        const small = createElement('small', {}, String(dateStr));
+        const small = createElement('small', {}, String(d.getDate()));
         dayHeader.appendChild(small);
         headerRow.appendChild(dayHeader);
     }
@@ -395,10 +398,14 @@ function render(): void {
 
         const staffRow = createElement('tr');
 
-        // Staff name cell
+        // Staff name cell — mobilde sadece ilk isim
+        const firstName = staff.name.split(' ')[0] || staff.name;
         const nameCell = createElement('td', {
+            className: 'shift-staff-name',
             style: { textAlign: 'left', fontWeight: '400' }
-        }, staff.name);
+        }, isMobile ? firstName : staff.name);
+        nameCell.setAttribute('data-fullname', staff.name);
+        nameCell.setAttribute('data-firstname', firstName);
         staffRow.appendChild(nameCell);
 
         // Day cells with select dropdowns
@@ -457,29 +464,48 @@ function render(): void {
 }
 
 /**
- * Update shift labels based on screen width
+ * Update shift labels, day headers, and names based on screen width
  */
 function updateShiftLabels(): void {
+    const isMobile = window.innerWidth <= 768;
     const isSmallScreen = window.innerWidth <= 1024;
-    const selects = document.querySelectorAll('.shift-table select') as NodeListOf<HTMLSelectElement>;
 
+    // Update shift select labels
+    const selects = document.querySelectorAll('.shift-table select') as NodeListOf<HTMLSelectElement>;
     selects.forEach(select => {
         Array.from(select.options).forEach(option => {
             const value = option.value;
             if (isSmallScreen) {
-                // Small screen abbreviations
-                if (value === '') option.textContent = 'Off';
+                if (value === '') option.textContent = 'O';
                 if (value === 'morning') option.textContent = 'S';
                 if (value === 'evening') option.textContent = 'A';
                 if (value === 'full') option.textContent = 'F';
             } else {
-                // Normal screen full words
                 if (value === '') option.textContent = 'Off';
                 if (value === 'morning') option.textContent = 'Sabah';
                 if (value === 'evening') option.textContent = 'Akşam';
                 if (value === 'full') option.textContent = 'Full';
             }
         });
+    });
+
+    // Update day headers (P/S/Ç vs Pzt/Sal/Çar)
+    const dayHeaders = document.querySelectorAll('.shift-table th[data-day-full]');
+    dayHeaders.forEach(th => {
+        const full = th.getAttribute('data-day-full') || '';
+        const short = th.getAttribute('data-day-short') || '';
+        const textNode = th.firstChild;
+        if (textNode && textNode.nodeType === Node.TEXT_NODE) {
+            textNode.textContent = isMobile ? short : full;
+        }
+    });
+
+    // Update staff names (first name only on mobile)
+    const nameCells = document.querySelectorAll('.shift-staff-name');
+    nameCells.forEach(cell => {
+        const fullName = cell.getAttribute('data-fullname') || '';
+        const firstName = cell.getAttribute('data-firstname') || '';
+        cell.textContent = isMobile ? firstName : fullName;
     });
 }
 

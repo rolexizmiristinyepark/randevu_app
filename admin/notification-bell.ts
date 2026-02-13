@@ -121,8 +121,8 @@ function createBellIcon(): void {
     dot.id = 'notificationDot';
     dot.style.cssText = `
         position: absolute; top: 2px; right: 1px; width: 7px; height: 7px;
-        background: #C9A55A; border-radius: 50%; display: none;
-        box-shadow: 0 0 3px rgba(201, 165, 90, 0.6);
+        background: #006039; border-radius: 50%; display: none;
+        box-shadow: 0 0 3px rgba(0, 96, 57, 0.6);
     `;
     btn.appendChild(dot);
 
