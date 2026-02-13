@@ -239,7 +239,13 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 11. **Profil basliklari mobilde kesilmis** ✅: PROFIL_LABELS_MOBILE (GEN/GÜN/MAĞ/YÖN/BİR/ÖZEL) + CSS font/padding mobil
 
 ## Bekleyen Isler
-- [ ] **Console 104 issue**: 8 error, 4 warning — incelenmeli (ekran goruntusu 2026-02-13)
+
+### 1. Console 104 issue (admin panel)
+- **Sorun**: Admin panelde 104 console issue (8 error, 4 warning, 13 info, 87 diger)
+- **Tespit**: 8 error = DOM null safety (profile-settings-manager.ts:316-320) + intl-tel-input lazy load + API timeout. 4 warning = mail template option mismatch + permission denied. 87 diger = debug console.log spam (mail/whatsapp/appointment manager'lar)
+- **Aksiyon**: (1) DOM null check ekle (2) Gereksiz console.log kaldir (3) Hata yakalama iyilestir
+- **Cozum**: —
+- **Durum**: ⏳ Duzeltiliyor
 
 ## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
 8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
