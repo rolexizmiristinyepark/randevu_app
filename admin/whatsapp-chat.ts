@@ -100,7 +100,6 @@ async function loadTemplates(): Promise<void> {
             response.data.forEach(t => {
                 templatesCache.set(t.name, t);
             });
-            console.log('[WhatsApp Chat] Loaded', templatesCache.size, 'templates');
         }
     } catch (error) {
         console.error('Error loading templates:', error);

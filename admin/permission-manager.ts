@@ -94,7 +94,6 @@ export async function initPermissionManager(store: DataStore): Promise<void> {
     // Load admin users list
     loadAdminUsersList();
 
-    console.log('Permission Manager initialized', { isAdmin: userPermissions.isAdmin });
 }
 
 /**

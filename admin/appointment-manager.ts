@@ -459,12 +459,10 @@ async function saveAssignedStaff(): Promise<void> {
     ButtonAnimator.start(btn);
 
     try {
-        console.log('[assignStaff] Sending:', { eventId: currentAssigningAppointment.id, staffId, staffIdType: typeof staffId });
         const result = await ApiService.call('assignStaffToAppointment', {
             eventId: currentAssigningAppointment.id,
             staffId: staffId
         });
-        console.log('[assignStaff] Result:', result);
 
         if (result.success) {
             ButtonAnimator.success(btn, false);
@@ -622,9 +620,6 @@ function render(appointments: any[]): void {
             const appointmentProfil = apt.profile || '';
             const profilAyari = dataStore.profilAyarlari[appointmentProfil];
             const showAssignButton = profilAyari?.assignByAdmin === true;
-
-            // DEBUG
-            console.log('[AssignBtn]', { appointmentProfil, profilAyari, showAssignButton, hasNoStaff, staffName, staffId });
 
             // Button order: 1. Assign Staff (if applicable), 2. Edit, 3. Delete
             if (showAssignButton) {

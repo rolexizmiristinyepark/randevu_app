@@ -1067,11 +1067,6 @@ async function saveTemplate(): Promise<void> {
         button_variable
     };
 
-    // v3.10.20: Debug log - content gönderilip gönderilmediğini kontrol et
-    console.log('[saveTemplate] content value:', content);
-    console.log('[saveTemplate] content length:', content?.length);
-    console.log('[saveTemplate] templateData:', JSON.stringify(templateData));
-
     // Add loading state
     if (saveBtn) {
         ButtonAnimator.start(saveBtn);

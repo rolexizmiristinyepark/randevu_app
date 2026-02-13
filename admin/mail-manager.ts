@@ -634,10 +634,6 @@ async function saveFlow(): Promise<void> {
     const infoCardSelect = document.getElementById('mailFlowInfoCards') as HTMLSelectElement;
     const info_card_id = infoCardSelect?.value || '';
 
-    // Debug: Log what we're saving
-    console.log('[Mail] Saving flow with template_ids:', template_ids);
-    console.log('[Mail] Saving flow with info_card_id:', info_card_id);
-
     // Build flow data
     const flowData: Partial<MailFlow> = {
         name,
@@ -1053,8 +1049,6 @@ function populateTemplateInfoCardSelect(): void {
     while (select.options.length > 1) {
         select.remove(1);
     }
-
-    console.log('[Mail] Populating info card select, cards:', infoCards.length);
 
     // Add info cards as options
     infoCards.forEach(card => {
