@@ -464,7 +464,7 @@ const AdminAuth = {
 
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
-        logoutBtn.title = 'Çıkış Yap';
+        logoutBtn.title = 'Logout';
 
         // SVG logout icon (door + arrow)
         const svgNS = 'http://www.w3.org/2000/svg';
@@ -493,7 +493,7 @@ const AdminAuth = {
         // Desktop text label
         const logoutText = document.createElement('span');
         logoutText.className = 'logout-text';
-        logoutText.textContent = 'Çıkış';
+        logoutText.textContent = 'Logout';
         logoutBtn.appendChild(logoutText);
         logoutBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to logout?')) {
