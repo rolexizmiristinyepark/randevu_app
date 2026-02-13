@@ -81,10 +81,18 @@ function createBellIcon(): void {
     const header = document.querySelector('.header');
     if (!header) return;
 
+    // header-actions container (admin-auth.ts tarafından da oluşturulabilir)
+    let actions = header.querySelector('.header-actions') as HTMLElement;
+    if (!actions) {
+        actions = document.createElement('div');
+        actions.className = 'header-actions';
+        header.appendChild(actions);
+    }
+
     // Wrapper: bell + dropdown
     const wrapper = document.createElement('div');
     wrapper.id = 'notificationBellWrapper';
-    wrapper.style.cssText = 'position: absolute; right: 120px; top: 50%; transform: translateY(-50%); z-index: 100;';
+    wrapper.style.cssText = 'position: relative; z-index: 100;';
 
     // Bell button
     const btn = document.createElement('button');
@@ -138,14 +146,15 @@ function createBellIcon(): void {
     const dropdown = document.createElement('div');
     dropdown.id = 'notificationDropdown';
     dropdown.style.cssText = `
-        display: none; position: absolute; top: calc(100% + 8px); right: 0;
-        width: 360px; max-height: 420px; overflow-y: auto;
+        display: none; position: absolute; top: calc(100% + 8px); right: -20px;
+        width: min(360px, 90vw); max-height: 420px; overflow-y: auto;
         background: white; border: 1px solid #E8E8E8; border-radius: 4px;
         box-shadow: 0 8px 24px rgba(0,0,0,0.12); z-index: 200;
     `;
     wrapper.appendChild(dropdown);
 
-    header.appendChild(wrapper);
+    // Bell'i header-actions'ın başına ekle (logout'un soluna)
+    actions.insertBefore(wrapper, actions.firstChild);
 
     // Dışarı tıklayınca kapat
     document.addEventListener('click', (e) => {
