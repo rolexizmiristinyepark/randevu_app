@@ -254,6 +254,13 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - **Çözüm**: admin.css (4 blok), admin-auth.ts (SVG logout ikon), notification-bell.ts (padding+renk)
 - **Durum**: ✅ Tamamlandı
 
+### 3. Mobil Kart Layout Düzeltmeleri (5 alan)
+- **Sorun**: Mobilde tüm kartlarda butonlar bilgilerin yanında/üstünde, okunması ve tıklanması zor
+- **Tespit**: (1) Bildirim flow/whatsapp/mail kartları — butonlar sağda sıkışık (2) Çalışanlar listesi — butonlar yanyana değil dağınık (3) Randevu oluştur kartı — butonlar bilgiyle karışık (4) Randevu ayarları — profil tablosu mobilde sadece 4 kolon görünüyor
+- **Aksiyon**: admin.css mobil media query + ilgili TS dosyalarında kart layout düzeltmeleri. Pattern: bilgiler üstte, butonlar altta yan yana (veya alt alta)
+- **Çözüm**: —
+- **Durum**: ⏳ Düzeltiliyor
+
 ## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
 8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
 9. **Bildirim cani nokta rengi** ✅: Altin (#C9A55A) → Rolex yesili (#006039)

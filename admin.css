@@ -756,7 +756,25 @@
             }
 
             .staff-actions {
-                flex-direction: column;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding-top: 12px;
+                border-top: 1px solid #F0F0F0;
+            }
+
+            .staff-actions .btn {
+                flex: 1;
+                min-width: 0;
+                text-align: center;
+                font-size: 11px;
+                padding: 10px 8px;
+            }
+
+            .staff-actions .staff-status {
+                width: 100%;
+                text-align: center;
+                margin-bottom: 4px;
             }
 
             /* Link cards responsive */
@@ -1407,16 +1425,16 @@
         padding: 15px;
     }
 
-    /* Profil Ayarları tablosu mobil */
+    /* Profil Ayarları tablosu mobil — tüm kolonlar göster, scroll */
     .settings-table thead th {
-        font-size: 8px !important;
-        padding: 6px 3px !important;
+        font-size: 9px !important;
+        padding: 6px 4px !important;
         letter-spacing: 0.3px !important;
     }
 
     .settings-table td {
-        padding: 6px 3px !important;
-        font-size: 10px !important;
+        padding: 6px 4px !important;
+        font-size: 11px !important;
     }
 }
 
@@ -1668,7 +1686,7 @@
    ======================================== */
 
 #profilAyarlariTable {
-    overflow-x: hidden;
+    overflow-x: auto;
 }
 
 #profilAyarlariTable th,
@@ -1678,21 +1696,19 @@
 
 /* Mobile responsive - stack layout for very small screens */
 @media (max-width: 768px) {
+    #profilAyarlariTable {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+    }
+
     #profilAyarlariTable table {
-        font-size: 12px;
+        font-size: 11px;
+        min-width: 500px;
     }
 
     #profilAyarlariTable th,
     #profilAyarlariTable td {
-        padding: 8px 6px !important;
-    }
-
-    /* Hide less important columns on small screens */
-    #profilAyarlariTable th:nth-child(3),
-    #profilAyarlariTable td:nth-child(3),
-    #profilAyarlariTable th:nth-child(4),
-    #profilAyarlariTable td:nth-child(4) {
-        display: none;
+        padding: 6px 4px !important;
     }
 }
 
@@ -1758,28 +1774,45 @@
     flex-shrink: 0;
 }
 
-/* Küçük ekranlar - butonları alt satıra al */
+/* Küçük ekranlar - kartlarda butonlar altta */
 @media (max-width: 768px) {
+    /* Flow/Template/InfoCard kartı — bilgiler üstte, butonlar altta */
+    .mail-list-item {
+        display: flex;
+        flex-direction: column;
+    }
+
     .mail-item-header {
         flex-direction: column;
         align-items: stretch;
+        order: 2;
     }
 
-    .mail-item-name {
-        margin-bottom: 10px;
+    .mail-item-header > .mail-item-name,
+    .mail-item-header > div:first-child {
+        order: -1;
+        margin-bottom: 0;
     }
 
     .mail-item-actions {
         display: flex;
         gap: 8px;
         width: 100%;
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #F0F0F0;
     }
 
     .mail-item-actions .btn {
         flex: 1;
         text-align: center;
-        font-size: 12px;
-        padding: 8px 12px;
+        font-size: 11px;
+        padding: 10px 8px;
+        min-height: 40px;
+    }
+
+    .mail-item-name {
+        margin-bottom: 8px;
     }
 }
 
@@ -2452,6 +2485,16 @@
         max-height: 70vh !important;
         border-radius: 16px 16px 0 0 !important;
         box-shadow: 0 -4px 24px rgba(0,0,0,0.15) !important;
+    }
+
+    /* Randevu oluştur butonları — mobilde alt alta */
+    .profile-selection {
+        flex-direction: column !important;
+        gap: 10px !important;
+    }
+
+    .profile-select-btn {
+        width: 100%;
     }
 }
 
