@@ -46,12 +46,17 @@ export async function selectManagementContact(contactId: string, contactName: st
     // NOTE: Don't hide sub-options - selected button should remain visible
     // Keep buttons open so user can see their selection
 
-    // Reveal calendar section
-    // ⚡ PERFORMANCE: Dynamic import for better tree-shaking
-    const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
-    revealSection('calendarSection');
-    renderCalendar();
-    await loadMonthData();
+    // Takvim filtresi kontrolü: onlytoday ise takvim atla, bugün otomatik seç
+    const profilAyarlari = state.get('profilAyarlari');
+    if (profilAyarlari?.takvimFiltresi === 'onlytoday') {
+        const { selectDay } = await import('./CalendarComponent');
+        await selectDay(state.get('selectedDate')!);
+    } else {
+        const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
+        revealSection('calendarSection');
+        renderCalendar();
+        await loadMonthData();
+    }
 }
 
 // ==================== APPOINTMENT TYPE SELECTION ====================
@@ -119,12 +124,17 @@ export async function selectAppointmentType(type: AppointmentType): Promise<void
         selectedCard.classList.add('selected');
     }
 
-    // Reveal calendar and load data (animated + smooth scroll)
-    // ⚡ PERFORMANCE: Dynamic import for better tree-shaking
-    const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
-    revealSection('calendarSection');
-    renderCalendar();
-    await loadMonthData();
+    // Takvim filtresi kontrolü: onlytoday ise takvim atla, bugün otomatik seç
+    const profilAyarlari = state.get('profilAyarlari');
+    if (profilAyarlari?.takvimFiltresi === 'onlytoday') {
+        const { selectDay } = await import('./CalendarComponent');
+        await selectDay(state.get('selectedDate')!);
+    } else {
+        const { renderCalendar, loadMonthData } = await import('./CalendarComponent');
+        revealSection('calendarSection');
+        renderCalendar();
+        await loadMonthData();
+    }
 }
 
 // ==================== EXPORT ====================
