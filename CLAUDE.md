@@ -32,43 +32,32 @@ Frontend: Vite + TypeScript | Backend: Supabase Edge Functions (Deno) | DB: Supa
 9. **ORKESTRA MODU (paralel agent)**: Her yeni chat basinda (clear/compact sonrasi) Task tool ile birden fazla agent'i PARALEL calistir. Deploy'lari sirayla bekleme — git push + supabase deploy + vercel deploy AYNI ANDA yapilabilir. Bagimli olmayan isler (frontend + backend gibi) paralel agent'lara dagitilir.
 10. **SORUN → BEKLEYEN ISLER**: Kullanici sorun bildirdiginde HEMEN "Bekleyen Isler"e `- [ ]` ile yaz. Cozuldugunde `- [x]` tikle ve "Cozulen Sorunlar"a tasi. "devam et" = Bekleyen Isler'den soru sormadan isle basla.
 
-## Orkestra Sistemi (7 Agent)
+## Orkestra Sistemi (6 Agent + Orkestrator)
 
-**ORKESTRATOR (Ben)** sorunu analiz eder, uygun agent'lari PARALEL calistirir.
+**ORKESTRATOR (Ben)** sorunu analiz eder, uygun agent'lari PARALEL Task tool ile calistirir.
 
 ### Agent Kadrosu:
-| # | Agent | Alan | Gorev |
-|---|-------|------|-------|
-| 1 | **ORKESTRATOR** | Koordinasyon | Sorun analiz, gorev dagitimi, sonuc birlestirme |
-| 2 | **FRONTEND** | UI/UX | HTML/CSS/TS, DOM, kullanici arayuzu, admin panel UI |
-| 3 | **BACKEND** | Edge Functions | Supabase functions, _shared/, is mantigi, DB sorgulari |
-| 4 | **SUPABASE** | Veritabani/Altyapi | Migration, RLS, secrets, Realtime, DB sema |
-| 5 | **VERCEL** | Hosting/Deploy | vercel --prod, env vars, domain, build config |
-| 6 | **MD-UPDATER** | Dokumantasyon | CLAUDE.md + MEMORY.md guncelle (sorun/cozum/tick) |
-| 7 | **DEPLOYER** | Git/CI | git commit + push + supabase deploy + vercel deploy |
-| 8 | **COMPACTOR** | Context Yonetimi | Gorev bitince ozet + /compact hatirlatmasi |
+| # | Agent | subagent_type | Gorev |
+|---|-------|---------------|-------|
+| 1 | **FRONTEND** | general-purpose | HTML/CSS/TS, DOM, admin panel UI, mobil responsive |
+| 2 | **BACKEND** | general-purpose | Edge Functions, _shared/, is mantigi, DB sorgulari |
+| 3 | **SUPABASE** | Bash | Migration, RLS, secrets, `supabase functions deploy` |
+| 4 | **VERCEL** | Bash | `vercel --prod`, env vars, domain |
+| 5 | **MD-UPDATER** | general-purpose | CLAUDE.md + MEMORY.md guncelle (sorun→bekleyen, cozum→tikle) |
+| 6 | **KONTROL** | general-purpose | Deploy/push/commit yapilmis mi dogrula, Vercel live mi kontrol et |
 
 ### Gorev Akisi:
 ```
 Sorun gelir
-  → [MD-UPDATER] .md'ye yaz (arka plan)
-  → [ORKESTRATOR] Analiz et, hangi agent(lar) gerekli?
-  → [FRONTEND] + [BACKEND] + [SUPABASE] paralel calisir (gerekli olanlar)
-  → [DEPLOYER] commit + push + deploy (tumu otomatik)
-  → [MD-UPDATER] ✅ isaretle
-  → [COMPACTOR] Gorev ozeti ver + /compact hatirlatmasi
+  → [MD-UPDATER] Bekleyen Isler'e `- [ ]` yaz (arka plan)
+  → [ORKESTRATOR] Analiz: hangi agent(lar) gerekli?
+  → [FRONTEND] + [BACKEND] paralel calisir (bagimsizsa)
+  → [SUPABASE] edge function deploy (gerekirse)
+  → [VERCEL] vercel --prod (frontend degistiyse)
+  → git commit + push (ORKESTRATOR yapar)
+  → [KONTROL] deploy basarili mi, site calisiyor mu?
+  → [MD-UPDATER] `- [x]` tikle + "Cozulen Sorunlar"a tasi
   → Sonraki gorev
-```
-
-### COMPACTOR Formati (her gorev sonunda):
-```
---- GOREV TAMAMLANDI ---
-Sorun: [ne idi]
-Cozum: [ne yapildi]
-Dosyalar: [degisen dosyalar]
-Deploy: [ne deploy edildi]
-.md: [guncellendi ✅]
-→ /compact yazarak context'i temizleyebilirsin, .md'ler guncel.
 ```
 
 ### Paralel Calisma Kurallari:
@@ -247,11 +236,10 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
     - onclick kullan (addEventListener yerine) — takvim paterni ile eslestir
     - touch-action: manipulation + tap-highlight (mobil click gecikmesi)
     - .section.visible transform: none (translateY(0) stacking context kaldir)
+11. **Profil basliklari mobilde kesilmis** ✅: PROFIL_LABELS_MOBILE (GEN/GÜN/MAĞ/YÖN/BİR/ÖZEL) + CSS font/padding mobil
 
 ## Bekleyen Isler
-- [x] **Commit edilmemis dosyalar**: admin-auth.ts (header-actions container), CLAUDE.md guncellemeleri → COMMIT EDILDI
-- [ ] **Randevu Ayarlari mobilde profil basliklari kesilmis**: "ÖZEL MÜŞ..." truncated → MOBIL KISALTMA EKLENDI (GEN/GÜN/MAĞ/YÖN/BİR/ÖZEL)
-- [ ] **Console 104 issue**: 8 error, 4 warning — incelenmeli
+- [ ] **Console 104 issue**: 8 error, 4 warning — incelenmeli (ekran goruntusu 2026-02-13)
 
 ## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
 8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
