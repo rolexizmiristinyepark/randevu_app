@@ -37,6 +37,11 @@ export function showSuccessPage(dateStr: string, timeStr: string, staffName: str
             log.error('Add to Calendar button not found!');
         }
     }, 100);
+
+    // 10 saniye sonra sayfayi sifirla (ilk randevu adimina don)
+    setTimeout(() => {
+        window.location.reload();
+    }, 10000);
 }
 
 // ==================== CALENDAR INTEGRATION (Lazy Loading) ====================
