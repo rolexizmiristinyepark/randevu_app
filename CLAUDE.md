@@ -232,8 +232,24 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - [x] **WebSocket hatalari** ✅: CHANNEL_ERROR'da cleanup yapiliyor, console spam azaltildi
 - [x] **WhatsApp degiskenler {{1}} {{2}}** ✅: Eski mesajlarda var (fix oncesi), yeni mesajlarda sorun yok
 
+## Cozulen Sorunlar (2026-02-13 - Mobil)
+10. **Mobilde calisan secimi tiklanmiyor**: 3 fix uygulandi:
+    - onclick kullan (addEventListener yerine) — takvim paterni ile eslestir
+    - touch-action: manipulation + tap-highlight (mobil click gecikmesi)
+    - .section.visible transform: none (translateY(0) stacking context kaldir)
+
 ## Bekleyen Isler
-- Simdilik yok - tum ozellikler tamamlandi
+- [ ] **Commit edilmemis dosyalar**: admin-auth.ts (header-actions container), CLAUDE.md guncellemeleri
+- [ ] **Randevu Ayarlari mobilde profil basliklari kesilmis**: "ÖZEL MÜŞ..." truncated (screenshot'tan goruldu)
+- [ ] **Console 104 issue**: 8 error, 4 warning — incelenmeli
+
+## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
+8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
+9. **Bildirim cani nokta rengi** ✅: Altin (#C9A55A) → Rolex yesili (#006039)
+
+## Cozulen Sorunlar (2026-02-13 - Ek)
+6. **WebSocket console hatasi** ✅: Supabase Realtime subscriptions devre disi (free tier 403). Polling fallback aktif
+7. **Bildirim cani tasarimi** ✅: 18px, altin rengi (#C9A55A), nokta ust-sag caprazda (glow efekti)
 
 ## Tamamlanan Ozellikler
 - **notification-bell.ts** ✅: Admin bildirim cani

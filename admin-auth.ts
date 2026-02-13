@@ -472,7 +472,15 @@ const AdminAuth = {
         });
 
         header.style.position = 'relative';
-        header.appendChild(logoutBtn);
+
+        // Header actions container (bell + logout yan yana)
+        let actions = header.querySelector('.header-actions') as HTMLElement;
+        if (!actions) {
+            actions = document.createElement('div');
+            actions.className = 'header-actions';
+            header.appendChild(actions);
+        }
+        actions.appendChild(logoutBtn);
     },
 
     getCurrentUser(): StaffInfo | null {
