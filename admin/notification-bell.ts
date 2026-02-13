@@ -95,14 +95,14 @@ function createBellIcon(): void {
     `;
     btn.title = 'Bildirimler';
 
-    // SVG bell icon
+    // SVG bell icon — küçük, altın rengi
     const svgNS = 'http://www.w3.org/2000/svg';
     const svg = document.createElementNS(svgNS, 'svg');
-    svg.setAttribute('width', '22');
-    svg.setAttribute('height', '22');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', '#757575');
+    svg.setAttribute('stroke', '#C9A55A');
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');
@@ -116,12 +116,13 @@ function createBellIcon(): void {
     svg.appendChild(path2);
     btn.appendChild(svg);
 
-    // Gold dot
+    // Gold dot — çanın üst-sağ çaprazında, değmeden
     const dot = document.createElement('span');
     dot.id = 'notificationDot';
     dot.style.cssText = `
-        position: absolute; top: 6px; right: 6px; width: 8px; height: 8px;
+        position: absolute; top: 2px; right: 1px; width: 7px; height: 7px;
         background: #C9A55A; border-radius: 50%; display: none;
+        box-shadow: 0 0 3px rgba(201, 165, 90, 0.6);
     `;
     btn.appendChild(dot);
 

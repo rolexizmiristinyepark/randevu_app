@@ -18,12 +18,10 @@ import { initMailManager } from './admin/mail-manager';
 import { initUnifiedFlowManager } from './admin/unified-flow-manager';
 import { initPermissionManager } from './admin/permission-manager';
 import { initProfileSettingsManager } from './admin/profile-settings-manager';
-import { initNotificationBell, handleAppointmentChange, handleIncomingMessage } from './admin/notification-bell';
+import { initNotificationBell } from './admin/notification-bell';
 import { setupAllModalCloseHandlers } from './ui-utils';
 import EventListenerManager from './event-listener-manager';
 import { AdminAuth } from './admin-auth';
-import { getSupabase } from './api-service';
-import type { RealtimeChannel } from '@supabase/supabase-js';
 
 // Extend Window interface for admin panel specific properties
 declare global {
@@ -631,72 +629,17 @@ function openProfileLink(profile: string): void {
 //#endregion
 
 //#region Event Listener Cleanup
-// Realtime subscription channels
-let realtimeChannels: RealtimeChannel[] = [];
 
 /**
  * Setup Supabase Realtime subscriptions for live updates
+ * NOT: Supabase free tier WebSocket 403 hatası veriyor.
+ * Realtime devre dışı — bildirimler polling fallback ile çalışıyor (notification-bell.ts).
+ * Pro plan'a geçildiğinde bu fonksiyon aktifleştirilebilir.
  */
 function setupRealtimeSubscriptions(): void {
-    const supabase = getSupabase();
-
-    // Clean up existing channels first
-    cleanupRealtimeChannels();
-
-    // NOT: Supabase Realtime WebSocket 403 hatası veriyor (free tier sorunu).
-    // Bildirimler polling fallback ile çalışıyor (notification-bell.ts).
-    // Realtime düzeldiğinde bu blok tekrar aktifleştirilebilir.
-    try {
-        const appointmentsChannel = supabase
-            .channel('admin-appointments')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'appointments' },
-                (payload) => {
-                    loadAppointments();
-                    handleAppointmentChange(payload.eventType, payload);
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'CHANNEL_ERROR') {
-                    console.warn('[Realtime] appointments channel bağlanamadı — polling aktif');
-                    cleanupRealtimeChannels();
-                }
-            });
-
-        const messagesChannel = supabase
-            .channel('admin-messages')
-            .on('postgres_changes',
-                { event: '*', schema: 'public', table: 'message_log' },
-                (payload) => {
-                    handleIncomingMessage(payload);
-                    const whatsappTab = document.getElementById('whatsappMessages');
-                    if (whatsappTab?.classList.contains('active')) {
-                        initWhatsAppChat();
-                    }
-                }
-            )
-            .subscribe((status) => {
-                if (status === 'CHANNEL_ERROR') {
-                    console.warn('[Realtime] message_log channel bağlanamadı — polling aktif');
-                    cleanupRealtimeChannels();
-                }
-            });
-
-        realtimeChannels = [appointmentsChannel, messagesChannel];
-    } catch {
-        console.warn('[Realtime] Bağlantı kurulamadı — polling fallback aktif');
-    }
-}
-
-/**
- * Cleanup Realtime channels
- */
-function cleanupRealtimeChannels(): void {
-    const supabase = getSupabase();
-    realtimeChannels.forEach(channel => {
-        supabase.removeChannel(channel);
-    });
-    realtimeChannels = [];
+    // Realtime devre dışı — free tier 403 hatası console'da kırmızı WebSocket error üretiyor.
+    // Polling fallback (30sn) notification-bell.ts'de aktif.
+    console.log('[Realtime] Devre dışı — polling fallback aktif (30sn)');
 }
 
 // Global event listener manager for admin panel cleanup
@@ -709,7 +652,6 @@ if (typeof window !== 'undefined') {
 
 // Cleanup on page unload to prevent memory leaks
 window.addEventListener('beforeunload', () => {
-    cleanupRealtimeChannels();
     adminEventManager.cleanup();
 });
 //#endregion
