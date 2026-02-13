@@ -247,6 +247,13 @@ SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_DB_URL
 - **Cozum**: —
 - **Durum**: ⏳ Duzeltiliyor
 
+### 2. Header ikonları sağ üst köşe (bell + logout)
+- **Sorun**: Mobilde bell ve logout ortalanmış butonlar olarak görünüyor, kullanıcı sağ üst köşede minimal ikonlar istiyor
+- **Tespit**: header-actions mobilde centered layout, logout text buton ("LOGOUT" yazısı)
+- **Aksiyon**: (1) header-actions her zaman sağ üst absolute (2) logout text→SVG ikon (3) minimal tasarım
+- **Çözüm**: admin.css (4 blok), admin-auth.ts (SVG logout ikon), notification-bell.ts (padding+renk)
+- **Durum**: ✅ Tamamlandı
+
 ## Cozulen Sorunlar (2026-02-13 - Vardiya + Bell)
 8. **Vardiya tablosu mobil responsive** ✅: Mobilde gun tek harf (P/S/Ç), isimler sadece ad, vardiya S/A/F/O bold gorunur, CSS 768px breakpoint
 9. **Bildirim cani nokta rengi** ✅: Altin (#C9A55A) → Rolex yesili (#006039)

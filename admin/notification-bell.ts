@@ -98,8 +98,9 @@ function createBellIcon(): void {
     const btn = document.createElement('button');
     btn.id = 'notificationBellBtn';
     btn.style.cssText = `
-        background: transparent; border: none; cursor: pointer; padding: 8px;
+        background: transparent; border: none; cursor: pointer; padding: 6px;
         position: relative; display: flex; align-items: center; justify-content: center;
+        opacity: 0.5; transition: opacity 0.2s;
     `;
     btn.title = 'Bildirimler';
 
@@ -110,7 +111,7 @@ function createBellIcon(): void {
     svg.setAttribute('height', '18');
     svg.setAttribute('viewBox', '0 0 24 24');
     svg.setAttribute('fill', 'none');
-    svg.setAttribute('stroke', '#C9A55A');
+    svg.setAttribute('stroke', '#757575');
     svg.setAttribute('stroke-width', '2');
     svg.setAttribute('stroke-linecap', 'round');
     svg.setAttribute('stroke-linejoin', 'round');

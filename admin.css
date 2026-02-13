@@ -1094,46 +1094,39 @@
     cursor: not-allowed;
 }
 
-/* Header actions bar (bell + logout) */
+/* Header actions bar (bell + logout) — her zaman sağ üst köşe */
 .header-actions {
+    position: absolute;
+    right: 16px;
+    top: 16px;
     display: flex;
     align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin-top: 12px;
+    gap: 6px;
+    margin-top: 0;
+    z-index: 50;
 }
 
 .admin-logout-btn {
-    padding: 6px 16px;
     background: transparent;
-    color: #757575;
-    border: 1px solid #E8E8E8;
-    border-radius: 2px;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 1px;
-    text-transform: uppercase;
+    border: none;
     cursor: pointer;
-    transition: all 0.3s;
-    font-family: 'Montserrat', sans-serif;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.2s;
+    opacity: 0.5;
 }
 
 .admin-logout-btn:hover {
-    background: #1A1A2E;
-    color: #FAFAFA;
-    border-color: #1A1A2E;
+    opacity: 1;
 }
 
-/* Desktop: header-actions sağ üstte absolute */
-@media (min-width: 769px) {
-    .header-actions {
-        position: absolute;
-        right: 25px;
-        top: 50%;
-        transform: translateY(-50%);
-        margin-top: 0;
-    }
+.admin-logout-btn svg {
+    width: 18px;
+    height: 18px;
 }
+
 
 /* ==================== HIERARCHICAL TAB SYSTEM ==================== */
 /* 3-level tabs: main-tabs > sub-tabs > inner-tabs */
@@ -2422,7 +2415,7 @@
 
 /* ==================== MOBILE RESPONSIVE - Bell, Logout, Notifications ==================== */
 @media (max-width: 768px) {
-    /* Header daha kompakt */
+    /* Header kompakt */
     .header {
         padding: 15px 15px 10px;
     }
@@ -2441,29 +2434,14 @@
         font-size: 10px;
     }
 
-    /* Header actions — mobilde satır içi, yeterli tap target */
+    /* Sağ üst ikonlar — mobilde daha küçük gap */
     .header-actions {
-        gap: 8px;
-        margin-top: 8px;
+        right: 12px;
+        top: 12px;
+        gap: 4px;
     }
 
-    /* Logout butonu mobil — daha büyük tap target */
-    .admin-logout-btn {
-        padding: 8px 14px;
-        font-size: 10px;
-        min-height: 36px;
-        display: inline-flex;
-        align-items: center;
-    }
-
-    /* Bildirim çanı mobil tap target */
-    #notificationBellBtn {
-        padding: 10px;
-        min-width: 40px;
-        min-height: 40px;
-    }
-
-    /* Bildirim dropdown — mobilde tam genişlik */
+    /* Bildirim dropdown — mobilde bottom sheet */
     #notificationDropdown {
         position: fixed !important;
         top: auto !important;
@@ -2490,5 +2468,10 @@
     .header h1 {
         font-size: 13px;
         letter-spacing: 1px;
+    }
+
+    .header-actions {
+        right: 8px;
+        top: 8px;
     }
 }

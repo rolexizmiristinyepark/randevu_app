@@ -464,7 +464,30 @@ const AdminAuth = {
 
         const logoutBtn = document.createElement('button');
         logoutBtn.className = 'admin-logout-btn';
-        logoutBtn.textContent = 'Logout';
+        logoutBtn.title = 'Çıkış Yap';
+
+        // SVG logout icon (door + arrow)
+        const svgNS = 'http://www.w3.org/2000/svg';
+        const logoutSvg = document.createElementNS(svgNS, 'svg');
+        logoutSvg.setAttribute('viewBox', '0 0 24 24');
+        logoutSvg.setAttribute('fill', 'none');
+        logoutSvg.setAttribute('stroke', '#757575');
+        logoutSvg.setAttribute('stroke-width', '2');
+        logoutSvg.setAttribute('stroke-linecap', 'round');
+        logoutSvg.setAttribute('stroke-linejoin', 'round');
+        const logoutPath1 = document.createElementNS(svgNS, 'path');
+        logoutPath1.setAttribute('d', 'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4');
+        const logoutPath2 = document.createElementNS(svgNS, 'polyline');
+        logoutPath2.setAttribute('points', '16 17 21 12 16 7');
+        const logoutPath3 = document.createElementNS(svgNS, 'line');
+        logoutPath3.setAttribute('x1', '21');
+        logoutPath3.setAttribute('y1', '12');
+        logoutPath3.setAttribute('x2', '9');
+        logoutPath3.setAttribute('y2', '12');
+        logoutSvg.appendChild(logoutPath1);
+        logoutSvg.appendChild(logoutPath2);
+        logoutSvg.appendChild(logoutPath3);
+        logoutBtn.appendChild(logoutSvg);
         logoutBtn.addEventListener('click', () => {
             if (confirm('Are you sure you want to logout?')) {
                 this.logout();
