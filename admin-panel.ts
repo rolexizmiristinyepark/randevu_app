@@ -371,10 +371,24 @@ function setupLinks(): void {
 
     // Render quick links (Genel, Günlük)
     renderQuickLinks();
+
+    // Setup link section toggles
+    setupLinkSectionToggles();
 }
 
 /**
- * Render quick links (Genel, Günlük - başlıksız)
+ * Setup collapsible toggle for link sections (İstinyepark, Personel, Özel Müşteri)
+ */
+function setupLinkSectionToggles(): void {
+    document.querySelectorAll('.link-section-toggle').forEach(toggle => {
+        toggle.addEventListener('click', () => {
+            toggle.classList.toggle('collapsed');
+        });
+    });
+}
+
+/**
+ * Render quick links (Genel, Günlük)
  */
 function renderQuickLinks(): void {
     const container = document.getElementById('quickLinksGrid');

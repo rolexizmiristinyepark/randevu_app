@@ -117,6 +117,31 @@
             gap: 10px;
         }
 
+        /* Link section toggle */
+        .link-section-toggle {
+            cursor: pointer;
+            user-select: none;
+            justify-content: space-between;
+        }
+
+        .link-section-toggle:hover {
+            color: #C9A55A;
+        }
+
+        .toggle-arrow {
+            font-size: 14px;
+            transition: transform 0.25s ease;
+            color: #999;
+        }
+
+        .link-section-toggle.collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .link-section-toggle.collapsed + .link-section-body {
+            display: none !important;
+        }
+
         .input-group {
             margin-bottom: 20px;
         }

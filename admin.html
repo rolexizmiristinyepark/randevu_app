@@ -48,26 +48,40 @@
 
             <!-- Randevu Linkleri -->
             <div id="links" class="sub-tab-content active">
-                <!-- Genel ve Günlük (Başlıksız) -->
+                <!-- İstinyepark (Genel + Günlük) -->
                 <div class="card">
-                    <div id="quickLinksGrid" class="link-cards-grid">
+                    <div class="card-title link-section-toggle" data-target="quickLinksGrid">
+                        İstinyepark
+                        <span class="toggle-arrow">▾</span>
+                    </div>
+                    <div id="quickLinksGrid" class="link-cards-grid link-section-body">
                         <!-- JS ile doldurulacak -->
                     </div>
                 </div>
 
                 <!-- Personel Linkleri (Sales) -->
                 <div class="card">
-                    <div class="card-title">Personel</div>
-                    <div id="staffLinks">
-                        <!-- Dinamik yüklenecek -->
+                    <div class="card-title link-section-toggle" data-target="staffLinksWrap">
+                        Personel
+                        <span class="toggle-arrow">▾</span>
+                    </div>
+                    <div id="staffLinksWrap" class="link-section-body">
+                        <div id="staffLinks">
+                            <!-- Dinamik yüklenecek -->
+                        </div>
                     </div>
                 </div>
 
                 <!-- Özel Müşteri Linkleri (Management) -->
                 <div class="card">
-                    <div class="card-title">Özel Müşteri</div>
-                    <div id="vipLinksGrid">
-                        <!-- Dinamik yüklenecek -->
+                    <div class="card-title link-section-toggle" data-target="vipLinksWrap">
+                        Özel Müşteri
+                        <span class="toggle-arrow">▾</span>
+                    </div>
+                    <div id="vipLinksWrap" class="link-section-body">
+                        <div id="vipLinksGrid">
+                            <!-- Dinamik yüklenecek -->
+                        </div>
                     </div>
                 </div>
             </div>
