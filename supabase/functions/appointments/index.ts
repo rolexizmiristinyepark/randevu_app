@@ -1076,6 +1076,11 @@ async function triggerAppointmentNotification(
         const targetType = template.target_type || 'customer';
 
         // Admin target: tüm admin personellere gönder
+        // Staff zaten atanmışsa (bireysel/vip) admin atama bildirimi atla
+        if (targetType === 'admin' && appointment.staff_id && trigger === 'appointment_create') {
+          console.log(`[WA] Staff zaten atanmış (${appointment.staff_id}), admin bildirim atlandı: ${template.name}`);
+          continue;
+        }
         if (targetType === 'admin' || (targetType === 'staff' && !eventData.staffPhone)) {
           // Staff atanmamış — admin'lere gönder
           const { data: admins } = await supabase
@@ -1174,6 +1179,11 @@ async function triggerAppointmentNotification(
 
         const recipient = template.recipient || 'customer';
 
+        // Staff zaten atanmışsa (bireysel/vip) admin atama email'i atla
+        if (recipient === 'admin' && appointment.staff_id && trigger === 'appointment_create') {
+          console.log(`[EMAIL] Staff zaten atanmış (${appointment.staff_id}), admin email atlandı: ${template.name}`);
+          continue;
+        }
         // Admin: staff tablosundan tum admin emailleri al ve her birine gonder
         if (recipient === 'admin') {
           const { data: admins } = await supabase
