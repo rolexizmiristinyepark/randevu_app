@@ -174,3 +174,19 @@ export const MESSAGE_RECIPIENTS: Record<string, string> = {
   staff: 'assigned staff',
   greeter: 'greeter',
 };
+
+/**
+ * Email body'sindeki \n karakterlerini HTML'e cevir
+ * \n\n → paragraf sonu/basi (</p><p>)
+ * \n   → satir sonu (<br>)
+ * Sonuc <p>...</p> ile sarmalanir
+ */
+export function formatEmailBody(text: string): string {
+  if (!text) return '';
+  // Once \n\n'leri paragraf ayiricina cevir
+  let html = text.replace(/\n\n/g, '</p><p>');
+  // Kalan \n'leri <br>'ye cevir
+  html = html.replace(/\n/g, '<br>');
+  // Tamami <p>...</p> ile sarmala
+  return `<p>${html}</p>`;
+}

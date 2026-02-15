@@ -5,7 +5,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { createServiceClient } from '../_shared/supabase-client.ts';
-import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode } from '../_shared/variables.ts';
+import { replaceMessageVariables, formatTurkishDate, formatPhoneWithCountryCode, formatEmailBody } from '../_shared/variables.ts';
 import { sendWhatsAppMessage, buildTemplateComponents, logMessage, buildEventDataFromAppointment, resolveTemplateContent } from '../_shared/whatsapp-sender.ts';
 import { escapeHtml } from '../_shared/validation.ts';
 import { sendGmail } from '../_shared/resend-sender.ts';
@@ -72,20 +72,23 @@ async function handleSendEmail(body: EdgeFunctionBody): Promise<Response> {
 }
 
 /**
- * ICS takvim dosyasi olusturma
- * GAS: generateCustomerICS
+ * ICS takvim icerigi olusturma (yeniden kullanilabilir)
+ * Hem handleGenerateICS hem de email eki icin kullanilir
  */
-async function handleGenerateICS(body: EdgeFunctionBody): Promise<Response> {
-  const staffName = String(body.staffName || '');
-  const staffPhone = String(body.staffPhone || '');
-  const staffEmail = String(body.staffEmail || '');
-  const date = String(body.date || '');
-  const time = String(body.time || '');
-  const duration = Number(body.duration) || 60;
-  const appointmentType = String(body.appointmentType || 'meeting');
-  const customerNote = String(body.customerNote || '');
-
-  if (!date || !time) return errorResponse('Tarih ve saat zorunludur');
+function generateICSContent(params: {
+  staffName: string;
+  staffPhone: string;
+  staffEmail: string;
+  date: string;
+  time: string;
+  duration?: number;
+  appointmentType?: string;
+  customerNote?: string;
+}): { ics: string; filename: string } {
+  const { staffName, staffPhone, staffEmail, date, time } = params;
+  const duration = params.duration || 60;
+  const appointmentType = params.appointmentType || 'meeting';
+  const customerNote = params.customerNote || '';
 
   // Baslangic ve bitis zamanlari
   const startDateTime = new Date(`${date}T${time}:00`);
@@ -148,7 +151,31 @@ async function handleGenerateICS(body: EdgeFunctionBody): Promise<Response> {
     'END:VCALENDAR',
   ].join('\r\n');
 
-  return jsonResponse({ success: true, ics, filename: `randevu_${date}_${time.replace(':', '')}.ics` });
+  return { ics, filename: `randevu_${date}_${time.replace(':', '')}.ics` };
+}
+
+/**
+ * ICS takvim dosyasi olusturma
+ * GAS: generateCustomerICS
+ */
+async function handleGenerateICS(body: EdgeFunctionBody): Promise<Response> {
+  const date = String(body.date || '');
+  const time = String(body.time || '');
+
+  if (!date || !time) return errorResponse('Tarih ve saat zorunludur');
+
+  const result = generateICSContent({
+    staffName: String(body.staffName || ''),
+    staffPhone: String(body.staffPhone || ''),
+    staffEmail: String(body.staffEmail || ''),
+    date,
+    time,
+    duration: Number(body.duration) || 60,
+    appointmentType: String(body.appointmentType || 'meeting'),
+    customerNote: String(body.customerNote || ''),
+  });
+
+  return jsonResponse({ success: true, ics: result.ics, filename: result.filename });
 }
 
 /**
@@ -355,7 +382,7 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
             const emailResult = await sendGmail({
               to: admin.email,
               subject: resolvedSubject,
-              html: resolvedBody,
+              html: formatEmailBody(resolvedBody),
             });
 
             if (emailResult.success) {
@@ -404,11 +431,36 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
           }
         }
 
+        // ICS eki: customer + appointment_create icin takvim dosyasi ekle
+        let attachments: Array<{ filename: string; content: string }> | undefined;
+        if (recipient === 'customer' && trigger === 'appointment_create') {
+          try {
+            const icsResult = generateICSContent({
+              staffName: String(eventData.staffName || ''),
+              staffPhone: String(eventData.staffPhone || ''),
+              staffEmail: String(eventData.staffEmail || ''),
+              date: String(eventData.date || eventData.appointmentDate || ''),
+              time: String(eventData.time || eventData.appointmentTime || eventData.startTime || ''),
+              duration: Number(eventData.duration) || 60,
+              appointmentType: String(eventData.appointmentType || eventData.type || 'meeting'),
+              customerNote: String(eventData.customerNote || eventData.extraInfo || ''),
+            });
+            attachments = [{
+              filename: icsResult.filename,
+              content: btoa(icsResult.ics),
+            }];
+            console.log(`[EMAIL] ICS eki eklendi: ${icsResult.filename}`);
+          } catch (icsErr) {
+            console.error('[EMAIL] ICS olusturma hatasi:', icsErr);
+          }
+        }
+
         // Resend ile gonder
         const emailResult = await sendGmail({
           to: toEmail,
           subject: resolvedSubject,
-          html: resolvedBody,
+          html: formatEmailBody(resolvedBody),
+          attachments,
         });
 
         if (emailResult.success) {
@@ -673,7 +725,7 @@ async function sendReminderEmail(
       const resolvedBody = replaceMessageVariables(String(template.body || ''), summaryData);
 
       console.log(`[EMAIL] ${recipient} gonderiliyor: to=${staffMember.email} (${staffMember.name})`);
-      const emailResult = await sendGmail({ to: staffMember.email, subject: resolvedSubject, html: resolvedBody });
+      const emailResult = await sendGmail({ to: staffMember.email, subject: resolvedSubject, html: formatEmailBody(resolvedBody) });
       if (emailResult.success) sent++;
       else failed++;
     }
@@ -694,7 +746,7 @@ async function sendReminderEmail(
     const resolvedSubject = replaceMessageVariables(String(template.subject || ''), eventData as Record<string, string>);
     const resolvedBody = replaceMessageVariables(String(template.body || ''), eventData as Record<string, string>);
 
-    const emailResult = await sendGmail({ to: toEmail, subject: resolvedSubject, html: resolvedBody });
+    const emailResult = await sendGmail({ to: toEmail, subject: resolvedSubject, html: formatEmailBody(resolvedBody) });
     if (emailResult.success) sent++;
     else failed++;
   }

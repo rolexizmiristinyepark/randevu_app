@@ -185,6 +185,9 @@ export function openModal(modalId: string): void {
     const modal = document.getElementById(modalId);
     if (modal) {
         modal.classList.add('active');
+        // Scroll to top when opening modal
+        const content = modal.querySelector('.modal-content');
+        if (content) content.scrollTop = 0;
     }
 }
 

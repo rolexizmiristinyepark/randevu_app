@@ -1105,7 +1105,7 @@ async function triggerAppointmentNotification(
                 message_id: result.messageId || '',
                 error_message: result.error || '',
                 flow_id: flow.id,
-                triggered_by: 'appointment_create',
+                triggered_by: trigger,
                 profile,
                 message_content: resolvedContent,
                 target_type: 'admin',

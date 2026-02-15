@@ -27,6 +27,10 @@ export async function displayAvailableTimeSlots(): Promise<void> {
     if (!container) return;
 
     while (container.firstChild) container.removeChild(container.firstChild);
+    // Clean up any previous alternate-booking-container from parent section
+    const prevAltBtns = container.parentElement?.querySelector('.alternate-booking-container');
+    if (prevAltBtns) prevAltBtns.remove();
+
     const spinnerWrapper = document.createElement('div');
     spinnerWrapper.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 20px;';
     const spinnerEl = document.createElement('div');
@@ -483,11 +487,18 @@ function renderAlternateBookingButtons(container: HTMLElement, noSlotsAvailable:
         container.appendChild(infoDiv);
     }
 
+    // Append to parent section (timeSection) instead of grid container
+    // so buttons appear BELOW the time slots grid, at the bottom of the flow
+    const parentSection = container.parentElement || container;
+
+    // Remove any existing alternate-booking-container to avoid duplicates
+    const existing = parentSection.querySelector('.alternate-booking-container');
+    if (existing) existing.remove();
+
     // Create button container - same row, responsive stacking
     const buttonContainer = document.createElement('div');
     buttonContainer.className = 'alternate-booking-container';
     buttonContainer.style.cssText = `
-        grid-column: 1/-1;
         display: flex;
         flex-wrap: wrap;
         gap: 10px;
@@ -547,7 +558,7 @@ function renderAlternateBookingButtons(container: HTMLElement, noSlotsAvailable:
     });
     buttonContainer.appendChild(shareBtn);
 
-    container.appendChild(buttonContainer);
+    parentSection.appendChild(buttonContainer);
 }
 
 // ==================== TIME SLOT SELECTION ====================

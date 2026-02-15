@@ -24,8 +24,16 @@
 <!-- Format: - [ ] #ID | Aciklama | Oncelik: Yuksek/Orta/Dusuk -->
 
 - [ ] #1 | Console 104 issue — DOM null safety + gereksiz console.log temizligi | Oncelik: Dusuk
-- [ ] #17 | WhatsApp sohbet silme butonu (kişi barı sağ üst) | Oncelik: Orta
-- [ ] #18 | WhatsApp 24 saat kuralı — aynı gün sohbetlerde serbest mesaj gönderme | Oncelik: Yuksek
+- [ ] #19 | Mobil hafta secici render + X pozisyonu | Oncelik: Yuksek
+- [ ] #20 | Randevu edit WA mesaj gitmiyor | Oncelik: Yuksek
+- [ ] #21 | Randevu onay maili takvim eklentisi (iOS/Google) | Oncelik: Yuksek
+- [ ] #22 | Mail template bosluklar/paragraflar gorunmuyor | Oncelik: Yuksek
+- [ ] #23 | Modal label camelCase + Ingilizce + aciklama sil + parantez sil | Oncelik: Orta
+- [ ] #24 | Modal scroll reset (edit sonrasi basa don) | Oncelik: Orta
+- [ ] #25 | Shift Control → Shift (ayarlar modal) | Oncelik: Dusuk
+- [ ] #26 | Edit'te degisiklik yoksa save pasif | Oncelik: Orta
+- [ ] #27 | Gunluk profil butonlari akis altina | Oncelik: Orta
+- [ ] #28 | Randevu cancel WA mesaj gitmiyor | Oncelik: Yuksek
 
 ### 🟡 COZUME DEVAM EDIYOR
 <!-- Is basladiginda buraya tasi -->
