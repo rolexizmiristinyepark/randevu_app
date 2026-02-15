@@ -367,14 +367,14 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 
               if (infoCard && infoCard.fields) {
                 const fields = infoCard.fields as Array<{ label: string; variable: string }>;
-                let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+                let infoHtml = '<table style="border-left: 3px solid #C9A55A; padding-left: 15px; margin: 20px 0;">';
                 infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
                 for (const field of fields) {
                   const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
                   infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${escapeHtml(field.label)}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${escapeHtml(value)}</td></tr>`;
                 }
                 infoHtml += '</table>';
-                resolvedBody += infoHtml;
+                resolvedBody = infoHtml + resolvedBody;
               }
             }
 
@@ -420,14 +420,14 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
 
           if (infoCard && infoCard.fields) {
             const fields = infoCard.fields as Array<{ label: string; variable: string }>;
-            let infoHtml = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+            let infoHtml = '<table style="border-left: 3px solid #C9A55A; padding-left: 15px; margin: 20px 0;">';
             infoHtml += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
             for (const field of fields) {
               const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
               infoHtml += `<tr><td style="color: #666666; font-size: 14px; padding: 8px 15px 8px 0; width: 120px;">${escapeHtml(field.label)}</td><td style="color: #1a1a1a; font-size: 14px; padding: 8px 0;">${escapeHtml(value)}</td></tr>`;
             }
             infoHtml += '</table>';
-            resolvedBody += infoHtml;
+            resolvedBody = infoHtml + resolvedBody;
           }
         }
 

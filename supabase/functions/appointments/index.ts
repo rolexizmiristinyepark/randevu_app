@@ -1206,7 +1206,7 @@ async function triggerAppointmentNotification(
             let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
 
             if (template.info_card_id) {
-              resolvedBody += await buildInfoCardHtml(supabase, template.info_card_id, eventData);
+              resolvedBody = await buildInfoCardHtml(supabase, template.info_card_id, eventData) + resolvedBody;
             }
 
             console.log(`[EMAIL] Admin gonderiliyor: to=${admin.email} (${admin.name}), template=${template.name}`);
@@ -1242,7 +1242,7 @@ async function triggerAppointmentNotification(
         let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);
 
         if (template.info_card_id) {
-          resolvedBody += await buildInfoCardHtml(supabase, template.info_card_id, eventData);
+          resolvedBody = await buildInfoCardHtml(supabase, template.info_card_id, eventData) + resolvedBody;
         }
 
         console.log(`[EMAIL] Gönderiliyor: to=${toEmail}, template=${template.name}, recipient=${recipient}`);
@@ -1282,7 +1282,7 @@ async function buildInfoCardHtml(
   if (!infoCard || !infoCard.fields) return '';
 
   const fields = infoCard.fields as Array<{ label: string; variable: string }>;
-  let html = '<table style="border-left: 3px solid #006039; padding-left: 15px; margin: 20px 0;">';
+  let html = '<table style="border-left: 3px solid #C9A55A; padding-left: 15px; margin: 20px 0;">';
   html += '<tr><td colspan="2" style="font-size: 16px; font-weight: 400; letter-spacing: 1px; color: #1a1a1a; padding-bottom: 15px;">RANDEVU BİLGİLERİ</td></tr>';
   for (const field of fields) {
     const value = replaceMessageVariables(`{{${field.variable}}}`, eventData as Record<string, string>);
