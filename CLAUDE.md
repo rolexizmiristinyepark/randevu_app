@@ -24,16 +24,8 @@
 <!-- Format: - [ ] #ID | Aciklama | Oncelik: Yuksek/Orta/Dusuk -->
 
 - [ ] #1 | Console 104 issue — DOM null safety + gereksiz console.log temizligi | Oncelik: Dusuk
-- [ ] #19 | Mobil hafta secici render + X pozisyonu | Oncelik: Yuksek
-- [ ] #20 | Randevu edit WA mesaj gitmiyor | Oncelik: Yuksek
-- [ ] #21 | Randevu onay maili takvim eklentisi (iOS/Google) | Oncelik: Yuksek
-- [ ] #22 | Mail template bosluklar/paragraflar gorunmuyor | Oncelik: Yuksek
-- [ ] #23 | Modal label camelCase + Ingilizce + aciklama sil + parantez sil | Oncelik: Orta
-- [ ] #24 | Modal scroll reset (edit sonrasi basa don) | Oncelik: Orta
-- [ ] #25 | Shift Control → Shift (ayarlar modal) | Oncelik: Dusuk
+- [ ] #19 | Mobil hafta secici X pozisyonu (CSS eklendi, X hala ust uste olabilir) | Oncelik: Orta
 - [ ] #26 | Edit'te degisiklik yoksa save pasif | Oncelik: Orta
-- [ ] #27 | Gunluk profil butonlari akis altina | Oncelik: Orta
-- [ ] #28 | Randevu cancel WA mesaj gitmiyor | Oncelik: Yuksek
 
 ### 🟡 COZUME DEVAM EDIYOR
 <!-- Is basladiginda buraya tasi -->
@@ -48,6 +40,13 @@ _(Yok)_
 ### ✅ DEPLOY EDILDI
 <!-- commit + push + deploy sonrasi buraya tasi ve tick at -->
 
+- [x] #20 + #28 | WA edit/cancel mesaj fix (triggered_by bug) | 2026-02-13
+- [x] #21 | ICS takvim eklentisi onay mailinde | 2026-02-13
+- [x] #22 | Mail template formatEmailBody (newline→HTML) | 2026-02-13
+- [x] #23 | Modal labels English + aciklama sil + parantez sil | 2026-02-13
+- [x] #24 | Modal scroll reset (openModal scrollTop=0) | 2026-02-13
+- [x] #25 | Shift Control → Shift | 2026-02-13
+- [x] #27 | Profil butonlari akis altina (TimeSelectorComponent) | 2026-02-13
 - [x] #17 + #18 | WA sohbet silme + 24h serbest mesaj cevaplama | 2026-02-13
 - [x] #16 | Bildirim harf ikonlari (W,+,~,x,>) kaldirildi | 2026-02-13
 - [x] #15 | Logout+bell altin renk, desktop metin buton, mobil ikon | 2026-02-13
