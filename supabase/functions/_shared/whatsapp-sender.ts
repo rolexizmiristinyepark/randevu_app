@@ -256,7 +256,6 @@ export function buildEventDataFromAppointment(
     staffPhone: staff?.phone || '',
     staffEmail: staff?.email || '',
     staffId: appointment.staff_id || '',
-    linkedStaffName: staff?.name || '',
-    linkedStaffId: appointment.staff_id || '',
+    duration: appointment.duration || 60,
   };
 }

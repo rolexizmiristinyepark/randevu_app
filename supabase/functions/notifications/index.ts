@@ -439,11 +439,11 @@ async function handleTriggerFlow(body: EdgeFunctionBody): Promise<Response> {
               staffName: String(eventData.staffName || ''),
               staffPhone: String(eventData.staffPhone || ''),
               staffEmail: String(eventData.staffEmail || ''),
-              date: String(eventData.date || eventData.appointmentDate || ''),
-              time: String(eventData.time || eventData.appointmentTime || eventData.startTime || ''),
+              date: String(eventData.date || ''),
+              time: String(eventData.time || ''),
               duration: Number(eventData.duration) || 60,
-              appointmentType: String(eventData.appointmentType || eventData.type || 'meeting'),
-              customerNote: String(eventData.customerNote || eventData.extraInfo || ''),
+              appointmentType: String(eventData.appointmentType || 'meeting'),
+              customerNote: String(eventData.customerNote || ''),
             });
             attachments = [{
               filename: icsResult.filename,
@@ -541,8 +541,13 @@ async function handleScheduledReminders(): Promise<Response> {
       .neq('status', 'cancelled')
       .order('start_time');
 
-    const appts = appointments || [];
-    console.log(`[REMINDER] Flow ${flow.name}: schedule_day=${scheduleDay}, tarih=${targetDate}, randevu sayisi=${appts.length}`);
+    // Profil filtresi: flow.profiles ile eslesen randevulari filtrele
+    const flowProfiles = flow.profiles || [];
+    const allAppts = appointments || [];
+    const appts = flowProfiles.length === 0 || flowProfiles.includes('all')
+      ? allAppts
+      : allAppts.filter((a: Record<string, unknown>) => flowProfiles.includes(String(a.profile || '')));
+    console.log(`[REMINDER] Flow ${flow.name}: schedule_day=${scheduleDay}, tarih=${targetDate}, toplam=${allAppts.length}, profil filtreli=${appts.length}`);
 
     if (appts.length === 0) continue;
 
@@ -601,6 +606,11 @@ async function sendReminderWhatsApp(
   // admin ve greeter icin: hedef personelleri bul, her randevu icin mesaj gonder
   if (targetType === 'admin' || targetType === 'greeter') {
     const staffList = await getStaffByRecipientType(supabase, targetType);
+
+    if (staffList.length === 0) {
+      console.log(`[REMINDER-WA] ${targetType} listesi bos — telefonu olan aktif ${targetType} bulunamadi`);
+      return { sent, failed };
+    }
 
     for (const staffMember of staffList) {
       if (!staffMember.phone) continue;
@@ -711,6 +721,11 @@ async function sendReminderEmail(
   // admin ve greeter icin: ozet email gonder
   if (recipient === 'admin' || recipient === 'greeter') {
     const staffList = await getStaffByRecipientType(supabase, recipient);
+
+    if (staffList.length === 0) {
+      console.log(`[REMINDER-EMAIL] ${recipient} listesi bos — emaili olan aktif ${recipient} bulunamadi`);
+      return { sent, failed };
+    }
 
     for (const staffMember of staffList) {
       if (!staffMember.email) continue;

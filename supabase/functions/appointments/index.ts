@@ -1089,9 +1089,12 @@ async function triggerAppointmentNotification(
             .eq('is_admin', true)
             .eq('active', true);
 
-          if (admins && admins.length > 0) {
+          if (!admins || admins.length === 0) {
+            console.log(`[WA] Admin listesi bos — telefonu olan aktif admin bulunamadi`);
+            continue;
+          }
             for (const admin of admins) {
-              if (!admin.phone) continue;
+              if (!admin.phone) { console.log(`[WA] Admin ${admin.name} telefon eksik, atlandi`); continue; }
               const components = buildTemplateComponents(template, eventData);
               const result = await sendWhatsAppMessage(
                 admin.phone,
@@ -1119,7 +1122,6 @@ async function triggerAppointmentNotification(
               });
               console.log(`Admin notification ${result.success ? 'sent' : 'failed'}: ${admin.name}`);
             }
-          }
           continue;
         }
 
@@ -1153,7 +1155,7 @@ async function triggerAppointmentNotification(
           staff_id: staff?.id ? Number(staff.id) : undefined,
           staff_name: String(eventData.staffName || ''),
           flow_id: flow.id,
-          triggered_by: 'appointment_create',
+          triggered_by: trigger,
           profile,
           message_content: resolvedContent,
           target_type: targetType,
@@ -1198,7 +1200,7 @@ async function triggerAppointmentNotification(
           }
 
           for (const admin of admins) {
-            if (!admin.email) continue;
+            if (!admin.email) { console.log(`[EMAIL] Admin ${admin.name} email eksik, atlandi`); continue; }
 
             const resolvedSubject = replaceMessageVariables(template.subject, eventData as Record<string, string>);
             let resolvedBody = replaceMessageVariables(template.body, eventData as Record<string, string>);

@@ -90,11 +90,11 @@ const MESSAGE_VARIABLES: Record<string, { label: string; getValue: (data: VarDat
   },
   personel: {
     label: 'staff: Mehmet Kaya',
-    getValue: (data) => data.staffName || data.assignedStaff || data.linkedStaffName || '',
+    getValue: (data) => data.staffName || data.assignedStaff || 'Atanacak',
   },
   personel_id: {
     label: 'staff id: 123',
-    getValue: (data) => String(data.staffId || data.linkedStaffId || ''),
+    getValue: (data) => String(data.staffId || ''),
   },
   personel_tel: {
     label: 'staff phone: +905551234567',
@@ -120,7 +120,7 @@ const MESSAGE_VARIABLES: Record<string, { label: string; getValue: (data: VarDat
   },
   profil_sahibi: {
     label: 'profile owner: Serdar Benli',
-    getValue: (data) => data.linkedStaffName || data.staffName || data.profileOwner || '',
+    getValue: (data) => data.staffName || data.profileOwner || '',
   },
 };
 
