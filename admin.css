@@ -906,9 +906,8 @@
                 gap: 6px;
             }
             .week-input-wrapper {
-                flex: 0 0 auto;
-                width: auto;
-                min-width: 120px;
+                flex: 1 1 0%;
+                min-width: 0;
             }
             #clearWeekFilter {
                 flex: 0 0 auto;
