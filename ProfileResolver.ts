@@ -54,7 +54,9 @@ export function parseURL(): { code: ProfileCode | null; staffId: string | null; 
     if (id) return { code: null, staffId: null, legacyId: id };
   }
 
-  return { code: null, staffId: null, legacyId: null };
+  // Hash ve query yoksa → genel profile yonlendir
+  window.location.hash = '#g';
+  return { code: 'g' as ProfileCode, staffId: null, legacyId: null };
 }
 
 /**
